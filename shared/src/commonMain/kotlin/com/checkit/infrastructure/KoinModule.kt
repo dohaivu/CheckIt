@@ -395,7 +395,6 @@ val provideViewModelModule = module {
             smartSchedule = get(),
             observeRoutines = get(),
             observeRoutineToday = get(),
-            observeRoutineLogs = get(),
             saveRoutine = get(),
             deleteRoutine = get(),
             toggleRoutineStep = get(),
@@ -408,7 +407,9 @@ val provideViewModelModule = module {
             repository = get(),
             observePeriodGoals = get(),
             observeGoalHistory = get(),
-            savePeriodGoal = get()
+            savePeriodGoal = get(),
+            observeRoutines = get(),
+            observeRoutineLogs = get()
         )
     }
     viewModel { SettingsViewModel(get(), get(), get(), get<AppReminderScheduler>(), get(), get()) }

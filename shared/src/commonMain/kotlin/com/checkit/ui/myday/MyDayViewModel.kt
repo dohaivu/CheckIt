@@ -22,7 +22,6 @@ import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveJournalEntriesUseCase
 import com.checkit.domain.usecase.ObserveNotesForDateUseCase
 import com.checkit.domain.usecase.ObservePeriodGoalsUseCase
-import com.checkit.domain.usecase.ObserveRoutineLogsUseCase
 import com.checkit.domain.usecase.ObserveRoutineTodayUseCase
 import com.checkit.domain.usecase.ObserveRoutinesUseCase
 import com.checkit.domain.usecase.ObserveTagsUseCase
@@ -69,7 +68,6 @@ class MyDayViewModel(
     smartSchedule: SmartScheduleDailyPlanUseCase,
     observeRoutines: ObserveRoutinesUseCase,
     observeRoutineToday: ObserveRoutineTodayUseCase,
-    observeRoutineLogs: ObserveRoutineLogsUseCase,
     saveRoutine: SaveRoutineUseCase,
     deleteRoutine: DeleteRoutineUseCase,
     toggleRoutineStep: ToggleRoutineStepUseCase,
@@ -99,7 +97,6 @@ class MyDayViewModel(
         sprintTransition = sprintTransition,
         observeRoutines = observeRoutines,
         observeRoutineToday = observeRoutineToday,
-        observeRoutineLogs = observeRoutineLogs,
         saveRoutine = saveRoutine,
         deleteRoutine = deleteRoutine,
         toggleRoutineStep = toggleRoutineStep

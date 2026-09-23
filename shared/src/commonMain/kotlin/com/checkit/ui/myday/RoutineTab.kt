@@ -1,54 +1,77 @@
 package com.checkit.ui.myday
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.Routine
-import com.checkit.domain.RoutineLog
 import com.checkit.domain.RoutineStepTemplate
 import com.checkit.domain.routinePercent
 import com.checkit.domain.usecase.toClockLabel
+import com.checkit.ui.components.AppEditorBottomSheet
+import com.checkit.ui.components.AppOutlinedTextField
+import com.checkit.ui.components.DeleteOverflowMenu
+import com.checkit.ui.components.ReorderDragState
 import com.checkit.ui.components.TimePicker
-import com.checkit.ui.reflect.RoutineHeatmapSection
-import com.checkit.ui.reflect.buildRoutineSeries
-import kotlinx.datetime.LocalDate
+import com.checkit.ui.components.findReorderTarget
+import com.checkit.ui.components.reorderableRowGraphics
 import kotlin.uuid.Uuid
 
 private data class RoutineEditorState(
@@ -62,14 +85,11 @@ private data class RoutineEditorState(
 internal fun RoutineTab(
     routines: List<Routine>,
     checks: Map<String, Set<String>>,
-    logs: List<RoutineLog>,
-    today: LocalDate,
     onToggleStep: (String, String) -> Unit,
     onSaveRoutine: (String?, String, Int?, List<RoutineStepTemplate>) -> Unit,
     onDeleteRoutine: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val series = remember(routines, logs, today) { buildRoutineSeries(routines, logs, today) }
     var editor by remember { mutableStateOf<RoutineEditorState?>(null) }
 
     LazyColumn(
@@ -127,21 +147,21 @@ internal fun RoutineTab(
                         reminderMinutes = routine.reminderMinutes,
                         steps = routine.steps
                     )
-                },
-                onDelete = { onDeleteRoutine(routine.id) }
+                }
             )
-        }
-        item {
-            RoutineHeatmapSection(series = series)
         }
     }
 
     editor?.let { state ->
-        RoutineEditorDialog(
+        RoutineEditorSheet(
             state = state,
             onDismiss = { editor = null },
             onSave = { id, title, reminderMinutes, steps ->
                 onSaveRoutine(id, title, reminderMinutes, steps)
+                editor = null
+            },
+            onDelete = { id ->
+                onDeleteRoutine(id)
                 editor = null
             }
         )
@@ -154,7 +174,6 @@ private fun RoutineCard(
     checkedStepIds: Set<String>,
     onToggleStep: (String) -> Unit,
     onEdit: () -> Unit,
-    onDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val validStepIds = remember(routine.steps) { routine.steps.map { it.id }.toSet() }
@@ -190,9 +209,6 @@ private fun RoutineCard(
                 )
                 IconButton(onClick = onEdit) {
                     Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit routine")
-                }
-                IconButton(onClick = onDelete) {
-                    Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete routine")
                 }
             }
             routine.reminderMinutes?.let { minutes ->
@@ -247,106 +263,305 @@ private fun RoutineCard(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun RoutineEditorDialog(
+private fun RoutineEditorSheet(
     state: RoutineEditorState,
     onDismiss: () -> Unit,
-    onSave: (String?, String, Int?, List<RoutineStepTemplate>) -> Unit
+    onSave: (String?, String, Int?, List<RoutineStepTemplate>) -> Unit,
+    onDelete: (String) -> Unit
 ) {
     var title by remember(state) { mutableStateOf(state.title) }
     var reminderMinutes by remember(state) { mutableStateOf(state.reminderMinutes) }
     var steps by remember(state) { mutableStateOf(state.steps) }
-    var newStepTitle by remember { mutableStateOf("") }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(text = if (state.id == null) "New routine" else "Edit routine") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(
+    AppEditorBottomSheet(
+        onDismiss = onDismiss,
+        modifier = Modifier
+            .fillMaxHeight(0.9f)
+            .padding(bottom = 24.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = if (state.id == null) "New routine" else "Edit routine",
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            if (state.id != null) {
+                DeleteOverflowMenu(onDelete = { onDelete(state.id) })
+            }
+        }
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .padding(horizontal = 20.dp),
+            contentPadding = PaddingValues(top = 10.dp, bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            item {
+                AppOutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text("Title") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    textStyle = MaterialTheme.typography.titleLarge.copy(
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.SemiBold
+                    ),
+                    maxLines = 2,
+                    placeholder = "Routine name"
                 )
+            }
+            item {
                 TimePicker(
                     label = "reminder",
                     timeMinutes = reminderMinutes,
                     initialTimeMinutes = 8 * 60,
                     onTimeChange = { reminderMinutes = it }
                 )
-                steps.forEach { step ->
-                    var stepTitle by remember(step.id) { mutableStateOf(step.title) }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        OutlinedTextField(
-                            value = stepTitle,
-                            onValueChange = { value ->
-                                stepTitle = value
-                                steps = steps.map { row ->
-                                    if (row.id == step.id) row.copy(title = value) else row
-                                }
-                            },
-                            label = { Text("Step") },
-                            singleLine = true,
-                            modifier = Modifier.weight(1f)
-                        )
-                        IconButton(
-                            onClick = { steps = steps.filterNot { row -> row.id == step.id } }
-                        ) {
-                            Icon(imageVector = Icons.Default.Delete, contentDescription = "Remove step")
-                        }
-                    }
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    OutlinedTextField(
-                        value = newStepTitle,
-                        onValueChange = { newStepTitle = it },
-                        label = { Text("New step") },
-                        singleLine = true,
-                        modifier = Modifier.weight(1f)
+            }
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Steps",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Medium
                     )
-                    Button(
-                        onClick = {
-                            val trimmed = newStepTitle.trim()
-                            if (trimmed.isNotEmpty()) {
-                                steps = steps + RoutineStepTemplate(
-                                    id = Uuid.random().toString(),
-                                    title = trimmed,
-                                    sortOrder = steps.size
-                                )
-                                newStepTitle = ""
-                            }
-                        }
-                    ) {
-                        Text("Add")
-                    }
+                    RoutineStepsEditor(
+                        steps = steps,
+                        onStepsChange = { steps = it }
+                    )
                 }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    if (title.isNotBlank()) {
-                        onSave(state.id, title.trim(), reminderMinutes, steps.filter { it.title.isNotBlank() })
-                    }
-                }
-            ) {
-                Text("Save")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
             }
         }
-    )
+        Button(
+            onClick = {
+                if (title.isNotBlank()) {
+                    onSave(state.id, title.trim(), reminderMinutes, steps.filter { it.title.isNotBlank() })
+                }
+            },
+            enabled = title.isNotBlank(),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)
+        ) {
+            Text("Save routine")
+        }
+    }
+}
+
+/**
+ * Template step editor modeled on [com.checkit.ui.tasks.SubtaskChecklist]:
+ * inline text rows with an add row, auto-focus on the new row, Enter/Next
+ * appends the next row, and long-press drag reorders via the shared
+ * [ReorderDragState] machinery. No checkbox: templates carry no done state.
+ */
+@Composable
+private fun RoutineStepsEditor(
+    steps: List<RoutineStepTemplate>,
+    onStepsChange: (List<RoutineStepTemplate>) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val haptic = LocalHapticFeedback.current
+    val focusManager = LocalFocusManager.current
+    val scope = rememberCoroutineScope()
+    val dragState = remember { ReorderDragState(scope) }
+    val currentSteps by rememberUpdatedState(steps)
+    val currentOnMove by rememberUpdatedState(onStepsChange)
+
+    var previousSize by remember { mutableIntStateOf(steps.size) }
+    var stepIdToFocus by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(steps.size) {
+        if (steps.size > previousSize) {
+            stepIdToFocus = steps.lastOrNull()?.id
+        }
+        previousSize = steps.size
+    }
+
+    fun addStep() {
+        onStepsChange(
+            steps + RoutineStepTemplate(
+                id = Uuid.random().toString(),
+                title = "",
+                sortOrder = steps.size
+            )
+        )
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.4f))
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                shape = RoundedCornerShape(16.dp)
+            )
+    ) {
+        Column(
+            modifier = Modifier.padding(10.dp),
+            verticalArrangement = Arrangement.spacedBy(0.dp)
+        ) {
+            steps.forEach { step ->
+                key(step.id) {
+                    val focusRequester = remember { FocusRequester() }
+                    val isDragging = dragState.draggingKey == step.id ||
+                        dragState.previousKey == step.id
+
+                    if (stepIdToFocus == step.id) {
+                        LaunchedEffect(Unit) {
+                            focusRequester.requestFocus()
+                            stepIdToFocus = null
+                        }
+                    }
+
+                    val currentOnDragStart by rememberUpdatedState {
+                        focusManager.clearFocus()
+                        dragState.onDragStart(step.id)
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    }
+                    val currentOnDragEnd by rememberUpdatedState { dragState.onDragEnd() }
+                    val currentOnMoveStep by rememberUpdatedState { dragAmountY: Float ->
+                        dragState.onDrag(dragAmountY)
+                        val latest = currentSteps
+                        val key = dragState.draggingKey
+                        if (key != null) {
+                            val fromIndex = latest.indexOfFirst { it.id == key }
+                            if (fromIndex >= 0) {
+                                val targetIndex = findReorderTarget(
+                                    count = latest.size,
+                                    keyAt = { row -> latest[row].id },
+                                    bounds = dragState.bounds,
+                                    draggedKey = key,
+                                    draggedDelta = dragState.draggingOffset,
+                                    fromIndex = fromIndex
+                                )
+                                if (targetIndex != null && targetIndex != fromIndex) {
+                                    currentOnMove(
+                                        latest.toMutableList().apply {
+                                            add(targetIndex, removeAt(fromIndex))
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    val textStyle = MaterialTheme.typography.bodyMedium.copy(
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Row(
+                        modifier = Modifier
+                            .reorderableRowGraphics(step.id, dragState)
+                            .fillMaxWidth()
+                            .pointerInput(Unit) {
+                                detectDragGesturesAfterLongPress(
+                                    onDragStart = { currentOnDragStart() },
+                                    onDragEnd = { currentOnDragEnd() },
+                                    onDragCancel = { currentOnDragEnd() },
+                                    onDrag = { change, dragAmount ->
+                                        change.consume()
+                                        currentOnMoveStep(dragAmount.y)
+                                    }
+                                )
+                            }
+                            .background(
+                                color = if (isDragging) {
+                                    MaterialTheme.colorScheme.surfaceContainerHigh
+                                } else {
+                                    Color.Transparent
+                                },
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            .then(
+                                if (isDragging) {
+                                    Modifier.border(
+                                        width = 1.dp,
+                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+                                } else Modifier
+                            )
+                            .clip(RoundedCornerShape(12.dp))
+                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        BasicTextField(
+                            value = step.title,
+                            onValueChange = { value ->
+                                onStepsChange(
+                                    steps.map { row ->
+                                        if (row.id == step.id) row.copy(title = value) else row
+                                    }
+                                )
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .focusRequester(focusRequester),
+                            textStyle = textStyle,
+                            singleLine = false,
+                            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                            keyboardActions = KeyboardActions(onNext = { addStep() }),
+                            decorationBox = { innerTextField ->
+                                if (step.title.isEmpty()) {
+                                    Text(
+                                        "Step",
+                                        style = textStyle.copy(
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                        )
+                                    )
+                                }
+                                innerTextField()
+                            }
+                        )
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clickable {
+                                    onStepsChange(steps.filterNot { row -> row.id == step.id })
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = "Remove step",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                }
+            }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable(onClick = { addStep() })
+                    .padding(vertical = 10.dp, horizontal = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    "Add step",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
+    }
 }

@@ -14,10 +14,13 @@ import com.checkit.domain.TagItem
 import com.checkit.domain.endExclusive
 import com.checkit.domain.usecase.ObserveGoalHistoryUseCase
 import com.checkit.domain.usecase.ObservePeriodGoalsUseCase
+import com.checkit.domain.usecase.ObserveRoutineLogsUseCase
+import com.checkit.domain.usecase.ObserveRoutinesUseCase
 import com.checkit.domain.usecase.SavePeriodGoalUseCase
 import com.checkit.ui.UiEvent
 import com.checkit.ui.components.ReportPeriod
 import com.checkit.ui.firstDayOfMonth
+import com.checkit.ui.myday.FakeRoutineRepository
 import com.checkit.ui.tasks.FakeCheckItRepository
 import com.checkit.ui.today
 import kotlinx.coroutines.Dispatchers
@@ -60,14 +63,18 @@ class ReflectViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private fun createViewModel(repository: FakeCheckItRepository): ReflectViewModel =
-        ReflectViewModel(
+    private fun createViewModel(repository: FakeCheckItRepository): ReflectViewModel {
+        val routineRepository = FakeRoutineRepository()
+        return ReflectViewModel(
             repository = repository,
             observePeriodGoals = ObservePeriodGoalsUseCase(repository),
             observeGoalHistory = ObserveGoalHistoryUseCase(repository),
             savePeriodGoal = SavePeriodGoalUseCase(repository),
+            observeRoutines = ObserveRoutinesUseCase(routineRepository),
+            observeRoutineLogs = ObserveRoutineLogsUseCase(routineRepository),
             dataDispatcher = dispatcher
         )
+    }
 
     @Test
     fun initialStateDefaultsToWeekAndCurrentDate() {
