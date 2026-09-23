@@ -194,7 +194,6 @@ data class DayCloseUiState(
 enum class MyDayView {
     Agenda,
     Timeline,
-    Board,
     Routine
 }
 

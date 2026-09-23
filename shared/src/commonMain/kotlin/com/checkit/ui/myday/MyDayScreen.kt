@@ -42,7 +42,6 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -299,7 +298,7 @@ internal fun MyDayScreen(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(horizontal = 12.dp, vertical = 0.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             MyDayViewSelector(
@@ -412,15 +411,6 @@ internal fun MyDayScreen(
                                     onCreateTask = viewModel::createFromTimelineRange,
                                     onItemTimeChange = viewModel::updateItemTime,
                                     onNoteTimeChange = onNoteTimeChange,
-                                    modifier = Modifier.weight(1f)
-                                )
-
-                                MyDayView.Board -> MyDayBoard(
-                                    state = state,
-                                    activeSprint = activeSprint,
-                                    onItemClick = { viewModel.openItemEditor(it, state.today) },
-                                    onTaskClick = onTaskClick,
-                                    onSprintClick = viewModel::startSprint,
                                     modifier = Modifier.weight(1f)
                                 )
 
@@ -1115,75 +1105,6 @@ private fun MyDayTimeline(
 }
 
 @Composable
-private fun MyDayBoard(
-    state: MyDayUiState,
-    activeSprint: SprintState.Running?,
-    onItemClick: (DailyPlanItem) -> Unit,
-    onTaskClick: (String, DailyPlanItem?) -> Unit,
-    onSprintClick: ((String?, String?, String) -> Unit)? = null,
-    modifier: Modifier = Modifier
-) {
-    LazyColumn(
-        modifier = modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        item { SectionLabel("Planned") }
-        if (state.plannedItems.isEmpty()) {
-            item { EmptyStateText("Nothing planned") }
-        } else {
-            items(state.plannedItems, key = { "planned-${it.id}" }) { item ->
-                MyDayBoardItem(
-                    item = item,
-                    activeSprint = activeSprint,
-                    onItemClick = onItemClick,
-                    onTaskClick = onTaskClick,
-                    onSprintClick = onSprintClick
-                )
-            }
-        }
-        item { SectionLabel("Done") }
-        if (state.doneItems.isEmpty()) {
-            item { EmptyStateText("Nothing done yet") }
-        } else {
-            items(state.doneItems, key = { "done-${it.id}" }) { item ->
-                MyDayBoardItem(
-                    item = item,
-                    activeSprint = activeSprint,
-                    onItemClick = onItemClick,
-                    onTaskClick = onTaskClick,
-                    onSprintClick = onSprintClick
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun MyDayBoardItem(
-    item: DailyPlanItem,
-    activeSprint: SprintState.Running?,
-    onItemClick: (DailyPlanItem) -> Unit,
-    onTaskClick: (String, DailyPlanItem?) -> Unit,
-    onSprintClick: ((String?, String?, String) -> Unit)? = null
-) {
-    DailyPlanTimelineCard(
-        item = item,
-        onClick = {
-            if (item.taskId != null) {
-                onTaskClick(item.taskId, item)
-            } else {
-                onItemClick(item)
-            }
-        },
-        isOverdue = item.isOverdue(today()),
-        trailingContent = onSprintClick?.let {
-            { SprintTrailingContent(item, activeSprint, it) }
-        }
-    )
-}
-
-@Composable
 private fun SprintTrailingContent(
     item: DailyPlanItem,
     activeSprint: SprintState.Running?,
@@ -1272,13 +1193,11 @@ private fun DayViewProjection.toTimelineItems(
 private fun MyDayView.icon(): ImageVector = when (this) {
     MyDayView.Agenda -> Icons.AutoMirrored.Filled.ViewList
     MyDayView.Timeline -> Icons.Default.Schedule
-    MyDayView.Board -> Icons.Default.Dashboard
     MyDayView.Routine -> Icons.Default.Refresh
 }
 
 private fun MyDayView.label(): String = when (this) {
     MyDayView.Agenda -> "Agenda"
     MyDayView.Timeline -> "Timeline"
-    MyDayView.Board -> "Board"
     MyDayView.Routine -> "Routines"
 }

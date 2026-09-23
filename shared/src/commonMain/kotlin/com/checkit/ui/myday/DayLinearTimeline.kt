@@ -353,12 +353,12 @@ private fun List<DayTimelineBlock>.totalOccupiedMinutes(): Int {
 }
 
 private const val DayTimelineStartMinutes = 5 * 60
-private const val DayTimelineEndMinutes = 22 * 60
+private const val DayTimelineEndMinutes = 23 * 60
 private const val DayTimelineTotalMinutes = DayTimelineEndMinutes - DayTimelineStartMinutes
 
 /** Prime hours (9-11, 13-17, 19-22) highlighted on the track, precomputed as [startRatio, endRatio] fractions. */
 private val DayFocusRanges = listOf(
-    8 * 60 to 11 * 60,
+    8 * 60 to 12 * 60,
     13 * 60 to 16 * 60,
     19 * 60 to 22 * 60
 ).map { (startMinutes, endMinutes) ->
