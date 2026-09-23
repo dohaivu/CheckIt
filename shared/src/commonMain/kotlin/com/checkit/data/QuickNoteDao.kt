@@ -111,7 +111,7 @@ interface QuickNoteDao {
     @Query("UPDATE quick_notes SET deleted = 1, updatedAt = :updatedAt, dirty = 1 WHERE id = :id")
     suspend fun markDeleted(id: String, updatedAt: Long)
 
-    @Query("UPDATE quick_notes SET status = 'NEXT', deleteAt = NULL, remindAt = NULL, sortOrder = :sortOrder, updatedAt = :updatedAt, dirty = 1 WHERE id = :id")
+    @Query("UPDATE quick_notes SET status = 'NEXT', deleteAt = NULL, remindAt = NULL, sortOrder = :sortOrder, createdAt = :updatedAt, updatedAt = :updatedAt, dirty = 1 WHERE id = :id")
     suspend fun restore(id: String, sortOrder: Double, updatedAt: Long)
 
     /**
