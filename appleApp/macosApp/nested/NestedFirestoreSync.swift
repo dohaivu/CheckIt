@@ -7,9 +7,10 @@
 //  plus the document list (syncDocumentsNow).
 //
 //  Offline-first: every mutation is already in Room. Sync pushes dirty
-//  rows, pulls watermarked remote changes with last-write-wins on
-//  updatedAtMillis, then purges uploaded tombstones after the shared
-//  retention window.
+//  rows, pulls full remote state with last-write-wins on
+//  updatedAtMillis, reconciles rows deleted elsewhere, then purges
+//  uploaded tombstones after the shared retention window. An account
+//  switch re-dirties live rows so they upload to the new collection.
 //
 //  Unlike QuickNote there are no automatic triggers (no debounce, no
 //  reconnect or edit hooks): the UI calls syncNow from a sync button.
@@ -46,6 +47,7 @@ final class NestedFirestoreSync: ObservableObject {
     private static let updatedAtField = "updatedAtMillis"
 
     private static let lastSyncedDocsKey = "nested.lastSyncedDocsMillis"
+    private static let lastUidKey = "nested.lastUid"
     private static let snapshotKeep = 3
 
     private static func lastSyncedAtKey(_ documentId: String) -> String {
@@ -281,6 +283,19 @@ final class NestedFirestoreSync: ObservableObject {
             recordFailure(documentId: documentId, message: "Sign-in failed. Try again.")
             return nil
         }
+        // Account switch (link, sign-in/out): clean rows would never upload
+        // to the new collection, stranding the device split-brained with a
+        // green status. Re-dirty live rows instead.
+        let lastUid = UserDefaults.standard.string(forKey: Self.lastUidKey)
+        if lastUid != userId {
+            do {
+                let revived = try await bridgeMarkAllDirty()
+                UserDefaults.standard.set(userId, forKey: Self.lastUidKey)
+                print("[NestedSync] Account changed; marked \(revived) nested rows dirty for re-upload")
+            } catch {
+                print("[NestedSync] Account migrate failed; continuing sync: \(error)")
+            }
+        }
         return (userId, Firestore.firestore(database: Self.config.DATABASE_ID))
     }
 
@@ -515,6 +530,15 @@ final class NestedFirestoreSync: ObservableObject {
             bridge().hasDirtyItems(documentId: documentId) { dirty, error in
                 if let error { cont.resume(throwing: error) }
                 else { cont.resume(returning: dirty?.boolValue ?? false) }
+            }
+        }
+    }
+
+    private func bridgeMarkAllDirty() async throws -> Int {
+        try await withCheckedThrowingContinuation { cont in
+            bridge().markAllDirty { count, error in
+                if let error { cont.resume(throwing: error) }
+                else { cont.resume(returning: Int(truncating: count ?? 0)) }
             }
         }
     }

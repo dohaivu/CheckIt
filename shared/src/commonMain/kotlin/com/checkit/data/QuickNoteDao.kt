@@ -178,6 +178,13 @@ interface QuickNoteDao {
     @Query("UPDATE quick_notes SET dirty = 0 WHERE id IN (:ids) AND updatedAt <= :maxUpdatedAt")
     suspend fun markClean(ids: List<String>, maxUpdatedAt: Long)
 
+    /**
+     * Re-dirties all live rows so they upload after an account switch.
+     * Tombstones stay untouched (already synced deletions need no re-push).
+     */
+    @Query("UPDATE quick_notes SET dirty = 1 WHERE deleted = 0")
+    suspend fun markAllDirty(): Int
+
     @Query("UPDATE quick_notes SET attachmentUrl = :url, updatedAt = :updatedAt, dirty = 1 WHERE id = :id")
     suspend fun setAttachmentUrl(id: String, url: String, updatedAt: Long)
 

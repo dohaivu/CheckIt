@@ -7,6 +7,7 @@ import android.net.Uri
 import android.util.Log
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.checkit.domain.QuickNote
 import com.checkit.domain.QuickNoteRules
@@ -102,6 +103,17 @@ class FirestoreQuickNoteSyncManager(
         }
     }
 
+    /**
+     * Immediate sync for explicit user intent (manual refresh, sign-in
+     * catch-up). Bypasses the backoff gate so a tap never silently no-ops;
+     * failures still back off for the automatic triggers afterwards.
+     */
+    override suspend fun syncNow() {
+        consecutiveFailures = 0
+        nextRetryAtMillis = 0L
+        sync()
+    }
+
     override suspend fun sync() {
         syncMutex.withLock {
             val now = Clock.System.now().toEpochMilliseconds()
@@ -124,6 +136,20 @@ class FirestoreQuickNoteSyncManager(
                     return
                 }
                 Log.d(TAG, "Sync started uid=$userId")
+                // Account switch (link, sign-in/out): clean rows would never
+                // upload to the new collection. Re-dirty live rows instead.
+                // The pull watermark belongs to the old collection, so reset
+                // it: otherwise pre-existing remote rows (older than the
+                // watermark) are filtered out forever and never pulled.
+                val lastUid = dataStore.data.map { it[KEY_LAST_UID] }.first()
+                if (lastUid != userId) {
+                    val revived = dao.markAllDirty()
+                    dataStore.edit { prefs ->
+                        prefs[KEY_LAST_UID] = userId
+                        prefs[KEY_LAST_PULL_MILLIS] = 0L
+                    }
+                    Log.i(TAG, "Account changed; marked $revived notes dirty for re-upload")
+                }
                 val firestore = FirebaseFirestore.getInstance(QuickNoteSyncConfig.DATABASE_ID)
                 val storage = FirebaseStorage.getInstance(QuickNoteSyncConfig.STORAGE_BUCKET)
                 val notesRef = firestore
@@ -370,5 +396,6 @@ class FirestoreQuickNoteSyncManager(
         private const val SYNC_DEBOUNCE_MILLIS = 30_000L
         private val KEY_LAST_PULL_MILLIS = longPreferencesKey("last_pull_millis")
         private val KEY_LAST_SYNCED_AT = longPreferencesKey("last_synced_at")
+        private val KEY_LAST_UID = stringPreferencesKey("uid")
     }
 }

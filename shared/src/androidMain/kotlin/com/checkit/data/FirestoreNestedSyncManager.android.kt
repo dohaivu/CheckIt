@@ -5,6 +5,7 @@ import android.net.ConnectivityManager
 import android.util.Log
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.checkit.domain.QuickNoteRules
 import com.checkit.util.awaitTask
@@ -31,9 +32,10 @@ private val Context.nestedSyncDataStore by preferencesDataStore(name = "nested_s
  * ([syncDocument]) plus the document list ([syncDocuments]).
  *
  * Offline-first: every mutation is already in Room; sync pushes dirty rows,
- * pulls watermarked remote changes with last-write-wins on
- * `updatedAtMillis`, then purges uploaded tombstones after the shared
- * retention window.
+ * pulls full remote state with last-write-wins on `updatedAtMillis`,
+ * reconciles rows deleted elsewhere, then purges uploaded tombstones
+ * after the shared retention window. An account switch re-dirties live
+ * rows so they upload to the new collection instead of stranding.
  *
  * Unlike QuickNote there are no automatic triggers (no debounce, no
  * reconnect callback): the UI calls sync explicitly from sync buttons.
@@ -248,6 +250,15 @@ class FirestoreNestedSyncManager(
             recordFailure(documentId, "Sign-in failed. Try again.")
             return null
         }
+        // Account switch (link, sign-in/out, reinstall-side): clean rows
+        // would never upload to the new collection, stranding the device
+        // split-brained with a green status. Re-dirty live rows instead.
+        val lastUid = dataStore.data.map { it[KEY_LAST_UID] }.first()
+        if (lastUid != userId) {
+            val revived = bridge.markAllDirty()
+            dataStore.edit { prefs -> prefs[KEY_LAST_UID] = userId }
+            Log.i(TAG, "Account changed; marked $revived nested rows dirty for re-upload")
+        }
         return PreparedSync(userId, FirebaseFirestore.getInstance(NestedSyncConfig.DATABASE_ID))
     }
 
@@ -388,5 +399,6 @@ class FirestoreNestedSyncManager(
         private const val SNAPSHOT_DIR = "nested_sync_snapshots"
         private const val SNAPSHOT_KEEP = 3
         private val KEY_LAST_SYNCED_DOCS = longPreferencesKey("last_synced_docs")
+        private val KEY_LAST_UID = stringPreferencesKey("uid")
     }
 }

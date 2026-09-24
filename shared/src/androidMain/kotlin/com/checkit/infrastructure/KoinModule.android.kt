@@ -46,7 +46,7 @@ actual fun platformModule() = module {
     single<QuickNoteSyncManager> { FirestoreQuickNoteSyncManager(androidContext(), get(), get()) }
     single<NestedSyncManager> { FirestoreNestedSyncManager(androidContext(), get()) }
     single<QuickNoteCameraCapture> { AndroidQuickNoteCameraCapture() }
-    single<GoogleAccountManager> { AndroidGoogleAccountManager(androidContext(), get()) }
+    single<GoogleAccountManager> { AndroidGoogleAccountManager(androidContext(), get(), get()) }
     single<BackupScheduler> { AndroidBackupScheduler(androidContext()) }
     single { AndroidBackupStorage(androidContext()) }
     single<ChecklistStorage> { AndroidChecklistStorage(androidContext()) }

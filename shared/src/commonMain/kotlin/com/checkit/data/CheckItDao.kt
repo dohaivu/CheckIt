@@ -1449,6 +1449,16 @@ interface CheckItDao {
     @Query("UPDATE nested_documents SET dirty = 0 WHERE id IN (:ids) AND updatedAtMillis <= :maxUpdatedAt")
     suspend fun markNestedDocumentsClean(ids: List<String>, maxUpdatedAt: Long)
 
+    /**
+     * Re-dirties all live rows so they upload after an account switch.
+     * Tombstones stay untouched (already synced deletions need no re-push).
+     */
+    @Query("UPDATE nested_documents SET dirty = 1 WHERE deleted = 0")
+    suspend fun markAllNestedDocumentsDirty(): Int
+
+    @Query("UPDATE nested_list_items SET dirty = 1 WHERE deleted = 0")
+    suspend fun markAllNestedItemsDirty(): Int
+
     @Query("SELECT * FROM nested_documents WHERE deleted = 1 AND dirty = 0 AND updatedAtMillis <= :cutoff ORDER BY updatedAtMillis ASC")
     suspend fun getPurgeableNestedDocumentTombstones(cutoff: Long): List<NestedDocumentEntity>
 

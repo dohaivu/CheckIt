@@ -51,6 +51,7 @@ final class QuickNoteFirestoreSync: ObservableObject {
     private static let syncDebounceNanos: UInt64 = 30_000_000_000 // 30s: no realtime sync, just cross-device availability
     private static let lastPullKey = "quicknote.lastPullMillis"
     private static let lastSyncedAtKey = "quicknote.lastSyncedAt"
+    private static let lastUidKey = "quicknote.lastUid"
 
     @Published private(set) var uiState = QuickNoteSyncUiState()
 
@@ -193,6 +194,22 @@ final class QuickNoteFirestoreSync: ObservableObject {
                 return
             }
             print("Sync started uid=\(userId)")
+            // Account switch (link, sign-in/out): clean rows would never
+            // upload to the new collection. Re-dirty live rows instead.
+            // The pull watermark belongs to the old collection, so reset
+            // it: otherwise pre-existing remote rows (older than the
+            // watermark) are filtered out forever and never pulled.
+            let lastUid = UserDefaults.standard.string(forKey: Self.lastUidKey)
+            if lastUid != userId {
+                do {
+                    let revived = try await bridgeMarkAllDirty()
+                    UserDefaults.standard.set(userId, forKey: Self.lastUidKey)
+                    UserDefaults.standard.set(0.0, forKey: Self.lastPullKey)
+                    print("[QuickNoteSync] Account changed; marked \(revived) notes dirty for re-upload")
+                } catch {
+                    print("[QuickNoteSync] Account migrate failed; continuing sync: \(error)")
+                }
+            }
             let db = Firestore.firestore(database: Self.config.DATABASE_ID)
             let storage = Storage.storage(url: Self.config.STORAGE_BUCKET)
             let notesRef = db.collection(Self.config.USERS_COLLECTION).document(userId)
@@ -564,6 +581,15 @@ final class QuickNoteFirestoreSync: ObservableObject {
             bridge().markClean(ids: ids, maxUpdatedAt: maxUpdatedAt) { error in
                 if let error { cont.resume(throwing: error) }
                 else { cont.resume() }
+            }
+        }
+    }
+
+    private func bridgeMarkAllDirty() async throws -> Int {
+        try await withCheckedThrowingContinuation { cont in
+            bridge().markAllDirty { count, error in
+                if let error { cont.resume(throwing: error) }
+                else { cont.resume(returning: Int(truncating: count ?? 0)) }
             }
         }
     }
