@@ -8,8 +8,10 @@ import platform.Foundation.NSFileManager
 import platform.Foundation.NSUserDomainMask
 
 actual fun provideDatabaseBuilder(): RoomDatabase.Builder<CheckItDatabase> {
+    val path = appDatabasePath("checkit.db")
+    println("CheckIt database path: $path")
     return Room.databaseBuilder<CheckItDatabase>(
-        name = appDatabasePath("checkit.db")
+        name = path
     )
 }
 

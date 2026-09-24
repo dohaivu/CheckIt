@@ -7,9 +7,11 @@ import com.checkit.infrastructure.AndroidContextProvider
 
 fun getCheckItDatabaseBuilder(context: Context): RoomDatabase.Builder<CheckItDatabase> {
     val appContext = context.applicationContext
+    val path = appContext.getDatabasePath("checkit.db").absolutePath
+    println("CheckIt database path: $path")
     return Room.databaseBuilder<CheckItDatabase>(
         context = appContext,
-        name = appContext.getDatabasePath("checkit.db").absolutePath
+        name = path
     )
 }
 
