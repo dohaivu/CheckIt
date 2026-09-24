@@ -18,7 +18,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -28,8 +27,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
@@ -97,24 +94,23 @@ import com.checkit.domain.SprintState
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.hasEndTime
+import com.checkit.ui.TimelineItem
+import com.checkit.ui.TimelineItemType
+import com.checkit.ui.color
 import com.checkit.ui.components.MetricChip
 import com.checkit.ui.components.PeriodGoalRow
 import com.checkit.ui.components.TinyTopAppBar
+import com.checkit.ui.components.asMarkdownAnnotatedString
+import com.checkit.ui.gradient
+import com.checkit.ui.isOverdue
 import com.checkit.ui.journal.JournalListSheet
 import com.checkit.ui.journal.JournalSection
 import com.checkit.ui.journal.JournalThoughtCard
 import com.checkit.ui.localizedCompactDateWithDayName
-import com.checkit.ui.TimelineItem
-import com.checkit.ui.TimelineItemType
-import com.checkit.ui.color
-import com.checkit.ui.components.asMarkdownAnnotatedString
-import com.checkit.ui.gradient
-import com.checkit.ui.isOverdue
 import com.checkit.ui.periodDetail
-import com.checkit.ui.reflect.ReflectGoalEditorMode
 import com.checkit.ui.quicknote.QuickNoteContent
 import com.checkit.ui.quicknote.QuickNoteViewModel
-import kotlinx.coroutines.launch
+import com.checkit.ui.reflect.ReflectGoalEditorMode
 import com.checkit.ui.tasks.views.AgendaView
 import com.checkit.ui.tasks.views.DailyPlanAllDayCard
 import com.checkit.ui.tasks.views.DailyPlanTimelineCard
@@ -125,6 +121,7 @@ import com.checkit.ui.tasks.views.TaskAllDayCard
 import com.checkit.ui.tasks.views.TaskTimelineCard
 import com.checkit.ui.tasks.views.TimelineView
 import com.checkit.ui.today
+import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.stringResource
 
