@@ -96,7 +96,7 @@ class DataStoreSettingsRepository(
         dataStore.setLastBackupAtMillis(millis)
     }
 
-    override suspend fun setChecklistFolder(uri: String?, name: String?) {
-        dataStore.setChecklistFolder(uri, name)
+    override suspend fun setGuidelinesFolder(uri: String?, name: String?) {
+        dataStore.setGuidelinesFolder(uri, name)
     }
 }

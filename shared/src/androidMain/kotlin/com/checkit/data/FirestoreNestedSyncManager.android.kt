@@ -102,7 +102,7 @@ class FirestoreNestedSyncManager(
                 } else {
                     itemsRef.whereGreaterThan(
                         NestedSyncDocument.FIELD_UPDATED_AT,
-                        lastSynced - QuickNoteSyncConfig.PULL_OVERLAP_MILLIS,
+                        lastSynced - NestedSyncConfig.PULL_OVERLAP_MILLIS,
                     ).get()
                 }
                 val itemDocs = itemQuery.awaitTask().documents

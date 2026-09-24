@@ -39,8 +39,8 @@ import com.checkit.data.SettingsRepository
 import com.checkit.domain.usecase.AutoAddTodayTasksToMyDayUseCase
 import com.checkit.domain.usecase.RebuildReflectStatsUseCase
 import com.checkit.ui.calendar.CalendarScreen
-import com.checkit.ui.checklist.CheckListScreen
-import com.checkit.ui.checklist.ChecklistDocumentsScreen
+import com.checkit.ui.guidelines.GuidelinesScreen
+import com.checkit.ui.guidelines.GuidelinesDocumentsScreen
 import com.checkit.ui.components.LocalSnackbarHostState
 import com.checkit.ui.journal.JournalEntryEditorSheet
 import com.checkit.ui.journal.JournalHistorySheet
@@ -355,17 +355,17 @@ fun CheckItApp(
                                         ReflectScreen(
                                             state = reflectState,
                                             viewModel = viewModels.reflect,
-                                            onOpenChecklist = { navState.push(AppRoute.ChecklistDocuments) }
+                                            onOpenGuidelines = { navState.push(AppRoute.GuidelinesDocuments) }
                                         )
                                     }
-                                    AppRoute.ChecklistDocuments -> {
-                                        ChecklistDocumentsScreen(
-                                            viewModel = viewModels.checklist,
+                                    AppRoute.GuidelinesDocuments -> {
+                                        GuidelinesDocumentsScreen(
+                                            viewModel = viewModels.guidelines,
                                             onNavigateBack = { navState.pop() },
                                             onOpenSettings = { navState.push(AppRoute.Settings) },
                                             onOpenDocument = { document ->
                                                 navState.push(
-                                                    AppRoute.ChecklistDetail(
+                                                    AppRoute.GuidelinesDetail(
                                                         uri = document.uri,
                                                         name = document.name
                                                     )
@@ -373,9 +373,9 @@ fun CheckItApp(
                                             }
                                         )
                                     }
-                                    is AppRoute.ChecklistDetail -> {
-                                        CheckListScreen(
-                                            viewModel = viewModels.checklist,
+                                    is AppRoute.GuidelinesDetail -> {
+                                        GuidelinesScreen(
+                                            viewModel = viewModels.guidelines,
                                             onNavigateBack = { navState.pop() }
                                         )
                                     }

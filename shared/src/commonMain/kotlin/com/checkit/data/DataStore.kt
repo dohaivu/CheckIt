@@ -49,8 +49,8 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
                 backupFolderUri = prefs[KEY_BACKUP_FOLDER_URI],
                 backupFolderName = prefs[KEY_BACKUP_FOLDER_NAME],
                 lastBackupAtMillis = prefs[KEY_LAST_BACKUP_AT],
-                checklistFolderUri = prefs[KEY_CHECKLIST_FOLDER_URI],
-                checklistFolderName = prefs[KEY_CHECKLIST_FOLDER_NAME]
+                guidelinesFolderUri = prefs[KEY_GUIDELINES_FOLDER_URI],
+                guidelinesFolderName = prefs[KEY_GUIDELINES_FOLDER_NAME]
             )
         }
 
@@ -183,17 +183,17 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
         }
     }
 
-    suspend fun setChecklistFolder(uri: String?, name: String?) {
+    suspend fun setGuidelinesFolder(uri: String?, name: String?) {
         dataStore.edit { prefs ->
             if (uri != null) {
-                prefs[KEY_CHECKLIST_FOLDER_URI] = uri
+                prefs[KEY_GUIDELINES_FOLDER_URI] = uri
             } else {
-                prefs.remove(KEY_CHECKLIST_FOLDER_URI)
+                prefs.remove(KEY_GUIDELINES_FOLDER_URI)
             }
             if (name != null) {
-                prefs[KEY_CHECKLIST_FOLDER_NAME] = name
+                prefs[KEY_GUIDELINES_FOLDER_NAME] = name
             } else {
-                prefs.remove(KEY_CHECKLIST_FOLDER_NAME)
+                prefs.remove(KEY_GUIDELINES_FOLDER_NAME)
             }
         }
     }
@@ -240,8 +240,8 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
         val KEY_BACKUP_FOLDER_URI = stringPreferencesKey("backup_folder_uri")
         val KEY_BACKUP_FOLDER_NAME = stringPreferencesKey("backup_folder_name")
         val KEY_LAST_BACKUP_AT = longPreferencesKey("last_backup_at_millis")
-        val KEY_CHECKLIST_FOLDER_URI = stringPreferencesKey("checklist_folder_uri")
-        val KEY_CHECKLIST_FOLDER_NAME = stringPreferencesKey("checklist_folder_name")
+        val KEY_GUIDELINES_FOLDER_URI = stringPreferencesKey("guidelines_folder_uri")
+        val KEY_GUIDELINES_FOLDER_NAME = stringPreferencesKey("guidelines_folder_name")
         val KEY_ROUTINE_DAY = intPreferencesKey("routine_today_epoch_day")
         val KEY_ROUTINE_CHECKS_JSON = stringPreferencesKey("routine_today_checks_json")
     }

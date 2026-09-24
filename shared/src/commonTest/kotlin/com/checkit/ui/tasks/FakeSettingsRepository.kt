@@ -101,7 +101,7 @@ class FakeSettingsRepository(initialSettings: UserSettings = UserSettings()) : S
         settingsFlow.update { it.copy(lastBackupAtMillis = millis) }
     }
 
-    override suspend fun setChecklistFolder(uri: String?, name: String?) {
-        settingsFlow.update { it.copy(checklistFolderUri = uri, checklistFolderName = name) }
+    override suspend fun setGuidelinesFolder(uri: String?, name: String?) {
+        settingsFlow.update { it.copy(guidelinesFolderUri = uri, guidelinesFolderName = name) }
     }
 }

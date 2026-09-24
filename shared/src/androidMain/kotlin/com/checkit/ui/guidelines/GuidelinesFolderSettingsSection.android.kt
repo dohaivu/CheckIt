@@ -1,4 +1,4 @@
-package com.checkit.ui.checklist
+package com.checkit.ui.guidelines
 
 import android.content.Intent
 import android.net.Uri
@@ -13,9 +13,9 @@ import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import com.checkit.ui.settings.SettingsViewModel
 
-/** Android checklist folder section: SAF folder picker, mirroring the backup folder row. */
+/** Android guidelines folder section: SAF folder picker, mirroring the backup folder row. */
 @Composable
-actual fun ChecklistFolderSettingsSection() {
+actual fun GuidelinesFolderSettingsSection() {
     val viewModel: SettingsViewModel = koinViewModel()
     val state by viewModel.uiState.collectAsState()
     val storage: AndroidBackupStorage = koinInject()
@@ -27,14 +27,14 @@ actual fun ChecklistFolderSettingsSection() {
                 uri,
                 Intent.FLAG_GRANT_READ_URI_PERMISSION
             )
-            viewModel.setChecklistFolder(uri.toString(), storage.folderDisplayName(uri.toString()))
+            viewModel.setGuidelinesFolder(uri.toString(), storage.folderDisplayName(uri.toString()))
         }
     }
 
-    ChecklistFolderSettingsContent(
-        folderUri = state.checklistFolderUri,
-        folderName = state.checklistFolderName,
+    GuidelinesFolderSettingsContent(
+        folderUri = state.guidelinesFolderUri,
+        folderName = state.guidelinesFolderName,
         onSelectFolder = { folderLauncher.launch(null) },
-        onClearFolder = viewModel::clearChecklistFolder
+        onClearFolder = viewModel::clearGuidelinesFolder
     )
 }

@@ -66,7 +66,7 @@ private val ReflectPeriods = listOf(
 internal fun ReflectScreen(
     state: ReflectUiState,
     viewModel: ReflectViewModel,
-    onOpenChecklist: () -> Unit = {},
+    onOpenGuidelines: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
@@ -85,10 +85,10 @@ internal fun ReflectScreen(
                     )
                 },
                 actions = {
-                    IconButton(onClick = onOpenChecklist) {
+                    IconButton(onClick = onOpenGuidelines) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ListAlt,
-                            contentDescription = "Checklists"
+                            contentDescription = "Guidelines"
                         )
                     }
                 }

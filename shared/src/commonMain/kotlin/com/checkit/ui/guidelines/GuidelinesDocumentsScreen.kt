@@ -1,4 +1,4 @@
-package com.checkit.ui.checklist
+package com.checkit.ui.guidelines
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -30,16 +30,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.checkit.checklist.ChecklistDocument
+import com.checkit.guidelines.GuidelinesDocument
 import com.checkit.ui.components.AppHorizontalDivider
 import com.checkit.ui.components.TinyTopAppBar
 
 @Composable
-internal fun ChecklistDocumentsScreen(
-    viewModel: ChecklistViewModel,
+internal fun GuidelinesDocumentsScreen(
+    viewModel: GuidelinesViewModel,
     onNavigateBack: () -> Unit,
     onOpenSettings: () -> Unit,
-    onOpenDocument: (ChecklistDocument) -> Unit,
+    onOpenDocument: (GuidelinesDocument) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -51,7 +51,7 @@ internal fun ChecklistDocumentsScreen(
             TinyTopAppBar(
                 title = {
                     Text(
-                        text = "Checklists",
+                        text = "Guidelines",
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
@@ -80,8 +80,8 @@ internal fun ChecklistDocumentsScreen(
         ) {
             when {
                 !state.hasFolder -> NoFolderPrompt(onOpenSettings = onOpenSettings)
-                state.errorMessage != null -> ChecklistError(
-                    message = state.errorMessage ?: "Cannot list checklist files",
+                state.errorMessage != null -> GuidelinesError(
+                    message = state.errorMessage ?: "Cannot list guidelines files",
                     onRetry = viewModel::refresh
                 )
                 state.isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -90,7 +90,7 @@ internal fun ChecklistDocumentsScreen(
                 state.documents.isEmpty() -> EmptyFolder(
                     folderName = state.folderName
                 )
-                else -> ChecklistDocumentList(
+                else -> GuidelinesDocumentList(
                     documents = state.documents,
                     onOpenDocument = {
                         viewModel.openDocument(it)
@@ -111,7 +111,7 @@ private fun NoFolderPrompt(onOpenSettings: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                text = "No checklist folder selected",
+                text = "No guidelines folder selected",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
@@ -152,7 +152,7 @@ private fun EmptyFolder(folderName: String?) {
 }
 
 @Composable
-private fun ChecklistError(message: String, onRetry: () -> Unit) {
+private fun GuidelinesError(message: String, onRetry: () -> Unit) {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(
             modifier = Modifier.padding(24.dp),
@@ -170,13 +170,13 @@ private fun ChecklistError(message: String, onRetry: () -> Unit) {
 }
 
 @Composable
-private fun ChecklistDocumentList(
-    documents: List<ChecklistDocument>,
-    onOpenDocument: (ChecklistDocument) -> Unit
+private fun GuidelinesDocumentList(
+    documents: List<GuidelinesDocument>,
+    onOpenDocument: (GuidelinesDocument) -> Unit
 ) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         items(documents, key = { it.uri }) { document ->
-            ChecklistDocumentRow(
+            GuidelinesDocumentRow(
                 document = document,
                 onClick = { onOpenDocument(document) }
             )
@@ -185,8 +185,8 @@ private fun ChecklistDocumentList(
 }
 
 @Composable
-private fun ChecklistDocumentRow(
-    document: ChecklistDocument,
+private fun GuidelinesDocumentRow(
+    document: GuidelinesDocument,
     onClick: () -> Unit
 ) {
     Column {

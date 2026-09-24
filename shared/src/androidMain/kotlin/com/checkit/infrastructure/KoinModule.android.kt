@@ -2,8 +2,8 @@ package com.checkit.infrastructure
 
 import com.checkit.auth.AndroidGoogleAccountManager
 import com.checkit.auth.GoogleAccountManager
-import com.checkit.checklist.AndroidChecklistStorage
-import com.checkit.checklist.ChecklistStorage
+import com.checkit.guidelines.AndroidGuidelinesStorage
+import com.checkit.guidelines.GuidelinesStorage
 import com.checkit.data.AndroidBackupStorage
 import com.checkit.data.FirestoreNestedSyncManager
 import com.checkit.data.FirestoreQuickNoteSyncManager
@@ -49,5 +49,5 @@ actual fun platformModule() = module {
     single<GoogleAccountManager> { AndroidGoogleAccountManager(androidContext(), get(), get()) }
     single<BackupScheduler> { AndroidBackupScheduler(androidContext()) }
     single { AndroidBackupStorage(androidContext()) }
-    single<ChecklistStorage> { AndroidChecklistStorage(androidContext()) }
+    single<GuidelinesStorage> { AndroidGuidelinesStorage(androidContext()) }
 }
