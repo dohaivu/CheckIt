@@ -7,8 +7,9 @@
 //
 //  Offline-first: every mutation is already in Room before requestSync() is
 //  called. Sync is incremental and never periodic:
-//  - push uploads only rows flagged dirty (batched), then clears the flag;
-//  - pull queries only documents newer than the last pull watermark;
+//  - pull queries documents newer than the last pull watermark (or all documents
+//    if initial/manual refresh) and merges with LWW first;
+//  - push uploads remaining dirty rows (batched), then clears the dirty flag;
 //  - purge permanently deletes old uploaded tombstones (blob, doc, row);
 //  - triggers are local edits (debounced), menu open, and network reconnect.
 //
@@ -136,9 +137,8 @@ final class QuickNoteFirestoreSync: ObservableObject {
     }
 
     /// Immediate sync, bypassing the debounce — for explicit user refresh.
-    /// Explicit syncs bypass the backoff gate and, in realtime-listener mode,
-    /// also perform a one-time full pull so they converge even when the
-    /// listener is stale (e.g. after sleep).
+    /// Explicit syncs bypass the backoff gate and perform a full pull
+    /// (resetting watermark filter) so existing remote notes are guaranteed to sync.
     func syncNow() {
         debounceTask?.cancel()
         Task { await sync(explicit: true) }
@@ -193,14 +193,15 @@ final class QuickNoteFirestoreSync: ObservableObject {
                 recordFailure("Sign-in failed. Sync will retry automatically.")
                 return
             }
-            print("Sync started uid=\(userId)")
+            print("Sync started uid=\(userId) (explicit=\(explicit))")
             // Account switch (link, sign-in/out): clean rows would never
             // upload to the new collection. Re-dirty live rows instead.
             // The pull watermark belongs to the old collection, so reset
             // it: otherwise pre-existing remote rows (older than the
             // watermark) are filtered out forever and never pulled.
             let lastUid = UserDefaults.standard.string(forKey: Self.lastUidKey)
-            if lastUid != userId {
+            let isAccountChanged = lastUid != userId
+            if isAccountChanged {
                 do {
                     let revived = try await bridgeMarkAllDirty()
                     UserDefaults.standard.set(userId, forKey: Self.lastUidKey)
@@ -215,65 +216,26 @@ final class QuickNoteFirestoreSync: ObservableObject {
             let notesRef = db.collection(Self.config.USERS_COLLECTION).document(userId)
                 .collection(Self.config.NOTES_COLLECTION)
 
-            // Upload pending attachments first so their URLs are in the doc push.
-            var dirty = try await bridgeDirtyNotes()
-            for note in dirty where needsAttachmentUpload(note) {
-                if let url = await uploadAttachment(storage: storage, userId: userId, note: note) {
-                    try await bridgeSetAttachmentUrl(id: note.id, url: url)
-                }
-            }
-
-            // Push: only locally changed rows, including tombstones.
-            // Documents come JSON-encoded from the bridge so field names
-            // stay single-sourced in QuickNoteSyncDocument.
-            // Re-read after uploads: attachment URLs bumped updatedAt.
-            dirty = try await bridgeDirtyNotes()
-            let documents = try await bridgeDirtyDocuments()
-            for chunk in documents.chunked(into: Int(Self.config.PUSH_BATCH_SIZE)) {
-                let batch = db.batch()
-                for json in chunk {
-                    guard let doc = Self.documentDict(json: json),
-                          let id = doc["id"] as? String
-                    else { continue }
-                    batch.setData(doc, forDocument: notesRef.document(id))
-                }
-                try await batch.commit()
-            }
-            // Rows whose attachment upload failed stay dirty for next time.
-            let uploaded = dirty.filter { !needsAttachmentUpload($0) }
-            if !uploaded.isEmpty {
-                let ids = uploaded.map(\.id)
-                let maxUpdated = uploaded.map(\.updatedAt).max() ?? 0
-                try await bridgeMarkClean(ids: ids, maxUpdatedAt: maxUpdated)
-            }
-
-            // Pull: realtime listener or watermarked polling (see flag).
-            // Listener resume tokens supersede the lastPull watermark; the
-            // polling branch keeps maintaining it for switching back.
-            // In listener mode an explicit sync (manual refresh, wake) also
-            // performs a one-time full pull: attachListenerIfNeeded() is a
-            // no-op when the listener already exists, so without this a
-            // stale post-sleep listener would leave manual refresh pushing
-            // only and never converging (restart worked because it forced a
-            // fresh listener with an initial snapshot).
+            // PULL & MERGE FIRST:
+            // Safely merges remote documents with local state before pushing.
+            // If a remote document is newer, local state is overwritten and dirty is cleared,
+            // preventing an outdated local client from clobbering remote data.
             let pullStart = Self.nowMillis()
             var pulled = 0
             var applied = 0
             if Self.useRealtimeListener {
                 attachListenerIfNeeded(userId: userId, notesRef: notesRef)
-                if explicit {
+                if explicit || isAccountChanged {
                     let result = try await pullFullCollection(notesRef: notesRef, storage: storage)
                     pulled = result.pulled
                     applied = result.applied
                 }
             } else {
-                // Polling: only documents newer than the last pull (with
-                // overlap margin for clock skew; LWW merge keeps re-pulls
-                // idempotent).
-                let lastPull = Int64(UserDefaults.standard.double(forKey: Self.lastPullKey))
-                let snapshot = try await notesRef
-                    .whereField("updatedAt", isGreaterThan: lastPull - Self.config.PULL_OVERLAP_MILLIS)
-                    .getDocuments()
+                let lastPull = (explicit || isAccountChanged) ? 0 : Int64(UserDefaults.standard.double(forKey: Self.lastPullKey))
+                let query = (lastPull == 0)
+                    ? notesRef
+                    : notesRef.whereField("updatedAt", isGreaterThan: lastPull - Self.config.PULL_OVERLAP_MILLIS)
+                let snapshot = try await query.getDocuments()
                 pulled = snapshot.count
                 var maxRemoteUpdatedAt = lastPull
                 for doc in snapshot.documents {
@@ -282,9 +244,6 @@ final class QuickNoteFirestoreSync: ObservableObject {
                         maxRemoteUpdatedAt = max(maxRemoteUpdatedAt, updated)
                     }
                     guard let json = Self.jsonString(for: data, documentId: doc.documentID) else { continue }
-                    // Download first so a failed fetch keeps the existing cached
-                    // file as fallback (Android parity); the path rides into
-                    // the merge below.
                     let localPath = await downloadAttachment(storage: storage, documentId: doc.documentID, data: data)
                     if try await bridgeApplyRemote(json: json, localPath: localPath) {
                         applied += 1
@@ -297,11 +256,51 @@ final class QuickNoteFirestoreSync: ObservableObject {
             }
             UserDefaults.standard.set(Double(pullStart) / 1000.0, forKey: Self.lastSyncedAtKey)
 
+            // PUSH REMAINING DIRTY SECOND:
+            // Upload pending attachments first for remaining dirty notes.
+            var dirty = try await bridgeDirtyNotes()
+            for note in dirty where needsAttachmentUpload(note) {
+                if let url = await uploadAttachment(storage: storage, userId: userId, note: note) {
+                    try await bridgeSetAttachmentUrl(id: note.id, url: url)
+                }
+            }
+
+            // Push: only locally changed rows whose attachments are uploaded (if applicable).
+            dirty = try await bridgeDirtyNotes()
+            let toPushNotes = dirty.filter { !needsAttachmentUpload($0) }
+            let toPushIds = Set(toPushNotes.map(\.id))
+            let dirtyDocJsons = try await bridgeDirtyDocuments()
+            let filteredDocJsons = dirtyDocJsons.filter { json in
+                guard let dict = Self.documentDict(json: json), let id = dict["id"] as? String else { return false }
+                return toPushIds.contains(id)
+            }
+
+            for chunk in filteredDocJsons.chunked(into: Int(Self.config.PUSH_BATCH_SIZE)) {
+                let batch = db.batch()
+                var chunkIds: [String] = []
+                var maxUpdatedInChunk: Int64 = 0
+                for json in chunk {
+                    guard let doc = Self.documentDict(json: json),
+                          let id = doc["id"] as? String
+                    else { continue }
+                    batch.setData(doc, forDocument: notesRef.document(id))
+                    chunkIds.append(id)
+                    if let updated = (doc["updatedAt"] as? NSNumber)?.int64Value {
+                        maxUpdatedInChunk = max(maxUpdatedInChunk, updated)
+                    }
+                }
+                try await batch.commit()
+                if !chunkIds.isEmpty {
+                    try await bridgeMarkClean(ids: chunkIds, maxUpdatedAt: maxUpdatedInChunk)
+                }
+            }
+
+            // PURGE TOMBSTONES LAST:
             let purged = try await purgeTombstones(storage: storage, notesRef: notesRef, now: pullStart)
             consecutiveFailures = 0
             nextRetryAtMillis = 0
             uiState = QuickNoteSyncUiState(status: .synced, lastSyncedAt: Date(timeIntervalSince1970: Double(pullStart) / 1000.0))
-            print("[QuickNoteSync] pushed=\(dirty.count) pulled=\(pulled) applied=\(applied) purged=\(purged)")
+            print("[QuickNoteSync] pulled=\(pulled) applied=\(applied) pushed=\(filteredDocJsons.count) purged=\(purged)")
         } catch {
             recordFailure("Sync failed (\(error.localizedDescription)). Will retry automatically.")
         }
@@ -439,9 +438,11 @@ final class QuickNoteFirestoreSync: ObservableObject {
     }
 
     private func needsAttachmentUpload(_ note: QuickNote) -> Bool {
-        note.type != QuickNoteType.text
-            && note.attachmentUrl == nil
-            && note.attachmentLocalPath != nil
+        guard note.type != QuickNoteType.text,
+              note.attachmentUrl == nil,
+              let path = note.attachmentLocalPath
+        else { return false }
+        return FileManager.default.fileExists(atPath: path)
     }
 
     private func uploadAttachment(storage: Storage, userId: String, note: QuickNote) async -> String? {

@@ -6,9 +6,9 @@
 //  FirestoreNestedSyncManager.android.kt: one open document (syncNow)
 //  plus the document list (syncDocumentsNow).
 //
-//  Offline-first: every mutation is already in Room. Sync pushes dirty
-//  rows, pulls full remote state with last-write-wins on
-//  updatedAtMillis, reconciles rows deleted elsewhere, then purges
+//  Offline-first: every mutation is already in Room. Sync pulls full remote
+//  state with last-write-wins on updatedAtMillis first, pushes remaining
+//  dirty rows second, reconciles rows deleted elsewhere, then purges
 //  uploaded tombstones after the shared retention window. An account
 //  switch re-dirties live rows so they upload to the new collection.
 //
@@ -106,20 +106,9 @@ final class NestedFirestoreSync: ObservableObject {
                 .collection(Self.config.DOCUMENTS_COLLECTION).document(documentId)
             let itemsRef = docRef.collection(Self.config.ITEMS_COLLECTION)
 
-            // Push: the document row, then dirty items (batched).
-            var pushed = 0
-            if let json = try await bridgeDirtyDocumentJson(documentId: documentId),
-               let map = Self.documentDict(json: json) {
-                try await docRef.setData(map)
-                pushed += 1
-                let maxUpdated = (map[Self.updatedAtField] as? NSNumber)?.int64Value ?? 0
-                try await bridgeMarkDocumentClean(id: documentId, maxUpdatedAt: maxUpdated)
-            }
-            pushed += try await pushAllDirtyItems(db: db, userId: userId)
-
-            // Pull: full document plus full items. Manual sync converges:
-            // LWW applies remote wins, delete detection tombstones clean
-            // rows missing remotely.
+            // PULL & MERGE FIRST:
+            // Full document plus full items. Manual sync converges:
+            // LWW applies remote wins, delete detection tombstones clean rows missing remotely.
             var applied = 0
             var reconciled = 0
             let pullStart = Self.nowMillis()
@@ -139,13 +128,25 @@ final class NestedFirestoreSync: ObservableObject {
                 guard let json = Self.jsonString(for: doc.data(), documentId: doc.documentID) else { continue }
                 itemJsons.append(json)
             }
-            // Batch apply orders parents before children so the
-            // self-FK can never fail on first pulls.
+            // Batch apply orders parents before children so the self-FK can never fail on first pulls.
             applied += try await bridgeApplyRemoteItems(jsons: itemJsons)
             let itemIds = itemJsons.compactMap { Self.documentDict(json: $0)?["id"] as? String }
             reconciled += try await bridgeReconcileMissingItems(documentId: documentId, remoteIds: itemIds, now: pullStart)
 
-            // Purge: uploaded item tombstones, then the document tombstone.
+            // PUSH REMAINING DIRTY SECOND:
+            // The open document row (if still dirty), then dirty items (batched).
+            var pushed = 0
+            if let json = try await bridgeDirtyDocumentJson(documentId: documentId),
+               let map = Self.documentDict(json: json) {
+                try await docRef.setData(map)
+                pushed += 1
+                let maxUpdated = (map[Self.updatedAtField] as? NSNumber)?.int64Value ?? 0
+                try await bridgeMarkDocumentClean(id: documentId, maxUpdatedAt: maxUpdated)
+            }
+            pushed += try await pushAllDirtyItems(db: db, userId: userId)
+
+            // PURGE TOMBSTONES LAST:
+            // Uploaded item tombstones, then the document tombstone.
             let purgeCutoff = pullStart - QuickNoteRules.shared.PURGE_AFTER_MILLIS
             let purgedItems = await purgeItems(itemsRef: itemsRef, documentId: documentId, cutoff: purgeCutoff)
             let purgedDoc = await purgeDocument(docRef: docRef, documentId: documentId, cutoff: purgeCutoff)
@@ -153,7 +154,7 @@ final class NestedFirestoreSync: ObservableObject {
 
             UserDefaults.standard.set(Double(pullStart), forKey: Self.lastSyncedAtKey(documentId))
             uiState = NestedSyncUiState(status: .synced, documentId: documentId, lastSyncedAt: Date(timeIntervalSince1970: Double(pullStart) / 1000.0))
-            print("[NestedSync] doc=\(documentId) pushed=\(pushed) pulled=\(itemJsons.count) applied=\(applied) reconciled=\(reconciled) purged=\(purged)")
+            print("[NestedSync] doc=\(documentId) pulled=\(itemJsons.count) applied=\(applied) reconciled=\(reconciled) pushed=\(pushed) purged=\(purged)")
         } catch {
             recordSyncFailure(documentId: documentId, error: error)
         }
@@ -165,9 +166,9 @@ final class NestedFirestoreSync: ObservableObject {
         Task { await syncAllDocuments() }
     }
 
-    /// Manual sync of the document list (all documents, no items): pushes
-    /// dirty document rows, pulls watermarked remote documents, and purges
-    /// uploaded document tombstones. Open-document sync still owns items.
+    /// Manual sync of the document list (all documents, no items): pulls
+    /// full remote documents first, pushes remaining dirty document rows
+    /// second, and purges uploaded document tombstones last. Open-document sync still owns items.
     func syncAllDocuments() async {
         guard !isSyncing else { return }
         isSyncing = true
@@ -181,21 +182,9 @@ final class NestedFirestoreSync: ObservableObject {
             let docsRef = db.collection(Self.config.USERS_COLLECTION).document(userId)
                 .collection(Self.config.DOCUMENTS_COLLECTION)
 
-            // Push: all dirty document rows (batched), plus all dirty
-            // items anywhere so list sync never strands edits.
-            let docMaps = try await bridgeDirtyDocumentJsons().compactMap { Self.documentDict(json: $0) }
-            let pushedDocs = try await pushJsons(
-                docMaps,
-                into: docsRef,
-                db: db
-            ) { ids, maxUpdated in
-                try await bridgeMarkDocumentsClean(ids: ids, maxUpdatedAt: maxUpdated)
-            }
-            let pushed = pushedDocs + (try await pushAllDirtyItems(db: db, userId: userId))
-
-            // Pull: full documents. Manual sync converges: LWW applies
-            // remote wins, delete detection tombstones clean rows
-            // missing remotely.
+            // PULL & MERGE FIRST:
+            // Pull full documents. Manual sync converges: LWW applies
+            // remote wins, delete detection tombstones clean rows missing remotely.
             var applied = 0
             let pullStart = Self.nowMillis()
             let snapshot = try await docsRef.getDocuments()
@@ -212,7 +201,19 @@ final class NestedFirestoreSync: ObservableObject {
             let docIds = docJsons.compactMap { Self.documentDict(json: $0)?["id"] as? String }
             let reconciled = try await bridgeReconcileMissingDocuments(remoteIds: docIds, now: pullStart)
 
-            // Purge uploaded document tombstones (items first, guarded).
+            // PUSH REMAINING DIRTY SECOND:
+            // All dirty document rows (batched), plus all dirty items anywhere so list sync never strands edits.
+            let docMaps = try await bridgeDirtyDocumentJsons().compactMap { Self.documentDict(json: $0) }
+            let pushedDocs = try await pushJsons(
+                docMaps,
+                into: docsRef,
+                db: db
+            ) { ids, maxUpdated in
+                try await bridgeMarkDocumentsClean(ids: ids, maxUpdatedAt: maxUpdated)
+            }
+            let pushed = pushedDocs + (try await pushAllDirtyItems(db: db, userId: userId))
+
+            // PURGE TOMBSTONES LAST:
             var purged = 0
             let purgeCutoff = pullStart - QuickNoteRules.shared.PURGE_AFTER_MILLIS
             let purgeableDocs = try await bridgePurgeableDocumentIds(cutoff: purgeCutoff)
@@ -227,7 +228,7 @@ final class NestedFirestoreSync: ObservableObject {
 
             UserDefaults.standard.set(Double(pullStart), forKey: Self.lastSyncedDocsKey)
             uiState = NestedSyncUiState(status: .synced, documentId: nil, lastSyncedAt: Date(timeIntervalSince1970: Double(pullStart) / 1000.0))
-            print("[NestedSync] docs pushed=\(pushed) pulled=\(docJsons.count) applied=\(applied) reconciled=\(reconciled) purged=\(purged)")
+            print("[NestedSync] docs pulled=\(docJsons.count) applied=\(applied) reconciled=\(reconciled) pushed=\(pushed) purged=\(purged)")
         } catch {
             recordSyncFailure(documentId: nil, error: error)
         }
@@ -322,8 +323,8 @@ final class NestedFirestoreSync: ObservableObject {
     }
 
     /// Pushes maps into a collection in batches, clears dirty flags
-    /// guarded by the pushed watermark, and returns the pushed count. Rows
-    /// without an id are skipped before batching so counts stay accurate.
+    /// guarded by the pushed watermark per chunk, and returns the pushed count.
+    /// Rows without an id are skipped before batching so counts stay accurate.
     private func pushJsons(
         _ maps: [[String: Any]],
         into collection: CollectionReference,
@@ -340,9 +341,8 @@ final class NestedFirestoreSync: ObservableObject {
                 batch.setData(map, forDocument: collection.document(id))
             }
             try await batch.commit()
-        }
-        if !rows.isEmpty {
-            try await markClean(rows.map(\.0), rows.map(\.1).max() ?? 0)
+            let maxUpdated = chunk.map(\.1).max() ?? 0
+            try await markClean(chunk.map(\.0), maxUpdated)
         }
         return rows.count
     }
