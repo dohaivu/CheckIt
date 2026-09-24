@@ -6,11 +6,12 @@
 //  FirestoreNestedSyncManager.android.kt: one open document (syncNow)
 //  plus the document list (syncDocumentsNow).
 //
-//  Offline-first: every mutation is already in Room. Sync pulls full remote
-//  state with last-write-wins on updatedAtMillis first, pushes remaining
-//  dirty rows second, reconciles rows deleted elsewhere, then purges
-//  uploaded tombstones after the shared retention window. An account
-//  switch re-dirties live rows so they upload to the new collection.
+//  Offline-first: every mutation is already in Room. Sync pulls remote
+//  state with last-write-wins on updatedAtMillis (watermarked for open
+//  document items) first, pushes remaining dirty rows second, reconciles
+//  rows deleted elsewhere, then purges uploaded tombstones after the shared
+//  retention window. An account switch re-dirties live rows so they upload
+//  to the new collection.
 //
 //  Unlike QuickNote there are no automatic triggers (no debounce, no
 //  reconnect or edit hooks): the UI calls syncNow from a sync button.
@@ -84,15 +85,15 @@ final class NestedFirestoreSync: ObservableObject {
     }
 
     /// Immediate sync of the open document — the sync button entry point.
-    /// Extra taps while syncing are ignored.
+    /// Performs a full pull/reconcile when explicitly requested by user tap.
     func syncNow(documentId: String) {
         guard !documentId.isEmpty else { return }
-        Task { await sync(documentId: documentId) }
+        Task { await sync(documentId: documentId, isFullPull: true) }
     }
 
     // MARK: - Sync
 
-    func sync(documentId: String) async {
+    func sync(documentId: String, isFullPull: Bool = false) async {
         guard !isSyncing else { return }
         isSyncing = true
         defer { isSyncing = false }
@@ -101,17 +102,18 @@ final class NestedFirestoreSync: ObservableObject {
         guard let prepared = await prepareSync(documentId: documentId) else { return }
         let (userId, db) = prepared
         do {
-            print("[NestedSync] started uid=\(userId) doc=\(documentId)")
+            print("[NestedSync] started uid=\(userId) doc=\(documentId) (isFullPull=\(isFullPull))")
             let docRef = db.collection(Self.config.USERS_COLLECTION).document(userId)
                 .collection(Self.config.DOCUMENTS_COLLECTION).document(documentId)
             let itemsRef = docRef.collection(Self.config.ITEMS_COLLECTION)
 
             // PULL & MERGE FIRST:
-            // Full document plus full items. Manual sync converges:
-            // LWW applies remote wins, delete detection tombstones clean rows missing remotely.
+            // Pull document header plus item updates (watermarked if incremental, full if initial/manual).
             var applied = 0
             var reconciled = 0
             let pullStart = Self.nowMillis()
+            let lastSynced = isFullPull ? 0 : Int64(UserDefaults.standard.double(forKey: Self.lastSyncedAtKey(documentId)))
+
             let docSnapshot = try await docRef.getDocument()
             if docSnapshot.exists {
                 if let data = docSnapshot.data(),
@@ -122,16 +124,27 @@ final class NestedFirestoreSync: ObservableObject {
             } else if try await bridgeReconcileDocumentMissing(documentId: documentId, now: pullStart) {
                 reconciled += 1
             }
-            let snapshot = try await itemsRef.getDocuments()
+
+            // Watermarked item query for performance & read cost savings:
+            // Full query on initial sync or manual refresh; incremental query for subsequent runs.
+            let itemQuery = (lastSynced == 0)
+                ? itemsRef
+                : itemsRef.whereField(Self.updatedAtField, isGreaterThan: lastSynced - Self.config.PULL_OVERLAP_MILLIS)
+            let snapshot = try await itemQuery.getDocuments()
             var itemJsons: [String] = []
             for doc in snapshot.documents {
                 guard let json = Self.jsonString(for: doc.data(), documentId: doc.documentID) else { continue }
                 itemJsons.append(json)
             }
+
             // Batch apply orders parents before children so the self-FK can never fail on first pulls.
             applied += try await bridgeApplyRemoteItems(jsons: itemJsons)
-            let itemIds = itemJsons.compactMap { Self.documentDict(json: $0)?["id"] as? String }
-            reconciled += try await bridgeReconcileMissingItems(documentId: documentId, remoteIds: itemIds, now: pullStart)
+
+            // Reconcile missing items only on full pulls when we have the complete remote item set.
+            if lastSynced == 0 {
+                let itemIds = itemJsons.compactMap { Self.documentDict(json: $0)?["id"] as? String }
+                reconciled += try await bridgeReconcileMissingItems(documentId: documentId, remoteIds: itemIds, now: pullStart)
+            }
 
             // PUSH REMAINING DIRTY SECOND:
             // The open document row (if still dirty), then dirty items (batched).
@@ -619,7 +632,7 @@ final class NestedFirestoreSync: ObservableObject {
         try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
             bridge().hardDeleteItems(ids: ids) { error in
                 if let error { cont.resume(throwing: error) }
-                else { cont.resume() }
+                else { cont.resume(returning: ()) }
             }
         }
     }
@@ -628,7 +641,7 @@ final class NestedFirestoreSync: ObservableObject {
         try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
             bridge().hardDeleteDocument(id: id) { error in
                 if let error { cont.resume(throwing: error) }
-                else { cont.resume() }
+                else { cont.resume(returning: ()) }
             }
         }
     }

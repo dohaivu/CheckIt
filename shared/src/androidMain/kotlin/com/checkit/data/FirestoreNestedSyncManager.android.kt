@@ -33,11 +33,11 @@ private val Context.nestedSyncDataStore by preferencesDataStore(name = "nested_s
  * Manual Firestore sync for nested lists on Android: one open document
  * ([syncDocument]) plus the document list ([syncDocuments]).
  *
- * Offline-first: every mutation is already in Room; sync pulls full remote
- * state with last-write-wins on `updatedAtMillis` first, pushes remaining
- * dirty rows second, reconciles rows deleted elsewhere, then purges uploaded
- * tombstones after the shared retention window. An account switch re-dirties
- * live rows so they upload to the new collection instead of stranding.
+ * Offline-first: every mutation is already in Room; sync pulls remote
+ * state with last-write-wins on `updatedAtMillis` (watermarked for open document
+ * items), pushes remaining dirty rows second, reconciles rows deleted elsewhere,
+ * then purges uploaded tombstones after the shared retention window. An account
+ * switch re-dirties live rows so they upload to the new collection instead of stranding.
  *
  * Unlike QuickNote there are no automatic triggers (no debounce, no
  * reconnect callback): the UI calls sync explicitly from sync buttons.
@@ -57,11 +57,19 @@ class FirestoreNestedSyncManager(
     override val syncState: StateFlow<NestedSyncState> = _syncState.asStateFlow()
 
     override suspend fun syncDocument(documentId: String) {
+        syncDocumentInternal(documentId = documentId, isFullPull = false)
+    }
+
+    suspend fun syncDocumentNow(documentId: String) {
+        syncDocumentInternal(documentId = documentId, isFullPull = true)
+    }
+
+    private suspend fun syncDocumentInternal(documentId: String, isFullPull: Boolean) {
         syncMutex.withLock {
             writePreSyncSnapshot(documentId)
             val prepared = prepareSync(documentId) ?: return
             val (userId, firestore) = prepared
-            Log.d(TAG, "Nested sync started uid=$userId doc=$documentId")
+            Log.d(TAG, "Nested sync started uid=$userId doc=$documentId (isFullPull=$isFullPull)")
             val docsRef = firestore
                 .collection(NestedSyncConfig.USERS_COLLECTION)
                 .document(userId)
@@ -70,11 +78,12 @@ class FirestoreNestedSyncManager(
             val itemsRef = docRef.collection(NestedSyncConfig.ITEMS_COLLECTION)
             try {
                 // PULL & MERGE FIRST:
-                // Pull full document plus full items. Manual sync converges:
-                // LWW applies remote wins, delete detection tombstones clean local rows missing remotely.
+                // Pull document header plus item updates (watermarked if incremental, full if initial/manual).
                 var applied = 0
                 var reconciled = 0
                 val pullStart = Clock.System.now().toEpochMilliseconds()
+                val lastSynced = if (isFullPull) 0L else (lastSyncedAt(documentId) ?: 0L)
+
                 docRef.get().awaitTask().let { snapshot ->
                     if (snapshot.exists()) {
                         val data = sanitizeFirestoreMap(snapshot.data.orEmpty()) + (NestedSyncDocument.FIELD_ID to snapshot.id)
@@ -85,13 +94,30 @@ class FirestoreNestedSyncManager(
                         reconciled++
                     }
                 }
-                val itemJsons = itemsRef.get().awaitTask().documents.map { doc ->
+
+                // Watermarked item query for performance & read cost savings:
+                // Full query on initial sync or manual refresh; incremental query for subsequent runs.
+                val itemQuery = if (lastSynced == 0L) {
+                    itemsRef.get()
+                } else {
+                    itemsRef.whereGreaterThan(
+                        NestedSyncDocument.FIELD_UPDATED_AT,
+                        lastSynced - QuickNoteSyncConfig.PULL_OVERLAP_MILLIS,
+                    ).get()
+                }
+                val itemDocs = itemQuery.awaitTask().documents
+                val itemJsons = itemDocs.map { doc ->
                     val data = sanitizeFirestoreMap(doc.data.orEmpty()) + (NestedSyncDocument.FIELD_ID to doc.id)
                     NestedSyncDocument.toJson(data)
                 }
+
                 // Batch apply orders parents before children so the self-FK can never fail on first pulls.
                 applied += bridge.applyRemoteItemJsons(itemJsons)
-                reconciled += bridge.reconcileMissingItems(documentId, remoteIds(itemJsons), pullStart)
+
+                // Reconcile missing items only on full pulls when we have the complete remote item set.
+                if (lastSynced == 0L) {
+                    reconciled += bridge.reconcileMissingItems(documentId, remoteIds(itemJsons), pullStart)
+                }
 
                 // PUSH REMAINING DIRTY SECOND:
                 // Pushes the open document row (if still dirty) plus dirty items (batched).
