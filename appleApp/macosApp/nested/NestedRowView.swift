@@ -61,6 +61,32 @@ extension Color {
     }
 }
 
+// MARK: - Palette (match NestedListScreen reference, tuned for long sessions)
+//
+// Warm paper canvas instead of near-white: it cuts blue-light glare while
+// keeping dark-ink contrast, which fatigues less over hours. Guides cycle
+// one muted color per depth; the toggle ring/dot uses the same depth color
+// so the eye can follow nesting by hue.
+
+let nestedDepthSolids: [Color] = [
+    Color(red: 0xD9 / 255.0, green: 0x7F / 255.0, blue: 0x5F / 255.0), // 0 terracotta
+    Color(red: 0x7E / 255.0, green: 0xA3 / 255.0, blue: 0x8A / 255.0), // 1 sage
+    Color(red: 0x7B / 255.0, green: 0x9E / 255.0, blue: 0xBD / 255.0), // 2 dusty blue
+    Color(red: 0xC0 / 255.0, green: 0x9F / 255.0, blue: 0x5E / 255.0), // 3 warm sand
+]
+let nestedDotColor = nestedDepthSolids[0]
+let nestedCanvasColor = Color(red: 0xF7 / 255.0, green: 0xF3 / 255.0, blue: 0xEA / 255.0)
+let nestedSelectedColor = Color(red: 0xF9 / 255.0, green: 0xEC / 255.0, blue: 0xC8 / 255.0)
+let nestedInkColor = Color(red: 0x2E / 255.0, green: 0x2A / 255.0, blue: 0x26 / 255.0)
+
+func nestedGuideColor(_ level: Int) -> Color {
+    nestedDepthSolids[level % nestedDepthSolids.count].opacity(0.5)
+}
+
+func nestedDotForDepth(_ depth: Int) -> Color {
+    nestedDepthSolids[depth % nestedDepthSolids.count]
+}
+
 func nestedDateLabel(startDays: Int64?, endDays: Int64?) -> String? {
     guard startDays != nil || endDays != nil else { return nil }
     let fmt = DateFormatter()
@@ -91,39 +117,47 @@ struct NestedRowView: View {
         HStack(alignment: .top, spacing: 0) {
             // Indent guides, sharing one x per depth (slightly right of
             // cell center) — the toggle column below uses the same grid.
-            ForEach(0..<row.depth, id: \.self) { _ in
+            ForEach(0..<row.depth, id: \.self) { level in
                 Rectangle()
-                    .fill(Color.accentColor.opacity(0.3))
+                    .fill(nestedGuideColor(level))
                     .frame(width: 1)
                     .padding(.leading, 10)
                     .frame(width: 16, alignment: .leading)
             }
-            // Collapse chevron (parents) or dot (leaves), centered on the
-            // grid line like the guides.
-            // Top offset centers the 24pt slot on the first text line
-            // (content starts 5pt down), whatever the row height.
+            // Collapse toggle: chevron wrapped in an outside circle (parents)
+            // or a small filled dot (leaves), matching the attachment where
+            // a collapsed parent shows a dot inside an outer ring.
+            // 2pt top offset puts the 16pt ring/dot on the text's visual
+            // center (content starts 5pt down), whatever the row height.
             Button {
                 state.toggleCollapse(id: item.id)
             } label: {
                 Group {
                     if row.node.hasChildren {
-                        Image(systemName: item.collapsed ? "chevron.right" : "chevron.down")
-                            .font(.system(size: 11, weight: .semibold))
+                        ZStack {
+                            Circle()
+                                .stroke(nestedDotForDepth(row.depth), lineWidth: 1.5)
+                                .frame(width: 16, height: 16)
+                            Image(systemName: item.collapsed ? "chevron.right" : "chevron.down")
+                                .font(.system(size: 8, weight: .semibold))
+                                .foregroundStyle(nestedDotForDepth(row.depth))
+                        }
                     } else {
-                        Image(systemName: "circle.fill").font(.system(size: 6))
+                        Circle()
+                            .fill(nestedDotForDepth(row.depth))
+                            .frame(width: 7, height: 7)
                     }
                 }
-                .foregroundStyle(Color.accentColor.opacity(0.8))
                 .frame(width: 16, height: 24)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .padding(.top, 4).padding(.leading, 3)
+            .padding(.top, 2).padding(.leading, 3)
             .disabled(!row.node.hasChildren)
             .help(row.node.hasChildren ? (item.collapsed ? "Expand" : "Collapse") : "")
 
             VStack(alignment: .leading, spacing: 2) {
-                HStack(alignment: .top, spacing: 6) {
+                HStack(alignment: .center, spacing: 6) {
                     if item.checkboxEnabled {
                         Button {
                             state.toggleCheck(id: item.id, checked: !item.checked)
@@ -139,6 +173,7 @@ struct NestedRowView: View {
                         Text(marker)
                             .font(.headline).bold()
                             .foregroundStyle(nestedPriorityColor(item.priority.name))
+                            .padding(.top, 1)
                     }
                     if isEditing {
                         TextField("", text: $editText)
@@ -190,18 +225,20 @@ struct NestedRowView: View {
             .onTapGesture { state.select(id: item.id) }
         }
         .background(alignment: .topLeading) {
-            // Guide continuation from the chevron down through the children.
-            // Same 16pt grid x as the guides, starting below the 24pt toggle
-            // slot; the chevron itself covers the line above it.
+            // Guide continuation from the toggle down through the children.
+            // Same 16pt grid x as the guides. The toggle is a 16pt circle
+            // in a 24pt slot with 2pt top padding, so its bottom edge sits
+            // at 22pt — start the line there so it touches the ring.
             if row.node.hasChildren && !item.collapsed {
                 Rectangle()
-                    .fill(Color.accentColor.opacity(0.3))
+                    .fill(nestedGuideColor(row.depth))
                     .frame(width: 1)
-                    .padding(.top, 28)
+                    .padding(.top, 22)
                     .padding(.leading, CGFloat(row.depth * 16) + 10)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
         }
+        .background(nestedCanvasColor)
         .onDrag {
             NSItemProvider(object: "nested:\(item.id)" as NSString)
         }
@@ -226,13 +263,19 @@ struct NestedRowView: View {
     }
 
     private var nestedTextColor: Color {
-        item.textColor.name == "Default" ? .primary : nestedTokenColor(item.textColor.name)
+        // Explicit light-theme ink: .primary would turn white in dark mode
+        // and vanish on the paper canvas. Warm charcoal is softer than pure
+        // black for long sessions.
+        item.textColor.name == "Default" ? nestedInkColor : nestedTokenColor(item.textColor.name)
     }
 
+    private var isSelected: Bool { state.selectedId == item.id }
+
     private var rowBackground: Color {
-        if isEditing { return Color.secondary.opacity(0.12) }
+        if isEditing { return nestedSelectedColor }
+        if isSelected { return nestedSelectedColor }
         if item.backgroundColor.name != "Default" {
-            return nestedTokenColor(item.backgroundColor.name).opacity(0.16)
+            return nestedTokenColor(item.backgroundColor.name).opacity(0.20)
         }
         return .clear
     }
@@ -259,8 +302,19 @@ struct NestedRowView: View {
             VStack(alignment: .leading, spacing: 3) {
                 if let p = progress {
                     HStack(spacing: 6) {
-                        ProgressView(value: Double(max(0, min(100, Int(p)))) / 100.0)
-                            .progressViewStyle(.linear)
+                        // Slim custom bar: native linear ProgressView is tall
+                        // and accent-blue, too strong on the paper canvas.
+                        GeometryReader { geo in
+                            let ratio = Double(max(0, min(100, Int(p)))) / 100.0
+                            ZStack(alignment: .leading) {
+                                RoundedRectangle(cornerRadius: 2)
+                                    .fill(Color.black.opacity(0.08))
+                                RoundedRectangle(cornerRadius: 2)
+                                    .fill(nestedDotForDepth(row.depth).opacity(0.65))
+                                    .frame(width: geo.size.width * ratio)
+                            }
+                        }
+                        .frame(height: 4)
                         Text("\(max(0, min(100, Int(p))))%")
                             .font(.caption).bold()
                             .foregroundStyle(.secondary)

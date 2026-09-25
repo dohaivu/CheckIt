@@ -1,12 +1,14 @@
 package com.checkit.ui.tasks
 
+import com.checkit.ui.components.RowBounds
+import com.checkit.ui.components.findReorderTarget
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 class SubtaskReorderTest {
 
-    private fun itemBounds(top: Float, heightPx: Int) = SubtaskRowBounds(top, heightPx)
+    private fun itemBounds(top: Float, heightPx: Int) = RowBounds(top, heightPx)
 
     @Test
     fun noDragReturnsNull() {
@@ -15,7 +17,7 @@ class SubtaskReorderTest {
             2L to itemBounds(44f, 40),
             3L to itemBounds(88f, 40)
         )
-        val target = findSubtaskReorderTarget(
+        val target = findReorderTarget(
             draggedKey = 1L,
             draggedDelta = 0f,
             items = items
@@ -31,7 +33,7 @@ class SubtaskReorderTest {
             3L to itemBounds(88f, 40)  // center = 108
         )
         // Delta = 45 -> visual center = 20 + 45 = 65 > 64
-        val target = findSubtaskReorderTarget(
+        val target = findReorderTarget(
             draggedKey = 1L,
             draggedDelta = 45f,
             items = items
@@ -47,7 +49,7 @@ class SubtaskReorderTest {
             3L to itemBounds(88f, 40)  // center = 108
         )
         // Delta = 30 -> visual center = 20 + 30 = 50 < 64
-        val target = findSubtaskReorderTarget(
+        val target = findReorderTarget(
             draggedKey = 1L,
             draggedDelta = 30f,
             items = items
@@ -63,7 +65,7 @@ class SubtaskReorderTest {
             3L to itemBounds(88f, 40)  // center = 108
         )
         // Item 2 is dragged up: current center = 64, delta = -50 -> visual center = 14 < 20
-        val target = findSubtaskReorderTarget(
+        val target = findReorderTarget(
             draggedKey = 2L,
             draggedDelta = -50f,
             items = items
@@ -79,7 +81,7 @@ class SubtaskReorderTest {
             3L to itemBounds(88f, 40)  // center = 108
         )
         // Item 1 dragged down by 100px -> visual center = 20 + 100 = 120 > 108
-        val target = findSubtaskReorderTarget(
+        val target = findReorderTarget(
             draggedKey = 1L,
             draggedDelta = 100f,
             items = items
@@ -95,7 +97,7 @@ class SubtaskReorderTest {
             2L to itemBounds(44f, 100)  // center = 94
         )
         // Moving item 1 past center of item 2 (delta = 75 -> visual center = 95 > 94)
-        val target1 = findSubtaskReorderTarget(
+        val target1 = findReorderTarget(
             draggedKey = 1L,
             draggedDelta = 75f,
             items = items
@@ -110,11 +112,48 @@ class SubtaskReorderTest {
         // Dragged item is now at index 1 with draggingOffset = (initialTop(0) + dragDelta(75) - layoutTop(104)) = -29
         // Visual center is 124 + (-29) = 95.
         // Since visual center 95 is > 50 (prev item center), targetIndex stays at 1!
-        val target2 = findSubtaskReorderTarget(
+        val target2 = findReorderTarget(
             draggedKey = 1L,
             draggedDelta = -29f,
             items = swappedItems
         )
         assertNull(target2) // Stays at 1, no thrashing!
+    }
+
+    @Test
+    fun countBasedOverloadMatchesPairsVersion() {
+        val keys = listOf("a", "b", "c")
+        val bounds: Map<Any, RowBounds> = mapOf(
+            "a" to itemBounds(0f, 40), // center = 20
+            "b" to itemBounds(44f, 40), // center = 64
+            "c" to itemBounds(88f, 40) // center = 108
+        )
+        val target = findReorderTarget(
+            count = keys.size,
+            keyAt = { index -> keys[index] },
+            bounds = bounds,
+            draggedKey = "a",
+            draggedDelta = 45f,
+            fromIndex = 0
+        )
+        assertEquals(1, target)
+    }
+
+    @Test
+    fun countBasedOverloadReturnsNullWithoutMovement() {
+        val keys = listOf("a", "b")
+        val bounds: Map<Any, RowBounds> = mapOf(
+            "a" to itemBounds(0f, 40),
+            "b" to itemBounds(44f, 40)
+        )
+        val target = findReorderTarget(
+            count = keys.size,
+            keyAt = { index -> keys[index] },
+            bounds = bounds,
+            draggedKey = "a",
+            draggedDelta = 0f,
+            fromIndex = 0
+        )
+        assertNull(target)
     }
 }

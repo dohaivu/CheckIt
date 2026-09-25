@@ -294,7 +294,7 @@ internal object ReflectionPrompts {
                 "What were your wins?",
                 "Where did you feel friction? What distracted you? How can I prevent it tomorrow?",
             ),
-            goalPrompt = "What can I make slightly better today? 3 non-negotiable tasks for today? Why?"
+            goalPrompt = "What can I make slightly better today? Why? If/When-Then"
         )
         Period.Week -> ReflectionPrompt(
             reviewSections = listOf(

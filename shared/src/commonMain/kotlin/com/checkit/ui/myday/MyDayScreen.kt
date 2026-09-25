@@ -18,7 +18,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -28,8 +27,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
@@ -42,7 +39,6 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -95,27 +91,27 @@ import com.checkit.domain.NoteItem
 import com.checkit.domain.Period
 import com.checkit.domain.PeriodGoal
 import com.checkit.domain.SprintState
+import com.checkit.domain.resolveRoutineTodayChecks
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.hasEndTime
+import com.checkit.ui.TimelineItem
+import com.checkit.ui.TimelineItemType
+import com.checkit.ui.color
 import com.checkit.ui.components.MetricChip
 import com.checkit.ui.components.PeriodGoalRow
 import com.checkit.ui.components.TinyTopAppBar
+import com.checkit.ui.components.asMarkdownAnnotatedString
+import com.checkit.ui.gradient
+import com.checkit.ui.isOverdue
 import com.checkit.ui.journal.JournalListSheet
 import com.checkit.ui.journal.JournalSection
 import com.checkit.ui.journal.JournalThoughtCard
 import com.checkit.ui.localizedCompactDateWithDayName
-import com.checkit.ui.TimelineItem
-import com.checkit.ui.TimelineItemType
-import com.checkit.ui.color
-import com.checkit.ui.components.asMarkdownAnnotatedString
-import com.checkit.ui.gradient
-import com.checkit.ui.isOverdue
 import com.checkit.ui.periodDetail
-import com.checkit.ui.reflect.ReflectGoalEditorMode
 import com.checkit.ui.quicknote.QuickNoteContent
 import com.checkit.ui.quicknote.QuickNoteViewModel
-import kotlinx.coroutines.launch
+import com.checkit.ui.reflect.ReflectGoalEditorMode
 import com.checkit.ui.tasks.views.AgendaView
 import com.checkit.ui.tasks.views.DailyPlanAllDayCard
 import com.checkit.ui.tasks.views.DailyPlanTimelineCard
@@ -126,6 +122,7 @@ import com.checkit.ui.tasks.views.TaskAllDayCard
 import com.checkit.ui.tasks.views.TaskTimelineCard
 import com.checkit.ui.tasks.views.TimelineView
 import com.checkit.ui.today
+import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.stringResource
 
@@ -299,7 +296,7 @@ internal fun MyDayScreen(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(horizontal = 12.dp, vertical = 0.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             MyDayViewSelector(
@@ -415,12 +412,17 @@ internal fun MyDayScreen(
                                     modifier = Modifier.weight(1f)
                                 )
 
-                                MyDayView.Board -> MyDayBoard(
-                                    state = state,
-                                    activeSprint = activeSprint,
-                                    onItemClick = { viewModel.openItemEditor(it, state.today) },
-                                    onTaskClick = onTaskClick,
-                                    onSprintClick = viewModel::startSprint,
+                                MyDayView.Routine -> RoutineTab(
+                                    routines = state.routines,
+                                    checks = resolveRoutineTodayChecks(
+                                        storedEpochDay = state.routineToday.epochDay,
+                                        storedChecks = state.routineToday.checks,
+                                        todayEpochDay = state.today.toEpochDays().toInt()
+                                    ),
+                                    today = state.today,
+                                    onToggleStep = viewModel::toggleRoutineStep,
+                                    onSaveRoutine = viewModel::saveRoutine,
+                                    onDeleteRoutine = viewModel::deleteRoutine,
                                     modifier = Modifier.weight(1f)
                                 )
                             }
@@ -1105,75 +1107,6 @@ private fun MyDayTimeline(
 }
 
 @Composable
-private fun MyDayBoard(
-    state: MyDayUiState,
-    activeSprint: SprintState.Running?,
-    onItemClick: (DailyPlanItem) -> Unit,
-    onTaskClick: (String, DailyPlanItem?) -> Unit,
-    onSprintClick: ((String?, String?, String) -> Unit)? = null,
-    modifier: Modifier = Modifier
-) {
-    LazyColumn(
-        modifier = modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        item { SectionLabel("Planned") }
-        if (state.plannedItems.isEmpty()) {
-            item { EmptyStateText("Nothing planned") }
-        } else {
-            items(state.plannedItems, key = { "planned-${it.id}" }) { item ->
-                MyDayBoardItem(
-                    item = item,
-                    activeSprint = activeSprint,
-                    onItemClick = onItemClick,
-                    onTaskClick = onTaskClick,
-                    onSprintClick = onSprintClick
-                )
-            }
-        }
-        item { SectionLabel("Done") }
-        if (state.doneItems.isEmpty()) {
-            item { EmptyStateText("Nothing done yet") }
-        } else {
-            items(state.doneItems, key = { "done-${it.id}" }) { item ->
-                MyDayBoardItem(
-                    item = item,
-                    activeSprint = activeSprint,
-                    onItemClick = onItemClick,
-                    onTaskClick = onTaskClick,
-                    onSprintClick = onSprintClick
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun MyDayBoardItem(
-    item: DailyPlanItem,
-    activeSprint: SprintState.Running?,
-    onItemClick: (DailyPlanItem) -> Unit,
-    onTaskClick: (String, DailyPlanItem?) -> Unit,
-    onSprintClick: ((String?, String?, String) -> Unit)? = null
-) {
-    DailyPlanTimelineCard(
-        item = item,
-        onClick = {
-            if (item.taskId != null) {
-                onTaskClick(item.taskId, item)
-            } else {
-                onItemClick(item)
-            }
-        },
-        isOverdue = item.isOverdue(today()),
-        trailingContent = onSprintClick?.let {
-            { SprintTrailingContent(item, activeSprint, it) }
-        }
-    )
-}
-
-@Composable
 private fun SprintTrailingContent(
     item: DailyPlanItem,
     activeSprint: SprintState.Running?,
@@ -1262,11 +1195,11 @@ private fun DayViewProjection.toTimelineItems(
 private fun MyDayView.icon(): ImageVector = when (this) {
     MyDayView.Agenda -> Icons.AutoMirrored.Filled.ViewList
     MyDayView.Timeline -> Icons.Default.Schedule
-    MyDayView.Board -> Icons.Default.Dashboard
+    MyDayView.Routine -> Icons.Default.Refresh
 }
 
 private fun MyDayView.label(): String = when (this) {
     MyDayView.Agenda -> "Agenda"
     MyDayView.Timeline -> "Timeline"
-    MyDayView.Board -> "Board"
+    MyDayView.Routine -> "Routines"
 }

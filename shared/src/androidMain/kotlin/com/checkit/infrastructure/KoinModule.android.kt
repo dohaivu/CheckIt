@@ -2,8 +2,8 @@ package com.checkit.infrastructure
 
 import com.checkit.auth.AndroidGoogleAccountManager
 import com.checkit.auth.GoogleAccountManager
-import com.checkit.checklist.AndroidChecklistStorage
-import com.checkit.checklist.ChecklistStorage
+import com.checkit.data.AndroidGuidelinesStorage
+import com.checkit.data.GuidelinesStorage
 import com.checkit.data.AndroidBackupStorage
 import com.checkit.data.FirestoreNestedSyncManager
 import com.checkit.data.FirestoreQuickNoteSyncManager
@@ -14,6 +14,7 @@ import com.checkit.notifications.AndroidCheckInReminderForceRunner
 import com.checkit.notifications.AndroidDailyPlanScheduleReminderScheduler
 import com.checkit.notifications.AndroidAppReminderScheduler
 import com.checkit.notifications.AndroidCountdownScheduler
+import com.checkit.notifications.AndroidRoutineReminderScheduler
 import com.checkit.notifications.AndroidSprintNotificationScheduler
 import com.checkit.notifications.AndroidTaskReminderNotificationScheduler
 import com.checkit.notifications.AppReminderScheduler
@@ -21,6 +22,7 @@ import com.checkit.notifications.CheckInReminderForceRunner
 import com.checkit.notifications.CountdownScheduler
 import com.checkit.notifications.DailyPlanScheduleReminderScheduler
 import com.checkit.notifications.QuickNoteReminderScheduler
+import com.checkit.notifications.RoutineReminderScheduler
 import com.checkit.notifications.SprintNotificationScheduler
 import com.checkit.notifications.TaskReminderNotificationScheduler
 import com.checkit.platform.AndroidBackupScheduler
@@ -40,11 +42,12 @@ actual fun platformModule() = module {
     single<CountdownScheduler> { AndroidCountdownScheduler(androidContext()) }
     single<CheckInReminderForceRunner> { AndroidCheckInReminderForceRunner(androidContext(), get(), get()) }
     single<QuickNoteReminderScheduler> { AlarmManagerQuickNoteReminderScheduler(androidContext()) }
+    single<RoutineReminderScheduler> { AndroidRoutineReminderScheduler(androidContext()) }
     single<QuickNoteSyncManager> { FirestoreQuickNoteSyncManager(androidContext(), get(), get()) }
     single<NestedSyncManager> { FirestoreNestedSyncManager(androidContext(), get()) }
     single<QuickNoteCameraCapture> { AndroidQuickNoteCameraCapture() }
-    single<GoogleAccountManager> { AndroidGoogleAccountManager(androidContext(), get()) }
+    single<GoogleAccountManager> { AndroidGoogleAccountManager(androidContext(), get(), get()) }
     single<BackupScheduler> { AndroidBackupScheduler(androidContext()) }
     single { AndroidBackupStorage(androidContext()) }
-    single<ChecklistStorage> { AndroidChecklistStorage(androidContext()) }
+    single<GuidelinesStorage> { AndroidGuidelinesStorage(androidContext()) }
 }

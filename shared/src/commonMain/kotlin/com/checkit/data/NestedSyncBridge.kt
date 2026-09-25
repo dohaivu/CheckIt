@@ -115,6 +115,13 @@ class NestedSyncBridge(
         dao.hasDirtyNestedItems(documentId)
 
     /**
+     * Re-dirties all live rows so they upload after an account switch.
+     * Returns the revived count. Tombstones stay untouched.
+     */
+    suspend fun markAllDirty(): Int =
+        dao.markAllNestedDocumentsDirty() + dao.markAllNestedItemsDirty()
+
+    /**
      * Last-write-wins merge of one remote document into Room. Returns true
      * when the remote won and was applied with dirty = false. A winning
      * remote tombstone also tombstones locally synced items (dirty edits

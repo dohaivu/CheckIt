@@ -51,6 +51,10 @@ class QuickNoteSyncBridge(
         dao.markClean(ids, maxUpdatedAt)
     }
 
+    /** Re-dirties all live rows so they upload after an account switch. */
+    suspend fun markAllDirty(): Int =
+        dao.markAllDirty()
+
     suspend fun noteById(id: String): QuickNote? =
         dao.getById(id)?.toDomain()
 

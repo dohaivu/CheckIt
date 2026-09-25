@@ -1,8 +1,8 @@
-package com.checkit.ui.checklist
+package com.checkit.ui.guidelines
 
-import com.checkit.checklist.ChecklistDocument
-import com.checkit.checklist.ChecklistStorage
-import com.checkit.checklist.filterMarkdownDocuments
+import com.checkit.data.GuidelinesDocument
+import com.checkit.data.GuidelinesStorage
+import com.checkit.data.filterMarkdownDocuments
 import com.checkit.data.UserSettings
 import com.checkit.ui.tasks.FakeSettingsRepository
 import kotlinx.coroutines.Dispatchers
@@ -17,16 +17,16 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-private class FakeChecklistStorage(
-    var files: List<ChecklistDocument> = emptyList(),
+private class FakeGuidelinesStorage(
+    var files: List<GuidelinesDocument> = emptyList(),
     var contents: Map<String, String> = emptyMap(),
     var listError: String? = null,
     var readError: String? = null
-) : ChecklistStorage {
+) : GuidelinesStorage {
     var listCalls = 0
         private set
 
-    override suspend fun listMarkdownFiles(folderUri: String): List<ChecklistDocument> {
+    override suspend fun listMarkdownFiles(folderUri: String): List<GuidelinesDocument> {
         listCalls++
         listError?.let { error(it) }
         return files
@@ -39,16 +39,16 @@ private class FakeChecklistStorage(
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class ChecklistViewModelTest {
+class GuidelinesViewModelTest {
     private val dispatcher = StandardTestDispatcher()
-    private lateinit var storage: FakeChecklistStorage
+    private lateinit var storage: FakeGuidelinesStorage
     private lateinit var settings: FakeSettingsRepository
-    private lateinit var viewModel: ChecklistViewModel
+    private lateinit var viewModel: GuidelinesViewModel
 
     @BeforeTest
     fun setUp() {
         Dispatchers.setMain(dispatcher)
-        storage = FakeChecklistStorage()
+        storage = FakeGuidelinesStorage()
         settings = FakeSettingsRepository()
     }
 
@@ -58,7 +58,7 @@ class ChecklistViewModelTest {
     }
 
     private fun createViewModel() {
-        viewModel = ChecklistViewModel(storage, settings)
+        viewModel = GuidelinesViewModel(storage, settings)
         dispatcher.scheduler.advanceUntilIdle()
     }
 
@@ -75,8 +75,8 @@ class ChecklistViewModelTest {
     @Test
     fun loadsDocumentsWhenFolderIsSet() {
         storage.files = listOf(
-            ChecklistDocument(uri = "b", name = "b.md"),
-            ChecklistDocument(uri = "a", name = "a.md")
+            GuidelinesDocument(uri = "b", name = "b.md"),
+            GuidelinesDocument(uri = "a", name = "a.md")
         )
         createViewModel()
         dispatcher.scheduler.advanceUntilIdle()
@@ -111,7 +111,7 @@ class ChecklistViewModelTest {
         storage.contents = mapOf("a" to "# Hello")
         createViewModel()
 
-        viewModel.openDocument(ChecklistDocument(uri = "a", name = "hello.md"))
+        viewModel.openDocument(GuidelinesDocument(uri = "a", name = "hello.md"))
         dispatcher.scheduler.advanceUntilIdle()
 
         val state = viewModel.uiState.value
@@ -125,7 +125,7 @@ class ChecklistViewModelTest {
         storage.readError = "unreadable"
         createViewModel()
 
-        viewModel.openDocument(ChecklistDocument(uri = "a", name = "hello.md"))
+        viewModel.openDocument(GuidelinesDocument(uri = "a", name = "hello.md"))
         dispatcher.scheduler.advanceUntilIdle()
         assertEquals("unreadable", viewModel.uiState.value.selectedError)
 
@@ -144,7 +144,7 @@ class ChecklistViewModelTest {
         storage.contents = mapOf("a" to "# Hello")
         createViewModel()
 
-        viewModel.openDocument(ChecklistDocument(uri = "a", name = "hello.md"))
+        viewModel.openDocument(GuidelinesDocument(uri = "a", name = "hello.md"))
         dispatcher.scheduler.advanceUntilIdle()
         assertEquals("a", viewModel.uiState.value.selectedUri)
 
@@ -159,9 +159,9 @@ class ChecklistViewModelTest {
     @Test
     fun picksUpInitialFolderFromSettings() {
         settings = FakeSettingsRepository(
-            UserSettings(checklistFolderUri = "folder", checklistFolderName = "Docs")
+            UserSettings(guidelinesFolderUri = "folder", guidelinesFolderName = "Docs")
         )
-        storage.files = listOf(ChecklistDocument(uri = "a", name = "a.md"))
+        storage.files = listOf(GuidelinesDocument(uri = "a", name = "a.md"))
         createViewModel()
 
         val state = viewModel.uiState.value
@@ -184,8 +184,8 @@ class FilterMarkdownDocumentsTest {
 
         assertEquals(
             listOf(
-                ChecklistDocument(uri = "u1", name = "a.md"),
-                ChecklistDocument(uri = "u2", name = "B.MD")
+                GuidelinesDocument(uri = "u1", name = "a.md"),
+                GuidelinesDocument(uri = "u2", name = "B.MD")
             ),
             result
         )
@@ -193,7 +193,7 @@ class FilterMarkdownDocumentsTest {
 
     @Test
     fun titleStripsExtension() {
-        assertEquals("groceries", ChecklistDocument(uri = "u", name = "groceries.md").title)
-        assertTrue(ChecklistDocument(uri = "u", name = ".md").title.isNotEmpty())
+        assertEquals("groceries", GuidelinesDocument(uri = "u", name = "groceries.md").title)
+        assertTrue(GuidelinesDocument(uri = "u", name = ".md").title.isNotEmpty())
     }
 }

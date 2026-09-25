@@ -18,6 +18,7 @@ import com.checkit.widget.ExtraDailyPlanItemId
 import com.checkit.widget.ExtraOpenCheckIn
 import com.checkit.widget.ExtraOpenDayClose
 import com.checkit.widget.ExtraOpenPlanAssist
+import com.checkit.widget.ExtraOpenRoutines
 import com.checkit.widget.ExtraQuickSprintItemId
 import com.checkit.widget.ExtraStartQuickSprint
 import com.checkit.widget.ExtraStartSprintForItemId
@@ -86,6 +87,25 @@ class CheckItNotificationCenter(
             openPlanAssist = false,
             openDayClose = false,
             bypassDnd = true
+        )
+    }
+
+    fun showRoutineReminder(routineId: String, title: String, stepCount: Int) {
+        showReminder(
+            notificationId = NotificationIds.routineReminder(routineId),
+            requestCode = NotificationIds.routineReminder(routineId),
+            title = title.ifBlank { "Routine reminder" },
+            body = if (stepCount > 0) {
+                "$stepCount-step checklist is waiting for you"
+            } else {
+                "Time for your routine"
+            },
+            subText = "Routine",
+            dailyPlanItemId = null,
+            openPlanAssist = false,
+            openDayClose = false,
+            openRoutines = true,
+            bypassDnd = false
         )
     }
 
@@ -171,6 +191,7 @@ class CheckItNotificationCenter(
         startSprintItemId: String? = null,
         openPlanAssist: Boolean = false,
         openDayClose: Boolean = false,
+        openRoutines: Boolean = false,
         bypassDnd: Boolean
     ) {
         if (!canPostNotifications()) return
@@ -182,6 +203,7 @@ class CheckItNotificationCenter(
             dailyPlanItemId?.let { putExtra(ExtraDailyPlanItemId, it) }
             if (openPlanAssist) putExtra(ExtraOpenPlanAssist, true)
             if (openDayClose) putExtra(ExtraOpenDayClose, true)
+            if (openRoutines) putExtra(ExtraOpenRoutines, true)
         }
         val pendingIntent = PendingIntent.getActivity(
             context,

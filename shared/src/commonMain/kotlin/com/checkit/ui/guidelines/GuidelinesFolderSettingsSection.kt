@@ -1,4 +1,4 @@
-package com.checkit.ui.checklist
+package com.checkit.ui.guidelines
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -17,14 +17,14 @@ import androidx.compose.ui.unit.dp
 import com.checkit.ui.components.AppHorizontalDivider
 
 /**
- * Settings row for picking the local checklist folder.
+ * Settings row for picking the local guidelines folder.
  * Android shows the SAF folder picker; other targets are a no-op.
  */
 @Composable
-expect fun ChecklistFolderSettingsSection()
+expect fun GuidelinesFolderSettingsSection()
 
 @Composable
-internal fun ChecklistFolderSettingsContent(
+internal fun GuidelinesFolderSettingsContent(
     folderUri: String?,
     folderName: String?,
     onSelectFolder: (() -> Unit)? = null,
@@ -37,7 +37,7 @@ internal fun ChecklistFolderSettingsContent(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("Checklist folder", fontWeight = FontWeight.SemiBold)
+                Text("Guidelines folder", fontWeight = FontWeight.SemiBold)
                 Text(
                     folderName?.let { "Reading markdown from \"$it\"" }
                         ?: folderUri?.let { "Reading markdown from selected folder" }

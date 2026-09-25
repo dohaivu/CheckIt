@@ -1654,6 +1654,8 @@ class RoomCheckItRepository(
             nestedDocuments = dao.getAllNestedDocumentsOnce(),
             nestedListItems = dao.getAllNestedListItemsOnce(),
             nestedItemTags = dao.getAllNestedItemTagsOnce(),
+            routines = dao.getAllRoutinesOnce(),
+            routineLogs = dao.getAllRoutineLogsOnce(),
             quickNotes = quickNoteDao?.getAllOnce().orEmpty(),
         )
         return backupJson.encodeToString(CheckItBackup.serializer(), backup)

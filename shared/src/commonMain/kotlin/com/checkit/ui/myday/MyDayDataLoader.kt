@@ -16,6 +16,7 @@ import com.checkit.ui.UiEvent
 import com.checkit.ui.currentMyDayTimeMinutes
 import com.checkit.ui.today
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
@@ -30,9 +31,25 @@ internal class MyDayDataLoader(
     private val state: MyDayStateHolder,
     private val scope: CoroutineScope
 ) {
+    private var loadJob: Job? = null
+    private var pinnedEpochDay: Int? = null
+
+    /**
+     * (Re)subscribes with query windows pinned to the current day.
+     * Restartable: re-calling re-pins the windows after midnight without an
+     * app restart. Repeat calls for the same day are skipped so resume
+     * events don't churn all seven subscriptions; the previous collection
+     * is cancelled first so only one collector ever writes state.
+     * No loading flicker: the existing state stays visible until the fresh
+     * queries emit.
+     */
     fun start() {
-        val today = today()
-        scope.launch {
+        val todayEpochDay = today().toEpochDays().toInt()
+        if (pinnedEpochDay == todayEpochDay && loadJob?.isActive == true) return
+        pinnedEpochDay = todayEpochDay
+        loadJob?.cancel()
+        loadJob = scope.launch {
+            val today = today()
             combine(
                 deps.observeWorkingTasks(today),
                 deps.observeNotesForDate(today),

@@ -161,6 +161,9 @@ internal fun AgendaView(
                     }
                 }
             }
+            item {
+                Spacer(Modifier.height(36.dp))
+            }
         }
 
         if (boundedDayCount != 1) {

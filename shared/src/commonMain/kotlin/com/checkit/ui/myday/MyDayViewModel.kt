@@ -7,7 +7,9 @@ import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.LeftoverAction
+import com.checkit.domain.RoutineStepTemplate
 import com.checkit.domain.SprintManager
+import kotlinx.datetime.DayOfWeek
 import com.checkit.domain.TaskItem
 import com.checkit.domain.usecase.AddJournalEntryUseCase
 import com.checkit.domain.usecase.AddSuggestedTaskToMyDayUseCase
@@ -16,14 +18,20 @@ import com.checkit.domain.usecase.CarryOverDailyPlanItemsUseCase
 import com.checkit.domain.usecase.CompleteDayCloseUseCase
 import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
 import com.checkit.domain.usecase.DeleteJournalEntryUseCase
+import com.checkit.domain.usecase.DeleteRoutineUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveJournalEntriesUseCase
 import com.checkit.domain.usecase.ObserveNotesForDateUseCase
 import com.checkit.domain.usecase.ObservePeriodGoalsUseCase
+import com.checkit.domain.usecase.ObserveRoutineTodayUseCase
+import com.checkit.domain.usecase.ObserveRoutinesUseCase
+import com.checkit.domain.usecase.ResetStaleRoutineTodayUseCase
 import com.checkit.domain.usecase.ObserveTagsUseCase
 import com.checkit.domain.usecase.ObserveWorkingTasksUseCase
+import com.checkit.domain.usecase.SaveRoutineUseCase
 import com.checkit.domain.usecase.SmartScheduleDailyPlanUseCase
 import com.checkit.domain.usecase.SprintTransitionUseCase
+import com.checkit.domain.usecase.ToggleRoutineStepUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
 import com.checkit.domain.usecase.UpdateJournalEntryUseCase
 import com.checkit.domain.usecase.UpsertDailyPlanItemUseCase
@@ -60,6 +68,12 @@ class MyDayViewModel(
     addSuggestedTaskToMyDay: AddSuggestedTaskToMyDayUseCase,
     updateDailyPlanItemTime: UpdateDailyPlanItemTimeUseCase,
     smartSchedule: SmartScheduleDailyPlanUseCase,
+    observeRoutines: ObserveRoutinesUseCase,
+    observeRoutineToday: ObserveRoutineTodayUseCase,
+    resetStaleRoutineToday: ResetStaleRoutineTodayUseCase,
+    saveRoutine: SaveRoutineUseCase,
+    deleteRoutine: DeleteRoutineUseCase,
+    toggleRoutineStep: ToggleRoutineStepUseCase,
     val sprintManager: SprintManager,
     sprintTransition: SprintTransitionUseCase
 ) : ViewModel() {
@@ -83,7 +97,13 @@ class MyDayViewModel(
         updateDailyPlanItemTime = updateDailyPlanItemTime,
         smartSchedule = smartSchedule,
         sprintManager = sprintManager,
-        sprintTransition = sprintTransition
+        sprintTransition = sprintTransition,
+        observeRoutines = observeRoutines,
+        observeRoutineToday = observeRoutineToday,
+        resetStaleRoutineToday = resetStaleRoutineToday,
+        saveRoutine = saveRoutine,
+        deleteRoutine = deleteRoutine,
+        toggleRoutineStep = toggleRoutineStep
     )
 
     private val state = MyDayStateHolder(viewModelScope)
@@ -91,6 +111,7 @@ class MyDayViewModel(
     val events: Flow<UiEvent> = state.events
 
     private val loader = MyDayDataLoader(deps, state, viewModelScope)
+    private val routines = RoutineController(deps, state, viewModelScope)
     private val dayClose = DayCloseController(deps, state, viewModelScope)
     private val planAssist = PlanAssistController(deps, state, viewModelScope)
     private val dailyPlanEditor = DailyPlanEditorController(deps, state, viewModelScope)
@@ -100,11 +121,32 @@ class MyDayViewModel(
 
     init {
         loader.start()
+        routines.start()
     }
 
     fun selectView(view: MyDayView) {
         state.update { it.copy(selectedView = view) }
     }
+
+    // Routines
+    fun toggleRoutineStep(routineId: String, stepId: String) = routines.toggleStep(routineId, stepId)
+    /**
+     * Re-pins all day-scoped queries to the current day; called on
+     * foreground return so a new day loads without an app restart.
+     */
+    fun refreshToday() {
+        loader.start()
+        routines.refreshToday()
+    }
+    fun saveRoutine(
+        id: String?,
+        title: String,
+        description: String,
+        reminderMinutes: Int?,
+        activeWeekdays: Set<DayOfWeek>,
+        steps: List<RoutineStepTemplate>
+    ) = routines.saveRoutine(id, title, description, reminderMinutes, activeWeekdays, steps)
+    fun deleteRoutine(id: String) = routines.deleteRoutine(id)
 
     // Day review
     fun openDayClose() = dayClose.open()

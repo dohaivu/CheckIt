@@ -14,8 +14,12 @@ import com.checkit.domain.MetricItem
 import com.checkit.domain.Period
 import com.checkit.domain.PeriodGoal
 import com.checkit.domain.PeriodGoalHistoryItem
+import com.checkit.domain.Routine
+import com.checkit.domain.RoutineLog
 import com.checkit.domain.usecase.ObserveGoalHistoryUseCase
 import com.checkit.domain.usecase.ObservePeriodGoalsUseCase
+import com.checkit.domain.usecase.ObserveRoutineLogsUseCase
+import com.checkit.domain.usecase.ObserveRoutinesUseCase
 import com.checkit.domain.usecase.SavePeriodGoalUseCase
 import com.checkit.ui.UiEvent
 import com.checkit.ui.components.ReportPeriod
@@ -55,6 +59,8 @@ class ReflectViewModel(
     private val observePeriodGoals: ObservePeriodGoalsUseCase,
     private val observeGoalHistory: ObserveGoalHistoryUseCase,
     private val savePeriodGoal: SavePeriodGoalUseCase,
+    private val observeRoutines: ObserveRoutinesUseCase,
+    private val observeRoutineLogs: ObserveRoutineLogsUseCase,
     private val dataDispatcher: CoroutineDispatcher = Dispatchers.Default
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(ReflectUiState())
@@ -99,6 +105,8 @@ class ReflectViewModel(
                         doneItems = data.doneItems,
                         journalEntries = data.journalEntries,
                         habitRollups = data.habitRollups,
+                        routines = data.routines,
+                        routineLogs = data.routineLogs,
                         goals = data.goals,
                         isLoading = false
                     )
@@ -110,7 +118,7 @@ class ReflectViewModel(
     /**
      * Subscribes only to the rollup windows needed for [selection]:
      * daily stats over the selection window, tag/done/journal windows scoped to
-     * the focused period, and a fixed trailing window for habits.
+     * the focused period, and fixed trailing windows for habits and routines.
      */
     private fun observeSelection(selection: ReflectSelection) =
         combine(
@@ -137,15 +145,24 @@ class ReflectViewModel(
                     // needs to be observed.
                     startDate = selection.goalsWindow().first,
                     endDateInclusive = selection.goalsWindow().second
+                ),
+                observeRoutines(),
+                observeRoutineLogs(
+                    startDate = habitRollupWindow(today()).first,
+                    endDateInclusive = habitRollupWindow(today()).second
                 )
-            ) { habits, goals -> habits to goals }
-        ) { stats, doneItems, journals, (habits, goals) ->
+            ) { habits, goals, routines, routineLogs ->
+                HabitAndRoutineRollups(habits, goals, routines, routineLogs)
+            }
+        ) { stats, doneItems, journals, rollups ->
             ReflectData(
                 dailyStats = stats,
                 doneItems = doneItems,
                 journalEntries = journals,
-                habitRollups = habits,
-                goals = goals
+                habitRollups = rollups.habits,
+                routines = rollups.routines,
+                routineLogs = rollups.routineLogs,
+                goals = rollups.goals
             )
         }
 
@@ -349,7 +366,16 @@ private data class ReflectData(
     val doneItems: List<DoneItemSummary>,
     val journalEntries: List<JournalEntry>,
     val habitRollups: List<HabitDailyRollup>,
+    val routines: List<Routine>,
+    val routineLogs: List<RoutineLog>,
     val goals: List<PeriodGoal>
+)
+
+private data class HabitAndRoutineRollups(
+    val habits: List<HabitDailyRollup>,
+    val goals: List<PeriodGoal>,
+    val routines: List<Routine>,
+    val routineLogs: List<RoutineLog>
 )
 
 private fun ReportPeriod.move(date: LocalDate, amount: Int): LocalDate = when (this) {

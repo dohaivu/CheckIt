@@ -9,6 +9,8 @@ import com.checkit.domain.HabitDailyRollup
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.Period
 import com.checkit.domain.PeriodGoal
+import com.checkit.domain.Routine
+import com.checkit.domain.RoutineLog
 
 import com.checkit.ui.components.ReportPeriod
 import com.checkit.ui.firstDayOfMonth
@@ -58,6 +60,10 @@ data class ReflectUiState(
     val journalEntries: List<JournalEntry> = emptyList(),
     /** Habit rollups in a fixed trailing window ending today. */
     val habitRollups: List<HabitDailyRollup> = emptyList(),
+    /** Routine templates for the heatmap rows. */
+    val routines: List<Routine> = emptyList(),
+    /** Percent-only routine logs in a fixed trailing window ending today. */
+    val routineLogs: List<RoutineLog> = emptyList(),
     val goals: List<PeriodGoal> = emptyList(),
     val isLoading: Boolean = true
 ) {
@@ -133,6 +139,11 @@ data class ReflectUiState(
     /** Habit check-ins for the heatmap. */
     val habitCheckins: List<HabitCheckin> by lazy {
         buildHabitCheckins(habitRollups, today())
+    }
+
+    /** Routine heatmap rows from percent-only logs. */
+    val routineSeries: List<HeatmapSeries> by lazy {
+        buildRoutineSeries(routines, routineLogs, today())
     }
 
     /** Chronicle items combining past goals/reviews with tracked minutes for the period. */

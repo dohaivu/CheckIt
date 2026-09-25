@@ -1,4 +1,4 @@
-package com.checkit.ui.checklist
+package com.checkit.ui.guidelines
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,8 +27,8 @@ import com.checkit.ui.components.MarkdownView
 import com.checkit.ui.components.TinyTopAppBar
 
 @Composable
-internal fun CheckListScreen(
-    viewModel: ChecklistViewModel,
+internal fun GuidelinesScreen(
+    viewModel: GuidelinesViewModel,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -43,7 +43,7 @@ internal fun CheckListScreen(
                     Text(
                         text = state.selectedName?.let {
                             it.removeSuffix(".md").removeSuffix(".MD").ifBlank { it }
-                        } ?: "Checklist",
+                        } ?: "Guidelines",
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
@@ -72,7 +72,7 @@ internal fun CheckListScreen(
                 state.selectedUri == null -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text(
-                            text = "No checklist selected.",
+                            text = "No guidelines selected.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -90,7 +90,7 @@ internal fun CheckListScreen(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
-                                text = state.selectedError ?: "Cannot read checklist file",
+                                text = state.selectedError ?: "Cannot read guidelines file",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.error
                             )

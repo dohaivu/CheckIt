@@ -39,14 +39,15 @@ import com.checkit.data.SettingsRepository
 import com.checkit.domain.usecase.AutoAddTodayTasksToMyDayUseCase
 import com.checkit.domain.usecase.RebuildReflectStatsUseCase
 import com.checkit.ui.calendar.CalendarScreen
-import com.checkit.ui.checklist.CheckListScreen
-import com.checkit.ui.checklist.ChecklistDocumentsScreen
+import com.checkit.ui.guidelines.GuidelinesScreen
+import com.checkit.ui.guidelines.GuidelinesDocumentsScreen
 import com.checkit.ui.components.LocalSnackbarHostState
 import com.checkit.ui.journal.JournalEntryEditorSheet
 import com.checkit.ui.journal.JournalHistorySheet
 import com.checkit.ui.localization.AppLocaleProvider
 import com.checkit.ui.myday.DailyPlanItemEditorSheet
 import com.checkit.ui.myday.MyDayScreen
+import com.checkit.ui.myday.MyDayView
 import com.checkit.ui.nested.NestedDocumentsScreen
 import com.checkit.ui.reflect.PeriodGoalEditorSheet
 import com.checkit.ui.reflect.ReflectScreen
@@ -78,6 +79,7 @@ fun CheckItApp(
     openMyDaySuggestionsLaunch: Boolean = false,
     openDayCloseLaunch: Boolean = false,
     openPlanAssistLaunch: Boolean = false,
+    openRoutinesLaunch: Boolean = false,
     openCheckInLaunch: Boolean = false,
     openNewJournalEntryLaunch: Boolean = false,
     openQuickSprintLaunch: Boolean = false,
@@ -154,6 +156,7 @@ fun CheckItApp(
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 runAutoTodayTasks()
+                viewModels.myDay.refreshToday()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -178,6 +181,13 @@ fun CheckItApp(
         if (!openPlanAssistLaunch) return@LaunchedEffect
         navState.resetTo(AppRoute.MyDay)
         viewModels.myDay.openSuggestions()
+        onWidgetLaunchConsumed()
+    }
+
+    LaunchedEffect(openRoutinesLaunch) {
+        if (!openRoutinesLaunch) return@LaunchedEffect
+        navState.resetTo(AppRoute.MyDay)
+        viewModels.myDay.selectView(MyDayView.Routine)
         onWidgetLaunchConsumed()
     }
 
@@ -346,17 +356,17 @@ fun CheckItApp(
                                         ReflectScreen(
                                             state = reflectState,
                                             viewModel = viewModels.reflect,
-                                            onOpenChecklist = { navState.push(AppRoute.ChecklistDocuments) }
+                                            onOpenGuidelines = { navState.push(AppRoute.GuidelinesDocuments) }
                                         )
                                     }
-                                    AppRoute.ChecklistDocuments -> {
-                                        ChecklistDocumentsScreen(
-                                            viewModel = viewModels.checklist,
+                                    AppRoute.GuidelinesDocuments -> {
+                                        GuidelinesDocumentsScreen(
+                                            viewModel = viewModels.guidelines,
                                             onNavigateBack = { navState.pop() },
                                             onOpenSettings = { navState.push(AppRoute.Settings) },
                                             onOpenDocument = { document ->
                                                 navState.push(
-                                                    AppRoute.ChecklistDetail(
+                                                    AppRoute.GuidelinesDetail(
                                                         uri = document.uri,
                                                         name = document.name
                                                     )
@@ -364,9 +374,9 @@ fun CheckItApp(
                                             }
                                         )
                                     }
-                                    is AppRoute.ChecklistDetail -> {
-                                        CheckListScreen(
-                                            viewModel = viewModels.checklist,
+                                    is AppRoute.GuidelinesDetail -> {
+                                        GuidelinesScreen(
+                                            viewModel = viewModels.guidelines,
                                             onNavigateBack = { navState.pop() }
                                         )
                                     }

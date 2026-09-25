@@ -24,6 +24,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.checkit.domain.Routine
+import com.checkit.domain.RoutineLog
+import com.checkit.domain.calculateRoutineStreak
+import com.checkit.domain.routineIntensityByDate
+import com.checkit.domain.routineStreakDates
 import com.checkit.ui.localizedMonthTitle
 import com.checkit.ui.today
 import kotlinx.datetime.DateTimeUnit
@@ -42,6 +47,15 @@ private const val HeatmapMaxAlpha = 1f
 data class HeatmapMonth(
     val monthStart: LocalDate,
     val weeks: List<List<LocalDate?>>
+)
+
+/** Generic heatmap row: intensity 0..1 per date, shared by habits and routines. */
+data class HeatmapSeries(
+    val key: String,
+    val title: String,
+    val intensityByDate: Map<LocalDate, Float>,
+    val streak: Int,
+    val totalDone: Int
 )
 
 @Composable
@@ -68,6 +82,55 @@ internal fun HabitHeatmapSection(
     monthCount: Int = DefaultHeatmapMonthCount
 ) {
     if (checkins.isEmpty()) return
+    val series = remember(checkins) {
+        checkins.map { checkin ->
+            HeatmapSeries(
+                key = checkin.habitKey,
+                title = checkin.title,
+                intensityByDate = checkin.doneMinutesByDate.mapValues { (_, minutes) ->
+                    (minutes.toFloat() / HeatmapMaxMinutes).coerceIn(0f, 1f)
+                },
+                streak = checkin.streak,
+                totalDone = checkin.totalDone
+            )
+        }
+    }
+    HeatmapSeriesSection(
+        headerTitle = "Habits",
+        subtitle = consistencySubtitle(today(), monthCount),
+        series = series,
+        baseColor = HabitHeatmapDone,
+        modifier = modifier,
+        monthCount = monthCount
+    )
+}
+
+@Composable
+internal fun RoutineHeatmapSection(
+    series: List<HeatmapSeries>,
+    modifier: Modifier = Modifier,
+    monthCount: Int = DefaultHeatmapMonthCount
+) {
+    if (series.isEmpty()) return
+    HeatmapSeriesSection(
+        headerTitle = "Routines",
+        subtitle = "Days with \u226580% count toward streaks.",
+        series = series,
+        baseColor = RoutineHeatmapDone,
+        modifier = modifier,
+        monthCount = monthCount
+    )
+}
+
+@Composable
+private fun HeatmapSeriesSection(
+    headerTitle: String,
+    subtitle: String,
+    series: List<HeatmapSeries>,
+    baseColor: Color,
+    modifier: Modifier = Modifier,
+    monthCount: Int = DefaultHeatmapMonthCount
+) {
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(22.dp),
@@ -88,23 +151,23 @@ internal fun HabitHeatmapSection(
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     Text(
-                        text = "Habits",
+                        text = headerTitle,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = consistencySubtitle(today(), monthCount),
+                        text = subtitle,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
-            checkins.forEachIndexed { index, checkin ->
+            series.forEachIndexed { index, row ->
                 if (index > 0) {
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
                 }
-                HabitHeatmapCard(checkin = checkin, monthCount = monthCount)
+                HeatmapSeriesCard(series = row, baseColor = baseColor, monthCount = monthCount)
             }
         }
     }
@@ -126,6 +189,45 @@ private fun HabitHeatmapCard(
 ) {
     val today = today()
     val months = remember(checkin.doneMinutesByDate, today, monthCount) { buildHeatmapMonths(today, monthCount) }
+    val intensityByDate = remember(checkin.doneMinutesByDate) {
+        checkin.doneMinutesByDate.mapValues { (_, minutes) ->
+            (minutes.toFloat() / HeatmapMaxMinutes).coerceIn(0f, 1f)
+        }
+    }
+    HeatmapSeriesCard(
+        series = HeatmapSeries(
+            key = checkin.habitKey,
+            title = checkin.title,
+            intensityByDate = intensityByDate,
+            streak = checkin.streak,
+            totalDone = checkin.totalDone
+        ),
+        baseColor = HabitHeatmapDone,
+        months = months,
+        modifier = modifier
+    )
+}
+
+@Composable
+private fun HeatmapSeriesCard(
+    series: HeatmapSeries,
+    baseColor: Color,
+    modifier: Modifier = Modifier,
+    monthCount: Int = DefaultHeatmapMonthCount
+) {
+    val today = today()
+    val months = remember(series.intensityByDate, today, monthCount) { buildHeatmapMonths(today, monthCount) }
+    HeatmapSeriesCard(series = series, baseColor = baseColor, months = months, modifier = modifier)
+}
+
+@Composable
+private fun HeatmapSeriesCard(
+    series: HeatmapSeries,
+    baseColor: Color,
+    months: List<HeatmapMonth>,
+    modifier: Modifier = Modifier
+) {
+    val today = today()
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -138,7 +240,7 @@ private fun HabitHeatmapCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = checkin.title,
+                text = series.title,
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold,
@@ -146,9 +248,9 @@ private fun HabitHeatmapCard(
                 overflow = TextOverflow.Ellipsis,
                 color = MaterialTheme.colorScheme.onSurface
             )
-            HabitStreakBadge(streak = checkin.streak)
+            HabitStreakBadge(streak = series.streak)
             Text(
-                text = "${checkin.totalDone} days",
+                text = "${series.totalDone} days",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -160,7 +262,8 @@ private fun HabitHeatmapCard(
             months.forEach { month ->
                 HeatmapMonthColumn(
                     month = month,
-                    minutesByDate = checkin.doneMinutesByDate,
+                    intensityByDate = series.intensityByDate,
+                    baseColor = baseColor,
                     today = today,
                     modifier = Modifier.weight(1f)
                 )
@@ -172,7 +275,8 @@ private fun HabitHeatmapCard(
 @Composable
 private fun HeatmapMonthColumn(
     month: HeatmapMonth,
-    minutesByDate: Map<LocalDate, Int>,
+    intensityByDate: Map<LocalDate, Float>,
+    baseColor: Color,
     today: LocalDate,
     modifier: Modifier = Modifier
 ) {
@@ -197,7 +301,8 @@ private fun HeatmapMonthColumn(
                     week.forEach { date ->
                         HeatmapCell(
                             date = date,
-                            minutesByDate = minutesByDate,
+                            intensityByDate = intensityByDate,
+                            baseColor = baseColor,
                             today = today,
                             modifier = Modifier.weight(1f)
                         )
@@ -211,13 +316,14 @@ private fun HeatmapMonthColumn(
 @Composable
 private fun HeatmapCell(
     date: LocalDate?,
-    minutesByDate: Map<LocalDate, Int>,
+    intensityByDate: Map<LocalDate, Float>,
+    baseColor: Color,
     today: LocalDate,
     modifier: Modifier = Modifier
 ) {
     val color = when {
         date == null -> Color.Transparent
-        date in minutesByDate -> minutesIntensityColor(minutesByDate.getValue(date))
+        date in intensityByDate -> fractionIntensityColor(intensityByDate.getValue(date), baseColor)
         else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
     }
     val isToday = date == today
@@ -236,10 +342,10 @@ private fun HeatmapCell(
     )
 }
 
-private fun minutesIntensityColor(minutes: Int): Color {
-    val fraction = (minutes.toFloat() / HeatmapMaxMinutes).coerceIn(0f, 1f)
-    val alpha = HeatmapMinAlpha + (HeatmapMaxAlpha - HeatmapMinAlpha) * fraction
-    return HabitHeatmapDone.copy(alpha = alpha)
+private fun fractionIntensityColor(fraction: Float, baseColor: Color): Color {
+    val clamped = fraction.coerceIn(0f, 1f)
+    val alpha = HeatmapMinAlpha + (HeatmapMaxAlpha - HeatmapMinAlpha) * clamped
+    return baseColor.copy(alpha = alpha)
 }
 
 @Composable
@@ -286,3 +392,24 @@ internal fun buildHeatmapMonths(
 
 private val HabitHeatmapDone = Color(0xFF2EC995)
 private val HabitHeatmapStreak = Color(0xFF0E9F73)
+private val RoutineHeatmapDone = Color(0xFF8B5CF6)
+
+/** Builds one heatmap row per routine from percent-only logs. */
+internal fun buildRoutineSeries(
+    routines: List<Routine>,
+    logs: List<RoutineLog>,
+    today: LocalDate
+): List<HeatmapSeries> {
+    val logsByRoutine = logs.groupBy { it.routineId }
+    return routines.map { routine ->
+        val rows = logsByRoutine[routine.id].orEmpty()
+        val doneDates = routineStreakDates(rows)
+        HeatmapSeries(
+            key = routine.id,
+            title = routine.title.ifBlank { "Routine" },
+            intensityByDate = routineIntensityByDate(rows),
+            streak = calculateRoutineStreak(doneDates, routine.activeWeekdays, today),
+            totalDone = doneDates.size
+        )
+    }.sortedWith(compareByDescending<HeatmapSeries> { it.streak }.thenBy { it.title.lowercase() })
+}

@@ -7,15 +7,19 @@ import android.net.Uri
 import android.util.Log
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.checkit.domain.QuickNote
 import com.checkit.domain.QuickNoteRules
 import com.checkit.domain.QuickNoteType
 import com.checkit.notifications.QuickNoteReminderScheduler
 import com.checkit.util.awaitTask
+import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -40,8 +44,9 @@ private val Context.quickNoteSyncDataStore by preferencesDataStore(name = "quick
  *
  * Offline-first: every mutation is already in Room before [requestSync] is
  * called. Sync is incremental and never periodic:
- * - push uploads only rows flagged dirty (batched), then clears the flag;
- * - pull queries only documents newer than the last pull watermark;
+ * - pull queries documents newer than the last pull watermark (or all documents
+ *   if initial/manual refresh) and merges with LWW;
+ * - push uploads remaining dirty rows (batched), then clears the dirty flag;
  * - purge permanently deletes old uploaded tombstones (blob, doc, row);
  * - triggers are local edits (debounced), app resume (via the maintenance
  *   use case), network reconnect, and manual refresh.
@@ -102,7 +107,22 @@ class FirestoreQuickNoteSyncManager(
         }
     }
 
+    /**
+     * Immediate sync for explicit user intent (manual refresh, sign-in
+     * catch-up). Bypasses the backoff gate and performs a full pull (resetting
+     * watermark filter) so existing remote notes are guaranteed to sync.
+     */
+    override suspend fun syncNow() {
+        consecutiveFailures = 0
+        nextRetryAtMillis = 0L
+        syncInternal(isFullPull = true)
+    }
+
     override suspend fun sync() {
+        syncInternal(isFullPull = false)
+    }
+
+    private suspend fun syncInternal(isFullPull: Boolean) {
         syncMutex.withLock {
             val now = Clock.System.now().toEpochMilliseconds()
             if (now < nextRetryAtMillis) return
@@ -123,7 +143,22 @@ class FirestoreQuickNoteSyncManager(
                     recordFailure("Sign-in failed. Sync will retry automatically.")
                     return
                 }
-                Log.d(TAG, "Sync started uid=$userId")
+                Log.d(TAG, "Sync started uid=$userId (isFullPull=$isFullPull)")
+                // Account switch (link, sign-in/out): clean rows would never
+                // upload to the new collection. Re-dirty live rows instead.
+                // The pull watermark belongs to the old collection, so reset
+                // it: otherwise pre-existing remote rows (older than the
+                // watermark) are filtered out forever and never pulled.
+                val lastUid = dataStore.data.map { it[KEY_LAST_UID] }.first()
+                val isAccountChanged = lastUid != userId
+                if (isAccountChanged) {
+                    val revived = dao.markAllDirty()
+                    dataStore.edit { prefs ->
+                        prefs[KEY_LAST_UID] = userId
+                        prefs[KEY_LAST_PULL_MILLIS] = 0L
+                    }
+                    Log.i(TAG, "Account changed; marked $revived notes dirty for re-upload")
+                }
                 val firestore = FirebaseFirestore.getInstance(QuickNoteSyncConfig.DATABASE_ID)
                 val storage = FirebaseStorage.getInstance(QuickNoteSyncConfig.STORAGE_BUCKET)
                 val notesRef = firestore
@@ -131,50 +166,26 @@ class FirestoreQuickNoteSyncManager(
                     .document(userId)
                     .collection(QuickNoteSyncConfig.NOTES_COLLECTION)
 
-                // Upload pending attachments first so their URLs are in the doc push.
-                dao.getDirty().map { it.toDomain() }
-                    .filter { it.type != QuickNoteType.TEXT && it.attachmentUrl == null }
-                    .forEach { note ->
-                        val url = uploadAttachment(storage, userId, note)
-                        if (url != null) {
-                            dao.setAttachmentUrl(
-                                note.id,
-                                url,
-                                Clock.System.now().toEpochMilliseconds(),
-                            )
-                        }
-                    }
-
-                // Push: only locally changed rows, including tombstones.
-                // Re-read after uploads: attachment URLs bumped updatedAt.
-                val toPush = dao.getDirty().map { it.toDomain() }
-                toPush.chunked(QuickNoteSyncConfig.PUSH_BATCH_SIZE).forEach { chunk ->
-                    val batch = firestore.batch()
-                    chunk.forEach { note ->
-                        batch.set(notesRef.document(note.id), QuickNoteSyncDocument.toMap(note))
-                    }
-                    batch.commit().awaitTask()
-                }
-                // Rows whose attachment upload failed stay dirty for next time.
-                val uploaded = toPush.filterNot { needsAttachmentUpload(it) }
-                if (uploaded.isNotEmpty()) {
-                    dao.markClean(uploaded.map { it.id }, uploaded.maxOf { it.updatedAt })
-                }
-
-                // Pull: only documents newer than the last pull (with overlap
-                // margin for clock skew; LWW merge keeps re-pulls idempotent).
-                val lastPull = dataStore.data.map { it[KEY_LAST_PULL_MILLIS] ?: 0L }.first()
+                // PULL & MERGE FIRST:
+                // Safely merges remote documents with local state before pushing.
+                // If a remote document is newer, local state is overwritten and dirty is cleared,
+                // preventing an outdated local client from clobbering remote data.
+                val storedLastPull = if (isFullPull || isAccountChanged) 0L else dataStore.data.map { it[KEY_LAST_PULL_MILLIS] ?: 0L }.first()
                 val pullStart = Clock.System.now().toEpochMilliseconds()
-                val remote = notesRef
-                    .whereGreaterThan(
+                val queryTask = if (storedLastPull == 0L) {
+                    notesRef.get()
+                } else {
+                    notesRef.whereGreaterThan(
                         QuickNoteSyncDocument.FIELD_UPDATED_AT,
-                        lastPull - QuickNoteSyncConfig.PULL_OVERLAP_MILLIS,
-                    )
-                    .get().awaitTask().documents.mapNotNull { doc ->
-                        QuickNoteSyncDocument.fromMap(doc.id, doc.data)
-                    }
+                        storedLastPull - QuickNoteSyncConfig.PULL_OVERLAP_MILLIS,
+                    ).get()
+                }
+                val remoteDocs = queryTask.awaitTask().documents
+                val remote = remoteDocs.mapNotNull { doc ->
+                    QuickNoteSyncDocument.fromMap(doc.id, sanitizeFirestoreMap(doc.data.orEmpty()))
+                }
                 var applied = 0
-                var maxRemoteUpdatedAt = lastPull
+                var maxRemoteUpdatedAt = storedLastPull
                 remote.forEach { remoteNote ->
                     maxRemoteUpdatedAt = maxOf(maxRemoteUpdatedAt, remoteNote.updatedAt)
                     val existing = dao.getById(remoteNote.id)?.toDomain()
@@ -189,22 +200,53 @@ class FirestoreQuickNoteSyncManager(
                     }
                 }
                 dataStore.edit { prefs ->
-                    prefs[KEY_LAST_PULL_MILLIS] = maxOf(lastPull, pullStart, maxRemoteUpdatedAt)
+                    prefs[KEY_LAST_PULL_MILLIS] = maxOf(storedLastPull, pullStart, maxRemoteUpdatedAt)
                     prefs[KEY_LAST_SYNCED_AT] = pullStart
                 }
                 if (applied > 0) {
                     reconcileAlarms()
                 }
+
+                // PUSH REMAINING DIRTY SECOND:
+                // Only local notes that are still dirty (local is newer or newly created) are pushed.
+                // Upload pending attachments first so their URLs are in the doc push.
+                dao.getDirty().map { it.toDomain() }
+                    .filter { it.type != QuickNoteType.TEXT && it.attachmentUrl == null }
+                    .forEach { note ->
+                        val url = uploadAttachment(storage, userId, note)
+                        if (url != null) {
+                            dao.setAttachmentUrl(
+                                note.id,
+                                url,
+                                Clock.System.now().toEpochMilliseconds(),
+                            )
+                        }
+                    }
+
+                val toPush = dao.getDirty().map { it.toDomain() }
+                    .filterNot { needsAttachmentUpload(it) }
+
+                toPush.chunked(QuickNoteSyncConfig.PUSH_BATCH_SIZE).forEach { chunk ->
+                    val batch = firestore.batch()
+                    chunk.forEach { note ->
+                        batch.set(notesRef.document(note.id), QuickNoteSyncDocument.toMap(note))
+                    }
+                    batch.commit().awaitTask()
+                    dao.markClean(chunk.map { it.id }, chunk.maxOf { it.updatedAt })
+                }
+
+                // PURGE TOMBSTONES LAST:
                 val purged = purgeTombstones(storage, notesRef, pullStart)
                 consecutiveFailures = 0
                 nextRetryAtMillis = 0L
                 _syncState.value = QuickNoteSyncState(QuickNoteSyncStatus.SYNCED, pullStart)
                 Log.i(
                     TAG,
-                    "Sync succeeded: pushed=${toPush.size} pulled=${remote.size} " +
-                        "applied=$applied purged=$purged",
+                    "Sync succeeded: pulled=${remote.size} applied=$applied " +
+                        "pushed=${toPush.size} purged=$purged",
                 )
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 val offline = !isOnline()
                 recordFailure(
                     if (offline) "You're offline. Changes are saved on this device."
@@ -238,7 +280,7 @@ class FirestoreQuickNoteSyncManager(
      */
     private suspend fun purgeTombstones(
         storage: FirebaseStorage,
-        notesRef: com.google.firebase.firestore.CollectionReference,
+        notesRef: CollectionReference,
         now: Long,
     ): Int {
         val purgeable = dao.getPurgeableTombstones(now - QuickNoteRules.PURGE_AFTER_MILLIS)
@@ -250,6 +292,7 @@ class FirestoreQuickNoteSyncManager(
                     try {
                         storage.getReferenceFromUrl(url).delete().awaitTask()
                     } catch (e: Exception) {
+                        if (e is CancellationException) throw e
                         Log.w(TAG, "Blob delete failed for ${note.id}, continuing purge", e)
                     }
                 }
@@ -257,6 +300,7 @@ class FirestoreQuickNoteSyncManager(
                 dao.hardDelete(listOf(note.id))
                 purged++
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 Log.w(TAG, "Purge failed for ${note.id}; will retry next sync", e)
             }
         }
@@ -269,10 +313,11 @@ class FirestoreQuickNoteSyncManager(
     private fun isOnline(): Boolean =
         runCatching { connectivityManager.activeNetwork != null }.getOrDefault(true)
 
-    private fun needsAttachmentUpload(note: QuickNote): Boolean =
-        note.type != QuickNoteType.TEXT &&
-            note.attachmentUrl == null &&
-            note.attachmentLocalPath != null
+    private fun needsAttachmentUpload(note: QuickNote): Boolean {
+        if (note.type == QuickNoteType.TEXT || note.attachmentUrl != null) return false
+        val path = note.attachmentLocalPath ?: return false
+        return File(path).exists()
+    }
 
     private suspend fun uploadAttachment(
         storage: FirebaseStorage,
@@ -290,6 +335,7 @@ class FirestoreQuickNoteSyncManager(
             ref.putFile(Uri.fromFile(file)).awaitTask()
             ref.downloadUrl.awaitTask().toString()
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Log.w(TAG, "Attachment upload failed for ${note.id}", e)
             null
         }
@@ -320,6 +366,7 @@ class FirestoreQuickNoteSyncManager(
             Log.d(TAG, "Downloaded attachment for ${winner.id} (${bytes.size} bytes)")
             winner.copy(attachmentLocalPath = file.absolutePath)
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Log.w(TAG, "Attachment download failed for ${winner.id}", e)
             winner.copy(attachmentLocalPath = existing?.attachmentLocalPath)
         }
@@ -349,6 +396,7 @@ class FirestoreQuickNoteSyncManager(
             uid
         }
     } catch (e: Exception) {
+        if (e is CancellationException) throw e
         if (e.message?.contains("CONFIGURATION_NOT_FOUND") == true) {
             Log.w(
                 TAG,
@@ -364,11 +412,22 @@ class FirestoreQuickNoteSyncManager(
         null
     }
 
+    /** Converts Firestore timestamps in a document map to millisecond longs. */
+    private fun sanitizeFirestoreMap(map: Map<String, Any?>): Map<String, Any?> =
+        map.mapValues { (_, value) ->
+            if (value is Timestamp) {
+                value.seconds * 1000 + value.nanoseconds / 1000000
+            } else {
+                value
+            }
+        }
+
     companion object {
         private const val TAG = "QuickNoteSync"
         private const val ATTACHMENTS_SUBDIR = "quicknote_images"
         private const val SYNC_DEBOUNCE_MILLIS = 30_000L
         private val KEY_LAST_PULL_MILLIS = longPreferencesKey("last_pull_millis")
         private val KEY_LAST_SYNCED_AT = longPreferencesKey("last_synced_at")
+        private val KEY_LAST_UID = stringPreferencesKey("uid")
     }
 }

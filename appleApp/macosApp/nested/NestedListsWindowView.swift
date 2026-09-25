@@ -38,7 +38,12 @@ struct NestedListsWindowView: View {
                 .frame(minWidth: 760, idealWidth: 760, maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(minWidth: 960, minHeight: 680)
+        // Pin the outline to the light theme: the bright canvas/cream
+        // selection assume dark ink, so every component inside resolves
+        // its semantic colors (.primary/.secondary/...) to light values.
+        .preferredColorScheme(.light)
         .background(WindowAccessor(onWindow: { win in
+            win?.appearance = NSAppearance(named: .aqua)
             Task { @MainActor in state.attachWindow(win) }
         }))
         .onAppear { state.start() }
@@ -401,8 +406,11 @@ struct NestedListsWindowView: View {
                         }
                         // No vertical padding: the indent guides must run
                         // unbroken across rows. Spacing lives inside the row.
+                        // focusEffectDisabled hides the blue focus rectangle;
+                        // selection is already shown by the cream background.
                         .focusable()
                         .focused($focusedRow, equals: row.id)
+                        .focusEffectDisabled()
                         .id(row.id)
                         .contentShape(Rectangle())
                         .onTapGesture {
@@ -413,7 +421,7 @@ struct NestedListsWindowView: View {
                 }
                 .padding(.horizontal, 8)
             }
-            .background(Color(nsColor: .windowBackgroundColor))
+            .background(nestedCanvasColor)
             .scrollEdgeEffectHidden(true, for: .all)
             .onChange(of: state.selectedId) { _, id in
                 // Deferred: publishing focus/scroll state synchronously here
@@ -498,17 +506,18 @@ struct NestedListsWindowView: View {
 
     private func draftRow(depth: Int) -> some View {
         HStack(alignment: .top, spacing: 0) {
-            ForEach(0..<depth, id: \.self) { _ in
+            ForEach(0..<depth, id: \.self) { level in
                 Rectangle()
-                    .fill(Color.accentColor.opacity(0.3))
+                    .fill(nestedGuideColor(level))
                     .frame(width: 1)
                     .padding(.leading, 10)
                     .frame(width: 16, alignment: .leading)
             }
-            Image(systemName: "circle.fill").font(.system(size: 6))
-                .foregroundStyle(Color.accentColor.opacity(0.7))
+            Circle()
+                .fill(nestedDotForDepth(depth))
+                .frame(width: 7, height: 7)
                 .frame(width: 16, height: 24)
-                .padding(.top, 4)
+                .padding(.top, 2)
             TextField("New item…", text: $draftText)
                 .textFieldStyle(.roundedBorder)
                 .focused($draftFocused)

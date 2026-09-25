@@ -11,6 +11,9 @@ internal object NotificationIds {
     fun taskReminder(taskId: String): Int =
         taskId.hashCode()
 
+    fun routineReminder(routineId: String): Int =
+        60_000 + (routineId.hashCode() and 0x3fff)
+
     fun appReminder(type: String): Int = when (type) {
         DailyAppReminderWorker.TypePlan -> PlanReminder
         DailyAppReminderWorker.TypeReview -> ReviewReminder

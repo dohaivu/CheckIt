@@ -66,7 +66,7 @@ private val ReflectPeriods = listOf(
 internal fun ReflectScreen(
     state: ReflectUiState,
     viewModel: ReflectViewModel,
-    onOpenChecklist: () -> Unit = {},
+    onOpenGuidelines: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
@@ -85,10 +85,10 @@ internal fun ReflectScreen(
                     )
                 },
                 actions = {
-                    IconButton(onClick = onOpenChecklist) {
+                    IconButton(onClick = onOpenGuidelines) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ListAlt,
-                            contentDescription = "Checklists"
+                            contentDescription = "Guidelines"
                         )
                     }
                 }
@@ -125,10 +125,16 @@ internal fun ReflectScreen(
                 when (state.selectedPeriod) {
                     ReportPeriod.Habit -> {
                         val checkins = state.habitCheckins
-                        if (checkins.isEmpty()) {
+                        val routineSeries = state.routineSeries
+                        if (checkins.isEmpty() && routineSeries.isEmpty()) {
                             EmptyHabitsCard()
                         } else {
-                            HabitHeatmapSection(checkins = checkins, monthCount = 2)
+                            if (checkins.isNotEmpty()) {
+                                HabitHeatmapSection(checkins = checkins, monthCount = 2)
+                            }
+                            if (routineSeries.isNotEmpty()) {
+                                RoutineHeatmapSection(series = routineSeries, monthCount = 2)
+                            }
                         }
                     }
 

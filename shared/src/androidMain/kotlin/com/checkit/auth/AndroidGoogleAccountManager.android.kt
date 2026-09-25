@@ -7,6 +7,7 @@ import androidx.credentials.ClearCredentialStateRequest
 import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
+import com.checkit.data.NestedSyncManager
 import com.checkit.data.QuickNoteSyncManager
 import com.checkit.util.awaitTask
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
@@ -35,6 +36,7 @@ object GoogleSignInHolder {
 class AndroidGoogleAccountManager(
     appContext: Context,
     private val syncManager: QuickNoteSyncManager,
+    private val nestedSyncManager: NestedSyncManager,
 ) : GoogleAccountManager {
     private val app = appContext.applicationContext
     private val auth = FirebaseAuth.getInstance()
@@ -93,8 +95,15 @@ class AndroidGoogleAccountManager(
                 auth.signInWithCredential(firebaseCredential).awaitTask()
             }
             _state.update { it.copy(busy = false) }
-            // The UID may have changed (merge path): sync the new collection.
-            syncManager.requestSync()
+            // The UID may have changed (merge path): immediate catch-up sync
+            // of the new collection (bypasses debounce/backoff by design).
+            runCatching { syncManager.syncNow() }
+                .onFailure { Log.w(TAG, "QuickNote post-sign-in sync failed", it) }
+            // One-time nested catch-up on the explicit sign-in tap: pulls
+            // pre-existing remote rows (manual sync otherwise waits for a
+            // button tap) and uploads local rows under the new UID.
+            runCatching { nestedSyncManager.syncDocuments() }
+                .onFailure { Log.w(TAG, "Nested post-sign-in sync failed", it) }
         } catch (e: CancellationException) {
             _state.update { it.copy(busy = false) }
             throw e

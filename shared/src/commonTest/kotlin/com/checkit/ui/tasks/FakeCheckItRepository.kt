@@ -44,6 +44,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.update
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
@@ -88,6 +89,10 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
     val lastAssignedDailyPlanItemId: String get() = (nextDailyPlanItemId - 1).toString()
 
     private val dailyPlansFlow = MutableStateFlow<List<DailyPlan>>(emptyList())
+
+    /** Counts daily-plan query subscriptions; used to verify reload gating. */
+    var dailyPlansSubscriptions = 0
+        private set
     val copiedDailyPlanItems = mutableListOf<DailyPlanItem>()
     val statusUpdates = mutableListOf<Pair<String, DailyPlanItemStatus>>()
     val markedHandledItemIds = mutableListOf<String>()
@@ -166,7 +171,7 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
         boardFlow.value.notes.find { it.id == noteId }
 
     override fun observeDailyPlans(startDate: LocalDate?, endDate: LocalDate?): Flow<List<DailyPlan>> =
-        dailyPlansFlow.map { plans ->
+        dailyPlansFlow.onStart { dailyPlansSubscriptions++ }.map { plans ->
             if (startDate != null && endDate != null) {
                 plans.filter { it.date in startDate..endDate }
             } else {

@@ -34,6 +34,15 @@ interface QuickNoteSyncManager {
     val syncState: StateFlow<QuickNoteSyncState>
     fun requestSync()
     suspend fun sync()
+
+    /**
+     * Immediate sync for explicit user intent (manual refresh, sign-in
+     * catch-up). Default honors the backoff gate like [sync]; the Android
+     * implementation bypasses it so a tap never silently no-ops.
+     */
+    suspend fun syncNow() {
+        sync()
+    }
 }
 
 class NoOpQuickNoteSyncManager : QuickNoteSyncManager {

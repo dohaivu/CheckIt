@@ -1,4 +1,4 @@
-package com.checkit.checklist
+package com.checkit.data
 
 import android.content.Context
 import android.net.Uri
@@ -7,16 +7,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * Android SAF-backed [ChecklistStorage].
+ * Android SAF-backed [GuidelinesStorage].
  *
  * The folder URI comes from `ActivityResultContracts.OpenDocumentTree()` and is
- * persisted in [com.checkit.data.AppDataStore]; read access requires the
+ * persisted in [AppDataStore]; read access requires the
  * persistable URI permission taken at pick time (same pattern as backup).
  */
-class AndroidChecklistStorage(
+class AndroidGuidelinesStorage(
     private val context: Context
-) : ChecklistStorage {
-    override suspend fun listMarkdownFiles(folderUri: String): List<ChecklistDocument> =
+) : GuidelinesStorage {
+    override suspend fun listMarkdownFiles(folderUri: String): List<GuidelinesDocument> =
         withContext(Dispatchers.IO) {
             val folder = DocumentFile.fromTreeUri(context, Uri.parse(folderUri))
                 ?: return@withContext emptyList()
@@ -33,6 +33,6 @@ class AndroidChecklistStorage(
         withContext(Dispatchers.IO) {
             context.contentResolver.openInputStream(Uri.parse(documentUri))?.use { input ->
                 input.bufferedReader().use { it.readText() }
-            } ?: error("Cannot read checklist file")
+            } ?: error("Cannot read guidelines file")
         }
 }

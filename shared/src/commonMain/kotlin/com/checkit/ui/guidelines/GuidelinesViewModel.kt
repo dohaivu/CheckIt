@@ -1,9 +1,9 @@
-package com.checkit.ui.checklist
+package com.checkit.ui.guidelines
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.checkit.checklist.ChecklistDocument
-import com.checkit.checklist.ChecklistStorage
+import com.checkit.data.GuidelinesDocument
+import com.checkit.data.GuidelinesStorage
 import com.checkit.data.SettingsRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,10 +14,10 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-data class ChecklistUiState(
+data class GuidelinesUiState(
     val folderUri: String? = null,
     val folderName: String? = null,
-    val documents: List<ChecklistDocument> = emptyList(),
+    val documents: List<GuidelinesDocument> = emptyList(),
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val selectedUri: String? = null,
@@ -29,12 +29,12 @@ data class ChecklistUiState(
     val hasFolder: Boolean get() = folderUri != null
 }
 
-class ChecklistViewModel(
-    private val storage: ChecklistStorage,
+class GuidelinesViewModel(
+    private val storage: GuidelinesStorage,
     private val settingsRepository: SettingsRepository
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow(ChecklistUiState())
-    val uiState: StateFlow<ChecklistUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow(GuidelinesUiState())
+    val uiState: StateFlow<GuidelinesUiState> = _uiState.asStateFlow()
 
     private var listJob: Job? = null
     private var readJob: Job? = null
@@ -43,7 +43,7 @@ class ChecklistViewModel(
     init {
         viewModelScope.launch {
             settingsRepository.settings
-                .map { it.checklistFolderUri to it.checklistFolderName }
+                .map { it.guidelinesFolderUri to it.guidelinesFolderName }
                 .distinctUntilChanged()
                 .collect { (folderUri, folderName) ->
                     val changed = folderUri != lastFolderUri
@@ -81,14 +81,14 @@ class ChecklistViewModel(
                         it.copy(
                             documents = emptyList(),
                             isLoading = false,
-                            errorMessage = error.message ?: "Cannot list checklist files"
+                            errorMessage = error.message ?: "Cannot list guidelines files"
                         )
                     }
                 }
         }
     }
 
-    fun openDocument(document: ChecklistDocument) {
+    fun openDocument(document: GuidelinesDocument) {
         readJob?.cancel()
         _uiState.update {
             it.copy(
@@ -113,7 +113,7 @@ class ChecklistViewModel(
                         if (it.selectedUri != document.uri) return@update it
                         it.copy(
                             selectedIsLoading = false,
-                            selectedError = error.message ?: "Cannot read checklist file"
+                            selectedError = error.message ?: "Cannot read guidelines file"
                         )
                     }
                 }
@@ -123,7 +123,7 @@ class ChecklistViewModel(
     fun retrySelected() {
         val uri = _uiState.value.selectedUri ?: return
         val name = _uiState.value.selectedName ?: return
-        openDocument(ChecklistDocument(uri = uri, name = name))
+        openDocument(GuidelinesDocument(uri = uri, name = name))
     }
 
     fun closeDocument() {
@@ -141,7 +141,7 @@ class ChecklistViewModel(
 
     fun setFolder(uri: String?, name: String?) {
         viewModelScope.launch {
-            settingsRepository.setChecklistFolder(uri, name)
+            settingsRepository.setGuidelinesFolder(uri, name)
         }
     }
 

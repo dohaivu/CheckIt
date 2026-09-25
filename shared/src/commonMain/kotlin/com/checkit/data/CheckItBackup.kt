@@ -31,6 +31,8 @@ data class CheckItBackup(
     val nestedDocuments: List<NestedDocumentEntity> = emptyList(),
     val nestedListItems: List<NestedListItemEntity> = emptyList(),
     val nestedItemTags: List<NestedItemTagEntity> = emptyList(),
+    val routines: List<RoutineEntity> = emptyList(),
+    val routineLogs: List<RoutineLogEntity> = emptyList(),
     val quickNotes: List<QuickNoteEntity> = emptyList(),
 ) {
     companion object {

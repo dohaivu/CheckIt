@@ -11,7 +11,7 @@ data class ReminderSettingsUiState(
     val reviewEnabled: Boolean = true,
     val reviewTimeMinutes: Int = 21 * 60,
     val checkInEnabled: Boolean = true,
-    val idleThresholdMinutes: Int = 60,
+    val idleThresholdMinutes: Int = 30,
     val scheduleEnabled: Boolean = true,
     val checkInLastShownAtMillis: Long? = null,
 )
@@ -27,13 +27,12 @@ data class SettingsUiState(
     val backupFolderUri: String? = null,
     val backupFolderName: String? = null,
     val lastBackupAtMillis: Long? = null,
-    val checklistFolderUri: String? = null,
-    val checklistFolderName: String? = null,
+    val guidelinesFolderUri: String? = null,
+    val guidelinesFolderName: String? = null,
 )
 
 enum class TagUsageSort {
     MostUsed,
-    HighestSpending,
     RecentlyUsed,
     Alphabetical
 }

@@ -87,8 +87,13 @@ final class QuickNoteGoogleSignIn: ObservableObject {
             } else {
                 _ = try await Auth.auth().signIn(with: credential)
             }
-            // UID may have changed (merge path): sync the new collection.
-            QuickNoteFirestoreSync.shared.requestSync()
+            // UID may have changed (merge path): immediate catch-up sync
+            // of the new collection (explicit: bypasses debounce/backoff).
+            QuickNoteFirestoreSync.shared.syncNow()
+            // One-time nested catch-up on the explicit sign-in tap: pulls
+            // pre-existing remote rows (manual sync otherwise waits for a
+            // button tap) and uploads local rows under the new UID.
+            await NestedFirestoreSync.shared.syncAllDocuments()
         } catch {
             if (error as NSError).code == GIDSignInError.canceled.rawValue {
                 return // user dismissed the browser; not an error
