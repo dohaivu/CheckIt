@@ -2,8 +2,8 @@ package com.checkit.ui.guidelines
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.checkit.guidelines.GuidelinesDocument
-import com.checkit.guidelines.GuidelinesStorage
+import com.checkit.data.GuidelinesDocument
+import com.checkit.data.GuidelinesStorage
 import com.checkit.data.SettingsRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow

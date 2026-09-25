@@ -91,6 +91,7 @@ import com.checkit.domain.NoteItem
 import com.checkit.domain.Period
 import com.checkit.domain.PeriodGoal
 import com.checkit.domain.SprintState
+import com.checkit.domain.resolveRoutineTodayChecks
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.hasEndTime
@@ -413,7 +414,11 @@ internal fun MyDayScreen(
 
                                 MyDayView.Routine -> RoutineTab(
                                     routines = state.routines,
-                                    checks = state.routineToday.checks,
+                                    checks = resolveRoutineTodayChecks(
+                                        storedEpochDay = state.routineToday.epochDay,
+                                        storedChecks = state.routineToday.checks,
+                                        todayEpochDay = state.today.toEpochDays().toInt()
+                                    ),
                                     today = state.today,
                                     onToggleStep = viewModel::toggleRoutineStep,
                                     onSaveRoutine = viewModel::saveRoutine,

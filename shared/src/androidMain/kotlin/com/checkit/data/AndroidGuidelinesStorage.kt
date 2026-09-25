@@ -1,4 +1,4 @@
-package com.checkit.guidelines
+package com.checkit.data
 
 import android.content.Context
 import android.net.Uri
@@ -10,7 +10,7 @@ import kotlinx.coroutines.withContext
  * Android SAF-backed [GuidelinesStorage].
  *
  * The folder URI comes from `ActivityResultContracts.OpenDocumentTree()` and is
- * persisted in [com.checkit.data.AppDataStore]; read access requires the
+ * persisted in [AppDataStore]; read access requires the
  * persistable URI permission taken at pick time (same pattern as backup).
  */
 class AndroidGuidelinesStorage(

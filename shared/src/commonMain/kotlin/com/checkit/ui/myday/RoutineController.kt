@@ -16,6 +16,9 @@ internal class RoutineController(
 ) {
     fun start() {
         scope.launch {
+            // Day rollover first: without this, yesterday's checks render
+            // until the first toggle of the day.
+            runCatching { deps.resetStaleRoutineToday() }
             combine(
                 deps.observeRoutines(),
                 deps.observeRoutineToday()

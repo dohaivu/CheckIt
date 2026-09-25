@@ -1,4 +1,4 @@
-package com.checkit.guidelines
+package com.checkit.data
 
 /**
  * A single markdown file inside the user-selected guidelines folder.

@@ -16,6 +16,7 @@ import com.checkit.domain.usecase.ObserveNotesForDateUseCase
 import com.checkit.domain.usecase.ObservePeriodGoalsUseCase
 import com.checkit.domain.usecase.ObserveRoutineTodayUseCase
 import com.checkit.domain.usecase.ObserveRoutinesUseCase
+import com.checkit.domain.usecase.ResetStaleRoutineTodayUseCase
 import com.checkit.domain.usecase.DeleteRoutineUseCase
 import com.checkit.domain.usecase.ObserveTagsUseCase
 import com.checkit.domain.usecase.ObserveTasksForDateUseCase
@@ -52,6 +53,7 @@ internal class MyDayDependencies(
     val sprintTransition: SprintTransitionUseCase,
     val observeRoutines: ObserveRoutinesUseCase,
     val observeRoutineToday: ObserveRoutineTodayUseCase,
+    val resetStaleRoutineToday: ResetStaleRoutineTodayUseCase,
     val saveRoutine: SaveRoutineUseCase,
     val deleteRoutine: DeleteRoutineUseCase,
     val toggleRoutineStep: ToggleRoutineStepUseCase

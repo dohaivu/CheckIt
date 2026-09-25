@@ -30,7 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.checkit.guidelines.GuidelinesDocument
+import com.checkit.data.GuidelinesDocument
 import com.checkit.ui.components.AppHorizontalDivider
 import com.checkit.ui.components.TinyTopAppBar
 

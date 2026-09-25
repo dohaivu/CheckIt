@@ -32,6 +32,25 @@ class ObserveRoutineTodayUseCase(
     operator fun invoke(): Flow<RoutineTodayState> = todayStore.observe()
 }
 
+/**
+ * Day rollover for the transient today-state. The stored checks are only
+ * meaningful for [RoutineTodayState.epochDay]; when the app loads on a new
+ * day this drops the stale checks so observers never render yesterday's
+ * state. Idempotent: a fresh store is left untouched.
+ */
+class ResetStaleRoutineTodayUseCase(
+    private val todayStore: RoutineTodayStore
+) {
+    suspend operator fun invoke() {
+        val todayEpochDay = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+            .toEpochDays().toInt()
+        val current = todayStore.observe().first()
+        if (current.epochDay != todayEpochDay) {
+            todayStore.save(todayEpochDay, emptyMap())
+        }
+    }
+}
+
 class ObserveRoutineLogsUseCase(
     private val repository: RoutineRepository
 ) {

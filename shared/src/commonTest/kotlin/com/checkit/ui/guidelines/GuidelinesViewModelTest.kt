@@ -1,8 +1,8 @@
 package com.checkit.ui.guidelines
 
-import com.checkit.guidelines.GuidelinesDocument
-import com.checkit.guidelines.GuidelinesStorage
-import com.checkit.guidelines.filterMarkdownDocuments
+import com.checkit.data.GuidelinesDocument
+import com.checkit.data.GuidelinesStorage
+import com.checkit.data.filterMarkdownDocuments
 import com.checkit.data.UserSettings
 import com.checkit.ui.tasks.FakeSettingsRepository
 import kotlinx.coroutines.Dispatchers

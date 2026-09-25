@@ -5,8 +5,8 @@ import com.checkit.data.NoOpQuickNoteSyncManager
 import com.checkit.data.NestedSyncManager
 import com.checkit.auth.GoogleAccountManager
 import com.checkit.auth.NoOpGoogleAccountManager
-import com.checkit.guidelines.GuidelinesStorage
-import com.checkit.guidelines.NoOpGuidelinesStorage
+import com.checkit.data.GuidelinesStorage
+import com.checkit.data.NoOpGuidelinesStorage
 import com.checkit.data.QuickNoteSyncManager
 import com.checkit.notifications.NoOpQuickNoteReminderScheduler
 import com.checkit.notifications.NoOpRoutineReminderScheduler

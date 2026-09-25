@@ -75,6 +75,7 @@ import com.checkit.domain.usecase.ObserveWorkingTasksUseCase
 import com.checkit.domain.usecase.ObserveRoutineLogsUseCase
 import com.checkit.domain.usecase.ObserveRoutineTodayUseCase
 import com.checkit.domain.usecase.ObserveRoutinesUseCase
+import com.checkit.domain.usecase.ResetStaleRoutineTodayUseCase
 import com.checkit.domain.usecase.SaveRoutineUseCase
 import com.checkit.domain.usecase.ToggleRoutineStepUseCase
 import com.checkit.domain.usecase.UpdateNoteStatusUseCase
@@ -306,6 +307,7 @@ val provideInteractorModule = module {
     single<RoutineTodayStore> { DataStoreRoutineTodayStore(get()) }
     single { ObserveRoutinesUseCase(get()) }
     single { ObserveRoutineTodayUseCase(get()) }
+    single { ResetStaleRoutineTodayUseCase(get()) }
     single { ObserveRoutineLogsUseCase(get()) }
     single { SaveRoutineUseCase(get(), get()) }
     single { DeleteRoutineUseCase(get(), get(), get()) }
@@ -395,6 +397,7 @@ val provideViewModelModule = module {
             smartSchedule = get(),
             observeRoutines = get(),
             observeRoutineToday = get(),
+            resetStaleRoutineToday = get(),
             saveRoutine = get(),
             deleteRoutine = get(),
             toggleRoutineStep = get(),

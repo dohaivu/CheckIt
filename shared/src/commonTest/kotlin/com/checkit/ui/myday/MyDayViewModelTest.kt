@@ -25,6 +25,7 @@ import com.checkit.domain.usecase.DeleteRoutineUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveJournalEntriesUseCase
 import com.checkit.domain.usecase.ObserveRoutineTodayUseCase
+import com.checkit.domain.usecase.ResetStaleRoutineTodayUseCase
 import com.checkit.domain.usecase.ObserveRoutinesUseCase
 import com.checkit.domain.usecase.GetTaskUseCase
 import com.checkit.domain.SprintManager
@@ -114,6 +115,7 @@ class MyDayViewModelTest {
             smartSchedule = SmartScheduleDailyPlanUseCase(repository),
             observeRoutines = ObserveRoutinesUseCase(routineRepository),
             observeRoutineToday = ObserveRoutineTodayUseCase(routineTodayStore),
+            resetStaleRoutineToday = ResetStaleRoutineTodayUseCase(routineTodayStore),
             saveRoutine = SaveRoutineUseCase(routineRepository, routineReminderScheduler),
             deleteRoutine = DeleteRoutineUseCase(routineRepository, routineTodayStore, routineReminderScheduler),
             toggleRoutineStep = ToggleRoutineStepUseCase(routineRepository, routineTodayStore),

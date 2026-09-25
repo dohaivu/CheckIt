@@ -2,8 +2,8 @@ package com.checkit.infrastructure
 
 import com.checkit.auth.AndroidGoogleAccountManager
 import com.checkit.auth.GoogleAccountManager
-import com.checkit.guidelines.AndroidGuidelinesStorage
-import com.checkit.guidelines.GuidelinesStorage
+import com.checkit.data.AndroidGuidelinesStorage
+import com.checkit.data.GuidelinesStorage
 import com.checkit.data.AndroidBackupStorage
 import com.checkit.data.FirestoreNestedSyncManager
 import com.checkit.data.FirestoreQuickNoteSyncManager

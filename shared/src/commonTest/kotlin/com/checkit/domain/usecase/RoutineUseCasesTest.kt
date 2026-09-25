@@ -167,6 +167,31 @@ class RoutineUseCasesTest {
         assertTrue(scheduler.scheduled.isEmpty())
     }
 
+    @Test
+    fun resetStaleTodayClearsPreviousDayChecks() = runTest {
+        val todayEpoch = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+            .toEpochDays().toInt()
+        val store = FakeRoutineTodayStore(
+            RoutineTodayState(epochDay = todayEpoch - 1, checks = mapOf("r1" to setOf("s1")))
+        )
+        ResetStaleRoutineTodayUseCase(store)()
+
+        val state = store.observe().first()
+        assertEquals(todayEpoch, state.epochDay)
+        assertTrue(state.checks.isEmpty())
+    }
+
+    @Test
+    fun resetStaleTodayLeavesFreshStateUntouched() = runTest {
+        val todayEpoch = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+            .toEpochDays().toInt()
+        val fresh = RoutineTodayState(epochDay = todayEpoch, checks = mapOf("r1" to setOf("s1")))
+        val store = FakeRoutineTodayStore(fresh)
+        ResetStaleRoutineTodayUseCase(store)()
+
+        assertEquals(fresh, store.observe().first())
+    }
+
     private fun routineWithSteps(id: String, stepIds: List<String>) = Routine(
         id = id,
         title = "Routine $id",
