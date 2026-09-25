@@ -37,9 +37,9 @@ import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -110,6 +110,20 @@ internal fun RoutineTab(
     modifier: Modifier = Modifier
 ) {
     var editor by remember { mutableStateOf<RoutineEditorState?>(null) }
+    val todayRoutines = remember(routines, today) {
+        routines.filter { isRoutineScheduled(today, it.activeWeekdays) }
+    }
+    val totalSteps = remember(todayRoutines) { todayRoutines.sumOf { it.steps.size } }
+    val doneSteps = remember(todayRoutines, checks) {
+        todayRoutines.sumOf { routine -> routine.steps.count { it.id in checks[routine.id].orEmpty() } }
+    }
+    val overallPercent = remember(totalSteps, doneSteps) {
+        if (totalSteps == 0) 0 else (doneSteps * 100 / totalSteps).coerceIn(0, 100)
+    }
+    val animatedOverallProgress by animateFloatAsState(
+        targetValue = overallPercent / 100f,
+        label = "routineOverallProgress"
+    )
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
@@ -124,33 +138,53 @@ internal fun RoutineTab(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (routines.isNotEmpty()) {
-                    Text(
-                        text = "${routines.size} ${if (routines.size == 1) "routine" else "routines"}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                } else {
-                    Spacer(modifier = Modifier.width(1.dp))
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (routines.isNotEmpty()) {
+                        Text(
+                            text = if (todayRoutines.isNotEmpty()) {
+                                "$doneSteps of $totalSteps steps • $overallPercent%"
+                            } else {
+                                "Nothing scheduled today"
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.width(1.dp))
+                    }
+                    if (todayRoutines.isNotEmpty() && totalSteps > 0) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(4.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .fillMaxWidth(animatedOverallProgress)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.primary)
+                            )
+                        }
+                    }
                 }
-                FilledTonalButton(
+                IconButton(
                     onClick = {
                         editor = RoutineEditorState(id = null, title = "", description = "", reminderMinutes = null, activeWeekdays = AllWeekdays, steps = emptyList())
                     },
                     shape = CircleShape,
-                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
+                    modifier = Modifier.size(32.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "New routine",
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.SemiBold
+                        contentDescription = "New routine",
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
             }
@@ -415,7 +449,7 @@ private fun RoutineCard(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(5.dp)
+                            .height(4.dp)
                             .clip(CircleShape)
                             .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
                     ) {
