@@ -205,7 +205,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             return $0.id < $1.id
         }.first
         let firstLine = top.map { String($0.content.split(separator: "\n", maxSplits: 1).first ?? "") } ?? ""
-        setStatusText(count: notes.count, text: String(firstLine.prefix(20)))
+        setStatusText(count: notes.count, text: String(firstLine.prefix(30)))
     }
 
     private func setCountdownText(time: String, text: String) {
