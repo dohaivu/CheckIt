@@ -49,6 +49,16 @@ internal class RoutineController(
         }
     }
 
+    /**
+     * Re-runs the day rollover on foreground return. Idempotent: a fresh
+     * store is untouched, so this is safe to call on every resume.
+     */
+    fun refreshToday() {
+        scope.launch {
+            runCatching { deps.resetStaleRoutineToday() }
+        }
+    }
+
     fun saveRoutine(
         id: String?,
         title: String,

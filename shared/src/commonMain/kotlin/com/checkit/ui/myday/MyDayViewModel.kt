@@ -130,6 +130,14 @@ class MyDayViewModel(
 
     // Routines
     fun toggleRoutineStep(routineId: String, stepId: String) = routines.toggleStep(routineId, stepId)
+    /**
+     * Re-pins all day-scoped queries to the current day; called on
+     * foreground return so a new day loads without an app restart.
+     */
+    fun refreshToday() {
+        loader.start()
+        routines.refreshToday()
+    }
     fun saveRoutine(
         id: String?,
         title: String,

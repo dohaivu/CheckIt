@@ -156,6 +156,7 @@ fun CheckItApp(
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 runAutoTodayTasks()
+                viewModels.myDay.refreshToday()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)

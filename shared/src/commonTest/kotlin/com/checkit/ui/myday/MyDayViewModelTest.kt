@@ -270,6 +270,38 @@ class MyDayViewModelTest {
     }
 
     @Test
+    fun refreshTodayReloadsPlansWithoutDuplication() = runTest(dispatcher) {
+        val today = today()
+        repository.setDailyPlans(
+            listOf(
+                DailyPlan(
+                    date = today,
+                    items = listOf(
+                        DailyPlanItem(
+                            id = "42",
+                            dateEpochDays = today.toEpochDays().toInt(),
+                            title = "Original",
+                            source = DailyPlanItemSource.MyDayTask,
+                            status = DailyPlanItemStatus.Planned,
+                            sortOrder = 0,
+                            addedAtMillis = 0L
+                        )
+                    )
+                )
+            )
+        )
+        assertEquals(1, repository.dailyPlansSubscriptions)
+
+        // Same-day refresh is gated: no resubscription, state stays consistent.
+        viewModel.refreshToday()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(1, repository.dailyPlansSubscriptions)
+        assertEquals(listOf("Original"), viewModel.uiState.value.plan?.items?.map { it.title })
+        assertEquals(false, viewModel.uiState.value.isLoading)
+    }
+
+    @Test
     fun duplicateDailyPlanItemCopiesFieldsAndPlacesAtNextAvailableSlot() = runTest(dispatcher) {
         val today = today()
         repository.setDailyPlans(

@@ -64,7 +64,8 @@ data class MyDayUiState(
     val routineToday: RoutineTodayState = RoutineTodayState(epochDay = null),
     val isLoading: Boolean = true
 ) {
-    val today: LocalDate = today()
+    /** Always read live: a construction-time snapshot would go stale after midnight. */
+    val today: LocalDate get() = today()
     val plan: DailyPlan? = dailyPlans.firstOrNull { it.date == today }
     val items: List<DailyPlanItem> = plan?.items.orEmpty()
     val plannedItems: List<DailyPlanItem> = items.filter { it.status != DailyPlanItemStatus.Done }
