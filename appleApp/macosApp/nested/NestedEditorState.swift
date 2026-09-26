@@ -65,7 +65,9 @@ final class NestedEditorState: ObservableObject {
     @Published var availableTags: [TagItem] = []
     @Published var tree: NestedDocumentTree?
     @Published var selectedDocId: String = ""
-    @Published var zoomPath: [String] = []
+    @Published var zoomPath: [String] = [] {
+        didSet { recomputeVisibleRows() }
+    }
     @Published var selectedId: String? = nil
     @Published var editingId: String? = nil
     @Published var draft: NestedDraft? = nil
@@ -73,6 +75,7 @@ final class NestedEditorState: ObservableObject {
     @Published var lastError: String? = nil
     @Published var draggedId: String? = nil
     @Published var dropTarget: NestedDropTarget? = nil
+    @Published private(set) var visibleRows: [NestedRow] = []
 
     private let helper: NestedAppleHelper
     private var docsSub: NestedAppleSubscription?
@@ -129,12 +132,24 @@ final class NestedEditorState: ObservableObject {
         detachWindow()
         hostWindow = window
         guard window != nil else { return }
-        tabMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+        tabMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .leftMouseUp]) { [weak self] event in
             guard let self,
                   let window = self.hostWindow,
                   event.window == window,
-                  window.attachedSheet == nil,
-                  event.keyCode == 48, // Tab
+                  window.attachedSheet == nil
+            else { return event }
+
+            if event.type == .leftMouseUp {
+                if self.draggedId != nil || self.dropTarget != nil {
+                    MainActor.assumeIsolated {
+                        self.draggedId = nil
+                        self.dropTarget = nil
+                    }
+                }
+                return event
+            }
+
+            guard event.keyCode == 48, // Tab
                   !(window.firstResponder is NSText)
             else { return event }
             let handled = MainActor.assumeIsolated { self.handleTabKey(shift: event.modifierFlags.contains(.shift)) }
@@ -224,8 +239,11 @@ final class NestedEditorState: ObservableObject {
         return nil
     }
 
-    var visibleRows: [NestedRow] {
-        guard let tree else { return [] }
+    private func recomputeVisibleRows() {
+        guard let tree else {
+            visibleRows = []
+            return
+        }
         let roots: [NestedItemNode]
         if let zid = zoomPath.last, let focused = nodeIndex[zid] {
             roots = [focused]
@@ -242,7 +260,7 @@ final class NestedEditorState: ObservableObject {
                 }
             }
         }
-        return out
+        visibleRows = out
     }
 
     var indexById: [String: NestedItemNode] {
@@ -258,11 +276,13 @@ final class NestedEditorState: ObservableObject {
         }
         nodeIndex = map
         tree = newTree
+        recomputeVisibleRows()
     }
 
     private func clearTree() {
         nodeIndex = [:]
         tree = nil
+        recomputeVisibleRows()
     }
 
     func summary(for id: String) -> NestedMetricSummary? {

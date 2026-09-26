@@ -398,6 +398,7 @@ struct NestedListsWindowView: View {
                         VStack(alignment: .leading, spacing: 0) {
                             if state.dropTarget?.displayRowId == row.id && !state.dropTarget!.below {
                                 DropIndicatorLine(depth: state.dropTarget!.depth)
+                                    .transition(.opacity)
                             }
                             NestedRowView(
                                 state: state,
@@ -406,6 +407,7 @@ struct NestedListsWindowView: View {
                             )
                             if state.dropTarget?.displayRowId == row.id && state.dropTarget!.below {
                                 DropIndicatorLine(depth: state.dropTarget!.depth)
+                                    .transition(.opacity)
                             }
                             if state.draft?.anchorId == row.id, let d = state.draft {
                                 draftRow(depth: d.depth)

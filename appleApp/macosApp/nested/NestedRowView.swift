@@ -87,12 +87,16 @@ func nestedDotForDepth(_ depth: Int) -> Color {
     nestedDepthSolids[depth % nestedDepthSolids.count]
 }
 
-func nestedDateLabel(startDays: Int64?, endDays: Int64?) -> String? {
-    guard startDays != nil || endDays != nil else { return nil }
+private let nestedDateFormatter: DateFormatter = {
     let fmt = DateFormatter()
     fmt.dateStyle = .medium
     fmt.timeStyle = .none
-    func s(_ d: Int64) -> String { fmt.string(from: nestedDate(fromEpochDays: d)) }
+    return fmt
+}()
+
+func nestedDateLabel(startDays: Int64?, endDays: Int64?) -> String? {
+    guard startDays != nil || endDays != nil else { return nil }
+    func s(_ d: Int64) -> String { nestedDateFormatter.string(from: nestedDate(fromEpochDays: d)) }
     switch (startDays, endDays) {
     case let (.some(a), .some(b)): return a == b ? s(a) : "\(s(a)) → \(s(b))"
     case let (.some(a), nil): return "from \(s(a))"
@@ -223,7 +227,6 @@ struct NestedRowView: View {
             .background(rowBackground)
             .clipShape(RoundedRectangle(cornerRadius: 6))
             .contentShape(Rectangle())
-            .onTapGesture { state.select(id: item.id) }
         }
         .background(alignment: .topLeading) {
             // Guide continuation from the toggle down through the children.
@@ -243,15 +246,18 @@ struct NestedRowView: View {
         .opacity(state.draggedId == item.id ? 0.35 : 1.0)
         .background(
             GeometryReader { geo in
-                Color.clear.preference(key: NestedRowHeightKey.self, value: geo.size.height)
+                Color.clear
+                    .onAppear { rowHeight = geo.size.height }
+                    .onChange(of: geo.size.height) { _, newH in
+                        if abs(rowHeight - newH) > 1 { rowHeight = newH }
+                    }
             }
         )
-        .onPreferenceChange(NestedRowHeightKey.self) { h in
-            rowHeight = h
-        }
-        .onDrag {
+        .onDrag({
             state.draggedId = item.id
             return NSItemProvider(object: "nested:\(item.id)" as NSString)
+        }) {
+            dragPreview
         }
         .onDrop(
             of: [.text],
@@ -261,6 +267,23 @@ struct NestedRowView: View {
                 rowHeight: rowHeight
             )
         )
+    }
+
+    private var dragPreview: some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(nestedDotForDepth(row.depth))
+                .frame(width: 7, height: 7)
+            Text(item.text.isEmpty ? "Untitled item" : item.text)
+                .font(nestedRowFont(item.textStyle.name))
+                .foregroundStyle(nestedTextColor)
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(nestedSelectedColor)
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+        .shadow(color: .black.opacity(0.18), radius: 4, y: 2)
     }
 
     private var nestedTextColor: Color {
@@ -413,17 +436,11 @@ struct DropIndicatorLine: View {
         .frame(height: 8)
         .padding(.vertical, 1)
         .background(nestedCanvasColor)
+        .animation(.spring(response: 0.22, dampingFraction: 0.82), value: depth)
     }
 }
 
-// MARK: - Drop Delegates & Preference Keys
-
-private struct NestedRowHeightKey: PreferenceKey {
-    static var defaultValue: CGFloat = 32
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
-    }
-}
+// MARK: - Drop Delegates
 
 struct NestedRowDropDelegate: DropDelegate {
     let row: NestedRow
