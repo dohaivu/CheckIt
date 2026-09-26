@@ -14,6 +14,7 @@
 import SwiftUI
 import AppKit
 import Shared
+import UniformTypeIdentifiers
 
 struct NestedListsWindowView: View {
     @StateObject private var state = NestedEditorState()
@@ -395,11 +396,17 @@ struct NestedListsWindowView: View {
                     }
                     ForEach(rows) { row in
                         VStack(alignment: .leading, spacing: 0) {
+                            if state.dropTarget?.displayRowId == row.id && !state.dropTarget!.below {
+                                DropIndicatorLine(depth: state.dropTarget!.depth)
+                            }
                             NestedRowView(
                                 state: state,
                                 row: row,
                                 isEditing: state.editingId == row.id
                             )
+                            if state.dropTarget?.displayRowId == row.id && state.dropTarget!.below {
+                                DropIndicatorLine(depth: state.dropTarget!.depth)
+                            }
                             if state.draft?.anchorId == row.id, let d = state.draft {
                                 draftRow(depth: d.depth)
                             }
@@ -417,6 +424,15 @@ struct NestedListsWindowView: View {
                             state.select(id: row.id)
                             focusedRow = row.id
                         }
+                    }
+                    if !rows.isEmpty {
+                        Color.clear
+                            .frame(height: 60)
+                            .contentShape(Rectangle())
+                            .onDrop(
+                                of: [.text],
+                                delegate: OutlineBottomDropDelegate(state: state)
+                            )
                     }
                 }
                 // Cap the working column and center it: fullscreen would

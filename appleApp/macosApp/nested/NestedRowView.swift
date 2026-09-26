@@ -109,6 +109,7 @@ struct NestedRowView: View {
     let isEditing: Bool
 
     @State private var editText = ""
+    @State private var rowHeight: CGFloat = 32
     @FocusState private var fieldFocused: Bool
 
     private var item: NestedListItem { row.node.item }
@@ -239,27 +240,27 @@ struct NestedRowView: View {
             }
         }
         .background(nestedCanvasColor)
-        .onDrag {
-            NSItemProvider(object: "nested:\(item.id)" as NSString)
-        }
-        .onDrop(of: [.text], isTargeted: nil) { providers in
-            guard let provider = providers.first else { return false }
-            _ = provider.loadObject(ofClass: NSString.self) { payload, _ in
-                guard let s = payload as? String, s.hasPrefix("nested:")
-                else { return }
-                let dragged = String(s.dropFirst("nested:".count))
-                DispatchQueue.main.async {
-                    // Option held while dropping = nest as child; else sibling gap.
-                    let opts = NSEvent.modifierFlags.contains(.option)
-                    if opts {
-                        state.dropAsChild(draggedId: dragged, onto: item.id)
-                    } else {
-                        state.drop(draggedId: dragged, onto: item.id)
-                    }
-                }
+        .opacity(state.draggedId == item.id ? 0.35 : 1.0)
+        .background(
+            GeometryReader { geo in
+                Color.clear.preference(key: NestedRowHeightKey.self, value: geo.size.height)
             }
-            return true
+        )
+        .onPreferenceChange(NestedRowHeightKey.self) { h in
+            rowHeight = h
         }
+        .onDrag {
+            state.draggedId = item.id
+            return NSItemProvider(object: "nested:\(item.id)" as NSString)
+        }
+        .onDrop(
+            of: [.text],
+            delegate: NestedRowDropDelegate(
+                row: row,
+                state: state,
+                rowHeight: rowHeight
+            )
+        )
     }
 
     private var nestedTextColor: Color {
@@ -382,5 +383,190 @@ struct NestedRowView: View {
         if let t = m.targetValue, !t.isEmpty { s += "/\(t)" }
         if let u = m.displayUnit() { s += " \(u)" }
         return s.trimmingCharacters(in: .whitespaces)
+    }
+}
+
+// MARK: - Drop Indicator
+
+struct DropIndicatorLine: View {
+    let depth: Int
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 0) {
+            ForEach(0..<depth, id: \.self) { level in
+                Rectangle()
+                    .fill(nestedGuideColor(level))
+                    .frame(width: 1)
+                    .padding(.leading, 10)
+                    .frame(width: 16, alignment: .leading)
+            }
+            Circle()
+                .fill(Color.accentColor)
+                .frame(width: 7, height: 7)
+                .frame(width: 16)
+                .padding(.leading, 3)
+            Capsule()
+                .fill(Color.accentColor)
+                .frame(height: 2.5)
+                .padding(.trailing, 12)
+        }
+        .frame(height: 8)
+        .padding(.vertical, 1)
+        .background(nestedCanvasColor)
+    }
+}
+
+// MARK: - Drop Delegates & Preference Keys
+
+private struct NestedRowHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 32
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
+struct NestedRowDropDelegate: DropDelegate {
+    let row: NestedRow
+    let state: NestedEditorState
+    let rowHeight: CGFloat
+
+    func validateDrop(info: DropInfo) -> Bool {
+        info.hasItemsConforming(to: [.text])
+    }
+
+    func dropEntered(info: DropInfo) {
+        updateTarget(info: info)
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        updateTarget(info: info)
+        if state.dropTarget != nil {
+            return DropProposal(operation: .move)
+        } else {
+            return DropProposal(operation: .forbidden)
+        }
+    }
+
+    func dropExited(info: DropInfo) {
+        if state.dropTarget?.displayRowId == row.id {
+            state.clearDropTarget()
+        }
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        guard let provider = info.itemProviders(for: [.text]).first else {
+            state.clearDropTarget()
+            return false
+        }
+
+        let isBelow = info.location.y > (rowHeight / 2)
+        let locX = info.location.x
+        let currentTarget = state.dropTarget
+
+        _ = provider.loadObject(ofClass: NSString.self) { payload, _ in
+            guard let s = payload as? String, s.hasPrefix("nested:") else {
+                DispatchQueue.main.async { state.clearDropTarget() }
+                return
+            }
+            let dragged = String(s.dropFirst("nested:".count))
+            DispatchQueue.main.async {
+                let target = currentTarget ?? state.resolveDropTarget(
+                    hoveredRow: row,
+                    isBelow: isBelow,
+                    pointerX: locX,
+                    draggedItemId: dragged
+                )
+                if let target = target {
+                    state.executeDrop(target: target, draggedId: dragged)
+                } else {
+                    state.clearDropTarget()
+                }
+            }
+        }
+        return true
+    }
+
+    private func updateTarget(info: DropInfo) {
+        let isBelow = info.location.y > (rowHeight / 2)
+        state.updateDropTarget(
+            hoveredRow: row,
+            isBelow: isBelow,
+            pointerX: info.location.x,
+            draggedItemId: nil
+        )
+    }
+}
+
+struct OutlineBottomDropDelegate: DropDelegate {
+    let state: NestedEditorState
+
+    func validateDrop(info: DropInfo) -> Bool {
+        info.hasItemsConforming(to: [.text])
+    }
+
+    func dropEntered(info: DropInfo) {
+        updateTarget(info: info)
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        updateTarget(info: info)
+        return state.dropTarget != nil ? DropProposal(operation: .move) : DropProposal(operation: .forbidden)
+    }
+
+    func dropExited(info: DropInfo) {
+        if state.dropTarget?.below == true {
+            state.clearDropTarget()
+        }
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        guard let provider = info.itemProviders(for: [.text]).first else {
+            state.clearDropTarget()
+            return false
+        }
+        let currentTarget = state.dropTarget
+        let locX = info.location.x
+        let rows = state.visibleRows
+        let lastRow = rows.last
+
+        _ = provider.loadObject(ofClass: NSString.self) { payload, _ in
+            guard let s = payload as? String, s.hasPrefix("nested:") else {
+                DispatchQueue.main.async { state.clearDropTarget() }
+                return
+            }
+            let dragged = String(s.dropFirst("nested:".count))
+            DispatchQueue.main.async {
+                let target: NestedDropTarget?
+                if let current = currentTarget {
+                    target = current
+                } else if let last = lastRow {
+                    target = state.resolveDropTarget(
+                        hoveredRow: last,
+                        isBelow: true,
+                        pointerX: locX,
+                        draggedItemId: dragged
+                    )
+                } else {
+                    target = nil
+                }
+
+                if let target = target {
+                    state.executeDrop(target: target, draggedId: dragged)
+                } else {
+                    state.clearDropTarget()
+                }
+            }
+        }
+        return true
+    }
+
+    private func updateTarget(info: DropInfo) {
+        guard let last = state.visibleRows.last else { return }
+        state.updateDropTarget(
+            hoveredRow: last,
+            isBelow: true,
+            pointerX: info.location.x,
+            draggedItemId: nil
+        )
     }
 }

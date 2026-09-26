@@ -39,6 +39,15 @@ struct NestedDraft: Equatable {
     var text: String = ""
 }
 
+/// Active drop target resolution for outline drag & drop.
+struct NestedDropTarget: Equatable {
+    let parentId: String?
+    let index: Int
+    let displayRowId: String
+    let below: Bool
+    let depth: Int
+}
+
 private let noDate = Int32.min
 
 /// Epoch days (LocalDate.toEpochDays()) <-> Foundation Date.
@@ -62,6 +71,8 @@ final class NestedEditorState: ObservableObject {
     @Published var draft: NestedDraft? = nil
     @Published var showDeleteConfirm = false
     @Published var lastError: String? = nil
+    @Published var draggedId: String? = nil
+    @Published var dropTarget: NestedDropTarget? = nil
 
     private let helper: NestedAppleHelper
     private var docsSub: NestedAppleSubscription?
@@ -392,37 +403,196 @@ final class NestedEditorState: ObservableObject {
         if let c = chain(to: id) { zoomPath = c.map { $0.item.id } }
     }
 
-    // MARK: - Drag & drop (gap-based sibling drop)
+    // MARK: - Drag & drop
+
+    func isDescendant(itemId: String, of ancestorId: String) -> Bool {
+        var cursor: String? = itemId
+        while let c = cursor, !c.isEmpty {
+            if c == ancestorId { return true }
+            cursor = indexById[c]?.item.parentId
+        }
+        return false
+    }
+
+    func siblings(of parentId: String?) -> [NestedItemNode] {
+        if let pid = parentId, !pid.isEmpty {
+            return indexById[pid]?.children ?? []
+        } else {
+            return tree?.rootNodes ?? []
+        }
+    }
+
+    func updateDropTarget(hoveredRow: NestedRow, isBelow: Bool, pointerX: CGFloat, draggedItemId: String?) {
+        let resolved = resolveDropTarget(
+            hoveredRow: hoveredRow,
+            isBelow: isBelow,
+            pointerX: pointerX,
+            draggedItemId: draggedItemId
+        )
+        if dropTarget != resolved {
+            dropTarget = resolved
+        }
+    }
+
+    func clearDropTarget() {
+        if dropTarget != nil {
+            dropTarget = nil
+        }
+    }
+
+    func resolveDropTarget(
+        hoveredRow: NestedRow,
+        isBelow: Bool,
+        pointerX: CGFloat,
+        draggedItemId: String?
+    ) -> NestedDropTarget? {
+        guard let dragged = draggedItemId ?? draggedId, !dragged.isEmpty else { return nil }
+        guard let tree else { return nil }
+
+        let rows = visibleRows
+        guard let hoveredRowIdx = rows.firstIndex(where: { $0.id == hoveredRow.id }) else { return nil }
+
+        let aboveRow: NestedRow?
+        let belowRow: NestedRow?
+        if !isBelow {
+            aboveRow = (hoveredRowIdx > 0) ? rows[hoveredRowIdx - 1] : nil
+            belowRow = hoveredRow
+        } else {
+            aboveRow = hoveredRow
+            belowRow = (hoveredRowIdx < rows.count - 1) ? rows[hoveredRowIdx + 1] : nil
+        }
+
+        let minDepth = belowRow?.depth ?? 0
+        let maxDepth = (aboveRow != nil) ? (aboveRow!.depth + 1) : 0
+        let effectiveMinDepth = min(minDepth, maxDepth)
+
+        // Indentation calculation: 16pt per depth level.
+        // Option modifier forces max allowed depth (nest as child).
+        let isOptionPressed = NSEvent.modifierFlags.contains(.option)
+        let targetDepth: Int
+        if isOptionPressed {
+            targetDepth = maxDepth
+        } else {
+            let rawDepth = max(0, Int((pointerX - 4) / 16))
+            targetDepth = min(max(rawDepth, effectiveMinDepth), maxDepth)
+        }
+
+        let targetParentId: String?
+        let targetIndex: Int
+
+        if aboveRow == nil {
+            targetParentId = belowRow?.node.item.parentId
+            targetIndex = 0
+        } else if targetDepth == aboveRow!.depth + 1 {
+            targetParentId = aboveRow!.node.item.id
+            let s = siblings(of: targetParentId).filter { $0.item.id != dragged }
+            targetIndex = s.count
+        } else if targetDepth == aboveRow!.depth {
+            targetParentId = aboveRow!.node.item.parentId
+            let s = siblings(of: targetParentId).filter { $0.item.id != dragged }
+            if let aboveIdx = s.firstIndex(where: { $0.item.id == aboveRow!.node.item.id }) {
+                targetIndex = aboveIdx + 1
+            } else {
+                targetIndex = s.count
+            }
+        } else {
+            let levelsUp = aboveRow!.depth - targetDepth
+            var ancestorItem: NestedListItem? = aboveRow!.node.item
+            for _ in 0..<levelsUp {
+                if let pid = ancestorItem?.parentId, !pid.isEmpty {
+                    ancestorItem = indexById[pid]?.item
+                } else {
+                    ancestorItem = nil
+                    break
+                }
+            }
+            if let ancestor = ancestorItem {
+                targetParentId = ancestor.parentId
+                let s = siblings(of: targetParentId).filter { $0.item.id != dragged }
+                if let ancIdx = s.firstIndex(where: { $0.item.id == ancestor.id }) {
+                    targetIndex = ancIdx + 1
+                } else {
+                    targetIndex = s.count
+                }
+            } else {
+                targetParentId = nil
+                let s = siblings(of: nil).filter { $0.item.id != dragged }
+                targetIndex = s.count
+            }
+        }
+
+        // Prevent dragging into self or own subtree
+        if let pid = targetParentId, !pid.isEmpty {
+            if pid == dragged || isDescendant(itemId: pid, of: dragged) {
+                return nil
+            }
+        }
+
+        let displayRowId: String
+        let displayBelow: Bool
+        if let belowRow = belowRow {
+            displayRowId = belowRow.node.item.id
+            displayBelow = false
+        } else if let aboveRow = aboveRow {
+            displayRowId = aboveRow.node.item.id
+            displayBelow = true
+        } else {
+            displayRowId = hoveredRow.node.item.id
+            displayBelow = isBelow
+        }
+
+        return NestedDropTarget(
+            parentId: targetParentId,
+            index: targetIndex,
+            displayRowId: displayRowId,
+            below: displayBelow,
+            depth: targetDepth
+        )
+    }
+
+    func executeDrop(target: NestedDropTarget, draggedId: String) {
+        guard !selectedDocId.isEmpty, draggedId != target.parentId else {
+            self.dropTarget = nil
+            self.draggedId = nil
+            return
+        }
+        let pid = target.parentId ?? ""
+        if !pid.isEmpty && isDescendant(itemId: pid, of: draggedId) {
+            self.dropTarget = nil
+            self.draggedId = nil
+            return
+        }
+
+        // Auto-expand parent if collapsed so the moved item is visible
+        if let targetPid = target.parentId, let parentNode = indexById[targetPid], parentNode.item.collapsed {
+            helper.toggleCollapsed(itemId: targetPid)
+        }
+
+        helper.moveTo(
+            documentId: selectedDocId,
+            itemId: draggedId,
+            targetParentId: pid,
+            targetIndex: Int32(target.index)
+        )
+        self.dropTarget = nil
+        self.draggedId = nil
+    }
 
     /// Drop draggedId onto targetId's gap: sibling just above target.
     /// Own-subtree drops are refused by shared moveToPosition (no-op).
     func drop(draggedId: String, onto targetId: String) {
-        guard draggedId != targetId, !selectedDocId.isEmpty else { return }
-        guard let target = indexById[targetId] else { return }
-        let parentId = target.item.parentId ?? ""
-        let siblings: [NestedItemNode]
-        if parentId.isEmpty {
-            guard let tree else { return }
-            siblings = tree.rootNodes
-        } else {
-            guard let parent = indexById[parentId] else { return }
-            siblings = parent.children
+        guard let row = visibleRows.first(where: { $0.id == targetId }) else { return }
+        if let dt = resolveDropTarget(hoveredRow: row, isBelow: false, pointerX: 0, draggedItemId: draggedId) {
+            executeDrop(target: dt, draggedId: draggedId)
         }
-        let ids = siblings.map { $0.item.id }.filter { $0 != draggedId }
-        guard let targetIdx = ids.firstIndex(of: targetId) else { return }
-        helper.moveTo(documentId: selectedDocId, itemId: draggedId, targetParentId: parentId, targetIndex: Int32(targetIdx))
     }
 
     /// Drop draggedId as last child of targetId.
     func dropAsChild(draggedId: String, onto targetId: String) {
-        guard draggedId != targetId, !selectedDocId.isEmpty else { return }
-        guard let target = indexById[targetId] else { return }
-        helper.moveTo(
-            documentId: selectedDocId,
-            itemId: draggedId,
-            targetParentId: targetId,
-            targetIndex: Int32(target.children.count)
-        )
+        guard let row = visibleRows.first(where: { $0.id == targetId }) else { return }
+        if let dt = resolveDropTarget(hoveredRow: row, isBelow: true, pointerX: 200, draggedItemId: draggedId) {
+            executeDrop(target: dt, draggedId: draggedId)
+        }
     }
 
     // MARK: - Metadata mutations (thin wrappers over shared use cases)
