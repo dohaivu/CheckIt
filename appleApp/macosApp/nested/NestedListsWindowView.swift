@@ -135,7 +135,7 @@ struct NestedListsWindowView: View {
             .padding(8)
             Divider()
             nestedDocsSyncRow
-                .padding(8)
+                .padding(12)
         }
     }
 
@@ -157,7 +157,7 @@ struct NestedListsWindowView: View {
             Button {
                 NestedFirestoreSync.shared.syncDocumentsNow()
             } label: {
-                Label("Sync documents", systemImage: "arrow.clockwise")
+                Label("Sync", systemImage: "arrow.clockwise")
             }
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)
@@ -219,7 +219,6 @@ struct NestedListsWindowView: View {
             VStack(spacing: 0) {
                 detailHeader
                 outlineList
-                    .padding(.top, 6)
                 Divider()
                 bottomBar
             }
@@ -301,8 +300,9 @@ struct NestedListsWindowView: View {
     private var editorBar: some View {
         let sel = state.selectedId
         let node = sel.flatMap { state.indexById[$0] }
-        return ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
+        // Plain centered row (no ScrollView): the ~12 buttons fit the 760pt
+        // detail minimum, and a scroll view would pin content left.
+        return HStack(spacing: 6) {
                 editorBtn("Zoom In", system: "plus.magnifyingglass", help: "Zoom in") {
                     state.zoomInSelected()
                 }
@@ -345,9 +345,9 @@ struct NestedListsWindowView: View {
                 }
                 .disabled(sel == nil)
             }
+            .frame(maxWidth: .infinity, alignment: .center)
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
-        }
     }
 
     private func editorBtn(
@@ -419,7 +419,11 @@ struct NestedListsWindowView: View {
                         }
                     }
                 }
-                .padding(.horizontal, 8)
+                // Cap the working column and center it: fullscreen would
+                // otherwise stretch rows across the whole window.
+                .padding(.horizontal, 8).padding(.vertical, 10)
+                .frame(maxWidth: 840)
+                .frame(maxWidth: .infinity)
             }
             .background(nestedCanvasColor)
             .scrollEdgeEffectHidden(true, for: .all)
