@@ -189,18 +189,24 @@ struct NestedRowView: View {
                                 editText = item.text
                                 fieldFocused = true
                             }
-                            .onSubmit { state.commitEdit(id: item.id, text: editText) }
+                            .onSubmit {
+                                fieldFocused = false
+                                state.commitEdit(id: item.id, text: editText)
+                            }
                             .onKeyPress(keys: [.return]) { press in
                                 guard press.modifiers.contains(.shift) else { return .ignored }
+                                fieldFocused = false
                                 state.commitEdit(id: item.id, text: editText)
                                 state.startAddSibling(of: item.id)
                                 return .handled
                             }
                             .onKeyPress(.escape) {
+                                fieldFocused = false
                                 state.cancelEdit()
                                 return .handled
                             }
                             .onKeyPress(keys: [.tab]) { press in
+                                fieldFocused = false
                                 state.commitEdit(id: item.id, text: editText)
                                 if press.modifiers.contains(.shift) {
                                     state.outdentSelected()
@@ -208,6 +214,21 @@ struct NestedRowView: View {
                                     state.indentSelected()
                                 }
                                 state.startEdit(id: item.id)
+                                return .handled
+                            }
+                            .onKeyPress(keys: [.upArrow, .downArrow]) { press in
+                                // Same trap as the draft field: NSText eats
+                                // arrows, so the outline-level handler never
+                                // fires while editing. Commit (sync for
+                                // selection) then move, so navigation keeps
+                                // working after Return commits an edit.
+                                fieldFocused = false
+                                state.commitEdit(id: item.id, text: editText)
+                                if press.modifiers.contains(.command) {
+                                    if press.key == .upArrow { state.moveSelectedUp() } else { state.moveSelectedDown() }
+                                } else {
+                                    state.moveSelection(by: press.key == .upArrow ? -1 : 1)
+                                }
                                 return .handled
                             }
                     } else {

@@ -448,8 +448,13 @@ struct NestedListsWindowView: View {
             .onChange(of: state.selectedId) { _, id in
                 // Deferred: publishing focus/scroll state synchronously here
                 // warns ("within view updates") and is undefined behavior.
+                // Don't steal focus while a TextField owns it (draft/edit):
+                // only one view can hold focus, last writer wins and typing
+                // or arrow keys end up in the wrong place.
                 DispatchQueue.main.async {
-                    focusedRow = id
+                    if state.draft == nil && state.editingId == nil {
+                        focusedRow = id
+                    }
                     // Minimal scroll: only moves if the row is out of view.
                     if let id { withAnimation { proxy.scrollTo(id) } }
                 }
@@ -458,6 +463,19 @@ struct NestedListsWindowView: View {
                 DispatchQueue.main.async {
                     draftText = state.draft?.text ?? ""
                     draftFocused = state.draft != nil
+                    // Focus is lost when the draft field disappears; hand it
+                    // back to the selected row so Up/Down keep working.
+                    if state.draft == nil, state.editingId == nil, let id = state.selectedId {
+                        focusedRow = id
+                    }
+                }
+            }
+            .onChange(of: state.editingId) { _, editing in
+                // Same focus handoff as draft: after commit/cancel the edit
+                // field is gone and selectedId often didn't change, so the
+                // selectedId observer above won't fire to restore focus.
+                if editing == nil, state.draft == nil, let id = state.selectedId {
+                    DispatchQueue.main.async { focusedRow = id }
                 }
             }
             .onKeyPress(keys: [.upArrow, .downArrow]) { press in
@@ -527,7 +545,7 @@ struct NestedListsWindowView: View {
     }
 
     private func draftRow(depth: Int) -> some View {
-        HStack(alignment: .top, spacing: 0) {
+        HStack(alignment: .center, spacing: 0) {
             ForEach(0..<depth, id: \.self) { level in
                 Rectangle()
                     .fill(nestedGuideColor(level))
@@ -539,7 +557,7 @@ struct NestedListsWindowView: View {
                 .fill(nestedDotForDepth(depth))
                 .frame(width: 7, height: 7)
                 .frame(width: 16, height: 24)
-                .padding(.top, 2)
+                .padding(.leading, 3)
             TextField("New item…", text: $draftText)
                 .textFieldStyle(.roundedBorder)
                 .focused($draftFocused)
@@ -562,6 +580,37 @@ struct NestedListsWindowView: View {
                     } else {
                         state.commitDraft(thenContinue: false)
                         state.indentSelected()
+                    }
+                    return .handled
+                }
+                .onKeyPress(keys: [.upArrow, .downArrow]) { press in
+                    // Parent outline Up/Down never fires while this field
+                    // holds focus (NSText consumes arrows), so handle it
+                    // here. Non-empty text is committed first (without
+                    // opening a follow-up draft, to avoid racing the async
+                    // save callback against the move); an empty draft is
+                    // just dismissed so one press restores navigation.
+                    // This is the "Enter then Up/Down does nothing" fix:
+                    // after Return the follow-up draft is empty, so this
+                    // path cancels it and moves the selection.
+                    if press.modifiers.contains(.command) {
+                        let hasText = !draftText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        if hasText {
+                            state.draft?.text = draftText
+                            state.commitDraft(thenContinue: false)
+                        } else {
+                            state.cancelDraft()
+                            if press.key == .upArrow { state.moveSelectedUp() } else { state.moveSelectedDown() }
+                        }
+                        return .handled
+                    }
+                    let hasText = !draftText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    if hasText {
+                        state.draft?.text = draftText
+                        state.commitDraft(thenContinue: false)
+                    } else {
+                        state.cancelDraft()
+                        state.moveSelection(by: press.key == .upArrow ? -1 : 1)
                     }
                     return .handled
                 }
