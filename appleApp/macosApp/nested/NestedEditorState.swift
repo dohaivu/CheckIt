@@ -298,6 +298,28 @@ final class NestedEditorState: ObservableObject {
         editingId = nil
     }
 
+    /// Select the selected row's parent (Left on a collapsed row).
+    /// If zoomed and the parent sits above the visible subtree, zoom out
+    /// toward it instead of selecting an invisible row.
+    func selectParentOfSelected() {
+        guard let id = selectedId, let node = indexById[id],
+              let parentId = node.item.parentId, !parentId.isEmpty
+        else { return }
+        if !visibleRows.contains(where: { $0.id == parentId }) {
+            if let idx = zoomPath.firstIndex(of: parentId) {
+                zoomPath = Array(zoomPath.prefix(through: idx))
+            } else if !zoomPath.isEmpty {
+                zoomOut()
+                return
+            } else {
+                return
+            }
+        }
+        if draft != nil { draft = nil }
+        editingId = nil
+        selectedId = parentId
+    }
+
     func startEdit(id: String) {
         selectedId = id
         editingId = id

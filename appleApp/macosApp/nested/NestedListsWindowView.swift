@@ -514,11 +514,15 @@ struct NestedListsWindowView: View {
                     return .handled
                 }
                 guard state.editingId == nil, let id = state.selectedId,
-                      let node = state.indexById[id], node.hasChildren
+                      let node = state.indexById[id]
                 else { return .ignored }
                 let collapsed = node.item.collapsed
-                if press.key == .leftArrow, !collapsed {
+                if press.key == .leftArrow, node.hasChildren, !collapsed {
                     state.toggleCollapse(id: id)
+                    return .handled
+                }
+                if press.key == .leftArrow, collapsed || !node.hasChildren {
+                    state.selectParentOfSelected()
                     return .handled
                 }
                 if press.key == .rightArrow, collapsed {
