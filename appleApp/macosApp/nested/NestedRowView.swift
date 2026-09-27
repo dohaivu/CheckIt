@@ -180,66 +180,77 @@ struct NestedRowView: View {
                             .foregroundStyle(nestedPriorityColor(item.priority.name))
                             .padding(.top, 1)
                     }
-                    if isEditing {
-                        TextField("", text: $editText)
-                            .textFieldStyle(.plain)
-                            .font(nestedRowFont(item.textStyle.name))
-                            .focused($fieldFocused)
-                            .onAppear {
-                                editText = item.text
-                                fieldFocused = true
-                            }
-                            .onSubmit {
-                                fieldFocused = false
-                                state.commitEdit(id: item.id, text: editText)
-                            }
-                            .onKeyPress(keys: [.return]) { press in
-                                guard press.modifiers.contains(.shift) else { return .ignored }
-                                fieldFocused = false
-                                state.commitEdit(id: item.id, text: editText)
-                                state.startAddSibling(of: item.id)
-                                return .handled
-                            }
-                            .onKeyPress(.escape) {
-                                fieldFocused = false
-                                state.cancelEdit()
-                                return .handled
-                            }
-                            .onKeyPress(keys: [.tab]) { press in
-                                fieldFocused = false
-                                state.commitEdit(id: item.id, text: editText)
-                                if press.modifiers.contains(.shift) {
-                                    state.outdentSelected()
-                                } else {
-                                    state.indentSelected()
-                                }
-                                state.startEdit(id: item.id)
-                                return .handled
-                            }
-                            .onKeyPress(keys: [.upArrow, .downArrow]) { press in
-                                // Same trap as the draft field: NSText eats
-                                // arrows, so the outline-level handler never
-                                // fires while editing. Commit (sync for
-                                // selection) then move, so navigation keeps
-                                // working after Return commits an edit.
-                                fieldFocused = false
-                                state.commitEdit(id: item.id, text: editText)
-                                if press.modifiers.contains(.command) {
-                                    if press.key == .upArrow { state.moveSelectedUp() } else { state.moveSelectedDown() }
-                                } else {
-                                    state.moveSelection(by: press.key == .upArrow ? -1 : 1)
-                                }
-                                return .handled
-                            }
-                    } else {
-                        Text(item.text.isEmpty ? "Untitled item" : item.text)
-                            .font(nestedRowFont(item.textStyle.name))
-                            .foregroundStyle(nestedTextColor)
-                            .strikethrough(item.checked)
+                    // Overlay (not ZStack/branch swap): the Text always defines
+                    // the row height, so entering edit mode never pushes
+                    // layout down. An NSTextField carries extra vertical
+                    // insets vs Text at the same font, which made the row
+                    // grow a few points while editing. The overlay child is
+                    // layout-neutral, so the field floats in the Text frame
+                    // (1-2pt overflow is absorbed by the row padding below).
+                    Text(item.text.isEmpty ? "Untitled item" : item.text)
+                        .font(nestedRowFont(item.textStyle.name))
+                        .foregroundStyle(nestedTextColor)
+                        .strikethrough(item.checked)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                        .opacity(isEditing ? 0 : 1)
+                        .onTapGesture(count: 2) { state.startEdit(id: item.id) }
+                        .overlay {
+                            if isEditing {
+                                TextField("", text: $editText)
+                                    .textFieldStyle(.plain)
+                                    .font(nestedRowFont(item.textStyle.name))
+                                    .focused($fieldFocused)
+                                    .onAppear {
+                                        editText = item.text
+                                        fieldFocused = true
+                                    }
+                                    .onSubmit {
+                                        fieldFocused = false
+                                        state.commitEdit(id: item.id, text: editText)
+                                    }
+                                    .onKeyPress(keys: [.return]) { press in
+                                        guard press.modifiers.contains(.shift) else { return .ignored }
+                                        fieldFocused = false
+                                        state.commitEdit(id: item.id, text: editText)
+                                        state.startAddSibling(of: item.id)
+                                        return .handled
+                                    }
+                                    .onKeyPress(.escape) {
+                                        fieldFocused = false
+                                        state.cancelEdit()
+                                        return .handled
+                                    }
+                                    .onKeyPress(keys: [.tab]) { press in
+                                        fieldFocused = false
+                                        state.commitEdit(id: item.id, text: editText)
+                                        if press.modifiers.contains(.shift) {
+                                            state.outdentSelected()
+                                        } else {
+                                            state.indentSelected()
+                                        }
+                                        state.startEdit(id: item.id)
+                                        return .handled
+                                    }
+                                    .onKeyPress(keys: [.upArrow, .downArrow]) { press in
+                                        // Same trap as the draft field: NSText eats
+                                        // arrows, so the outline-level handler never
+                                        // fires while editing. Commit (sync for
+                                        // selection) then move, so navigation keeps
+                                        // working after Return commits an edit.
+                                        fieldFocused = false
+                                        state.commitEdit(id: item.id, text: editText)
+                                        if press.modifiers.contains(.command) {
+                                            if press.key == .upArrow { state.moveSelectedUp() } else { state.moveSelectedDown() }
+                                        } else {
+                                            state.moveSelection(by: press.key == .upArrow ? -1 : 1)
+                                        }
+                                        return .handled
+                                    }
+                                    .frame(maxWidth: .infinity, alignment: .leading)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .contentShape(Rectangle())
-                            .onTapGesture(count: 2) { state.startEdit(id: item.id) }
-                    }
+                            }
+                        }
                 }
                 metadata
             }
