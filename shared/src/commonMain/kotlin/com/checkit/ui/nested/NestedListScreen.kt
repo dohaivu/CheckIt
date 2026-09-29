@@ -1915,7 +1915,10 @@ private fun NestedTree(
                         if (!isDragged) {
                             // Draw in the unpadded container so every depth shares the
                             // same x-coordinate across all rows.
-                            val dotSize = if (item.collapsed && node.hasChildren) 14.dp else 7.dp
+                            // Dot geometry must match the composable below: parents always
+                            // use the 14.dp outer ring, leaves use the 7.dp solid dot,
+                            // so guides stay center-aligned and touch the outer edge.
+                            val dotSize = if (node.hasChildren) 14.dp else 7.dp
                             val dotTop = 12.dp.toPx()
                             val dotSizePx = dotSize.toPx()
                             val dotCenterY = dotTop + dotSizePx / 2
@@ -1996,10 +1999,10 @@ private fun NestedTree(
                             Box(
                                 modifier = Modifier
                                     .padding(top = 12.dp)
-                                    .size(if (item.collapsed && node.hasChildren) 14.dp else 7.dp)
+                                    .size(if (node.hasChildren) 14.dp else 7.dp)
                                     .clip(CircleShape)
                                     .then(
-                                        if (item.collapsed && node.hasChildren) {
+                                        if (node.hasChildren) {
                                             Modifier.border(2.dp, dotColor, CircleShape)
                                         } else {
                                             Modifier.background(dotColor)
