@@ -1989,7 +1989,7 @@ private fun NestedTree(
                             ),
                         contentAlignment = Alignment.TopStart
                     ) {
-                        val dotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.68f)
+                        val dotColor = guideColors[depth % guideColors.size].copy(alpha = 0.68f)
                         Box(
                             modifier = Modifier
                                 .width(16.dp)
