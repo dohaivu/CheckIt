@@ -279,6 +279,7 @@ class MoveNestedItemsUseCase(
             .sortedWith(compareBy<NestedListItem> { it.position }.thenBy { it.id })
 }
 
+/** Deletes items and all of their descendants (cascade via [CheckItDao.deleteNestedItems]). */
 class DeleteNestedItemsUseCase(
     private val repository: CheckItRepository
 ) {

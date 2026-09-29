@@ -1246,9 +1246,29 @@ interface CheckItDao {
     /**
      * Tombstones instead of hard delete so deletions sync; rows are
      * hard-deleted later via [getPurgeableNestedItemTombstones] once uploaded.
+     *
+     * Cascades to all descendants so children of a deleted parent don't
+     * resurface as extra roots in [com.checkit.domain.buildNestedTree].
      */
     @Query("UPDATE nested_list_items SET deleted = 1, updatedAtMillis = :nowMillis, dirty = 1 WHERE id IN (:itemIds)")
-    suspend fun deleteNestedItems(itemIds: List<String>, nowMillis: Long)
+    suspend fun markNestedItemsDeleted(itemIds: List<String>, nowMillis: Long)
+
+    @Query(
+        "WITH RECURSIVE descendants(id) AS (" +
+            "SELECT id FROM nested_list_items WHERE id IN (:itemIds) " +
+            "UNION ALL " +
+            "SELECT n.id FROM nested_list_items n INNER JOIN descendants d ON n.parentId = d.id" +
+            ") SELECT id FROM descendants"
+    )
+    suspend fun nestedSubtreeIds(itemIds: List<String>): List<String>
+
+    @Transaction
+    suspend fun deleteNestedItems(itemIds: List<String>, nowMillis: Long) {
+        if (itemIds.isEmpty()) return
+        val ids = nestedSubtreeIds(itemIds)
+        if (ids.isEmpty()) return
+        markNestedItemsDeleted(ids, nowMillis)
+    }
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertNestedItemTag(link: NestedItemTagEntity)
