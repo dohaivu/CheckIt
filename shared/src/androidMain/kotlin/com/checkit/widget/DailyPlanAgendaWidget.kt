@@ -50,11 +50,16 @@ import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.NoteItem
 import com.checkit.domain.QuickNote
+import com.checkit.domain.Routine
+import com.checkit.domain.isRoutineScheduled
+import com.checkit.domain.resolveRoutineTodayChecks
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveNotesForDateUseCase
 import com.checkit.domain.usecase.ObserveQuickNotesForWidgetUseCase
+import com.checkit.domain.usecase.ObserveRoutineTodayUseCase
+import com.checkit.domain.usecase.ObserveRoutinesUseCase
 import com.checkit.shared.R
 import com.checkit.ui.myday.DayViewProjection
 import com.checkit.ui.myday.doneWorkMinutes
@@ -77,6 +82,8 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
     private val observeNotesForDate: ObserveNotesForDateUseCase by inject()
     private val observeDailyPlans: ObserveDailyPlansUseCase by inject()
     private val observeQuickNotesForWidget: ObserveQuickNotesForWidgetUseCase by inject()
+    private val observeRoutines: ObserveRoutinesUseCase by inject()
+    private val observeRoutineToday: ObserveRoutineTodayUseCase by inject()
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val today = today()
@@ -84,6 +91,15 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
         val dailyPlans = observeDailyPlans(startDate = today, endDate = today).first()
         val todayPlan = dailyPlans.find { it.date == today }
         val items = todayPlan?.items ?: emptyList()
+        val routines = observeRoutines().first()
+            .filter { isRoutineScheduled(today, it.activeWeekdays) }
+            .sortedBy { it.sortOrder }
+        val routineToday = observeRoutineToday().first()
+        val routineChecks = resolveRoutineTodayChecks(
+            storedEpochDay = routineToday.epochDay,
+            storedChecks = routineToday.checks,
+            todayEpochDay = today.toEpochDays().toInt()
+        )
 
         // Get current time for highlighting
         val now = kotlin.time.Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
@@ -228,6 +244,8 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
 
                     GlanceQuickNoteSection(quickNotes)
 
+                    GlanceRoutineSection(routines, routineChecks)
+
                     if (!hasAllDay && timedItems.isEmpty()) {
                         Box(
                             modifier = GlanceModifier.fillMaxSize(),
@@ -297,6 +315,10 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
         parameters = actionParametersOf(OpenNewJournalEntryParameterKey to true)
     )
 
+    private fun openRoutinesAction(): Action = actionStartActivity<MainActivity>(
+        parameters = actionParametersOf(OpenRoutinesParameterKey to true)
+    )
+
     @Composable
     private fun GlanceQuickNoteSection(notes: List<QuickNote>) {
         if (notes.isEmpty()) return
@@ -334,6 +356,61 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
                     colorFilter = ColorFilter.tint(GlanceTheme.colors.error)
                 )
             }
+        }
+    }
+
+    @Composable
+    private fun GlanceRoutineSection(
+        routines: List<Routine>,
+        checks: Map<String, Set<String>>
+    ) {
+        if (routines.isEmpty()) return
+        Column(modifier = GlanceModifier.fillMaxWidth().padding(bottom = 8.dp)) {
+            routines.forEach { routine ->
+                GlanceRoutineRow(routine, checks[routine.id].orEmpty())
+            }
+        }
+    }
+
+    @Composable
+    private fun GlanceRoutineRow(routine: Routine, checkedStepIds: Set<String>) {
+        val totalSteps = routine.steps.size
+        val doneSteps = routine.steps.count { it.id in checkedStepIds }
+        val completed = totalSteps > 0 && doneSteps >= totalSteps
+        Row(
+            modifier = GlanceModifier
+                .fillMaxWidth()
+                .padding(vertical = 2.dp)
+                .clickable(openRoutinesAction()),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Image(
+                provider = ImageProvider(
+                    if (completed) R.drawable.check_box_24px
+                    else R.drawable.check_box_outline_blank_24px
+                ),
+                contentDescription = "Routine",
+                modifier = GlanceModifier.size(14.dp),
+                colorFilter = ColorFilter.tint(GlanceTheme.colors.primary)
+            )
+            Spacer(modifier = GlanceModifier.width(6.dp))
+            Text(
+                text = routine.title.ifBlank { "Untitled routine" },
+                modifier = GlanceModifier.defaultWeight(),
+                style = TextStyle(
+                    fontSize = 12.sp,
+                    color = GlanceTheme.colors.onSurface
+                ),
+                maxLines = 1
+            )
+            Spacer(modifier = GlanceModifier.width(8.dp))
+            Text(
+                text = "$doneSteps/$totalSteps",
+                style = TextStyle(
+                    fontSize = 12.sp,
+                    color = GlanceTheme.colors.onSurfaceVariant
+                )
+            )
         }
     }
 
