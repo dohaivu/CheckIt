@@ -152,6 +152,18 @@ import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
 
+// Palette shared with macOS NestedRowView (nestedDepthSolids): guides cycle
+// one muted color per depth at 0.5 opacity; the toggle ring/dot uses the
+// same depth solid at full opacity so nesting can be followed by hue.
+private val nestedDepthSolids: List<Color> = listOf(
+    Color(0xFFD97F5F), // 0 terracotta
+    Color(0xFF7EA38A), // 1 sage
+    Color(0xFF7B9EBD), // 2 dusty blue
+    Color(0xFFC09F5E), // 3 warm sand
+)
+
+private val nestedGuideColors: List<Color> = nestedDepthSolids.map { it.copy(alpha = 0.5f) }
+
 @Composable
 internal fun NestedListScreen(
     state: NestedEditorState.Active,
@@ -1892,12 +1904,7 @@ private fun NestedTree(
     isDragged: Boolean = false
 ) {
     val item = node.item
-    val guideColors = listOf(
-        MaterialTheme.colorScheme.primary.copy(alpha = 0.34f),
-        MaterialTheme.colorScheme.secondary.copy(alpha = 0.34f),
-        MaterialTheme.colorScheme.tertiary.copy(alpha = 0.34f),
-        MaterialTheme.colorScheme.outline.copy(alpha = 0.30f)
-    )
+    val guideColors = nestedGuideColors
     val isSelected = item.id in state.selection.selectedIds ||
             (!state.selection.isActive && state.selectedItemId == item.id)
     val isEditing = state.editingTextItemId == item.id
@@ -1989,7 +1996,7 @@ private fun NestedTree(
                             ),
                         contentAlignment = Alignment.TopStart
                     ) {
-                        val dotColor = guideColors[depth % guideColors.size].copy(alpha = 0.68f)
+                        val dotColor = nestedDepthSolids[depth % nestedDepthSolids.size]
                         Box(
                             modifier = Modifier
                                 .width(16.dp)
@@ -2441,12 +2448,7 @@ private fun NewItemRow(
     onCancel: () -> Unit,
     continuingLevels: Set<Int>
 ) {
-    val guideColors = listOf(
-        MaterialTheme.colorScheme.primary.copy(alpha = 0.34f),
-        MaterialTheme.colorScheme.secondary.copy(alpha = 0.34f),
-        MaterialTheme.colorScheme.tertiary.copy(alpha = 0.34f),
-        MaterialTheme.colorScheme.outline.copy(alpha = 0.30f)
-    )
+    val guideColors = nestedGuideColors
     Column(
         modifier = Modifier
             .fillMaxWidth()
