@@ -313,20 +313,20 @@ struct NestedListsWindowView: View {
                     state.zoomOut()
                 }
                 .disabled(state.zoomPath.isEmpty)
-                editorBtn("Expand All", system: "chevron.down.2", help: "Expand all (⌘⌥→)") {
+                editorBtn("Expand All", system: "chevron.down.2", help: "Expand all (⌥→)") {
                     state.expandAll()
                 }
                 .disabled(!hasCollapsible)
-                editorBtn("Collapse All", system: "chevron.up.2", help: "Collapse all (⌘⌥←)") {
+                editorBtn("Collapse All", system: "chevron.up.2", help: "Collapse all (⌥←)") {
                     state.collapseAll()
                 }
                 .disabled(!hasCollapsible)
                 barSeparator
-                editorBtn("Outdent", system: "arrow.left.to.line", help: "Outdent (Shift+Tab)") {
+                editorBtn("Outdent", system: "arrow.left.to.line", help: "Outdent (Cmd←)") {
                     state.outdentSelected()
                 }
                 .disabled(sel == nil)
-                editorBtn("Indent", system: "arrow.right.to.line", help: "Indent (Tab)") {
+                editorBtn("Indent", system: "arrow.right.to.line", help: "Indent (Cmd→)") {
                     state.indentSelected()
                 }
                 .disabled(sel == nil)
@@ -543,7 +543,7 @@ struct NestedListsWindowView: View {
     /// the type-checker's limits. Cmd+Opt+Left/Right = collapse/expand all
     /// under the selection (else current view); Cmd+Left/Right = outdent/indent.
     private func handleOutlineArrowKey(_ press: KeyPress) -> KeyPress.Result {
-        if press.modifiers.contains(.command), press.modifiers.contains(.option) {
+        if press.modifiers.contains(.option) {
             if press.key == .leftArrow { state.collapseAll() } else { state.expandAll() }
             return .handled
         }

@@ -687,25 +687,36 @@ final class NestedEditorState: ObservableObject {
     // MARK: - Keyboard navigation
 
     func moveSelection(by delta: Int) {
-        let rows = visibleRows
-        guard !rows.isEmpty else { return }
-        if let id = selectedId, let idx = rows.firstIndex(where: { $0.id == id }) {
-            let next = min(max(idx + delta, 0), rows.count - 1)
-            selectedId = rows[next].id
-        } else {
-            selectedId = rows[delta > 0 ? 0 : rows.count - 1].id
+        // Key-press handlers can run inside SwiftUI's view-update cycle;
+        // publishing synchronously warns ("within view updates") and is
+        // undefined behavior, so hop a tick like the view's onChange
+        // observers do.
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            let rows = self.visibleRows
+            guard !rows.isEmpty else { return }
+            if let id = self.selectedId, let idx = rows.firstIndex(where: { $0.id == id }) {
+                let next = min(max(idx + delta, 0), rows.count - 1)
+                self.selectedId = rows[next].id
+            } else {
+                self.selectedId = rows[delta > 0 ? 0 : rows.count - 1].id
+            }
+            self.editingId = nil
+            if self.draft != nil { self.draft = nil }
         }
-        editingId = nil
-        if draft != nil { draft = nil }
     }
 
     /// Plain Left on a collapsed node or leaf: move selection to its parent.
     func selectParentOfSelected() {
-        guard let id = selectedId,
-              let parentId = indexById[id]?.item.parentId,
-              !parentId.isEmpty
-        else { return }
-        selectedId = parentId
-        editingId = nil
+        // Same view-update deferral as moveSelection above.
+        Task { @MainActor [weak self] in
+            guard let self,
+                  let id = self.selectedId,
+                  let parentId = self.indexById[id]?.item.parentId,
+                  !parentId.isEmpty
+            else { return }
+            self.selectedId = parentId
+            self.editingId = nil
+        }
     }
 }
