@@ -298,28 +298,6 @@ final class NestedEditorState: ObservableObject {
         editingId = nil
     }
 
-    /// Select the selected row's parent (Left on a collapsed row).
-    /// If zoomed and the parent sits above the visible subtree, zoom out
-    /// toward it instead of selecting an invisible row.
-    func selectParentOfSelected() {
-        guard let id = selectedId, let node = indexById[id],
-              let parentId = node.item.parentId, !parentId.isEmpty
-        else { return }
-        if !visibleRows.contains(where: { $0.id == parentId }) {
-            if let idx = zoomPath.firstIndex(of: parentId) {
-                zoomPath = Array(zoomPath.prefix(through: idx))
-            } else if !zoomPath.isEmpty {
-                zoomOut()
-                return
-            } else {
-                return
-            }
-        }
-        if draft != nil { draft = nil }
-        editingId = nil
-        selectedId = parentId
-    }
-
     func startEdit(id: String) {
         selectedId = id
         editingId = id
@@ -418,6 +396,28 @@ final class NestedEditorState: ObservableObject {
     }
 
     func toggleCollapse(id: String) { helper.toggleCollapsed(itemId: id) }
+
+    /// Scope roots for expand-all / collapse-all: selection (when it has
+    /// children), else the zoom focus (current view), else empty = whole doc.
+    private func collapseScopeRoots() -> [String] {
+        if let id = selectedId, let node = indexById[id], node.hasChildren {
+            return [id]
+        }
+        if let zid = zoomPath.last, indexById[zid] != nil {
+            return [zid]
+        }
+        return []
+    }
+
+    func expandAll() {
+        guard !selectedDocId.isEmpty else { return }
+        helper.expandSubtrees(documentId: selectedDocId, scopeIds: collapseScopeRoots())
+    }
+
+    func collapseAll() {
+        guard !selectedDocId.isEmpty else { return }
+        helper.collapseSubtrees(documentId: selectedDocId, scopeIds: collapseScopeRoots())
+    }
 
     func toggleCheck(id: String, checked: Bool) { helper.toggleChecked(itemId: id, checked: checked) }
 
@@ -697,5 +697,15 @@ final class NestedEditorState: ObservableObject {
         }
         editingId = nil
         if draft != nil { draft = nil }
+    }
+
+    /// Plain Left on a collapsed node or leaf: move selection to its parent.
+    func selectParentOfSelected() {
+        guard let id = selectedId,
+              let parentId = indexById[id]?.item.parentId,
+              !parentId.isEmpty
+        else { return }
+        selectedId = parentId
+        editingId = nil
     }
 }

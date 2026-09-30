@@ -168,6 +168,77 @@ class ToggleNestedItemCollapsedUseCase(
     suspend operator fun invoke(itemId: String) = repository.toggleNestedItemCollapsed(itemId)
 }
 
+/**
+ * Resolves the scope roots for expand-all / collapse-all: batch-selected ids
+ * win, then the single selected item (when it has children), then the zoomed
+ * (focused) item, else empty meaning the whole document (current view).
+ */
+fun resolveCollapseScopeRoots(
+    items: List<NestedListItem>,
+    selectedIds: Set<String>,
+    selectedItemId: String?,
+    focusedItemId: String?
+): List<String> {
+    val byId = items.associateBy { it.id }
+    val selectedRoots = selectedIds.mapNotNull { byId[it]?.id }
+    if (selectedRoots.isNotEmpty()) return selectedRoots
+    val selected = selectedItemId?.let { byId[it] }
+    if (selected != null && items.any { it.parentId == selected.id }) return listOf(selected.id)
+    val focused = focusedItemId?.let { byId[it] }
+    if (focused != null) return listOf(focused.id)
+    return emptyList()
+}
+
+/**
+ * Collects ids of items with children inside the subtrees rooted at
+ * [scopeRootIds] (roots included when they have children), keeping only rows
+ * whose collapsed state differs from [collapsed]. Empty [scopeRootIds] means
+ * the whole document.
+ */
+fun collapsibleIdsInScopes(
+    items: List<NestedListItem>,
+    scopeRootIds: List<String>,
+    collapsed: Boolean
+): List<String> {
+    if (items.isEmpty()) return emptyList()
+    val childrenByParent = items.groupBy { it.parentId }
+    if (scopeRootIds.isEmpty()) {
+        return items.filter { item ->
+            item.collapsed != collapsed && childrenByParent[item.id]?.isNotEmpty() == true
+        }.map { it.id }
+    }
+    val byId = items.associateBy { it.id }
+    val out = LinkedHashSet<String>()
+    val stack = ArrayDeque<String>()
+    scopeRootIds.mapNotNull { byId[it]?.id }.forEach(stack::addLast)
+    val visited = HashSet<String>()
+    while (stack.isNotEmpty()) {
+        val id = stack.removeLast()
+        if (!visited.add(id)) continue
+        val item = byId[id] ?: continue
+        val children = childrenByParent[id].orEmpty()
+        if (children.isNotEmpty()) {
+            if (item.collapsed != collapsed) out.add(id)
+            children.forEach { stack.addLast(it.id) }
+        }
+    }
+    return out.toList()
+}
+
+class SetNestedItemsCollapsedUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(
+        items: List<NestedListItem>,
+        scopeRootIds: List<String>,
+        collapsed: Boolean
+    ) {
+        val ids = collapsibleIdsInScopes(items, scopeRootIds, collapsed)
+        if (ids.isEmpty()) return
+        repository.setNestedItemsCollapsed(ids, collapsed)
+    }
+}
+
 class MoveNestedItemsUseCase(
     private val repository: CheckItRepository
 ) {

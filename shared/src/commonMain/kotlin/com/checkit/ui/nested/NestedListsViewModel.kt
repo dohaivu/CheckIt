@@ -30,7 +30,9 @@ import com.checkit.domain.usecase.RenameNestedDocumentUseCase
 import com.checkit.domain.usecase.ReplaceNestedManualMetricsUseCase
 import com.checkit.domain.usecase.SetNestedItemCheckboxEnabledUseCase
 import com.checkit.domain.usecase.SetNestedItemsCheckedUseCase
+import com.checkit.domain.usecase.SetNestedItemsCollapsedUseCase
 import com.checkit.domain.usecase.ToggleNestedItemCollapsedUseCase
+import com.checkit.domain.usecase.resolveCollapseScopeRoots
 import com.checkit.domain.usecase.UpdateNestedItemDateRangeUseCase
 import com.checkit.domain.usecase.UpdateNestedItemFormattingUseCase
 import com.checkit.domain.usecase.UpdateNestedItemMetricSettingsUseCase
@@ -141,6 +143,7 @@ class NestedListsViewModel(
     private val setCheckboxEnabledUseCase: SetNestedItemCheckboxEnabledUseCase,
     private val setItemsCheckedUseCase: SetNestedItemsCheckedUseCase,
     private val toggleCollapsedUseCase: ToggleNestedItemCollapsedUseCase,
+    private val setItemsCollapsedUseCase: SetNestedItemsCollapsedUseCase,
     private val moveItemsUseCase: MoveNestedItemsUseCase,
     private val deleteItemsUseCase: DeleteNestedItemsUseCase,
     private val settingsRepository: SettingsRepository,
@@ -567,6 +570,23 @@ class NestedListsViewModel(
 
     fun toggleCollapsed(itemId: String) {
         viewModelScope.launch { toggleCollapsedUseCase(itemId) }
+    }
+
+    fun expandAll() = setCollapsedForScope(false)
+
+    fun collapseAll() = setCollapsedForScope(true)
+
+    private fun setCollapsedForScope(collapsed: Boolean) {
+        val active = getActiveEditor() ?: return
+        val scopeRoots = resolveCollapseScopeRoots(
+            items = active.tree.flatItems,
+            selectedIds = active.selection.selectedIds,
+            selectedItemId = active.selectedItemId,
+            focusedItemId = active.focusedItem?.item?.id
+        )
+        viewModelScope.launch {
+            setItemsCollapsedUseCase(active.tree.flatItems, scopeRoots, collapsed)
+        }
     }
 
     fun indent(itemId: String) = applyMove { items -> moveItemsUseCase.indent(items, itemId) }

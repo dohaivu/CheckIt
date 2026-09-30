@@ -1232,6 +1232,9 @@ interface CheckItDao {
     @Query("UPDATE nested_list_items SET collapsed = :collapsed, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
     suspend fun setNestedItemCollapsed(itemId: String, collapsed: Boolean, updatedAtMillis: Long)
 
+    @Query("UPDATE nested_list_items SET collapsed = :collapsed, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id IN (:itemIds)")
+    suspend fun setNestedItemsCollapsed(itemIds: List<String>, collapsed: Boolean, updatedAtMillis: Long)
+
     @Query("UPDATE nested_list_items SET collapsed = NOT collapsed, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
     suspend fun toggleNestedItemCollapsed(itemId: String, updatedAtMillis: Long)
 

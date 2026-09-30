@@ -301,6 +301,7 @@ struct NestedListsWindowView: View {
     private var editorBar: some View {
         let sel = state.selectedId
         let node = sel.flatMap { state.indexById[$0] }
+        let hasCollapsible = state.indexById.values.contains(where: { $0.hasChildren })
         // Plain centered row (no ScrollView): the ~12 buttons fit the 760pt
         // detail minimum, and a scroll view would pin content left.
         return HStack(spacing: 6) {
@@ -312,6 +313,14 @@ struct NestedListsWindowView: View {
                     state.zoomOut()
                 }
                 .disabled(state.zoomPath.isEmpty)
+                editorBtn("Expand All", system: "chevron.down.2", help: "Expand all (⌘⌥→)") {
+                    state.expandAll()
+                }
+                .disabled(!hasCollapsible)
+                editorBtn("Collapse All", system: "chevron.up.2", help: "Collapse all (⌘⌥←)") {
+                    state.collapseAll()
+                }
+                .disabled(!hasCollapsible)
                 barSeparator
                 editorBtn("Outdent", system: "arrow.left.to.line", help: "Outdent (Shift+Tab)") {
                     state.outdentSelected()
@@ -509,27 +518,7 @@ struct NestedListsWindowView: View {
                 return .handled
             }
             .onKeyPress(keys: [.leftArrow, .rightArrow]) { press in
-                if press.modifiers.contains(.command) {
-                    if press.key == .leftArrow { state.outdentSelected() } else { state.indentSelected() }
-                    return .handled
-                }
-                guard state.editingId == nil, let id = state.selectedId,
-                      let node = state.indexById[id]
-                else { return .ignored }
-                let collapsed = node.item.collapsed
-                if press.key == .leftArrow, node.hasChildren, !collapsed {
-                    state.toggleCollapse(id: id)
-                    return .handled
-                }
-                if press.key == .leftArrow, collapsed || !node.hasChildren {
-                    state.selectParentOfSelected()
-                    return .handled
-                }
-                if press.key == .rightArrow, collapsed {
-                    state.toggleCollapse(id: id)
-                    return .handled
-                }
-                return .ignored
+                self.handleOutlineArrowKey(press)
             }
             .onKeyPress(keys: [.delete, .deleteForward]) { _ in
                 guard state.editingId == nil, state.selectedId != nil else { return .ignored }
@@ -546,6 +535,39 @@ struct NestedListsWindowView: View {
                 Button("Cancel", role: .cancel) {}
             }
         }
+    }
+
+    // MARK: - Outline arrow keys
+
+    /// Extracted from outlineList so the giant list expression stays within
+    /// the type-checker's limits. Cmd+Opt+Left/Right = collapse/expand all
+    /// under the selection (else current view); Cmd+Left/Right = outdent/indent.
+    private func handleOutlineArrowKey(_ press: KeyPress) -> KeyPress.Result {
+        if press.modifiers.contains(.command), press.modifiers.contains(.option) {
+            if press.key == .leftArrow { state.collapseAll() } else { state.expandAll() }
+            return .handled
+        }
+        if press.modifiers.contains(.command) {
+            if press.key == .leftArrow { state.outdentSelected() } else { state.indentSelected() }
+            return .handled
+        }
+        guard state.editingId == nil, let id = state.selectedId,
+              let node = state.indexById[id]
+        else { return .ignored }
+        let collapsed = node.item.collapsed
+        if press.key == .leftArrow, node.hasChildren, !collapsed {
+            state.toggleCollapse(id: id)
+            return .handled
+        }
+        if press.key == .leftArrow, collapsed || !node.hasChildren {
+            state.selectParentOfSelected()
+            return .handled
+        }
+        if press.key == .rightArrow, collapsed {
+            state.toggleCollapse(id: id)
+            return .handled
+        }
+        return .ignored
     }
 
     private func draftRow(depth: Int) -> some View {

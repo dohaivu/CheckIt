@@ -89,6 +89,7 @@ import com.checkit.domain.usecase.SaveSprintAsWinUseCase
 import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
 import com.checkit.domain.usecase.SetNestedItemCheckboxEnabledUseCase
 import com.checkit.domain.usecase.SetNestedItemsCheckedUseCase
+import com.checkit.domain.usecase.SetNestedItemsCollapsedUseCase
 import com.checkit.domain.usecase.SmartScheduleDailyPlanUseCase
 import com.checkit.domain.usecase.SprintTransitionUseCase
 import com.checkit.domain.usecase.ToggleNestedItemCollapsedUseCase
@@ -263,6 +264,7 @@ val provideInteractorModule = module {
     single { SetNestedItemCheckboxEnabledUseCase(get()) }
     single { SetNestedItemsCheckedUseCase(get()) }
     single { ToggleNestedItemCollapsedUseCase(get()) }
+    single { SetNestedItemsCollapsedUseCase(get()) }
     single { MoveNestedItemsUseCase(get()) }
     single { DeleteNestedItemsUseCase(get()) }
     single {
@@ -286,6 +288,7 @@ val provideInteractorModule = module {
             setCheckboxEnabled = get(),
             setItemsChecked = get(),
             toggleCollapsedUseCase = get(),
+            setItemsCollapsed = get(),
             moveItems = get(),
             deleteItems = get()
         )
@@ -438,6 +441,7 @@ val provideViewModelModule = module {
             setCheckboxEnabledUseCase = get(),
             setItemsCheckedUseCase = get(),
             toggleCollapsedUseCase = get(),
+            setItemsCollapsedUseCase = get(),
             moveItemsUseCase = get(),
             deleteItemsUseCase = get(),
             settingsRepository = get(),

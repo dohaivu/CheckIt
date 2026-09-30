@@ -183,6 +183,7 @@ interface CheckItRepository {
     suspend fun replaceNestedManualMetrics(itemId: String, metrics: List<MetricItem>)
     suspend fun setNestedItemCheckboxEnabled(itemId: String, checkboxEnabled: Boolean)
     suspend fun setNestedItemsChecked(itemIds: List<String>, checked: Boolean)
+    suspend fun setNestedItemsCollapsed(itemIds: List<String>, collapsed: Boolean)
     suspend fun toggleNestedItemCollapsed(itemId: String)
     suspend fun moveNestedItems(moves: List<NestedItemMove>)
     suspend fun deleteNestedItems(itemIds: List<String>)
@@ -1610,6 +1611,11 @@ class RoomCheckItRepository(
 
     override suspend fun toggleNestedItemCollapsed(itemId: String) {
         dao.toggleNestedItemCollapsed(itemId, Clock.System.now().toEpochMilliseconds())
+    }
+
+    override suspend fun setNestedItemsCollapsed(itemIds: List<String>, collapsed: Boolean) {
+        if (itemIds.isEmpty()) return
+        dao.setNestedItemsCollapsed(itemIds, collapsed, Clock.System.now().toEpochMilliseconds())
     }
 
     override suspend fun moveNestedItems(moves: List<NestedItemMove>) {

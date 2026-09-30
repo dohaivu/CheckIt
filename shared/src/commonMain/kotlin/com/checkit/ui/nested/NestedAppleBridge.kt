@@ -24,6 +24,7 @@ import com.checkit.domain.usecase.RenameNestedDocumentUseCase
 import com.checkit.domain.usecase.ReplaceNestedManualMetricsUseCase
 import com.checkit.domain.usecase.SetNestedItemCheckboxEnabledUseCase
 import com.checkit.domain.usecase.SetNestedItemsCheckedUseCase
+import com.checkit.domain.usecase.SetNestedItemsCollapsedUseCase
 import com.checkit.domain.usecase.ToggleNestedItemCollapsedUseCase
 import com.checkit.domain.usecase.UpdateNestedItemDateRangeUseCase
 import com.checkit.domain.usecase.UpdateNestedItemFormattingUseCase
@@ -94,6 +95,7 @@ class NestedAppleHelper(
     private val setCheckboxEnabled: SetNestedItemCheckboxEnabledUseCase,
     private val setItemsChecked: SetNestedItemsCheckedUseCase,
     private val toggleCollapsedUseCase: ToggleNestedItemCollapsedUseCase,
+    private val setItemsCollapsed: SetNestedItemsCollapsedUseCase,
     private val moveItems: MoveNestedItemsUseCase,
     private val deleteItems: DeleteNestedItemsUseCase,
 ) {
@@ -302,6 +304,24 @@ class NestedAppleHelper(
 
     fun toggleCollapsed(itemId: String) {
         scope.launch { runCatching { toggleCollapsedUseCase(itemId) } }
+    }
+
+    /**
+     * Expand/collapse-all for Swift. [scopeIds] are scope roots resolved in
+     * Swift (selection, else zoom focus); empty means the whole document.
+     */
+    fun expandSubtrees(documentId: String, scopeIds: List<String>) {
+        scope.launch {
+            val items = latestTrees[documentId]?.flatItems.orEmpty()
+            runCatching { setItemsCollapsed(items, scopeIds, false) }
+        }
+    }
+
+    fun collapseSubtrees(documentId: String, scopeIds: List<String>) {
+        scope.launch {
+            val items = latestTrees[documentId]?.flatItems.orEmpty()
+            runCatching { setItemsCollapsed(items, scopeIds, true) }
+        }
     }
 
     fun indent(documentId: String, itemId: String) {

@@ -54,6 +54,8 @@ import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.UnfoldLess
+import androidx.compose.material.icons.filled.UnfoldMore
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material.icons.filled.ZoomOut
 import androidx.compose.material.icons.rounded.CheckBox
@@ -115,9 +117,11 @@ import checkit.shared.generated.resources.nested_add_child
 import checkit.shared.generated.resources.nested_add_sibling
 import checkit.shared.generated.resources.nested_batch_delete
 import checkit.shared.generated.resources.nested_confirm_delete
+import checkit.shared.generated.resources.nested_collapse_all
 import checkit.shared.generated.resources.nested_delete_confirm
 import checkit.shared.generated.resources.nested_delete_confirm_multiple
 import checkit.shared.generated.resources.nested_edit_note
+import checkit.shared.generated.resources.nested_expand_all
 import checkit.shared.generated.resources.nested_indent
 import checkit.shared.generated.resources.nested_move_down
 import checkit.shared.generated.resources.nested_move_up
@@ -233,6 +237,8 @@ internal fun NestedListScreen(
                     state = state,
                     onZoomIn = viewModel::zoomInSelected,
                     onZoomOut = viewModel::zoomOut,
+                    onExpandAll = viewModel::expandAll,
+                    onCollapseAll = viewModel::collapseAll,
                     onIndent = { state.selectedItemId?.let(viewModel::indent) },
                     onOutdent = { state.selectedItemId?.let(viewModel::outdent) },
                     onMoveUp = { state.selectedItemId?.let(viewModel::moveUp) },
@@ -1745,6 +1751,8 @@ private fun EditorToolbar(
     state: NestedEditorState.Active,
     onZoomIn: () -> Unit,
     onZoomOut: () -> Unit,
+    onExpandAll: () -> Unit,
+    onCollapseAll: () -> Unit,
     onIndent: () -> Unit,
     onOutdent: () -> Unit,
     onMoveUp: () -> Unit,
@@ -1763,6 +1771,7 @@ private fun EditorToolbar(
     val canZoomIn = hasSelection && (selectedNode?.hasChildren == true)
     val canZoomOut = state.zoomPath.isNotEmpty()
     val canAddSibling = hasSelection && (selectedNode?.item?.parentId != null)
+    val hasCollapsible = state.tree.nodeById.values.any { it.hasChildren }
     var showMore by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier
@@ -1775,6 +1784,8 @@ private fun EditorToolbar(
     ) {
         ToolbarButton(Icons.Default.ZoomIn, stringResource(Res.string.nested_zoom_in), canZoomIn, onZoomIn)
         ToolbarButton(Icons.Default.ZoomOut, stringResource(Res.string.nested_zoom_out), canZoomOut, onZoomOut)
+        ToolbarButton(Icons.Default.UnfoldMore, stringResource(Res.string.nested_expand_all), hasCollapsible, onExpandAll)
+        ToolbarButton(Icons.Default.UnfoldLess, stringResource(Res.string.nested_collapse_all), hasCollapsible, onCollapseAll)
         ToolbarButton(Icons.AutoMirrored.Filled.KeyboardArrowLeft, stringResource(Res.string.nested_outdent), hasSelection, onOutdent)
         ToolbarButton(Icons.AutoMirrored.Filled.KeyboardArrowRight, stringResource(Res.string.nested_indent), hasSelection, onIndent)
         ToolbarButton(Icons.Default.KeyboardArrowUp, stringResource(Res.string.nested_move_up), hasSelection, onMoveUp)
