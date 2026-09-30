@@ -58,8 +58,13 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.UnfoldLess
 import androidx.compose.material.icons.filled.UnfoldMore
+import androidx.compose.material.icons.filled.AddBox
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.SelectAll
+import androidx.compose.material.icons.filled.Today
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material.icons.filled.ZoomOut
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.LocalOffer
 import androidx.compose.material.icons.rounded.CheckBox
 import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
@@ -100,6 +105,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
@@ -277,7 +283,7 @@ internal fun NestedListScreen(
                 )
             }
             HorizontalDivider(
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
             )
         }
 
@@ -1860,46 +1866,79 @@ private fun EditorToolbar(
     val canAddSibling = hasSelection && (selectedNode?.item?.parentId != null)
     val hasCollapsible = state.tree.nodeById.values.any { it.hasChildren }
     var showMore by remember { mutableStateOf(false) }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(horizontal = 8.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(3.dp)
-    ) {
-        ToolbarButton(Icons.Default.ZoomIn, stringResource(Res.string.nested_zoom_in), canZoomIn, onZoomIn)
-        ToolbarButton(Icons.Default.ZoomOut, stringResource(Res.string.nested_zoom_out), canZoomOut, onZoomOut)
-        ToolbarButton(Icons.Default.UnfoldMore, stringResource(Res.string.nested_expand_all), hasCollapsible, onExpandAll)
-        ToolbarButton(Icons.Default.UnfoldLess, stringResource(Res.string.nested_collapse_all), hasCollapsible, onCollapseAll)
-        ToolbarButton(Icons.AutoMirrored.Filled.KeyboardArrowLeft, stringResource(Res.string.nested_outdent), hasSelection, onOutdent)
-        ToolbarButton(Icons.AutoMirrored.Filled.KeyboardArrowRight, stringResource(Res.string.nested_indent), hasSelection, onIndent)
-        ToolbarButton(Icons.Default.KeyboardArrowUp, stringResource(Res.string.nested_move_up), hasSelection, onMoveUp)
-        ToolbarButton(Icons.Default.KeyboardArrowDown, stringResource(Res.string.nested_move_down), hasSelection, onMoveDown)
-        ToolbarButton(Icons.Default.Add, stringResource(Res.string.nested_add_child), hasSelection, onAddChild)
-        ToolbarButton(Icons.AutoMirrored.Filled.NoteAdd, stringResource(Res.string.nested_add_sibling), canAddSibling, onAddSibling)
-        Box {
-            ToolbarButton(Icons.Default.MoreVert, "More actions", true) { showMore = true }
-            DropdownMenu(
-                expanded = showMore,
-                onDismissRequest = { showMore = false }
-            ) {
-                ToolbarMenuItem("Details", hasSelection, onManageDetails)
-                ToolbarMenuItem("Add root item", true) {
-                    showMore = false; onAddRoot()
-                }
-                ToolbarMenuItem("Select items", true) {
-                    showMore = false; onEnterSelection()
-                }
-                ToolbarMenuItem("Add to daily plan", hasSelection) {
-                    showMore = false; onAddToDailyPlan()
-                }
-                ToolbarMenuItem("Copy to Task", hasSelection) {
-                    showMore = false; onCopyToTask()
-                }
-                ToolbarMenuItem(stringResource(Res.string.nested_batch_delete), hasSelection) {
-                    showMore = false; onDelete()
+
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                .padding(horizontal = 6.dp, vertical = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.Start)
+        ) {
+            // Group 1: Zoom & Fold
+            ToolbarButton(Icons.Default.ZoomIn, stringResource(Res.string.nested_zoom_in), canZoomIn, onZoomIn)
+            ToolbarButton(Icons.Default.ZoomOut, stringResource(Res.string.nested_zoom_out), canZoomOut, onZoomOut)
+            ToolbarButton(Icons.Default.UnfoldMore, stringResource(Res.string.nested_expand_all), hasCollapsible, onExpandAll)
+            ToolbarButton(Icons.Default.UnfoldLess, stringResource(Res.string.nested_collapse_all), hasCollapsible, onCollapseAll)
+
+            VerticalDivider(
+                modifier = Modifier
+                    .height(14.dp)
+                    .padding(horizontal = 1.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+            )
+
+            // Group 2: Indent & Move
+            ToolbarButton(Icons.AutoMirrored.Filled.KeyboardArrowLeft, stringResource(Res.string.nested_outdent), hasSelection, onOutdent)
+            ToolbarButton(Icons.AutoMirrored.Filled.KeyboardArrowRight, stringResource(Res.string.nested_indent), hasSelection, onIndent)
+            ToolbarButton(Icons.Default.KeyboardArrowUp, stringResource(Res.string.nested_move_up), hasSelection, onMoveUp)
+            ToolbarButton(Icons.Default.KeyboardArrowDown, stringResource(Res.string.nested_move_down), hasSelection, onMoveDown)
+
+            VerticalDivider(
+                modifier = Modifier
+                    .height(14.dp)
+                    .padding(horizontal = 1.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+            )
+
+            // Group 3: Add Items
+            ToolbarButton(Icons.Default.Add, stringResource(Res.string.nested_add_child), hasSelection, onAddChild)
+            ToolbarButton(Icons.AutoMirrored.Filled.NoteAdd, stringResource(Res.string.nested_add_sibling), canAddSibling, onAddSibling)
+
+            VerticalDivider(
+                modifier = Modifier
+                    .height(14.dp)
+                    .padding(horizontal = 1.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+            )
+
+            // Group 4: More
+            Box {
+                ToolbarButton(Icons.Default.MoreVert, "More actions", true) { showMore = true }
+                DropdownMenu(
+                    expanded = showMore,
+                    onDismissRequest = { showMore = false }
+                ) {
+                    ToolbarMenuItem("Details", Icons.Outlined.Info, hasSelection) {
+                        showMore = false; onManageDetails()
+                    }
+                    ToolbarMenuItem("Add root item", Icons.Default.AddBox, true) {
+                        showMore = false; onAddRoot()
+                    }
+                    ToolbarMenuItem("Select items", Icons.Default.SelectAll, true) {
+                        showMore = false; onEnterSelection()
+                    }
+                    ToolbarMenuItem("Add to daily plan", Icons.Default.Today, hasSelection) {
+                        showMore = false; onAddToDailyPlan()
+                    }
+                    ToolbarMenuItem("Copy to Task", Icons.Default.ContentCopy, hasSelection) {
+                        showMore = false; onCopyToTask()
+                    }
+                    ToolbarMenuItem(stringResource(Res.string.nested_batch_delete), Icons.Default.Delete, hasSelection) {
+                        showMore = false; onDelete()
+                    }
                 }
             }
         }
@@ -1907,9 +1946,24 @@ private fun EditorToolbar(
 }
 
 @Composable
-private fun ToolbarMenuItem(label: String, enabled: Boolean, onClick: () -> Unit) {
-    androidx.compose.material3.DropdownMenuItem(
-        text = { Text(label) },
+private fun ToolbarMenuItem(
+    label: String,
+    icon: ImageVector? = null,
+    enabled: Boolean,
+    onClick: () -> Unit
+) {
+    DropdownMenuItem(
+        text = { Text(label, style = MaterialTheme.typography.bodyMedium) },
+        leadingIcon = icon?.let {
+            {
+                Icon(
+                    imageVector = it,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                )
+            }
+        },
         onClick = onClick,
         enabled = enabled
     )
@@ -1922,12 +1976,12 @@ private fun ToolbarButton(
     enabled: Boolean,
     onClick: () -> Unit
 ) {
-    IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(32.dp)) {
+    IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(30.dp)) {
         Icon(
             imageVector = icon,
             contentDescription = label,
-            tint = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
-            modifier = Modifier.size(20.dp)
+            tint = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f),
+            modifier = Modifier.size(18.dp)
         )
     }
 }

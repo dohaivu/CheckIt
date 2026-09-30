@@ -174,7 +174,7 @@
     <string name="nested_delete_confirm">Delete “%1$s” and everything inside it?</string>
     <string name="nested_delete_confirm_multiple">Delete %1$d selected items?</string>
     <string name="nested_untitled_document">Untitled</string>
-    <string name="nested_root">Document</string>
+    <string name="nested_root">Root</string>
     <string name="nested_confirm_delete">Delete items</string>
     <string name="nested_batch_delete">Delete</string>
     <string name="nested_selection_mode">Selection mode</string>
