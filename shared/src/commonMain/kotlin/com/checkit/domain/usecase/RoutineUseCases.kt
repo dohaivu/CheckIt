@@ -107,6 +107,13 @@ class DeleteRoutineUseCase(
     }
 }
 
+class UpdateRoutineOrderUseCase(
+    private val repository: RoutineRepository
+) {
+    suspend operator fun invoke(orderedIds: List<String>) =
+        repository.updateRoutineOrders(orderedIds)
+}
+
 /**
  * Toggles one step for today. No-op for routines not scheduled today.
  * Handles day rollover (stale checks are dropped), persists the transient

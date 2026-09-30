@@ -25,6 +25,7 @@ interface RoutineRepository {
         steps: List<RoutineStepTemplate>
     ): String
     suspend fun deleteRoutine(id: String)
+    suspend fun updateRoutineOrders(orderedIds: List<String>)
     suspend fun upsertLog(log: RoutineLog)
 }
 
@@ -80,6 +81,14 @@ class RoomRoutineRepository(
 
     override suspend fun deleteRoutine(id: String) {
         dao.deleteRoutine(id)
+    }
+
+    override suspend fun updateRoutineOrders(orderedIds: List<String>) {
+        if (orderedIds.isEmpty()) return
+        dao.updateRoutineSortOrders(
+            orderedIds = orderedIds,
+            updatedAtMillis = Clock.System.now().toEpochMilliseconds()
+        )
     }
 
     override suspend fun upsertLog(log: RoutineLog) {

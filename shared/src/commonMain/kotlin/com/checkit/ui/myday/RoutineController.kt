@@ -85,4 +85,14 @@ internal class RoutineController(
             }
         }
     }
+
+    fun moveRoutine(orderedIds: List<String>) {
+        scope.launch {
+            try {
+                deps.updateRoutineOrder(orderedIds)
+            } catch (error: Exception) {
+                state.sendEvent(UiEvent.ShowSnackbar(error.message ?: "Unable to reorder routines"))
+            }
+        }
+    }
 }

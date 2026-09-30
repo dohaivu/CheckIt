@@ -663,6 +663,24 @@ interface CheckItDao {
     @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM routines")
     suspend fun nextRoutineSortOrder(): Int
 
+    @Query(
+        """
+        UPDATE routines
+        SET sortOrder = :sortOrder,
+            updatedAtMillis = :updatedAtMillis,
+            dirty = 1
+        WHERE id = :routineId
+        """
+    )
+    suspend fun updateRoutineSortOrder(routineId: String, sortOrder: Int, updatedAtMillis: Long)
+
+    @Transaction
+    suspend fun updateRoutineSortOrders(orderedIds: List<String>, updatedAtMillis: Long) {
+        orderedIds.forEachIndexed { index, routineId ->
+            updateRoutineSortOrder(routineId, index, updatedAtMillis)
+        }
+    }
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertRoutineLog(log: RoutineLogEntity)
 

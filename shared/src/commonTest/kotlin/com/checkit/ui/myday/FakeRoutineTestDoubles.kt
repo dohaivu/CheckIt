@@ -41,6 +41,18 @@ internal class FakeRoutineRepository(initial: List<Routine> = emptyList()) : Rou
         routinesFlow.value = routines.toList()
     }
 
+    override suspend fun updateRoutineOrders(orderedIds: List<String>) {
+        val byId = routines.associateBy { it.id }
+        routines.clear()
+        orderedIds.mapNotNullTo(routines) { byId[it] }
+        // Keep any rows missing from orderedIds (defensive) at the end.
+        byId.values.filter { it.id !in orderedIds.toSet() }.forEach { routines.add(it) }
+        routines.forEachIndexed { index, routine ->
+            routines[index] = routine.copy(sortOrder = index)
+        }
+        routinesFlow.value = routines.toList()
+    }
+
     override suspend fun upsertLog(log: RoutineLog) {
         logs.removeAll { it.routineId == log.routineId && it.dateEpochDays == log.dateEpochDays }
         logs.add(log)

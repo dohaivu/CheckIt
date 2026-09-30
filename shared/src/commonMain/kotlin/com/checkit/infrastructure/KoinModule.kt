@@ -78,6 +78,7 @@ import com.checkit.domain.usecase.ObserveRoutinesUseCase
 import com.checkit.domain.usecase.ResetStaleRoutineTodayUseCase
 import com.checkit.domain.usecase.SaveRoutineUseCase
 import com.checkit.domain.usecase.ToggleRoutineStepUseCase
+import com.checkit.domain.usecase.UpdateRoutineOrderUseCase
 import com.checkit.domain.usecase.UpdateNoteStatusUseCase
 import com.checkit.domain.usecase.UpdateTaskStatusUseCase
 import com.checkit.domain.usecase.RenameNestedDocumentUseCase
@@ -315,6 +316,7 @@ val provideInteractorModule = module {
     single { SaveRoutineUseCase(get(), get()) }
     single { DeleteRoutineUseCase(get(), get(), get()) }
     single { ToggleRoutineStepUseCase(get(), get()) }
+    single { UpdateRoutineOrderUseCase(get()) }
     single { QuickNoteMenuHelper(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
 }
 
@@ -404,6 +406,7 @@ val provideViewModelModule = module {
             saveRoutine = get(),
             deleteRoutine = get(),
             toggleRoutineStep = get(),
+            updateRoutineOrder = get(),
             sprintManager = get(),
             sprintTransition = get()
         )

@@ -107,9 +107,16 @@ internal fun RoutineTab(
     onToggleStep: (String, String) -> Unit,
     onSaveRoutine: (String?, String, String, Int?, Set<DayOfWeek>, List<RoutineStepTemplate>) -> Unit,
     onDeleteRoutine: (String) -> Unit,
+    onMoveRoutine: (List<String>) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var editor by remember { mutableStateOf<RoutineEditorState?>(null) }
+    val scope = rememberCoroutineScope()
+    val haptic = LocalHapticFeedback.current
+    val dragState = remember { ReorderDragState(scope) }
+    var orderedRoutines by remember(routines) { mutableStateOf(routines) }
+    val currentOrdered by rememberUpdatedState(orderedRoutines)
+    val currentOnMove by rememberUpdatedState(onMoveRoutine)
     val todayRoutines = remember(routines, today) {
         routines.filter { isRoutineScheduled(today, it.activeWeekdays) }
     }
@@ -260,23 +267,80 @@ internal fun RoutineTab(
                 }
             }
         } else {
-            items(routines, key = { it.id }) { routine ->
-                RoutineCard(
-                    routine = routine,
-                    checkedStepIds = checks[routine.id].orEmpty(),
-                    scheduledToday = isRoutineScheduled(today, routine.activeWeekdays),
-                    onToggleStep = { stepId -> onToggleStep(routine.id, stepId) },
-                    onEdit = {
-                        editor = RoutineEditorState(
-                            id = routine.id,
-                            title = routine.title,
-                            description = routine.description,
-                            reminderMinutes = routine.reminderMinutes,
-                            activeWeekdays = routine.activeWeekdays,
-                            steps = routine.steps
+            items(orderedRoutines, key = { it.id }) { routine ->
+                key(routine.id) {
+                    val isDragging = dragState.draggingKey == routine.id ||
+                        dragState.previousKey == routine.id
+                    val currentOnDragStart by rememberUpdatedState {
+                        dragState.onDragStart(routine.id)
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    }
+                    val currentOnDragEnd by rememberUpdatedState {
+                        val wasDragging = dragState.draggingKey != null
+                        dragState.onDragEnd()
+                        if (wasDragging) {
+                            currentOnMove(currentOrdered.map { it.id })
+                        }
+                    }
+                    val currentOnDragMove by rememberUpdatedState { dragAmountY: Float ->
+                        dragState.onDrag(dragAmountY)
+                        val latest = currentOrdered
+                        val draggingKey = dragState.draggingKey
+                        if (draggingKey != null) {
+                            val fromIndex = latest.indexOfFirst { it.id == draggingKey }
+                            if (fromIndex >= 0) {
+                                val targetIndex = findReorderTarget(
+                                    count = latest.size,
+                                    keyAt = { row -> latest[row].id },
+                                    bounds = dragState.bounds,
+                                    draggedKey = draggingKey,
+                                    draggedDelta = dragState.draggingOffset,
+                                    fromIndex = fromIndex
+                                )
+                                if (targetIndex != null && targetIndex != fromIndex) {
+                                    orderedRoutines = latest.toMutableList().apply {
+                                        add(targetIndex, removeAt(fromIndex))
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .reorderableRowGraphics(routine.id, dragState)
+                            .fillMaxWidth()
+                            .pointerInput(routine.id) {
+                                detectDragGesturesAfterLongPress(
+                                    onDragStart = { currentOnDragStart() },
+                                    onDragEnd = { currentOnDragEnd() },
+                                    onDragCancel = { currentOnDragEnd() },
+                                    onDrag = { change, dragAmount ->
+                                        change.consume()
+                                        currentOnDragMove(dragAmount.y)
+                                    }
+                                )
+                            }
+                    ) {
+                        RoutineCard(
+                            routine = routine,
+                            checkedStepIds = checks[routine.id].orEmpty(),
+                            scheduledToday = isRoutineScheduled(today, routine.activeWeekdays),
+                            isDragging = isDragging,
+                            onToggleStep = { stepId -> onToggleStep(routine.id, stepId) },
+                            onEdit = {
+                                editor = RoutineEditorState(
+                                    id = routine.id,
+                                    title = routine.title,
+                                    description = routine.description,
+                                    reminderMinutes = routine.reminderMinutes,
+                                    activeWeekdays = routine.activeWeekdays,
+                                    steps = routine.steps
+                                )
+                            }
                         )
                     }
-                )
+                }
             }
             item {
                 Spacer(Modifier.height(36.dp))
@@ -307,7 +371,8 @@ private fun RoutineCard(
     scheduledToday: Boolean,
     onToggleStep: (String) -> Unit,
     onEdit: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isDragging: Boolean = false
 ) {
     val validStepIds = remember(routine.steps) { routine.steps.map { it.id }.toSet() }
     val percent = remember(routine.steps, checkedStepIds) {
@@ -321,10 +386,14 @@ private fun RoutineCard(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .background(
+                if (isDragging) MaterialTheme.colorScheme.surfaceContainerHigh
+                else MaterialTheme.colorScheme.surfaceContainerLow
+            )
             .border(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+                width = if (isDragging) 1.5.dp else 1.dp,
+                color = if (isDragging) MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
+                else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
                 shape = RoundedCornerShape(16.dp)
             )
     ) {

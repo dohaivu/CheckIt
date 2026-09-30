@@ -23,6 +23,7 @@ import com.checkit.domain.usecase.ObserveTasksForDateUseCase
 import com.checkit.domain.usecase.ObserveWorkingTasksUseCase
 import com.checkit.domain.usecase.SaveRoutineUseCase
 import com.checkit.domain.usecase.ToggleRoutineStepUseCase
+import com.checkit.domain.usecase.UpdateRoutineOrderUseCase
 import com.checkit.domain.usecase.SmartScheduleDailyPlanUseCase
 import com.checkit.domain.usecase.SprintTransitionUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
@@ -56,5 +57,6 @@ internal class MyDayDependencies(
     val resetStaleRoutineToday: ResetStaleRoutineTodayUseCase,
     val saveRoutine: SaveRoutineUseCase,
     val deleteRoutine: DeleteRoutineUseCase,
-    val toggleRoutineStep: ToggleRoutineStepUseCase
+    val toggleRoutineStep: ToggleRoutineStepUseCase,
+    val updateRoutineOrder: UpdateRoutineOrderUseCase
 )

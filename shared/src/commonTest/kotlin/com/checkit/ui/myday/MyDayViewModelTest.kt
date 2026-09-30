@@ -37,6 +37,7 @@ import com.checkit.domain.usecase.AddSuggestedTaskToMyDayUseCase
 import com.checkit.domain.usecase.SaveRoutineUseCase
 import com.checkit.domain.usecase.SprintTransitionUseCase
 import com.checkit.domain.usecase.ToggleRoutineStepUseCase
+import com.checkit.domain.usecase.UpdateRoutineOrderUseCase
 import com.checkit.notifications.NoOpRoutineReminderScheduler
 import com.checkit.domain.usecase.SaveSprintAsWinUseCase
 import com.checkit.domain.usecase.SmartScheduleDailyPlanUseCase
@@ -119,6 +120,7 @@ class MyDayViewModelTest {
             saveRoutine = SaveRoutineUseCase(routineRepository, routineReminderScheduler),
             deleteRoutine = DeleteRoutineUseCase(routineRepository, routineTodayStore, routineReminderScheduler),
             toggleRoutineStep = ToggleRoutineStepUseCase(routineRepository, routineTodayStore),
+            updateRoutineOrder = UpdateRoutineOrderUseCase(routineRepository),
             sprintManager = SprintManager(NoOpSprintNotificationScheduler()),
             sprintTransition = SprintTransitionUseCase(
                 sprintManager = SprintManager(NoOpSprintNotificationScheduler()), // Separate instance for transition if needed or reuse

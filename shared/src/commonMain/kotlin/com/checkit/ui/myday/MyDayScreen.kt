@@ -423,6 +423,7 @@ internal fun MyDayScreen(
                                     onToggleStep = viewModel::toggleRoutineStep,
                                     onSaveRoutine = viewModel::saveRoutine,
                                     onDeleteRoutine = viewModel::deleteRoutine,
+                                    onMoveRoutine = viewModel::moveRoutine,
                                     modifier = Modifier.weight(1f)
                                 )
                             }
