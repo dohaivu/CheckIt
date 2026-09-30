@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -58,6 +60,7 @@ import androidx.compose.material.icons.filled.UnfoldLess
 import androidx.compose.material.icons.filled.UnfoldMore
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material.icons.filled.ZoomOut
+import androidx.compose.material.icons.outlined.LocalOffer
 import androidx.compose.material.icons.rounded.CheckBox
 import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
 import androidx.compose.material3.AlertDialog
@@ -73,8 +76,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -612,128 +617,199 @@ private fun NestedFormattingBottomBar(
         NestedColorToken.Yellow, NestedColorToken.Green, NestedColorToken.Blue,
         NestedColorToken.Purple, NestedColorToken.Pink
     )
-    Row(
+    val subtleInactiveColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f)
+
+    Surface(
         modifier = Modifier
-            .horizontalScroll(rememberScrollState())
-            .background(
-                MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.95f),
-                RoundedCornerShape(18.dp)
-            )
-            .padding(horizontal = 8.dp, vertical = 0.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally)
+            .padding(bottom = 8.dp, start = 8.dp, end = 8.dp)
+            .navigationBarsPadding(),
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.95f),
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
     ) {
-        Box {
-            IconButton(onClick = { styleExpanded = true }, modifier = Modifier.size(32.dp)) {
-                Icon(
-                    imageVector = Icons.Default.FormatSize,
-                    contentDescription = "Text style",
-                    tint = if (item.textStyle != NestedTextStyle.Body) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            DropdownMenu(expanded = styleExpanded, onDismissRequest = { styleExpanded = false }) {
-                NestedTextStyle.entries.forEach { style ->
+        Row(
+            modifier = Modifier
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = 6.dp, vertical = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterHorizontally)
+        ) {
+            // Group 1: Typography & Style
+            val hasCustomStyle = item.textStyle != NestedTextStyle.Body || item.checkboxEnabled
+            Box {
+                IconButton(
+                    onClick = { styleExpanded = true },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.FormatSize,
+                        contentDescription = "Text style",
+                        tint = if (hasCustomStyle) MaterialTheme.colorScheme.primary else subtleInactiveColor,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                DropdownMenu(expanded = styleExpanded, onDismissRequest = { styleExpanded = false }) {
+                    NestedTextStyle.entries.forEach { style ->
+                        DropdownMenuItem(
+                            text = { Text(style.name) },
+                            modifier = if (style == item.textStyle) {
+                                Modifier.background(MaterialTheme.colorScheme.secondaryContainer)
+                            } else {
+                                Modifier
+                            },
+                            onClick = {
+                                styleExpanded = false
+                                onFormattingChange(style, item.textColor, item.backgroundColor)
+                            }
+                        )
+                    }
                     DropdownMenuItem(
-                        text = { Text(style.name) },
-                        modifier = if (style == item.textStyle) {
+                        text = { Text("Checkbox") },
+                        modifier = if (item.checkboxEnabled) {
                             Modifier.background(MaterialTheme.colorScheme.secondaryContainer)
                         } else {
                             Modifier
                         },
                         onClick = {
                             styleExpanded = false
-                            onFormattingChange(style, item.textColor, item.backgroundColor)
+                            onToggleCheckbox()
                         }
                     )
                 }
-                DropdownMenuItem(
-                    text = { Text("Checkbox") },
-                    modifier = if (item.checkboxEnabled) {
-                        Modifier.background(MaterialTheme.colorScheme.secondaryContainer)
-                    } else {
-                        Modifier
-                    },
-                    onClick = {
-                        styleExpanded = false
-                        onToggleCheckbox()
+            }
+
+            ColorTokenMenu(
+                icon = Icons.Default.FormatColorText,
+                selected = item.textColor,
+                tokens = colorTokens
+            ) { token -> onFormattingChange(item.textStyle, token, item.backgroundColor) }
+
+            ColorTokenMenu(
+                icon = Icons.Default.FormatColorFill,
+                selected = item.backgroundColor,
+                tokens = colorTokens,
+                filled = true
+            ) { token -> onFormattingChange(item.textStyle, item.textColor, token) }
+
+            VerticalDivider(
+                modifier = Modifier
+                    .height(16.dp)
+                    .padding(horizontal = 2.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+            )
+
+            // Group 2: Metadata (Priority, Date Range, Tags)
+            val hasPriority = item.priority != TaskPriority.None
+            Box {
+                IconButton(
+                    onClick = { priorityExpanded = true },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Flag,
+                        contentDescription = "Priority",
+                        tint = if (hasPriority) priorityColor(item.priority) else subtleInactiveColor,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                DropdownMenu(expanded = priorityExpanded, onDismissRequest = { priorityExpanded = false }) {
+                    TaskPriority.entries.forEach { priority ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = "${priorityMarker(priority)}  ${priority.name}",
+                                    color = priorityColor(priority)
+                                )
+                            },
+                            onClick = {
+                                priorityExpanded = false
+                                onPriorityChange(priority)
+                            }
+                        )
                     }
-                )
-            }
-        }
-        ColorTokenMenu(
-            icon = Icons.Default.FormatColorText,
-            selected = item.textColor,
-            tokens = colorTokens
-        ) { token -> onFormattingChange(item.textStyle, token, item.backgroundColor) }
-        ColorTokenMenu(
-            icon = Icons.Default.FormatColorFill,
-            selected = item.backgroundColor,
-            tokens = colorTokens,
-            filled = true
-        ) { token -> onFormattingChange(item.textStyle, item.textColor, token) }
-
-        // Priority button (separated)
-        Box {
-            IconButton(onClick = { priorityExpanded = true }, modifier = Modifier.size(32.dp)) {
-                Icon(
-                    imageVector = Icons.Default.Flag,
-                    contentDescription = "Priority",
-                    tint = priorityColor(item.priority)
-                )
-            }
-            DropdownMenu(expanded = priorityExpanded, onDismissRequest = { priorityExpanded = false }) {
-                TaskPriority.entries.forEach { priority ->
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                text = "${priorityMarker(priority)}  ${priority.name}",
-                                color = priorityColor(priority)
-                            )
-                        },
-                        onClick = {
-                            priorityExpanded = false
-                            onPriorityChange(priority)
-                        }
-                    )
                 }
             }
-        }
 
-        // Date Range button (separated, opens PeriodPicker dialog)
-        val hasDateRange = item.startDate != null || item.endDate != null
-        IconButton(
-            onClick = { showPeriodPicker = true },
-            modifier = Modifier.size(32.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.DateRange,
-                contentDescription = "Date range",
-                tint = if (hasDateRange) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-
-        TagOptionMenu(
-            availableTags = availableTags,
-            selectedTagIds = item.tags.map { it.id }.toSet(),
-            onTagToggle = { tagId ->
-                val selected = item.tags.map { it.id }.toMutableSet()
-                if (!selected.add(tagId)) selected.remove(tagId)
-                onTagsChange(selected.toList())
+            val hasDateRange = item.startDate != null || item.endDate != null
+            IconButton(
+                onClick = { showPeriodPicker = true },
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.DateRange,
+                    contentDescription = "Date range",
+                    tint = if (hasDateRange) MaterialTheme.colorScheme.primary else subtleInactiveColor,
+                    modifier = Modifier.size(18.dp)
+                )
             }
-        )
-        IconButton(onClick = onToggleNote, modifier = Modifier.size(32.dp)) {
-            Icon(
-                imageVector = Icons.Default.EditNote,
-                contentDescription = "Edit note",
-                tint = if (!item.note.isNullOrEmpty()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+
+            TagOptionMenu(
+                availableTags = availableTags,
+                selectedTagIds = item.tags.map { it.id }.toSet(),
+                onTagToggle = { tagId ->
+                    val selected = item.tags.map { it.id }.toMutableSet()
+                    if (!selected.add(tagId)) selected.remove(tagId)
+                    onTagsChange(selected.toList())
+                },
+                icon = { hasSelected, onClick ->
+                    IconButton(
+                        onClick = onClick,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Box(modifier = Modifier.size(18.dp)) {
+                            Icon(
+                                imageVector = Icons.Outlined.LocalOffer,
+                                contentDescription = "Tags",
+                                tint = if (hasSelected) MaterialTheme.colorScheme.primary else subtleInactiveColor,
+                                modifier = Modifier.align(Alignment.Center)
+                            )
+                            if (hasSelected) {
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .size(6.dp)
+                                        .background(MaterialTheme.colorScheme.primary, CircleShape)
+                                )
+                            }
+                        }
+                    }
+                }
             )
-        }
-        IconButton(onClick = { onSetChecked(!item.checked) }, modifier = Modifier.size(32.dp)) {
-            Icon(
-                imageVector = Icons.Default.Done,
-                contentDescription = if (item.checked) "Uncheck" else "Check off",
-                tint = if (item.checked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+
+            VerticalDivider(
+                modifier = Modifier
+                    .height(16.dp)
+                    .padding(horizontal = 2.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
             )
+
+            // Group 3: Quick Actions (Note, Check off)
+            val hasNote = !item.note.isNullOrEmpty()
+            IconButton(
+                onClick = onToggleNote,
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.EditNote,
+                    contentDescription = "Edit note",
+                    tint = if (hasNote) MaterialTheme.colorScheme.primary else subtleInactiveColor,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            IconButton(
+                onClick = { onSetChecked(!item.checked) },
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Done,
+                    contentDescription = if (item.checked) "Uncheck" else "Check off",
+                    tint = if (item.checked) MaterialTheme.colorScheme.primary else subtleInactiveColor,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
         }
     }
 
@@ -794,55 +870,66 @@ private fun ColorTokenMenu(
     onSelected: (NestedColorToken) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
+    val isColorActive = selected != NestedColorToken.Default
+    val subtleInactiveColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f)
     Box {
-        IconButton(onClick = { expanded = true }, modifier = Modifier.size(32.dp)) {
+        IconButton(
+            onClick = { expanded = true },
+            modifier = Modifier.size(32.dp)
+        ) {
             Icon(
                 imageVector = icon,
                 contentDescription = if (filled) "Background color" else "Text color",
-                tint = nestedColor(selected)
+                tint = if (isColorActive) nestedColor(selected) else subtleInactiveColor,
+                modifier = Modifier.size(18.dp)
             )
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            tokens.forEach { token ->
-                DropdownMenuItem(
-                    leadingIcon = { ColorTokenSwatch(token, filled = filled) },
-                    text = { Text(token.name) },
-                    modifier = if (token == selected) {
-                        Modifier.background(MaterialTheme.colorScheme.secondaryContainer)
-                    } else {
-                        Modifier
-                    },
-                    onClick = {
-                        expanded = false
-                        onSelected(token)
+            Row(
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                tokens.forEach { token ->
+                    val color = nestedColor(token)
+                    val isSelected = token == selected
+                    Box(
+                        modifier = Modifier
+                            .size(24.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (token == NestedColorToken.Default) MaterialTheme.colorScheme.surfaceVariant else color
+                            )
+                            .border(
+                                width = if (isSelected) 2.dp else 1.dp,
+                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                                shape = CircleShape
+                            )
+                            .clickable {
+                                expanded = false
+                                onSelected(token)
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (isSelected) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = token.name,
+                                tint = if (token == NestedColorToken.Default) MaterialTheme.colorScheme.onSurfaceVariant else Color.White,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        } else if (token == NestedColorToken.Default) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Default",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                modifier = Modifier.size(12.dp)
+                            )
+                        }
                     }
-                )
+                }
             }
         }
-    }
-}
-
-@Composable
-private fun ColorTokenSwatch(
-    token: NestedColorToken,
-    filled: Boolean = false
-) {
-    val color = when (token) {
-        NestedColorToken.Default -> MaterialTheme.colorScheme.onSurfaceVariant
-        NestedColorToken.Red -> androidx.compose.ui.graphics.Color(0xFFE57373)
-        NestedColorToken.Orange -> androidx.compose.ui.graphics.Color(0xFFFFB74D)
-        NestedColorToken.Yellow -> androidx.compose.ui.graphics.Color(0xFFFFD54F)
-        NestedColorToken.Green -> androidx.compose.ui.graphics.Color(0xFF81C784)
-        NestedColorToken.Blue -> androidx.compose.ui.graphics.Color(0xFF64B5F6)
-        NestedColorToken.Purple -> androidx.compose.ui.graphics.Color(0xFFBA68C8)
-        NestedColorToken.Pink -> androidx.compose.ui.graphics.Color(0xFFF06292)
-    }
-    Box(modifier = Modifier
-            .size(20.dp)
-            .clip(CircleShape)
-            .background(if (filled && token != NestedColorToken.Default) color.copy(alpha = 0.28f) else androidx.compose.ui.graphics.Color.Transparent)
-            .border(1.dp, color.copy(alpha = 0.75f), CircleShape), contentAlignment = Alignment.Center) {
-        if (!filled && token != NestedColorToken.Default) Box(Modifier.size(10.dp).clip(CircleShape).background(color))
     }
 }
 
