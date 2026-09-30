@@ -217,6 +217,7 @@ internal fun MyDayScreen(
                                 Icons.Default.Refresh,
                                 contentDescription = "Refresh",
                                 modifier = Modifier.size(24.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                             )
                         }
                     }
@@ -229,6 +230,7 @@ internal fun MyDayScreen(
                                 Icons.Default.AutoAwesome,
                                 contentDescription = "Smart Schedule",
                                 modifier = Modifier.size(20.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                             )
                         }
                         IconButton(
@@ -239,6 +241,7 @@ internal fun MyDayScreen(
                                 Icons.Default.RateReview,
                                 contentDescription = stringResource(Res.string.day_close_open),
                                 modifier = Modifier.size(20.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                             )
                         }
                         IconButton(
@@ -249,6 +252,7 @@ internal fun MyDayScreen(
                                 Icons.Default.Lightbulb,
                                 contentDescription = "Add to My Day",
                                 modifier = Modifier.size(20.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                             )
                         }
                         IconButton(
@@ -259,6 +263,7 @@ internal fun MyDayScreen(
                                 Icons.Default.AddTask,
                                 contentDescription = null,
                                 modifier = Modifier.size(20.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                             )
                         }
                     }
