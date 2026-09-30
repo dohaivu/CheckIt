@@ -115,6 +115,7 @@ data class NestedUiState(
     val isListLoading: Boolean = true,
     val documentDeleting: NestedDocument? = null,
     val showNewDocumentDialog: Boolean = false,
+    val renamingDocument: NestedDocument? = null,
     val newDocumentTitle: String = "",
     val editor: NestedEditorState? = null,
     val syncState: NestedSyncState = NestedSyncState(),
@@ -264,7 +265,7 @@ class NestedListsViewModel(
     // --- Document Management ---
 
     fun startNewDocument() {
-        _uiState.update { it.copy(showNewDocumentDialog = true, newDocumentTitle = "") }
+        _uiState.update { it.copy(showNewDocumentDialog = true, renamingDocument = null, newDocumentTitle = "") }
     }
 
     fun updateNewDocumentTitle(title: String) {
@@ -276,14 +277,39 @@ class NestedListsViewModel(
     }
 
     fun addDocument(title: String) {
+        if (title.isBlank()) return
         viewModelScope.launch {
             runCatching { addDocumentUseCase(title) }
-                .onSuccess { id -> 
-                    _uiState.update { it.copy(showNewDocumentDialog = false) }
-                    openDocument(id) 
+                .onSuccess { id ->
+                    _uiState.update { it.copy(showNewDocumentDialog = false, newDocumentTitle = "") }
+                    openDocument(id)
                 }
                 .onFailure { error ->
                     _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to create document"))
+                }
+        }
+    }
+
+    fun startRenameDocument(document: NestedDocument) {
+        _uiState.update {
+            it.copy(renamingDocument = document, showNewDocumentDialog = false, newDocumentTitle = document.title)
+        }
+    }
+
+    fun cancelRenameDocument() {
+        _uiState.update { it.copy(renamingDocument = null) }
+    }
+
+    fun renameDocument(title: String) {
+        val target = _uiState.value.renamingDocument ?: return
+        if (title.isBlank()) return
+        viewModelScope.launch {
+            runCatching { renameDocumentUseCase(target.id, title) }
+                .onSuccess {
+                    _uiState.update { it.copy(renamingDocument = null, newDocumentTitle = "") }
+                }
+                .onFailure { error ->
+                    _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to rename document"))
                 }
         }
     }

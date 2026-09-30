@@ -170,6 +170,7 @@
     <string name="nested_lists_title">Nested lists</string>
     <string name="nested_documents_empty">No documents yet. Tap + to create one.</string>
     <string name="nested_new_document">New document</string>
+    <string name="nested_rename_document">Rename document</string>
     <string name="nested_delete_document">Delete document</string>
     <string name="nested_delete_confirm">Delete “%1$s” and everything inside it?</string>
     <string name="nested_delete_confirm_multiple">Delete %1$d selected items?</string>
