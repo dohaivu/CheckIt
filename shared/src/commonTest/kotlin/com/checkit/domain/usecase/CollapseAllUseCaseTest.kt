@@ -92,9 +92,15 @@ class CollapseAllUseCaseTest {
     }
 
     @Test
-    fun scopedToSubtreeIncludingScopeRoot() {
+    fun scopedCollapseExcludesScopeRootItself() {
         val ids = collapsibleIdsInScopes(tree(), listOf("root"), collapsed = true)
-        assertEquals(setOf("root", "a"), ids.toSet())
+        assertEquals(setOf("a"), ids.toSet())
+    }
+
+    @Test
+    fun scopedExpandStillIncludesScopeRoot() {
+        val ids = collapsibleIdsInScopes(tree(), listOf("b"), collapsed = false)
+        assertEquals(listOf("b"), ids)
     }
 
     @Test
@@ -121,7 +127,7 @@ class CollapseAllUseCaseTest {
         val repo = RecordingRepo()
         SetNestedItemsCollapsedUseCase(repo)(tree(), listOf("root"), true)
         assertEquals(1, repo.calls.size)
-        assertEquals(setOf("root", "a"), repo.calls.single().first.toSet())
+        assertEquals(setOf("a"), repo.calls.single().first.toSet())
         assertEquals(true, repo.calls.single().second)
     }
 

@@ -194,6 +194,9 @@ fun resolveCollapseScopeRoots(
  * [scopeRootIds] (roots included when they have children), keeping only rows
  * whose collapsed state differs from [collapsed]. Empty [scopeRootIds] means
  * the whole document.
+ *
+ * Collapse-all keeps the scope roots themselves expanded so the selection /
+ * zoomed view stays visible; only their descendants collapse.
  */
 fun collapsibleIdsInScopes(
     items: List<NestedListItem>,
@@ -208,9 +211,10 @@ fun collapsibleIdsInScopes(
         }.map { it.id }
     }
     val byId = items.associateBy { it.id }
+    val roots = scopeRootIds.mapNotNull { byId[it]?.id }.toSet()
     val out = LinkedHashSet<String>()
     val stack = ArrayDeque<String>()
-    scopeRootIds.mapNotNull { byId[it]?.id }.forEach(stack::addLast)
+    roots.forEach(stack::addLast)
     val visited = HashSet<String>()
     while (stack.isNotEmpty()) {
         val id = stack.removeLast()
@@ -218,7 +222,7 @@ fun collapsibleIdsInScopes(
         val item = byId[id] ?: continue
         val children = childrenByParent[id].orEmpty()
         if (children.isNotEmpty()) {
-            if (item.collapsed != collapsed) out.add(id)
+            if (item.collapsed != collapsed && !(collapsed && id in roots)) out.add(id)
             children.forEach { stack.addLast(it.id) }
         }
     }
