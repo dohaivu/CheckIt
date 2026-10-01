@@ -231,7 +231,7 @@ internal fun PeriodGoalEditorSheet(
             }
 
             Text(
-                text = ReflectionPrompts.get(editor.focus.period).goalPrompt,
+                text = ReflectionPrompts.get(editor.focus.period).goalText,
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary,
             )
@@ -282,9 +282,10 @@ internal fun PeriodGoalEditorSheet(
 
 internal data class ReflectionPrompt(
     val reviewSections: List<String>,
-    val goalPrompt: String
+    val goalPrompts: List<String>
 ) {
     val reviewText: String get() = reviewSections.fastJoinToString("\n")
+    val goalText: String get() = goalPrompts.fastJoinToString("\n")
 }
 
 internal object ReflectionPrompts {
@@ -294,7 +295,10 @@ internal object ReflectionPrompts {
                 "What were your wins?",
                 "Where did you feel friction? What distracted you? How can I prevent it tomorrow?",
             ),
-            goalPrompt = "What can I make slightly better today? Why? If/When-Then"
+            goalPrompts = listOf(
+                "What can I make slightly better today? Why? If/When-Then",
+                "How you want to be?"
+            )
         )
         Period.Week -> ReflectionPrompt(
             reviewSections = listOf(
@@ -302,7 +306,7 @@ internal object ReflectionPrompts {
                 "Which tactics worked well? What didn't work?",
                 "What needs to change next week?"
             ),
-            goalPrompt = "What are the 3 primary objectives for this week?"
+            goalPrompts = listOf("What are the 3 primary objectives for this week?")
         )
         Period.Month -> ReflectionPrompt(
             reviewSections = listOf(
@@ -310,21 +314,21 @@ internal object ReflectionPrompts {
                 "How is your big-picture progress? Review active quarterly/yearly goals.",
                 "What macro trends are you noticing? What recurring friction or bottlenecks appeared?"
             ),
-            goalPrompt = "What are the 3 key milestones for this month?"
+            goalPrompts = listOf("What are the 3 key milestones for this month?")
         )
         Period.Quarter -> ReflectionPrompt(
             reviewSections = listOf(
                 "What are the quarterly trends?",
                 "How is the macro progress?"
             ),
-            goalPrompt = "What are the 3 key results for this quarter?"
+            goalPrompts = listOf("What are the 3 key results for this quarter?")
         )
         Period.Year -> ReflectionPrompt(
             reviewSections = listOf(
                 "What are your biggest annual achievements?",
                 "How have you progressed toward your long-term vision?"
             ),
-            goalPrompt = "What are the 3 most important goals for the coming year?"
+            goalPrompts = listOf("What are the 3 most important goals for the coming year?")
         )
     }
 }
