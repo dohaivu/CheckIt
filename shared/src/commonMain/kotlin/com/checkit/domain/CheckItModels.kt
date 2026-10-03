@@ -72,6 +72,7 @@ data class TaskItem(
     val sortOrder: Int = 0,
     val isPinned: Boolean = false,
     val sectionId: String? = null,
+    val metrics: List<MetricItem> = emptyList(),
     val createdAtMillis: Long,
     val updatedAtMillis: Long,
     val trashedAtMillis: Long? = null
@@ -99,7 +100,8 @@ data class TaskItem(
         resolvedTags: List<TagItem>,
         resolvedSortOrder: Int,
         resolvedIsPinned: Boolean,
-        resolvedSectionId: String?
+        resolvedSectionId: String?,
+        resolvedMetrics: List<MetricItem>
     ): Boolean {
         return this.id == id &&
             this.name == name &&
@@ -122,7 +124,8 @@ data class TaskItem(
             this.tags == resolvedTags &&
             this.sortOrder == resolvedSortOrder &&
             this.isPinned == resolvedIsPinned &&
-            this.sectionId == resolvedSectionId
+            this.sectionId == resolvedSectionId &&
+            this.metrics == resolvedMetrics
     }
 }
 

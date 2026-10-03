@@ -405,6 +405,7 @@ interface CheckItDao {
             endTimeMinutes = :endTimeMinutes,
             repeatRRule = :repeatRRule,
             label = :label,
+            metricsJson = :metricsJson,
             updatedAtMillis = :updatedAtMillis,
             dirty = 1
         WHERE id = :taskId
@@ -422,6 +423,7 @@ interface CheckItDao {
         endTimeMinutes: Int?,
         repeatRRule: String?,
         label: String?,
+        metricsJson: String,
         updatedAtMillis: Long
     )
 

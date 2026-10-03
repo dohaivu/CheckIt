@@ -1,0 +1,144 @@
+package com.checkit.ui.tasks
+
+import com.checkit.domain.MetricItem
+import com.checkit.domain.TaskBoard
+import com.checkit.domain.TaskItem
+import com.checkit.domain.usecase.AddNoteUseCase
+import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
+import com.checkit.domain.usecase.AddTaskUseCase
+import com.checkit.domain.usecase.CompleteTaskUseCase
+import com.checkit.domain.usecase.CompleteNoteUseCase
+import com.checkit.domain.usecase.UpdateTaskStatusUseCase
+import com.checkit.domain.usecase.UpdateNoteStatusUseCase
+import com.checkit.domain.usecase.RestoreNoteUseCase
+import com.checkit.domain.usecase.RestoreTaskUseCase
+import com.checkit.domain.usecase.DeleteNoteUseCase
+import com.checkit.domain.usecase.DeleteTaskUseCase
+import com.checkit.domain.usecase.LinkDailyPlanItemToTaskUseCase
+import com.checkit.domain.usecase.GetNoteUseCase
+import com.checkit.domain.usecase.GetTaskUseCase
+import com.checkit.domain.usecase.MoveNoteUseCase
+import com.checkit.domain.usecase.MoveTaskUseCase
+import com.checkit.domain.usecase.ObserveTaskBoardUseCase
+import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
+import com.checkit.domain.usecase.UpdateDailyPlanItemStatusUseCase
+import com.checkit.domain.usecase.UpdateDailyPlanItemTagUseCase
+import com.checkit.domain.usecase.UpdateDailyPlanItemUseCase
+import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
+import com.checkit.domain.usecase.UpdateNoteUseCase
+import com.checkit.domain.usecase.UpdateTaskUseCase
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+@OptIn(ExperimentalCoroutinesApi::class)
+class TaskMetricsViewModelTest {
+    private val dispatcher = StandardTestDispatcher()
+    private lateinit var repository: FakeCheckItRepository
+    private lateinit var viewModel: TaskViewModel
+
+    @BeforeTest
+    fun setUp() {
+        Dispatchers.setMain(dispatcher)
+    }
+
+    @AfterTest
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
+
+    @Test
+    fun openTaskLoadsMetricsIntoForm() = runTest(dispatcher) {
+        val metrics = listOf(MetricItem(name = "Pages", value = "20", targetValue = "30"))
+        val task = taskWithMetrics(metrics)
+        createViewModel(TaskBoard(tasks = listOf(task)))
+
+        viewModel.openTask(task)
+
+        val editor = viewModel.uiState.value.editor as TaskEditorState.TaskForm
+        assertEquals(metrics, editor.metrics)
+    }
+
+    @Test
+    fun updateTaskMetricsUpdatesForm() = runTest(dispatcher) {
+        val task = taskWithMetrics(emptyList())
+        createViewModel(TaskBoard(tasks = listOf(task)))
+        viewModel.openTask(task)
+
+        val metrics = listOf(MetricItem(name = "Pages", value = "20"))
+        viewModel.updateTaskMetrics(metrics)
+
+        val editor = viewModel.uiState.value.editor as TaskEditorState.TaskForm
+        assertEquals(metrics, editor.metrics)
+    }
+
+    @Test
+    fun savePersistsMetricsAndDropsBlankValues() = runTest(dispatcher) {
+        val task = taskWithMetrics(emptyList())
+        createViewModel(TaskBoard(tasks = listOf(task)))
+        viewModel.openTask(task)
+
+        viewModel.updateTaskMetrics(
+            listOf(
+                MetricItem(name = "Pages", value = "20", targetValue = "30"),
+                MetricItem(name = "Weight", value = "")
+            )
+        )
+        viewModel.saveEditor()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        val (taskId, input) = repository.updatedTasks.last()
+        assertEquals(task.id, taskId)
+        assertEquals(
+            listOf(MetricItem(name = "Pages", value = "20", targetValue = "30")),
+            input.metrics
+        )
+    }
+
+    private fun taskWithMetrics(metrics: List<MetricItem>) = TaskItem(
+        id = "t1",
+        name = "Read",
+        metrics = metrics,
+        createdAtMillis = 0L,
+        updatedAtMillis = 0L
+    )
+
+    private fun createViewModel(board: TaskBoard) {
+        repository = FakeCheckItRepository(initialBoard = board)
+        viewModel = TaskViewModel(
+            observeTaskBoard = ObserveTaskBoardUseCase(repository),
+            selectTaskBoardItems = SelectTaskBoardItemsUseCase(),
+            getTask = GetTaskUseCase(repository),
+            getNote = GetNoteUseCase(repository),
+            addTask = AddTaskUseCase(repository),
+            addTaskToDailyPlan = AddTaskToDailyPlanUseCase(repository),
+            updateTask = UpdateTaskUseCase(repository),
+            deleteTask = DeleteTaskUseCase(repository),
+            restoreTask = RestoreTaskUseCase(repository),
+            completeTask = CompleteTaskUseCase(repository),
+            completeNote = CompleteNoteUseCase(repository),
+            updateTaskStatus = UpdateTaskStatusUseCase(repository),
+            updateNoteStatus = UpdateNoteStatusUseCase(repository),
+            addNote = AddNoteUseCase(repository),
+            updateNote = UpdateNoteUseCase(repository),
+            deleteNote = DeleteNoteUseCase(repository),
+            restoreNote = RestoreNoteUseCase(repository),
+            moveTask = MoveTaskUseCase(repository),
+            moveNote = MoveNoteUseCase(repository),
+            updateDailyPlanItemTime = UpdateDailyPlanItemTimeUseCase(repository),
+            updateDailyPlanItemStatus = UpdateDailyPlanItemStatusUseCase(repository),
+            updateDailyPlanItemTag = UpdateDailyPlanItemTagUseCase(repository),
+            updateDailyPlanItem = UpdateDailyPlanItemUseCase(repository),
+            linkDailyPlanItemToTask = LinkDailyPlanItemToTaskUseCase(repository),
+            settingsRepository = FakeSettingsRepository()
+        )
+        dispatcher.scheduler.advanceUntilIdle()
+    }
+}

@@ -223,6 +223,7 @@ data class TaskWriteInput(
     val repeatRRule: String?,
     val label: String? = null,
     val isPinned: Boolean = false,
+    val metrics: List<MetricItem> = emptyList(),
     val reminders: List<TaskReminderWriteInput>,
     val tagIds: List<String>
 )
@@ -414,7 +415,8 @@ class RoomCheckItRepository(
                             resolvedTags = itemTags,
                             resolvedSortOrder = listSortOrder,
                             resolvedIsPinned = isPinned,
-                            resolvedSectionId = sectionId
+                            resolvedSectionId = sectionId,
+                            resolvedMetrics = entity.decodedMetrics()
                         )
                     ) {
                         cached
@@ -645,6 +647,7 @@ class RoomCheckItRepository(
                 endTimeMinutes = if (isTask) input.endTimeMinutes else null,
                 repeatRRule = if (isTask) input.repeatRRule else null,
                 label = input.label,
+                metricsJson = Json.encodeToString(input.metrics.map { it.normalized() }),
                 createdAtMillis = now,
                 updatedAtMillis = now
             )
@@ -681,6 +684,7 @@ class RoomCheckItRepository(
             endTimeMinutes = if (isTask) input.endTimeMinutes else null,
             repeatRRule = if (isTask) input.repeatRRule else null,
             label = input.label,
+            metricsJson = Json.encodeToString(input.metrics.map { it.normalized() }),
             updatedAtMillis = Clock.System.now().toEpochMilliseconds()
         )
         val existingTaskListJoin = dao.taskListByTaskId(taskId)
@@ -1850,6 +1854,7 @@ private fun TaskEntity.toDomain(
     sortOrder = listSortOrder,
     isPinned = isPinned,
     sectionId = sectionId,
+    metrics = decodedMetrics(),
     createdAtMillis = createdAtMillis,
     updatedAtMillis = updatedAtMillis,
     trashedAtMillis = trashedAtMillis
@@ -1885,6 +1890,10 @@ private fun MetricItem.normalized() = copy(
     targetValue = targetValue?.trim()?.takeIf { it.isNotEmpty() },
     customUnit = customUnit?.trim()?.takeIf { it.isNotEmpty() }
 )
+
+private fun TaskEntity.decodedMetrics(): List<MetricItem> = runCatching {
+    metricsJsonFormat.decodeFromString<List<MetricItem>>(metricsJson)
+}.getOrDefault(emptyList())
 
 internal fun PeriodGoalEntity.toDomain() = PeriodGoal(
     id = id,

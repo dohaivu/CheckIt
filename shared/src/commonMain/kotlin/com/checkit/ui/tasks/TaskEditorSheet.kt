@@ -10,16 +10,12 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -30,10 +26,8 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.RestoreFromTrash
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -44,20 +38,17 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.ListItem
+import com.checkit.domain.MetricItem
 import com.checkit.domain.TagItem
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
@@ -74,6 +65,7 @@ import com.checkit.ui.components.LabelTextField
 import com.checkit.ui.components.ListPicker
 import com.checkit.ui.components.MarkdownTextField
 import com.checkit.ui.components.MarkdownVisualTransformation
+import com.checkit.ui.components.MetricsSection
 import com.checkit.ui.components.PriorityPicker
 import com.checkit.ui.components.TagPicker
 import com.checkit.ui.components.TimeRangePicker
@@ -83,7 +75,6 @@ import com.checkit.ui.tasks.views.ContentContainerAlpha
 import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun TaskEditorSheet(
     editor: TaskEditorState,
@@ -150,6 +141,7 @@ internal fun TaskEditorSheet(
                             onSubTaskMove = actions.subTask.onMove,
                             onTagToggle = actions.task.onTagToggle,
                             onLabelChange = actions.task.onLabelChange,
+                            onMetricsChange = actions.task.onMetricsChange,
                             onNewTagClick = actions.common.onNewTagClick,
                             enabled = editor.isFormEditable()
                         )
@@ -346,6 +338,7 @@ private fun TaskFormContent(
     onSubTaskMove: (Int, Int) -> Unit,
     onTagToggle: (String) -> Unit,
     onLabelChange: (String) -> Unit,
+    onMetricsChange: (List<MetricItem>) -> Unit,
     onNewTagClick: () -> Unit,
     recentLabels: List<String>,
     enabled: Boolean = true
@@ -450,6 +443,12 @@ private fun TaskFormContent(
             enabled = enabled
         )
 
+        MetricsSection(
+            metrics = form.metrics,
+            enabled = enabled,
+            onMetricsChange = onMetricsChange
+        )
+
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -474,7 +473,6 @@ private fun TaskFormContent(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DailyPlanSection(
     item: DailyPlanItem?,

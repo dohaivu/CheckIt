@@ -5,6 +5,7 @@ import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DueDatePreset
 import com.checkit.domain.ListItem
 import com.checkit.domain.ListSection
+import com.checkit.domain.MetricItem
 import com.checkit.domain.NoteItem
 import com.checkit.domain.SubTaskItem
 import com.checkit.domain.TaskBoard
@@ -147,6 +148,7 @@ sealed interface TaskEditorState {
         val label: String? = null,
         val isPinned: Boolean = false,
         val selectedTagIds: Set<String> = emptySet(),
+        val metrics: List<MetricItem> = emptyList(),
         val addToMyDayOnSave: Boolean = false,
         val dailyPlanItem: DailyPlanItem? = null,
         val upgradeDailyPlanItemId: String? = null,

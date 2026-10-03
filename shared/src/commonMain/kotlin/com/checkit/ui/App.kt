@@ -469,7 +469,8 @@ fun CheckItApp(
                                     onPriorityChange = viewModels.task::updateTaskPriority,
                                     onReminderToggle = viewModels.task::toggleTaskReminder,
                                     onTagToggle = viewModels.task::toggleTaskTag,
-                                    onLabelChange = viewModels.task::updateTaskLabel
+                                    onLabelChange = viewModels.task::updateTaskLabel,
+                                    onMetricsChange = viewModels.task::updateTaskMetrics
                                 ),
                                 dailyPlan = TaskEditorActions.DailyPlan(
                                     onTimeChange = viewModels.task::updateDailyPlanTime,

@@ -91,6 +91,8 @@ data class TaskEntity(
     val endTimeMinutes: Int? = null,
     val repeatRRule: String? = null,
     val label: String? = null,
+    /** Inline JSON list of MetricItem. */
+    val metricsJson: String = "[]",
     val createdAtMillis: Long,
     val updatedAtMillis: Long,
     val trashedAtMillis: Long? = null,
@@ -758,7 +760,7 @@ data class RoutineLogEntity(
         RoutineLogEntity::class,
         QuickNoteEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)
@@ -781,13 +783,22 @@ private val RoutineColorMigration1To2 = object : Migration(1, 2) {
     }
 }
 
+/** v2 -> v3: adds the task metrics column; existing rows take the default. */
+private val TaskMetricsMigration2To3 = object : Migration(2, 3) {
+    override suspend fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            "ALTER TABLE tasks ADD COLUMN metricsJson TEXT NOT NULL DEFAULT '[]'"
+        )
+    }
+}
+
 fun buildCheckItDatabase(
     builder: RoomDatabase.Builder<CheckItDatabase>
 ): CheckItDatabase {
     return builder
         .fallbackToDestructiveMigration(false)
         .fallbackToDestructiveMigrationOnDowngrade(false)
-        .addMigrations(RoutineColorMigration1To2)
+        .addMigrations(RoutineColorMigration1To2, TaskMetricsMigration2To3)
         .setQueryCoroutineContext(Dispatchers.IO)
         .setDriver(BundledSQLiteDriver())
         .addCallback(object : RoomDatabase.Callback() {
