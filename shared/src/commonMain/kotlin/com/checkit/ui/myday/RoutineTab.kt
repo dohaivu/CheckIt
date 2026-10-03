@@ -150,33 +150,29 @@ internal fun RoutineTab(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 4.dp),
+                    .padding(horizontal = 4.dp, vertical = 2.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    if (routines.isNotEmpty()) {
-                        Text(
-                            text = if (todayRoutines.isNotEmpty()) {
-                                "$doneSteps of $totalSteps steps • $overallPercent%"
-                            } else {
-                                "Nothing scheduled today"
-                            },
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    } else {
-                        Spacer(modifier = Modifier.width(1.dp))
-                    }
+                    Text(
+                        text = when {
+                            routines.isEmpty() -> "No routines"
+                            todayRoutines.isEmpty() -> "Nothing scheduled today"
+                            else -> "$doneSteps of $totalSteps steps ($overallPercent%)"
+                        },
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     if (todayRoutines.isNotEmpty() && totalSteps > 0) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(4.dp)
+                                .height(3.dp)
                                 .clip(CircleShape)
                                 .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
                         ) {
@@ -190,17 +186,26 @@ internal fun RoutineTab(
                         }
                     }
                 }
+                Spacer(modifier = Modifier.width(12.dp))
                 IconButton(
                     onClick = {
-                        editor = RoutineEditorState(id = null, title = "", description = "", reminderMinutes = null, activeWeekdays = AllWeekdays, color = RoutineDefaultColorHex, steps = emptyList())
+                        editor = RoutineEditorState(
+                            id = null,
+                            title = "",
+                            description = "",
+                            reminderMinutes = null,
+                            activeWeekdays = AllWeekdays,
+                            color = RoutineDefaultColorHex,
+                            steps = emptyList()
+                        )
                     },
-                    shape = CircleShape,
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(28.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
                         contentDescription = "New routine",
-                        tint = MaterialTheme.colorScheme.primary
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
