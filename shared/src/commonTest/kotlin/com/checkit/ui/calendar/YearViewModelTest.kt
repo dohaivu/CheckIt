@@ -115,6 +115,47 @@ class YearViewModelTest {
         assertNull(state.ratingFor(march5))
     }
 
+    @Test
+    fun monthStatsCountEachRatingLevel() {
+        val march7 = LocalDate(year, Month.MARCH, 7)
+        val march12 = LocalDate(year, Month.MARCH, 12)
+        val state = YearUiState(
+            year = year,
+            ratingByDate = mapOf(
+                march5 to 4.5f,
+                march6 to 0f,
+                march7 to 3.0f,
+                march12 to 5.0f
+            ),
+            isLoading = false
+        )
+
+        val march = state.ratingStatsByMonth[Month.MARCH]
+
+        assertEquals(3, march?.ratedDayCount)
+        assertEquals(mapOf(5 to 2, 3 to 1), march?.countByLevel)
+        assertEquals(listOf(5 to 2, 3 to 1), march?.levelsDescending)
+        assertEquals(MonthRatingStat(), state.ratingStatFor(Month.APRIL))
+    }
+
+    @Test
+    fun ratingLevelRoundsHalvesUp() {
+        assertEquals(5, 5.0f.ratingLevel())
+        assertEquals(5, 4.5f.ratingLevel())
+        assertEquals(4, 4.4f.ratingLevel())
+        assertEquals(4, 3.5f.ratingLevel())
+        assertEquals(3, 3.0f.ratingLevel())
+        assertEquals(1, 1.0f.ratingLevel())
+    }
+
+    @Test
+    fun viewModelExposesMonthlyRatingStats() {
+        val march = viewModel.uiState.value.ratingStatsByMonth[Month.MARCH]
+
+        assertEquals(1, march?.ratedDayCount)
+        assertEquals(mapOf(5 to 1), march?.countByLevel)
+    }
+
     private fun dayGoal(date: LocalDate, rating: Float) = PeriodGoal(
         period = Period.Day,
         startEpochDays = date.toEpochDays().toInt(),
