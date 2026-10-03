@@ -2224,7 +2224,7 @@ private fun NestedTree(
                                 colors = CheckboxDefaults.colors(uncheckedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
                             )
                         } else {
-                            Spacer(Modifier.width(8.dp))
+                            Spacer(Modifier.width(4.dp))
                         }
 
                         Column(modifier = Modifier.weight(1f)) {

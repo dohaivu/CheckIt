@@ -129,6 +129,7 @@ import com.checkit.domain.usecase.SetQuickNotePriorityUseCase
 import com.checkit.domain.usecase.SetQuickNoteReminderUseCase
 import com.checkit.notifications.AppReminderScheduler
 import com.checkit.ui.calendar.CalendarViewModel
+import com.checkit.ui.calendar.YearViewModel
 import com.checkit.ui.guidelines.GuidelinesViewModel
 import com.checkit.ui.quicknote.QuickNoteViewModel
 import com.checkit.ui.myday.MyDayViewModel
@@ -377,6 +378,12 @@ val provideViewModelModule = module {
             observeNotesInRange = get(),
             observeTasksForDate = get(),
             observeNotesForDate = get()
+        )
+    }
+    viewModel {
+        YearViewModel(
+            observePeriodGoals = get(),
+            observeDailyReflectStats = get()
         )
     }
     viewModel { JournalHistoryViewModel(get(), get(), get()) }
