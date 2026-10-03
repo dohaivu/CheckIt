@@ -1,13 +1,5 @@
 package com.checkit.ui
 
-import kotlinx.datetime.LocalDate
-
-internal fun Int.shortcutDurationLabel(): String =
-    when {
-        this < 60 -> "${this}m"
-        this % 60 == 0 -> "${this / 60}h"
-        else -> "${this / 60}h ${this % 60}m"
-    }
 
 internal fun validTimeRangeEnd(startTime: Int?, endTime: Int?): Int? =
     when {

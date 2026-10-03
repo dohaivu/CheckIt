@@ -42,6 +42,7 @@ import com.checkit.ui.components.statusBreathingGlow
 import com.checkit.ui.shortcutDurationLabel
 import com.checkit.ui.cardColor
 import com.checkit.ui.theme.toColor
+import com.checkit.ui.toDurationLabel
 import kotlin.math.roundToInt
 
 @Composable
@@ -100,7 +101,7 @@ private fun DayTagTotals(items: List<DailyPlanItem>) {
 private fun TagTimeChip(tag: TagItem, minutes: Int) {
     val tagColor = remember(tag) { tag.color.toColor().copy(alpha = 0.9f) }
     Text(
-        text = "${tag.name} ${minutes.shortcutDurationLabel()}",
+        text = "${tag.name} ${minutes.toDurationLabel(true)}",
         style = MaterialTheme.typography.labelSmall,
         color = Color.White,
         modifier = Modifier
