@@ -53,7 +53,8 @@ internal fun MetricsSection(
     metrics: List<MetricItem>,
     enabled: Boolean,
     onMetricsChange: (List<MetricItem>) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    emptyHint: String? = null
 ) {
     var unitExpandedIndex by remember { mutableStateOf<Int?>(null) }
 
@@ -90,6 +91,14 @@ internal fun MetricsSection(
                 Spacer(Modifier.width(2.dp))
                 Text("Add", style = MaterialTheme.typography.labelMedium)
             }
+        }
+
+        if (metrics.isEmpty() && emptyHint != null) {
+            Text(
+                text = emptyHint,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+            )
         }
 
         metrics.forEachIndexed { index, metric ->

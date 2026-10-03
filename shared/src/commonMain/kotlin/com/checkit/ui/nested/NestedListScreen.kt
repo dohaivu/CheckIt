@@ -143,7 +143,6 @@ import checkit.shared.generated.resources.nested_zoom_out
 import com.checkit.domain.FocusPeriod
 import com.checkit.domain.MetricItem
 import com.checkit.domain.MetricRollupPolicy
-import com.checkit.domain.MetricUnit
 import com.checkit.domain.NestedColorToken
 import com.checkit.domain.NestedItemNode
 import com.checkit.domain.NestedListItem
@@ -156,13 +155,12 @@ import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.CompactFlatTextField
 import com.checkit.ui.components.DateRangePill
 import com.checkit.ui.components.FocusPeriodHeader
+import com.checkit.ui.components.MetricsSection
 import com.checkit.ui.components.PeriodPicker
 import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TagPill
-import com.checkit.ui.displayName
 import com.checkit.ui.displayUnit
 import com.checkit.ui.noRippleClickable
-import com.checkit.ui.progressRatio
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
@@ -1119,7 +1117,6 @@ private fun NestedItemDetailsDialog(
     var progress by remember(item.id) { mutableStateOf(item.progressPercent) }
     var metrics by remember(item.id) { mutableStateOf(item.manualMetrics) }
     var policyExpanded by remember { mutableStateOf(false) }
-    var unitExpandedIndex by remember { mutableStateOf<Int?>(null) }
 
     val directChildCount = node.children.size
     val totalChildCount = remember(node) { countTotalDescendants(node) }
@@ -1355,194 +1352,12 @@ private fun NestedItemDetailsDialog(
                 }
 
                 // Section 3: Custom/Manual Metrics
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "CUSTOM METRICS",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Bold
-                        )
-                        TextButton(
-                            onClick = {
-                                metrics = metrics + MetricItem(
-                                    name = "",
-                                    value = "",
-                                    sortOrder = metrics.size
-                                )
-                            },
-                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
-                            modifier = Modifier.height(28.dp)
-                        ) {
-                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
-                            Spacer(Modifier.width(2.dp))
-                            Text("Add", style = MaterialTheme.typography.labelMedium)
-                        }
-                    }
-
-                    if (metrics.isEmpty()) {
-                        Text(
-                            text = "No custom metrics added.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                        )
-                    }
-
-                    metrics.forEachIndexed { index, metric ->
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
-                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
-                                .padding(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Icon(
-                                    imageVector = if (metric.isCompleted) Icons.Rounded.CheckBox else Icons.Rounded.CheckBoxOutlineBlank,
-                                    contentDescription = if (metric.isCompleted) "Mark incomplete" else "Mark complete",
-                                    tint = if (metric.isCompleted) {
-                                        MaterialTheme.colorScheme.primary
-                                    } else {
-                                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)
-                                    },
-                                    modifier = Modifier
-                                        .size(22.dp)
-                                        .then(Modifier.clickable {
-                                            metrics = metrics.toMutableList().also { it[index] = metric.copy(isCompleted = !metric.isCompleted) }
-                                        })
-                                )
-                                CompactFlatTextField(
-                                    value = metric.name,
-                                    onValueChange = { value ->
-                                        metrics = metrics.toMutableList().also { it[index] = metric.copy(name = value) }
-                                    },
-                                    placeholder = "Metric name",
-                                    modifier = Modifier.weight(1f)
-                                )
-                                IconButton(
-                                    onClick = { metrics = metrics.filterIndexed { metricIndex, _ -> metricIndex != index } },
-                                    modifier = Modifier.size(28.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Delete,
-                                        contentDescription = "Delete metric",
-                                        tint = MaterialTheme.colorScheme.error,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
-                            }
-
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                CompactFlatTextField(
-                                    value = metric.value,
-                                    onValueChange = { value ->
-                                        metrics = metrics.toMutableList().also { it[index] = metric.copy(value = value) }
-                                    },
-                                    placeholder = "Value",
-                                    modifier = Modifier.weight(1f)
-                                )
-                                CompactFlatTextField(
-                                    value = metric.targetValue.orEmpty(),
-                                    onValueChange = { value ->
-                                        metrics = metrics.toMutableList().also { it[index] = metric.copy(targetValue = value) }
-                                    },
-                                    placeholder = "Target",
-                                    modifier = Modifier.weight(1f)
-                                )
-                                Box(modifier = Modifier.weight(1f)) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(34.dp)
-                                            .clip(RoundedCornerShape(6.dp))
-                                            .background(MaterialTheme.colorScheme.surface)
-                                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
-                                            .clickable { unitExpandedIndex = index }
-                                            .padding(horizontal = 6.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Text(
-                                            text = metric.unit.displayName(metric.customUnit),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                        Icon(
-                                            imageVector = Icons.Default.KeyboardArrowDown,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(14.dp)
-                                        )
-                                    }
-                                    DropdownMenu(
-                                        expanded = unitExpandedIndex == index,
-                                        onDismissRequest = { unitExpandedIndex = null }
-                                    ) {
-                                        MetricUnit.entries.forEach { unit ->
-                                            DropdownMenuItem(
-                                                text = { Text(unit.displayName(), style = MaterialTheme.typography.bodySmall) },
-                                                onClick = {
-                                                    metrics = metrics.toMutableList().also {
-                                                        it[index] = metric.copy(
-                                                            unit = unit,
-                                                            customUnit = if (unit == MetricUnit.Custom) metric.customUnit else null
-                                                        )
-                                                    }
-                                                    unitExpandedIndex = null
-                                                }
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-
-                            if (metric.unit == MetricUnit.Custom) {
-                                CompactFlatTextField(
-                                    value = metric.customUnit.orEmpty(),
-                                    onValueChange = { value ->
-                                        metrics = metrics.toMutableList().also { it[index] = metric.copy(customUnit = value) }
-                                    },
-                                    placeholder = "Custom unit (e.g. kg, pts)",
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                            }
-
-                            metric.progressRatio()?.let { ratio ->
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    LinearProgressIndicator(
-                                        progress = { ratio },
-                                        modifier = Modifier.weight(1f),
-                                    )
-                                    Text(
-                                        text = "${(ratio * 100).roundToInt()}%",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
+                MetricsSection(
+                    metrics = metrics,
+                    enabled = true,
+                    onMetricsChange = { metrics = it },
+                    emptyHint = "No custom metrics added."
+                )
             }
         },
         confirmButton = {
