@@ -14,6 +14,7 @@ import androidx.sqlite.execSQL
 import androidx.sqlite.SQLiteConnection
 import com.checkit.domain.TaskType
 import com.checkit.domain.ActiveWeekdaysAllJson
+import com.checkit.domain.RoutineDefaultColorHex
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.serialization.Serializable
@@ -694,6 +695,8 @@ data class RoutineEntity(
     val sortOrder: Int = 0,
     /** Inline JSON list of RoutineStepTemplate; history keeps percent only. */
     val stepsJson: String = "[]",
+    /** Hex color ("#RRGGBB"); added in v2, defaults to the routine violet. */
+    val color: String = RoutineDefaultColorHex,
     val createdAtMillis: Long,
     val updatedAtMillis: Long,
     /** True when the row changed locally since the last successful upload. */
@@ -755,7 +758,7 @@ data class RoutineLogEntity(
         RoutineLogEntity::class,
         QuickNoteEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)
@@ -769,13 +772,22 @@ expect object CheckItDatabaseConstructor : RoomDatabaseConstructor<CheckItDataba
     override fun initialize(): CheckItDatabase
 }
 
+/** v1 -> v2: adds the routine color column; existing rows take the default. */
+private val RoutineColorMigration1To2 = object : Migration(1, 2) {
+    override suspend fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            "ALTER TABLE routines ADD COLUMN color TEXT NOT NULL DEFAULT '$RoutineDefaultColorHex'"
+        )
+    }
+}
+
 fun buildCheckItDatabase(
     builder: RoomDatabase.Builder<CheckItDatabase>
 ): CheckItDatabase {
     return builder
         .fallbackToDestructiveMigration(false)
         .fallbackToDestructiveMigrationOnDowngrade(false)
-        .addMigrations()
+        .addMigrations(RoutineColorMigration1To2)
         .setQueryCoroutineContext(Dispatchers.IO)
         .setDriver(BundledSQLiteDriver())
         .addCallback(object : RoomDatabase.Callback() {

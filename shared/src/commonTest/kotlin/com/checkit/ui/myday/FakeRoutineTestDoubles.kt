@@ -27,11 +27,12 @@ internal class FakeRoutineRepository(initial: List<Routine> = emptyList()) : Rou
         description: String,
         reminderMinutes: Int?,
         activeWeekdays: Set<DayOfWeek>,
-        steps: List<RoutineStepTemplate>
+        steps: List<RoutineStepTemplate>,
+        color: String
     ): String {
         val routineId = id ?: "generated"
         routines.removeAll { it.id == routineId }
-        routines.add(Routine(id = routineId, title = title.trim(), description = description.trim(), reminderMinutes = reminderMinutes, activeWeekdays = activeWeekdays, steps = steps))
+        routines.add(Routine(id = routineId, title = title.trim(), description = description.trim(), reminderMinutes = reminderMinutes, activeWeekdays = activeWeekdays, steps = steps, color = color))
         routinesFlow.value = routines.toList()
         return routineId
     }

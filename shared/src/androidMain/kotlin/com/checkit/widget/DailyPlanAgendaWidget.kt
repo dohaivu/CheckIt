@@ -67,6 +67,7 @@ import com.checkit.ui.myday.toDayViewProjection
 import com.checkit.ui.cardColor
 import com.checkit.ui.isOverdue
 import com.checkit.ui.toClockLabel
+import com.checkit.ui.theme.toColor
 import com.checkit.ui.toDurationLabel
 import com.checkit.ui.today
 import kotlinx.coroutines.flow.first
@@ -391,7 +392,7 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
                 ),
                 contentDescription = "Routine",
                 modifier = GlanceModifier.size(14.dp),
-                colorFilter = ColorFilter.tint(GlanceTheme.colors.primary)
+                colorFilter = ColorFilter.tint(routine.color.toColor().provider())
             )
             Spacer(modifier = GlanceModifier.width(6.dp))
             Text(

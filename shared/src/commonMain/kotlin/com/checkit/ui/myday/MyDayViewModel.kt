@@ -7,6 +7,7 @@ import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.LeftoverAction
+import com.checkit.domain.RoutineDefaultColorHex
 import com.checkit.domain.RoutineStepTemplate
 import com.checkit.domain.SprintManager
 import kotlinx.datetime.DayOfWeek
@@ -147,8 +148,9 @@ class MyDayViewModel(
         description: String,
         reminderMinutes: Int?,
         activeWeekdays: Set<DayOfWeek>,
-        steps: List<RoutineStepTemplate>
-    ) = routines.saveRoutine(id, title, description, reminderMinutes, activeWeekdays, steps)
+        steps: List<RoutineStepTemplate>,
+        color: String = RoutineDefaultColorHex
+    ) = routines.saveRoutine(id, title, description, reminderMinutes, activeWeekdays, steps, color)
     fun deleteRoutine(id: String) = routines.deleteRoutine(id)
     fun moveRoutine(orderedIds: List<String>) = routines.moveRoutine(orderedIds)
 

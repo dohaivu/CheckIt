@@ -32,6 +32,9 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DragHandle
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.Schedule
@@ -59,6 +62,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
@@ -70,6 +74,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.AllWeekdays
 import com.checkit.domain.Routine
+import com.checkit.domain.RoutineDefaultColorHex
 import com.checkit.domain.RoutineStepTemplate
 import com.checkit.domain.WeekdayPresetWeekdays
 import com.checkit.domain.WeekdayPresetWeekends
@@ -78,6 +83,7 @@ import com.checkit.domain.routinePercent
 import com.checkit.domain.usecase.toClockLabel
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
+import com.checkit.ui.components.ColorPicker
 import com.checkit.ui.components.DeleteOverflowMenu
 import com.checkit.ui.components.MarkdownVisualTransformation
 import com.checkit.ui.components.ReorderDragState
@@ -86,6 +92,8 @@ import com.checkit.ui.components.asMarkdownAnnotatedString
 import com.checkit.ui.components.findReorderTarget
 import com.checkit.ui.components.reorderableRowGraphics
 import com.checkit.ui.shortName
+import com.checkit.ui.theme.AppIconColorDefaults
+import com.checkit.ui.theme.toColor
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 import kotlin.uuid.Uuid
@@ -96,6 +104,7 @@ private data class RoutineEditorState(
     val description: String,
     val reminderMinutes: Int?,
     val activeWeekdays: Set<DayOfWeek>,
+    val color: String,
     val steps: List<RoutineStepTemplate>
 )
 
@@ -105,7 +114,7 @@ internal fun RoutineTab(
     checks: Map<String, Set<String>>,
     today: LocalDate,
     onToggleStep: (String, String) -> Unit,
-    onSaveRoutine: (String?, String, String, Int?, Set<DayOfWeek>, List<RoutineStepTemplate>) -> Unit,
+    onSaveRoutine: (String?, String, String, Int?, Set<DayOfWeek>, List<RoutineStepTemplate>, String) -> Unit,
     onDeleteRoutine: (String) -> Unit,
     onMoveRoutine: (List<String>) -> Unit,
     modifier: Modifier = Modifier
@@ -183,7 +192,7 @@ internal fun RoutineTab(
                 }
                 IconButton(
                     onClick = {
-                        editor = RoutineEditorState(id = null, title = "", description = "", reminderMinutes = null, activeWeekdays = AllWeekdays, steps = emptyList())
+                        editor = RoutineEditorState(id = null, title = "", description = "", reminderMinutes = null, activeWeekdays = AllWeekdays, color = RoutineDefaultColorHex, steps = emptyList())
                     },
                     shape = CircleShape,
                     modifier = Modifier.size(32.dp)
@@ -250,7 +259,7 @@ internal fun RoutineTab(
                         }
                         Button(
                             onClick = {
-                                editor = RoutineEditorState(id = null, title = "", description = "", reminderMinutes = null, activeWeekdays = AllWeekdays, steps = emptyList())
+                                editor = RoutineEditorState(id = null, title = "", description = "", reminderMinutes = null, activeWeekdays = AllWeekdays, color = RoutineDefaultColorHex, steps = emptyList())
                             },
                             shape = RoundedCornerShape(10.dp),
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
@@ -335,6 +344,7 @@ internal fun RoutineTab(
                                     description = routine.description,
                                     reminderMinutes = routine.reminderMinutes,
                                     activeWeekdays = routine.activeWeekdays,
+                                    color = routine.color,
                                     steps = routine.steps
                                 )
                             }
@@ -352,8 +362,8 @@ internal fun RoutineTab(
         RoutineEditorSheet(
             state = state,
             onDismiss = { editor = null },
-            onSave = { id, title, description, reminderMinutes, activeWeekdays, steps ->
-                onSaveRoutine(id, title, description, reminderMinutes, activeWeekdays, steps)
+            onSave = { id, title, description, reminderMinutes, activeWeekdays, steps, color ->
+                onSaveRoutine(id, title, description, reminderMinutes, activeWeekdays, steps, color)
                 editor = null
             },
             onDelete = { id ->
@@ -388,7 +398,8 @@ private fun RoutineCard(
             .clip(RoundedCornerShape(16.dp))
             .background(
                 if (isDragging) MaterialTheme.colorScheme.surfaceContainerHigh
-                else MaterialTheme.colorScheme.surfaceContainerLow
+                else routine.color.toColor().copy(alpha = 0.10f)
+                    .compositeOver(MaterialTheme.colorScheme.surfaceContainerLow)
             )
             .border(
                 width = if (isDragging) 1.5.dp else 1.dp,
@@ -600,12 +611,14 @@ private fun RoutineCard(
 private fun RoutineEditorSheet(
     state: RoutineEditorState,
     onDismiss: () -> Unit,
-    onSave: (String?, String, String, Int?, Set<DayOfWeek>, List<RoutineStepTemplate>) -> Unit,
+    onSave: (String?, String, String, Int?, Set<DayOfWeek>, List<RoutineStepTemplate>, String) -> Unit,
     onDelete: (String) -> Unit
 ) {
     var title by remember(state) { mutableStateOf(state.title) }
     var description by remember(state) { mutableStateOf(state.description) }
     var reminderMinutes by remember(state) { mutableStateOf(state.reminderMinutes) }
+    var color by remember(state) { mutableStateOf(state.color) }
+    var colorExpanded by remember(state) { mutableStateOf(false) }
     var activeWeekdays by remember(state) { mutableStateOf(state.activeWeekdays) }
     var steps by remember(state) { mutableStateOf(state.steps) }
 
@@ -731,6 +744,71 @@ private fun RoutineEditorSheet(
                 }
 
                 item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                            .border(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+                                shape = RoundedCornerShape(10.dp)
+                            )
+                            .clickable { colorExpanded = !colorExpanded }
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Palette,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    text = "Color",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(20.dp)
+                                        .clip(CircleShape)
+                                        .background(color.toColor())
+                                )
+                                Icon(
+                                    imageVector = if (colorExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                    contentDescription = if (colorExpanded) "Collapse color picker" else "Expand color picker",
+                                    modifier = Modifier.size(18.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        if (colorExpanded) {
+                            ColorPicker(
+                                colors = AppIconColorDefaults.ListColors,
+                                selected = color,
+                                onSelect = { color = it }
+                            )
+                        }
+                    }
+                }
+
+                item {
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -778,7 +856,8 @@ private fun RoutineEditorSheet(
                                 description.trim(),
                                 reminderMinutes,
                                 activeWeekdays,
-                                steps.filter { it.title.isNotBlank() }
+                                steps.filter { it.title.isNotBlank() },
+                                color
                             )
                         }
                     },

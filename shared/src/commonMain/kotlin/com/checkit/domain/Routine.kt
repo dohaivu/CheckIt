@@ -50,6 +50,9 @@ data class RoutineStepTemplate(
     val sortOrder: Int = 0
 )
 
+/** Default color for new routines (violet, matching the routine heatmap). */
+const val RoutineDefaultColorHex = "#8B5CF6"
+
 /**
  * A routine template. Steps are stored inline as JSON ([stepsJson]) rather
  * than a child table; history only keeps the daily percent ([RoutineLog]).
@@ -63,6 +66,8 @@ data class Routine(
     val activeWeekdays: Set<DayOfWeek> = AllWeekdays,
     val sortOrder: Int = 0,
     val steps: List<RoutineStepTemplate> = emptyList(),
+    /** Hex color ("#RRGGBB") used for card wash, heatmap and widget accents. */
+    val color: String = RoutineDefaultColorHex,
     val createdAtMillis: Long = 0L,
     val updatedAtMillis: Long = 0L
 )

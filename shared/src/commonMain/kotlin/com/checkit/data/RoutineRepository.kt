@@ -1,6 +1,7 @@
 package com.checkit.data
 
 import com.checkit.domain.Routine
+import com.checkit.domain.RoutineDefaultColorHex
 import com.checkit.domain.RoutineLog
 import com.checkit.domain.RoutineStepTemplate
 import com.checkit.domain.decodeActiveWeekdays
@@ -22,7 +23,8 @@ interface RoutineRepository {
         description: String,
         reminderMinutes: Int?,
         activeWeekdays: Set<DayOfWeek>,
-        steps: List<RoutineStepTemplate>
+        steps: List<RoutineStepTemplate>,
+        color: String = RoutineDefaultColorHex
     ): String
     suspend fun deleteRoutine(id: String)
     suspend fun updateRoutineOrders(orderedIds: List<String>)
@@ -47,7 +49,8 @@ class RoomRoutineRepository(
         description: String,
         reminderMinutes: Int?,
         activeWeekdays: Set<DayOfWeek>,
-        steps: List<RoutineStepTemplate>
+        steps: List<RoutineStepTemplate>,
+        color: String
     ): String {
         val now = Clock.System.now().toEpochMilliseconds()
         val trimmed = title.trim()
@@ -72,6 +75,7 @@ class RoomRoutineRepository(
                 activeWeekdaysJson = encodeActiveWeekdays(activeWeekdays),
                 sortOrder = existing?.sortOrder ?: dao.nextRoutineSortOrder(),
                 stepsJson = encodeRoutineSteps(normalizedSteps),
+                color = color.ifBlank { existing?.color ?: RoutineDefaultColorHex },
                 createdAtMillis = existing?.createdAtMillis ?: now,
                 updatedAtMillis = now
             )
@@ -112,6 +116,7 @@ fun RoutineEntity.toDomain(): Routine = Routine(
     activeWeekdays = decodeActiveWeekdays(activeWeekdaysJson),
     sortOrder = sortOrder,
     steps = decodeRoutineSteps(stepsJson).sortedBy { it.sortOrder },
+    color = color,
     createdAtMillis = createdAtMillis,
     updatedAtMillis = updatedAtMillis
 )

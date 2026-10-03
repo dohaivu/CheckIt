@@ -3,6 +3,7 @@ package com.checkit.domain.usecase
 import com.checkit.data.RoutineRepository
 import com.checkit.data.RoutineTodayStore
 import com.checkit.domain.Routine
+import com.checkit.domain.RoutineDefaultColorHex
 import com.checkit.domain.RoutineLog
 import com.checkit.domain.RoutineStepTemplate
 import com.checkit.domain.RoutineTodayState
@@ -71,9 +72,10 @@ class SaveRoutineUseCase(
         description: String,
         reminderMinutes: Int?,
         activeWeekdays: Set<DayOfWeek>,
-        steps: List<RoutineStepTemplate>
+        steps: List<RoutineStepTemplate>,
+        color: String = RoutineDefaultColorHex
     ): String {
-        val routineId = repository.saveRoutine(id, title, description, reminderMinutes, activeWeekdays, steps)
+        val routineId = repository.saveRoutine(id, title, description, reminderMinutes, activeWeekdays, steps, color)
         val trimmedTitle = title.trim()
         if (reminderMinutes != null && shouldScheduleRoutineReminder(reminderMinutes, activeWeekdays)) {
             reminderScheduler.scheduleRoutineReminder(
