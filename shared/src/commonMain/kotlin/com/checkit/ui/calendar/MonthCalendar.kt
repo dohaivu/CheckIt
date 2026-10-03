@@ -32,6 +32,7 @@ import com.checkit.ui.components.RatingStar
 import com.checkit.ui.firstDayOfMonth
 import com.checkit.ui.isSameMonth
 import com.checkit.ui.shortName
+import com.checkit.ui.today
 import com.checkit.ui.tasks.views.ContentContainerAlpha
 import com.checkit.ui.toDurationLabel
 import kotlinx.datetime.DateTimeUnit
@@ -74,17 +75,24 @@ internal fun CalendarGrid(
     colors: CalendarCellColors,
     content: @Composable () -> Unit
 ) {
-    Column(Modifier.fillMaxWidth()) {
-        Row(Modifier.fillMaxWidth()) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(3.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
             calendarWeekDays.forEach { dayOfWeek ->
                 Text(
                     text = dayOfWeek.shortName(),
                     modifier = Modifier
                         .weight(1f)
-                        .background(colors.headerBackground)
-                        .border(0.5.dp, colors.outline)
-                        .padding(vertical = 2.dp),
-                    style = MaterialTheme.typography.labelLarge,
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(colors.headerBackground.copy(alpha = 0.5f))
+                        .padding(vertical = 3.dp),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontSize = 11.sp,
                     color = dayOfWeek.headerColor(colors),
                     textAlign = TextAlign.Center,
                     fontWeight = FontWeight.Bold
@@ -106,7 +114,10 @@ internal fun CalendarWeekRow(
     state: CalendarUiState,
     isDateEnabled: (LocalDate) -> Boolean
 ) {
-    Row(Modifier.fillMaxWidth()) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(3.dp)
+    ) {
         week.forEach { date ->
             val isEnabled = isDateEnabled(date)
             CalendarDayCell(
@@ -137,34 +148,48 @@ internal fun CalendarDayCell(
     workMinutes: Int,
     modifier: Modifier = Modifier
 ) {
+    val isToday = date == today()
     val dayColor = when {
         !isEnabled -> colors.disabledDay
+        isSelected || isToday -> MaterialTheme.colorScheme.primary
         date.dayOfWeek == DayOfWeek.SATURDAY -> colors.saturday
         date.dayOfWeek == DayOfWeek.SUNDAY -> colors.sunday
         else -> colors.day
     }
     val backgroundColor = when {
+        !isEnabled -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.12f)
         isSelected -> colors.selectedBackground
-        isEnabled && workMinutes > 0 -> colors.workHeatBackground(workMinutes)
+        workMinutes > 0 -> colors.workHeatBackground(workMinutes)
+        markers.rating != null && markers.rating > 0f -> RatingBarDefaults.getRatingColor(markers.rating).copy(alpha = 0.15f)
         else -> colors.defaultBackground
     }
 
+    val shape = RoundedCornerShape(6.dp)
+    val cellModifier = modifier
+        .height(36.dp)
+        .clip(shape)
+        .background(backgroundColor)
+        .then(
+            when {
+                isSelected -> Modifier.border(2.dp, MaterialTheme.colorScheme.primary, shape)
+                isToday -> Modifier.border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.7f), shape)
+                else -> Modifier
+            }
+        )
+        .combinedClickable(
+            enabled = isEnabled,
+            onClick = { onDateSelected(date) },
+            onDoubleClick = { onDateDoubleClick(date) }
+        )
+
     Box(
-        modifier = modifier
-            .height(44.dp)
-            .border(0.5.dp, colors.outline)
-            .background(backgroundColor)
-            .combinedClickable(
-                enabled = isEnabled,
-                onClick = { onDateSelected(date) },
-                onDoubleClick = { onDateDoubleClick(date) }
-            )
+        modifier = cellModifier
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = 2.dp, bottom = 2.dp, start = 2.dp, end = 2.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
+                .padding(horizontal = 3.dp, vertical = 2.dp),
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -173,15 +198,16 @@ internal fun CalendarDayCell(
             ) {
                 Text(
                     text = date.day.toString(),
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontSize = 11.sp,
                     color = dayColor,
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                    fontWeight = if (isSelected || isToday) FontWeight.Bold else FontWeight.SemiBold,
                     textAlign = TextAlign.Start
                 )
-                if (markers.rating != null && markers.rating > 0) {
+                if (isEnabled && markers.rating != null && markers.rating > 0) {
                     RatingStar(
                         rating = markers.rating,
-                        modifier = Modifier.size(10.dp)
+                        modifier = Modifier.size(11.dp)
                     )
                 }
             }
@@ -204,24 +230,30 @@ private fun DateCellMetadata(
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (markers.hasMarkers) {
             Text(
                 text = markers.countLabel(),
                 style = MaterialTheme.typography.labelSmall,
+                fontSize = 9.sp,
+                lineHeight = 10.sp,
                 color = colors.markerLabel,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 maxLines = 1,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f, fill = false)
             )
         } else {
-            Box(modifier = Modifier.weight(1f))
+            Box(modifier = Modifier.weight(1f, fill = false))
         }
         if (workMinutes > 0) {
             Text(
                 text = workMinutes.toDurationLabel(compact = true),
                 style = MaterialTheme.typography.labelSmall,
+                fontSize = 9.sp,
+                lineHeight = 10.sp,
+                fontWeight = FontWeight.Bold,
                 color = colors.workLabel,
                 maxLines = 1,
                 textAlign = TextAlign.End
