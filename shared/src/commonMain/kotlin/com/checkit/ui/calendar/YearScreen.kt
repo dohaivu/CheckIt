@@ -27,7 +27,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.checkit.ui.components.RatingStar
 import com.checkit.ui.components.TinyTopAppBar
-import com.checkit.ui.localizedMonthTitle
 import com.checkit.ui.localizedName
 import com.checkit.ui.today
 
@@ -35,7 +34,7 @@ import com.checkit.ui.today
 internal fun YearScreen(
     viewModel: YearViewModel,
     onNavigateBack: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsState()
     val today = remember { today() }
@@ -72,7 +71,7 @@ internal fun YearScreen(
                 val stat = statsByMonth[month.month]
                 Column(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -81,7 +80,7 @@ internal fun YearScreen(
                     ) {
                         Text(
                             text = month.month.localizedName(),
-                            style = MaterialTheme.typography.titleSmall,
+                            style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -97,10 +96,10 @@ internal fun YearScreen(
                                     ) {
                                         RatingStar(
                                             rating = level.toFloat(),
-                                            modifier = Modifier.size(15.dp)
+                                            modifier = Modifier.size(13.dp)
                                         )
                                         Text(
-                                            text = "$count",
+                                            text = count.toString(),
                                             style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )

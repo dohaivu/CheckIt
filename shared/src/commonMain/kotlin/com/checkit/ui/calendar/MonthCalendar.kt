@@ -13,18 +13,21 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.checkit.domain.TaskBoard
+import com.checkit.ui.components.RatingBarDefaults
 import com.checkit.ui.components.RatingStar
 import com.checkit.ui.firstDayOfMonth
 import com.checkit.ui.isSameMonth
@@ -332,9 +335,15 @@ internal fun YearMonthCalendar(
     val colors = rememberCalendarCellColors()
     val weeks = remember(month) { calendarGridDates(month).chunked(7) }
 
-    Column(Modifier.fillMaxWidth()) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
         weeks.forEach { week ->
-            Row(Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
                 week.forEach { date ->
                     val isEnabled = date.isSameMonth(month)
                     YearDayCell(
@@ -362,28 +371,46 @@ private fun YearDayCell(
     colors: CalendarCellColors,
     modifier: Modifier = Modifier
 ) {
+    if (!isEnabled) {
+        Box(modifier = modifier.height(29.dp))
+        return
+    }
+
     val dayColor = when {
-        !isEnabled -> colors.disabledDay
-        isToday -> colors.workLabel
+        isToday -> MaterialTheme.colorScheme.primary
         date.dayOfWeek == DayOfWeek.SATURDAY -> colors.saturday
         date.dayOfWeek == DayOfWeek.SUNDAY -> colors.sunday
         else -> colors.day
     }
-    val backgroundColor =
-        if (isEnabled && doneMinutes > 0) colors.workHeatBackground(doneMinutes)
-        else colors.defaultBackground
+
+    val backgroundColor = when {
+        doneMinutes > 0 -> colors.workHeatBackground(doneMinutes)
+        rating != null && rating > 0f -> RatingBarDefaults.getRatingColor(rating).copy(alpha = 0.15f)
+        else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+    }
+
+    val shape = RoundedCornerShape(4.dp)
+    val cellModifier = if (isToday) {
+        modifier
+            .height(29.dp)
+            .clip(shape)
+            .background(backgroundColor)
+            .border(1.dp, MaterialTheme.colorScheme.primary, shape)
+    } else {
+        modifier
+            .height(29.dp)
+            .clip(shape)
+            .background(backgroundColor)
+    }
 
     Box(
-        modifier = modifier
-            .height(32.dp)
-            .border(0.5.dp, colors.outline)
-            .background(backgroundColor)
+        modifier = cellModifier
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = 1.dp, bottom = 1.dp, start = 2.dp, end = 2.dp),
-            verticalArrangement = Arrangement.spacedBy(1.dp)
+                .padding(horizontal = 2.dp, vertical = 1.dp),
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -392,22 +419,26 @@ private fun YearDayCell(
             ) {
                 Text(
                     text = date.day.toString(),
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontSize = 10.sp,
                     color = dayColor,
-                    fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal,
+                    fontWeight = if (isToday) FontWeight.ExtraBold else FontWeight.SemiBold,
                     textAlign = TextAlign.Start
                 )
-                if (rating != null) {
+                if (rating != null && rating > 0f) {
                     RatingStar(
                         rating = rating,
                         modifier = Modifier.size(10.dp)
                     )
                 }
             }
-            if (isEnabled && doneMinutes > 0) {
+            if (doneMinutes > 0) {
                 Text(
                     text = doneMinutes.toDurationLabel(compact = true),
-                    style = MaterialTheme.typography.labelSmall.copy(lineHeight = 12.sp),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontSize = 8.5.sp,
+                    lineHeight = 9.sp,
+                    fontWeight = FontWeight.Bold,
                     color = colors.workLabel,
                     maxLines = 1,
                     textAlign = TextAlign.End,
