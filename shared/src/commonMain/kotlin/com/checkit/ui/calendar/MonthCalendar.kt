@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.checkit.domain.TaskBoard
 import com.checkit.ui.components.RatingStar
 import com.checkit.ui.firstDayOfMonth
@@ -331,7 +332,7 @@ internal fun YearMonthCalendar(
     val colors = rememberCalendarCellColors()
     val weeks = remember(month) { calendarGridDates(month).chunked(7) }
 
-    CalendarGrid(colors = colors) {
+    Column(Modifier.fillMaxWidth()) {
         weeks.forEach { week ->
             Row(Modifier.fillMaxWidth()) {
                 week.forEach { date ->
@@ -374,14 +375,14 @@ private fun YearDayCell(
 
     Box(
         modifier = modifier
-            .height(36.dp)
+            .height(32.dp)
             .border(0.5.dp, colors.outline)
             .background(backgroundColor)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = 2.dp, bottom = 2.dp, start = 2.dp, end = 2.dp),
+                .padding(top = 1.dp, bottom = 1.dp, start = 2.dp, end = 2.dp),
             verticalArrangement = Arrangement.spacedBy(1.dp)
         ) {
             Row(
@@ -406,7 +407,7 @@ private fun YearDayCell(
             if (isEnabled && doneMinutes > 0) {
                 Text(
                     text = doneMinutes.toDurationLabel(compact = true),
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelSmall.copy(lineHeight = 12.sp),
                     color = colors.workLabel,
                     maxLines = 1,
                     textAlign = TextAlign.End,
