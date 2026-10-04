@@ -154,7 +154,7 @@ internal fun PercentageInput(
             placeholder = "Value",
             suffix = "%",
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            modifier = Modifier.width(96.dp)
+            modifier = Modifier.width(80.dp)
         )
     }
 }

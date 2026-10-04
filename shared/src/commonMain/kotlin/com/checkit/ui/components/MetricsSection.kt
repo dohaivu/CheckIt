@@ -295,7 +295,7 @@ internal fun MetricsSection(
                                         value = metric.value,
                                         onValueChange = { update(metric.copy(value = it)) },
                                         enabled = enabled,
-                                        modifier = Modifier.weight(1f)
+                                        modifier = Modifier.weight(1.5f)
                                     )
                                     metric.unit.isNumeric() -> CompactFlatTextField(
                                         value = metric.value,
