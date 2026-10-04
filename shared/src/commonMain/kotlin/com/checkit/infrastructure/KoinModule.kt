@@ -44,6 +44,7 @@ import com.checkit.domain.usecase.DeleteJournalEntryUseCase
 import com.checkit.domain.usecase.DeleteListUseCase
 import com.checkit.domain.usecase.DeleteRoutineUseCase
 import com.checkit.domain.usecase.ExportBackupUseCase
+import com.checkit.domain.usecase.ExportNestedListToMarkdownUseCase
 import com.checkit.domain.usecase.ImportBackupUseCase
 import com.checkit.domain.usecase.DeleteSectionUseCase
 import com.checkit.domain.usecase.DeleteNestedDocumentUseCase
@@ -78,6 +79,7 @@ import com.checkit.domain.usecase.ObserveRoutinesUseCase
 import com.checkit.domain.usecase.ResetStaleRoutineTodayUseCase
 import com.checkit.domain.usecase.SaveRoutineUseCase
 import com.checkit.domain.usecase.ToggleRoutineStepUseCase
+import com.checkit.domain.usecase.UpdateRoutineOrderUseCase
 import com.checkit.domain.usecase.UpdateNoteStatusUseCase
 import com.checkit.domain.usecase.UpdateTaskStatusUseCase
 import com.checkit.domain.usecase.RenameNestedDocumentUseCase
@@ -89,6 +91,7 @@ import com.checkit.domain.usecase.SaveSprintAsWinUseCase
 import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
 import com.checkit.domain.usecase.SetNestedItemCheckboxEnabledUseCase
 import com.checkit.domain.usecase.SetNestedItemsCheckedUseCase
+import com.checkit.domain.usecase.SetNestedItemsCollapsedUseCase
 import com.checkit.domain.usecase.SmartScheduleDailyPlanUseCase
 import com.checkit.domain.usecase.SprintTransitionUseCase
 import com.checkit.domain.usecase.ToggleNestedItemCollapsedUseCase
@@ -127,6 +130,7 @@ import com.checkit.domain.usecase.SetQuickNotePriorityUseCase
 import com.checkit.domain.usecase.SetQuickNoteReminderUseCase
 import com.checkit.notifications.AppReminderScheduler
 import com.checkit.ui.calendar.CalendarViewModel
+import com.checkit.ui.calendar.YearViewModel
 import com.checkit.ui.guidelines.GuidelinesViewModel
 import com.checkit.ui.quicknote.QuickNoteViewModel
 import com.checkit.ui.myday.MyDayViewModel
@@ -263,8 +267,10 @@ val provideInteractorModule = module {
     single { SetNestedItemCheckboxEnabledUseCase(get()) }
     single { SetNestedItemsCheckedUseCase(get()) }
     single { ToggleNestedItemCollapsedUseCase(get()) }
+    single { SetNestedItemsCollapsedUseCase(get()) }
     single { MoveNestedItemsUseCase(get()) }
     single { DeleteNestedItemsUseCase(get()) }
+    single { ExportNestedListToMarkdownUseCase() }
     single {
         NestedAppleHelper(
             observeDocuments = get(),
@@ -286,6 +292,7 @@ val provideInteractorModule = module {
             setCheckboxEnabled = get(),
             setItemsChecked = get(),
             toggleCollapsedUseCase = get(),
+            setItemsCollapsed = get(),
             moveItems = get(),
             deleteItems = get()
         )
@@ -312,6 +319,7 @@ val provideInteractorModule = module {
     single { SaveRoutineUseCase(get(), get()) }
     single { DeleteRoutineUseCase(get(), get(), get()) }
     single { ToggleRoutineStepUseCase(get(), get()) }
+    single { UpdateRoutineOrderUseCase(get()) }
     single { QuickNoteMenuHelper(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
 }
 
@@ -374,6 +382,12 @@ val provideViewModelModule = module {
             observeNotesForDate = get()
         )
     }
+    viewModel {
+        YearViewModel(
+            observePeriodGoals = get(),
+            observeDailyReflectStats = get()
+        )
+    }
     viewModel { JournalHistoryViewModel(get(), get(), get()) }
     viewModel {
         MyDayViewModel(
@@ -401,6 +415,7 @@ val provideViewModelModule = module {
             saveRoutine = get(),
             deleteRoutine = get(),
             toggleRoutineStep = get(),
+            updateRoutineOrder = get(),
             sprintManager = get(),
             sprintTransition = get()
         )
@@ -438,6 +453,7 @@ val provideViewModelModule = module {
             setCheckboxEnabledUseCase = get(),
             setItemsCheckedUseCase = get(),
             toggleCollapsedUseCase = get(),
+            setItemsCollapsedUseCase = get(),
             moveItemsUseCase = get(),
             deleteItemsUseCase = get(),
             settingsRepository = get(),

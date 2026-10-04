@@ -32,6 +32,9 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DragHandle
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.Schedule
@@ -59,6 +62,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
@@ -70,6 +74,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.AllWeekdays
 import com.checkit.domain.Routine
+import com.checkit.domain.RoutineDefaultColorHex
 import com.checkit.domain.RoutineStepTemplate
 import com.checkit.domain.WeekdayPresetWeekdays
 import com.checkit.domain.WeekdayPresetWeekends
@@ -78,6 +83,7 @@ import com.checkit.domain.routinePercent
 import com.checkit.domain.usecase.toClockLabel
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
+import com.checkit.ui.components.ColorPicker
 import com.checkit.ui.components.DeleteOverflowMenu
 import com.checkit.ui.components.MarkdownVisualTransformation
 import com.checkit.ui.components.ReorderDragState
@@ -86,6 +92,8 @@ import com.checkit.ui.components.asMarkdownAnnotatedString
 import com.checkit.ui.components.findReorderTarget
 import com.checkit.ui.components.reorderableRowGraphics
 import com.checkit.ui.shortName
+import com.checkit.ui.theme.AppIconColorDefaults
+import com.checkit.ui.theme.toColor
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 import kotlin.uuid.Uuid
@@ -96,6 +104,7 @@ private data class RoutineEditorState(
     val description: String,
     val reminderMinutes: Int?,
     val activeWeekdays: Set<DayOfWeek>,
+    val color: String,
     val steps: List<RoutineStepTemplate>
 )
 
@@ -105,11 +114,18 @@ internal fun RoutineTab(
     checks: Map<String, Set<String>>,
     today: LocalDate,
     onToggleStep: (String, String) -> Unit,
-    onSaveRoutine: (String?, String, String, Int?, Set<DayOfWeek>, List<RoutineStepTemplate>) -> Unit,
+    onSaveRoutine: (String?, String, String, Int?, Set<DayOfWeek>, List<RoutineStepTemplate>, String) -> Unit,
     onDeleteRoutine: (String) -> Unit,
+    onMoveRoutine: (List<String>) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var editor by remember { mutableStateOf<RoutineEditorState?>(null) }
+    val scope = rememberCoroutineScope()
+    val haptic = LocalHapticFeedback.current
+    val dragState = remember { ReorderDragState(scope) }
+    var orderedRoutines by remember(routines) { mutableStateOf(routines) }
+    val currentOrdered by rememberUpdatedState(orderedRoutines)
+    val currentOnMove by rememberUpdatedState(onMoveRoutine)
     val todayRoutines = remember(routines, today) {
         routines.filter { isRoutineScheduled(today, it.activeWeekdays) }
     }
@@ -134,33 +150,29 @@ internal fun RoutineTab(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 4.dp),
+                    .padding(horizontal = 4.dp, vertical = 2.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    if (routines.isNotEmpty()) {
-                        Text(
-                            text = if (todayRoutines.isNotEmpty()) {
-                                "$doneSteps of $totalSteps steps • $overallPercent%"
-                            } else {
-                                "Nothing scheduled today"
-                            },
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    } else {
-                        Spacer(modifier = Modifier.width(1.dp))
-                    }
+                    Text(
+                        text = when {
+                            routines.isEmpty() -> "No routines"
+                            todayRoutines.isEmpty() -> "Nothing scheduled today"
+                            else -> "$doneSteps of $totalSteps steps ($overallPercent%)"
+                        },
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     if (todayRoutines.isNotEmpty() && totalSteps > 0) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(4.dp)
+                                .height(3.dp)
                                 .clip(CircleShape)
                                 .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
                         ) {
@@ -174,17 +186,26 @@ internal fun RoutineTab(
                         }
                     }
                 }
+                Spacer(modifier = Modifier.width(12.dp))
                 IconButton(
                     onClick = {
-                        editor = RoutineEditorState(id = null, title = "", description = "", reminderMinutes = null, activeWeekdays = AllWeekdays, steps = emptyList())
+                        editor = RoutineEditorState(
+                            id = null,
+                            title = "",
+                            description = "",
+                            reminderMinutes = null,
+                            activeWeekdays = AllWeekdays,
+                            color = RoutineDefaultColorHex,
+                            steps = emptyList()
+                        )
                     },
-                    shape = CircleShape,
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(28.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
                         contentDescription = "New routine",
-                        tint = MaterialTheme.colorScheme.primary
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
@@ -243,7 +264,7 @@ internal fun RoutineTab(
                         }
                         Button(
                             onClick = {
-                                editor = RoutineEditorState(id = null, title = "", description = "", reminderMinutes = null, activeWeekdays = AllWeekdays, steps = emptyList())
+                                editor = RoutineEditorState(id = null, title = "", description = "", reminderMinutes = null, activeWeekdays = AllWeekdays, color = RoutineDefaultColorHex, steps = emptyList())
                             },
                             shape = RoundedCornerShape(10.dp),
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
@@ -260,23 +281,81 @@ internal fun RoutineTab(
                 }
             }
         } else {
-            items(routines, key = { it.id }) { routine ->
-                RoutineCard(
-                    routine = routine,
-                    checkedStepIds = checks[routine.id].orEmpty(),
-                    scheduledToday = isRoutineScheduled(today, routine.activeWeekdays),
-                    onToggleStep = { stepId -> onToggleStep(routine.id, stepId) },
-                    onEdit = {
-                        editor = RoutineEditorState(
-                            id = routine.id,
-                            title = routine.title,
-                            description = routine.description,
-                            reminderMinutes = routine.reminderMinutes,
-                            activeWeekdays = routine.activeWeekdays,
-                            steps = routine.steps
+            items(orderedRoutines, key = { it.id }) { routine ->
+                key(routine.id) {
+                    val isDragging = dragState.draggingKey == routine.id ||
+                        dragState.previousKey == routine.id
+                    val currentOnDragStart by rememberUpdatedState {
+                        dragState.onDragStart(routine.id)
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    }
+                    val currentOnDragEnd by rememberUpdatedState {
+                        val wasDragging = dragState.draggingKey != null
+                        dragState.onDragEnd()
+                        if (wasDragging) {
+                            currentOnMove(currentOrdered.map { it.id })
+                        }
+                    }
+                    val currentOnDragMove by rememberUpdatedState { dragAmountY: Float ->
+                        dragState.onDrag(dragAmountY)
+                        val latest = currentOrdered
+                        val draggingKey = dragState.draggingKey
+                        if (draggingKey != null) {
+                            val fromIndex = latest.indexOfFirst { it.id == draggingKey }
+                            if (fromIndex >= 0) {
+                                val targetIndex = findReorderTarget(
+                                    count = latest.size,
+                                    keyAt = { row -> latest[row].id },
+                                    bounds = dragState.bounds,
+                                    draggedKey = draggingKey,
+                                    draggedDelta = dragState.draggingOffset,
+                                    fromIndex = fromIndex
+                                )
+                                if (targetIndex != null && targetIndex != fromIndex) {
+                                    orderedRoutines = latest.toMutableList().apply {
+                                        add(targetIndex, removeAt(fromIndex))
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .reorderableRowGraphics(routine.id, dragState)
+                            .fillMaxWidth()
+                            .pointerInput(routine.id) {
+                                detectDragGesturesAfterLongPress(
+                                    onDragStart = { currentOnDragStart() },
+                                    onDragEnd = { currentOnDragEnd() },
+                                    onDragCancel = { currentOnDragEnd() },
+                                    onDrag = { change, dragAmount ->
+                                        change.consume()
+                                        currentOnDragMove(dragAmount.y)
+                                    }
+                                )
+                            }
+                    ) {
+                        RoutineCard(
+                            routine = routine,
+                            checkedStepIds = checks[routine.id].orEmpty(),
+                            scheduledToday = isRoutineScheduled(today, routine.activeWeekdays),
+                            isDragging = isDragging,
+                            onToggleStep = { stepId -> onToggleStep(routine.id, stepId) },
+                            onEdit = {
+                                editor = RoutineEditorState(
+                                    id = routine.id,
+                                    title = routine.title,
+                                    description = routine.description,
+                                    reminderMinutes = routine.reminderMinutes,
+                                    activeWeekdays = routine.activeWeekdays,
+                                    color = routine.color,
+                                    steps = routine.steps
+                                )
+                            }
                         )
                     }
-                )
+                }
             }
             item {
                 Spacer(Modifier.height(36.dp))
@@ -288,8 +367,8 @@ internal fun RoutineTab(
         RoutineEditorSheet(
             state = state,
             onDismiss = { editor = null },
-            onSave = { id, title, description, reminderMinutes, activeWeekdays, steps ->
-                onSaveRoutine(id, title, description, reminderMinutes, activeWeekdays, steps)
+            onSave = { id, title, description, reminderMinutes, activeWeekdays, steps, color ->
+                onSaveRoutine(id, title, description, reminderMinutes, activeWeekdays, steps, color)
                 editor = null
             },
             onDelete = { id ->
@@ -307,8 +386,10 @@ private fun RoutineCard(
     scheduledToday: Boolean,
     onToggleStep: (String) -> Unit,
     onEdit: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isDragging: Boolean = false
 ) {
+    val cardColor = remember(routine.color) { routine.color.toColor() }
     val validStepIds = remember(routine.steps) { routine.steps.map { it.id }.toSet() }
     val percent = remember(routine.steps, checkedStepIds) {
         routinePercent(routine.steps.size, checkedStepIds, validStepIds)
@@ -321,17 +402,21 @@ private fun RoutineCard(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .background(
+                if (isDragging) MaterialTheme.colorScheme.surfaceContainerHigh
+                else cardColor.copy(alpha = 0.06f)
+                    .compositeOver(MaterialTheme.colorScheme.surfaceContainerLow)
+            )
             .border(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+                width = if (isDragging) 2.dp else 1.5.dp,
+                color = if (isDragging) cardColor else cardColor.copy(alpha = 0.5f),
                 shape = RoundedCornerShape(16.dp)
             )
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = 16.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Row(
@@ -339,183 +424,183 @@ private fun RoutineCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(
-                    text = routine.title,
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-
-                Box(
-                    modifier = Modifier
-                        .size(28.dp)
-                        .clip(CircleShape)
-                        .clickable(onClick = onEdit),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                        contentDescription = "Edit routine",
-                        modifier = Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    Text(
+                        text = routine.title,
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
-                }
-            }
-            if (routine.description.isNotBlank()) {
-                Text(
-                    text = routine.description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                routine.reminderMinutes?.let { minutes ->
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Schedule,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = minutes.toClockLabel(),
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-                if (routine.activeWeekdays != AllWeekdays) {
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Repeat,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = formatActiveWeekdays(routine.activeWeekdays),
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
-            if (routine.steps.isNotEmpty()) {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "$completedCount of ${routine.steps.size} completed",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = "$percent%",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = if (percent == 100) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
-                    val animatedProgress by animateFloatAsState(
-                        targetValue = percent / 100f,
-                        label = "routineProgress"
-                    )
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .height(4.dp)
+                            .size(28.dp)
                             .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
+                            .clickable(onClick = onEdit),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxHeight()
-                                .fillMaxWidth(animatedProgress)
-                                .clip(CircleShape)
-                                .background(
-                                    if (percent == 100) MaterialTheme.colorScheme.primary
-                                    else MaterialTheme.colorScheme.primary.copy(alpha = 0.85f)
-                                )
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                            contentDescription = "Edit routine",
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                         )
                     }
                 }
-            }
 
-            if (routine.steps.isNotEmpty()) {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                    modifier = Modifier.alpha(if (scheduledToday) 1f else 0.55f)
+                if (routine.description.isNotBlank()) {
+                    Text(
+                        text = routine.description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    routine.steps.forEach { step ->
-                        val checked = step.id in checkedStepIds
+                    routine.reminderMinutes?.let { minutes ->
                         Row(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(10.dp))
-                                .clickable(
-                                    enabled = scheduledToday,
-                                    onClick = { onToggleStep(step.id) }
-                                )
-                                .padding(horizontal = 6.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.Top,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(cardColor.copy(alpha = 0.12f))
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             Icon(
-                                imageVector = if (checked) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
+                                imageVector = Icons.Default.Schedule,
                                 contentDescription = null,
-                                tint = if (checked) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
-                                },
-                                modifier = Modifier
-                                    .size(20.dp)
-                                    .padding(top = 1.dp)
+                                modifier = Modifier.size(14.dp),
+                                tint = cardColor
                             )
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = step.title,
-                                    style = MaterialTheme.typography.bodyMedium.copy(
-                                        textDecoration = if (checked) TextDecoration.LineThrough else null
-                                    ),
-                                    color = if (checked) {
-                                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurface
-                                    }
-                                )
-                                if (step.description.isNotBlank()) {
-                                    Text(
-                                        text = step.description.asMarkdownAnnotatedString(),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                            Text(
+                                text = minutes.toClockLabel(),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    if (routine.activeWeekdays != AllWeekdays) {
+                        Row(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(cardColor.copy(alpha = 0.12f))
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Repeat,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                                tint = cardColor
+                            )
+                            Text(
+                                text = formatActiveWeekdays(routine.activeWeekdays),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
+                if (routine.steps.isNotEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "$completedCount of ${routine.steps.size} completed",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = "$percent%",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = if (percent == 100) cardColor else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        val animatedProgress by animateFloatAsState(
+                            targetValue = percent / 100f,
+                            label = "routineProgress"
+                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(5.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .fillMaxWidth(animatedProgress)
+                                    .clip(CircleShape)
+                                    .background(cardColor)
+                            )
+                        }
+                    }
+                }
+
+                if (routine.steps.isNotEmpty()) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                        modifier = Modifier.alpha(if (scheduledToday) 1f else 0.55f)
+                    ) {
+                        routine.steps.forEach { step ->
+                            val checked = step.id in checkedStepIds
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .clickable(
+                                        enabled = scheduledToday,
+                                        onClick = { onToggleStep(step.id) }
                                     )
+                                    .padding(horizontal = 6.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.Top,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (checked) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
+                                    contentDescription = null,
+                                    tint = if (checked) {
+                                        cardColor
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
+                                    },
+                                    modifier = Modifier
+                                        .size(20.dp)
+                                        .padding(top = 1.dp)
+                                )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = step.title,
+                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                            textDecoration = if (checked) TextDecoration.LineThrough else null
+                                        ),
+                                        color = if (checked) {
+                                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurface
+                                        }
+                                    )
+                                    if (step.description.isNotBlank()) {
+                                        Text(
+                                            text = step.description.asMarkdownAnnotatedString(),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -524,19 +609,19 @@ private fun RoutineCard(
             }
         }
     }
-}
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun RoutineEditorSheet(
     state: RoutineEditorState,
     onDismiss: () -> Unit,
-    onSave: (String?, String, String, Int?, Set<DayOfWeek>, List<RoutineStepTemplate>) -> Unit,
+    onSave: (String?, String, String, Int?, Set<DayOfWeek>, List<RoutineStepTemplate>, String) -> Unit,
     onDelete: (String) -> Unit
 ) {
     var title by remember(state) { mutableStateOf(state.title) }
     var description by remember(state) { mutableStateOf(state.description) }
     var reminderMinutes by remember(state) { mutableStateOf(state.reminderMinutes) }
+    var color by remember(state) { mutableStateOf(state.color) }
+    var colorExpanded by remember(state) { mutableStateOf(false) }
     var activeWeekdays by remember(state) { mutableStateOf(state.activeWeekdays) }
     var steps by remember(state) { mutableStateOf(state.steps) }
 
@@ -662,6 +747,71 @@ private fun RoutineEditorSheet(
                 }
 
                 item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                            .border(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+                                shape = RoundedCornerShape(10.dp)
+                            )
+                            .clickable { colorExpanded = !colorExpanded }
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Palette,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    text = "Color",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(20.dp)
+                                        .clip(CircleShape)
+                                        .background(color.toColor())
+                                )
+                                Icon(
+                                    imageVector = if (colorExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                    contentDescription = if (colorExpanded) "Collapse color picker" else "Expand color picker",
+                                    modifier = Modifier.size(18.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        if (colorExpanded) {
+                            ColorPicker(
+                                colors = AppIconColorDefaults.ListColors,
+                                selected = color,
+                                onSelect = { color = it }
+                            )
+                        }
+                    }
+                }
+
+                item {
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -709,7 +859,8 @@ private fun RoutineEditorSheet(
                                 description.trim(),
                                 reminderMinutes,
                                 activeWeekdays,
-                                steps.filter { it.title.isNotBlank() }
+                                steps.filter { it.title.isNotBlank() },
+                                color
                             )
                         }
                     },

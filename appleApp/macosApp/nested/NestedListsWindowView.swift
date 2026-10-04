@@ -14,6 +14,7 @@
 import SwiftUI
 import AppKit
 import Shared
+import UniformTypeIdentifiers
 
 struct NestedListsWindowView: View {
     @StateObject private var state = NestedEditorState()
@@ -119,6 +120,12 @@ struct NestedListsWindowView: View {
             List(state.documents, id: \.id, selection: docSelection) { doc in
                 Label(doc.title.isEmpty ? "Untitled document" : doc.title, systemImage: "list.bullet")
                     .contextMenu {
+                        Button {
+                            state.copyDocumentAsMarkdown(id: doc.id)
+                        } label: {
+                            Label("Copy as Markdown", systemImage: "doc.on.doc")
+                        }
+                        Divider()
                         Button("Rename") { renameDoc = doc; showRename = true }
                         Button("Delete", role: .destructive) { deleteDoc = doc }
                     }
@@ -135,7 +142,7 @@ struct NestedListsWindowView: View {
             .padding(8)
             Divider()
             nestedDocsSyncRow
-                .padding(8)
+                .padding(12)
         }
     }
 
@@ -157,7 +164,7 @@ struct NestedListsWindowView: View {
             Button {
                 NestedFirestoreSync.shared.syncDocumentsNow()
             } label: {
-                Label("Sync documents", systemImage: "arrow.clockwise")
+                Label("Sync", systemImage: "arrow.clockwise")
             }
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)
@@ -219,10 +226,26 @@ struct NestedListsWindowView: View {
             VStack(spacing: 0) {
                 detailHeader
                 outlineList
-                    .padding(.top, 6)
                 Divider()
                 bottomBar
             }
+            .overlay(alignment: .bottom) {
+                if let toast = state.toastMessage {
+                    HStack(spacing: 6) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                        Text(toast)
+                            .font(.subheadline).bold()
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(.regularMaterial, in: Capsule())
+                    .shadow(color: .black.opacity(0.15), radius: 8, y: 3)
+                    .padding(.bottom, 48)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
+            .animation(.spring(response: 0.3, dampingFraction: 0.8), value: state.toastMessage)
         }
     }
 
@@ -301,8 +324,10 @@ struct NestedListsWindowView: View {
     private var editorBar: some View {
         let sel = state.selectedId
         let node = sel.flatMap { state.indexById[$0] }
-        return ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
+        let hasCollapsible = state.indexById.values.contains(where: { $0.hasChildren })
+        // Plain centered row (no ScrollView): the ~12 buttons fit the 760pt
+        // detail minimum, and a scroll view would pin content left.
+        return HStack(spacing: 6) {
                 editorBtn("Zoom In", system: "plus.magnifyingglass", help: "Zoom in") {
                     state.zoomInSelected()
                 }
@@ -311,12 +336,20 @@ struct NestedListsWindowView: View {
                     state.zoomOut()
                 }
                 .disabled(state.zoomPath.isEmpty)
+                editorBtn("Expand All", system: "chevron.down.2", help: "Expand all (⌥→)") {
+                    state.expandAll()
+                }
+                .disabled(!hasCollapsible)
+                editorBtn("Collapse All", system: "chevron.up.2", help: "Collapse all (⌥←)") {
+                    state.collapseAll()
+                }
+                .disabled(!hasCollapsible)
                 barSeparator
-                editorBtn("Outdent", system: "arrow.left.to.line", help: "Outdent (Shift+Tab)") {
+                editorBtn("Outdent", system: "arrow.left.to.line", help: "Outdent (Cmd←)") {
                     state.outdentSelected()
                 }
                 .disabled(sel == nil)
-                editorBtn("Indent", system: "arrow.right.to.line", help: "Indent (Tab)") {
+                editorBtn("Indent", system: "arrow.right.to.line", help: "Indent (Cmd→)") {
                     state.indentSelected()
                 }
                 .disabled(sel == nil)
@@ -343,11 +376,15 @@ struct NestedListsWindowView: View {
                 editorBtn("Delete", system: "trash", help: "Delete (Del)") {
                     if sel != nil { state.showDeleteConfirm = true }
                 }
+                barSeparator
+                editorBtn("Copy Markdown", system: "doc.on.doc", help: "Copy selected as Markdown (⌘C)") {
+                    state.copySelectedAsMarkdown()
+                }
                 .disabled(sel == nil)
             }
+            .frame(maxWidth: .infinity, alignment: .center)
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
-        }
     }
 
     private func editorBtn(
@@ -395,11 +432,19 @@ struct NestedListsWindowView: View {
                     }
                     ForEach(rows) { row in
                         VStack(alignment: .leading, spacing: 0) {
+                            if state.dropTarget?.displayRowId == row.id && !state.dropTarget!.below {
+                                DropIndicatorLine(depth: state.dropTarget!.depth)
+                                    .transition(.opacity)
+                            }
                             NestedRowView(
                                 state: state,
                                 row: row,
                                 isEditing: state.editingId == row.id
                             )
+                            if state.dropTarget?.displayRowId == row.id && state.dropTarget!.below {
+                                DropIndicatorLine(depth: state.dropTarget!.depth)
+                                    .transition(.opacity)
+                            }
                             if state.draft?.anchorId == row.id, let d = state.draft {
                                 draftRow(depth: d.depth)
                             }
@@ -417,17 +462,90 @@ struct NestedListsWindowView: View {
                             state.select(id: row.id)
                             focusedRow = row.id
                         }
+                        .contextMenu {
+                            Button {
+                                state.startEdit(id: row.id)
+                            } label: {
+                                Label("Edit", systemImage: "pencil")
+                            }
+                            Button {
+                                state.startAddChild(of: row.id)
+                            } label: {
+                                Label("Add Child", systemImage: "plus")
+                            }
+                            Button {
+                                state.startAddSibling(of: row.id)
+                            } label: {
+                                Label("Add Sibling Below", systemImage: "text.badge.plus")
+                            }
+                            Divider()
+                            if row.node.hasChildren {
+                                Button {
+                                    state.toggleCollapse(id: row.id)
+                                } label: {
+                                    Label(row.node.item.collapsed ? "Expand" : "Collapse", systemImage: row.node.item.collapsed ? "chevron.right" : "chevron.down")
+                                }
+                                Button {
+                                    state.zoomTo(id: row.id)
+                                } label: {
+                                    Label("Zoom In", systemImage: "plus.magnifyingglass")
+                                }
+                            }
+                            Button {
+                                state.toggleCheck(id: row.id, checked: !row.node.item.checked)
+                            } label: {
+                                Label(row.node.item.checked ? "Mark as Incomplete" : "Mark as Complete", systemImage: row.node.item.checked ? "circle" : "checkmark.circle")
+                            }
+                            Divider()
+                            Button {
+                                state.copyItemAsMarkdown(id: row.id)
+                            } label: {
+                                Label("Copy Item as Markdown", systemImage: "doc.on.doc")
+                            }
+                            if row.node.hasChildren {
+                                Button {
+                                    state.copySubtreeAsMarkdown(id: row.id)
+                                } label: {
+                                    Label("Copy Subtree as Markdown", systemImage: "list.bullet.indent")
+                                }
+                            }
+                            Divider()
+                            Button(role: .destructive) {
+                                state.select(id: row.id)
+                                state.showDeleteConfirm = true
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                        }
+                    }
+                    if !rows.isEmpty {
+                        Color.clear
+                            .frame(height: 60)
+                            .contentShape(Rectangle())
+                            .onDrop(
+                                of: [.text],
+                                delegate: OutlineBottomDropDelegate(state: state)
+                            )
                     }
                 }
-                .padding(.horizontal, 8)
+                // Cap the working column and center it: fullscreen would
+                // otherwise stretch rows across the whole window.
+                .padding(.horizontal, 8).padding(.vertical, 10)
+                .frame(maxWidth: 840)
+                .frame(maxWidth: .infinity)
             }
             .background(nestedCanvasColor)
             .scrollEdgeEffectHidden(true, for: .all)
             .onChange(of: state.selectedId) { _, id in
                 // Deferred: publishing focus/scroll state synchronously here
                 // warns ("within view updates") and is undefined behavior.
+                // Don't steal focus while a TextField owns it (draft/edit):
+                // only one view can hold focus, last writer wins and typing
+                // or arrow keys end up in the wrong place.
                 DispatchQueue.main.async {
-                    focusedRow = id
+                    if state.draft == nil && state.editingId == nil {
+                        focusedRow = id
+                    }
                     // Minimal scroll: only moves if the row is out of view.
                     if let id { withAnimation { proxy.scrollTo(id) } }
                 }
@@ -436,6 +554,19 @@ struct NestedListsWindowView: View {
                 DispatchQueue.main.async {
                     draftText = state.draft?.text ?? ""
                     draftFocused = state.draft != nil
+                    // Focus is lost when the draft field disappears; hand it
+                    // back to the selected row so Up/Down keep working.
+                    if state.draft == nil, state.editingId == nil, let id = state.selectedId {
+                        focusedRow = id
+                    }
+                }
+            }
+            .onChange(of: state.editingId) { _, editing in
+                // Same focus handoff as draft: after commit/cancel the edit
+                // field is gone and selectedId often didn't change, so the
+                // selectedId observer above won't fire to restore focus.
+                if editing == nil, state.draft == nil, let id = state.selectedId {
+                    DispatchQueue.main.async { focusedRow = id }
                 }
             }
             .onKeyPress(keys: [.upArrow, .downArrow]) { press in
@@ -469,28 +600,20 @@ struct NestedListsWindowView: View {
                 return .handled
             }
             .onKeyPress(keys: [.leftArrow, .rightArrow]) { press in
-                if press.modifiers.contains(.command) {
-                    if press.key == .leftArrow { state.outdentSelected() } else { state.indentSelected() }
-                    return .handled
-                }
-                guard state.editingId == nil, let id = state.selectedId,
-                      let node = state.indexById[id], node.hasChildren
-                else { return .ignored }
-                let collapsed = node.item.collapsed
-                if press.key == .leftArrow, !collapsed {
-                    state.toggleCollapse(id: id)
-                    return .handled
-                }
-                if press.key == .rightArrow, collapsed {
-                    state.toggleCollapse(id: id)
-                    return .handled
-                }
-                return .ignored
+                self.handleOutlineArrowKey(press)
             }
             .onKeyPress(keys: [.delete, .deleteForward]) { _ in
                 guard state.editingId == nil, state.selectedId != nil else { return .ignored }
                 state.showDeleteConfirm = true
                 return .handled
+            }
+            .onKeyPress(keys: [KeyEquivalent("c"), KeyEquivalent("C")]) { press in
+                guard state.editingId == nil, state.draft == nil, state.selectedId != nil else { return .ignored }
+                if press.modifiers.contains(.command) {
+                    state.copySelectedAsMarkdown()
+                    return .handled
+                }
+                return .ignored
             }
             .onKeyPress(.escape) {
                 if state.editingId != nil { state.cancelEdit(); return .handled }
@@ -504,8 +627,41 @@ struct NestedListsWindowView: View {
         }
     }
 
+    // MARK: - Outline arrow keys
+
+    /// Extracted from outlineList so the giant list expression stays within
+    /// the type-checker's limits. Cmd+Opt+Left/Right = collapse/expand all
+    /// under the selection (else current view); Cmd+Left/Right = outdent/indent.
+    private func handleOutlineArrowKey(_ press: KeyPress) -> KeyPress.Result {
+        if press.modifiers.contains(.option) {
+            if press.key == .leftArrow { state.collapseAll() } else { state.expandAll() }
+            return .handled
+        }
+        if press.modifiers.contains(.command) {
+            if press.key == .leftArrow { state.outdentSelected() } else { state.indentSelected() }
+            return .handled
+        }
+        guard state.editingId == nil, let id = state.selectedId,
+              let node = state.indexById[id]
+        else { return .ignored }
+        let collapsed = node.item.collapsed
+        if press.key == .leftArrow, node.hasChildren, !collapsed {
+            state.toggleCollapse(id: id)
+            return .handled
+        }
+        if press.key == .leftArrow, collapsed || !node.hasChildren {
+            state.selectParentOfSelected()
+            return .handled
+        }
+        if press.key == .rightArrow, collapsed {
+            state.toggleCollapse(id: id)
+            return .handled
+        }
+        return .ignored
+    }
+
     private func draftRow(depth: Int) -> some View {
-        HStack(alignment: .top, spacing: 0) {
+        HStack(alignment: .center, spacing: 0) {
             ForEach(0..<depth, id: \.self) { level in
                 Rectangle()
                     .fill(nestedGuideColor(level))
@@ -517,7 +673,7 @@ struct NestedListsWindowView: View {
                 .fill(nestedDotForDepth(depth))
                 .frame(width: 7, height: 7)
                 .frame(width: 16, height: 24)
-                .padding(.top, 2)
+                .padding(.leading, 3)
             TextField("New item…", text: $draftText)
                 .textFieldStyle(.roundedBorder)
                 .focused($draftFocused)
@@ -540,6 +696,37 @@ struct NestedListsWindowView: View {
                     } else {
                         state.commitDraft(thenContinue: false)
                         state.indentSelected()
+                    }
+                    return .handled
+                }
+                .onKeyPress(keys: [.upArrow, .downArrow]) { press in
+                    // Parent outline Up/Down never fires while this field
+                    // holds focus (NSText consumes arrows), so handle it
+                    // here. Non-empty text is committed first (without
+                    // opening a follow-up draft, to avoid racing the async
+                    // save callback against the move); an empty draft is
+                    // just dismissed so one press restores navigation.
+                    // This is the "Enter then Up/Down does nothing" fix:
+                    // after Return the follow-up draft is empty, so this
+                    // path cancels it and moves the selection.
+                    if press.modifiers.contains(.command) {
+                        let hasText = !draftText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        if hasText {
+                            state.draft?.text = draftText
+                            state.commitDraft(thenContinue: false)
+                        } else {
+                            state.cancelDraft()
+                            if press.key == .upArrow { state.moveSelectedUp() } else { state.moveSelectedDown() }
+                        }
+                        return .handled
+                    }
+                    let hasText = !draftText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    if hasText {
+                        state.draft?.text = draftText
+                        state.commitDraft(thenContinue: false)
+                    } else {
+                        state.cancelDraft()
+                        state.moveSelection(by: press.key == .upArrow ? -1 : 1)
                     }
                     return .handled
                 }

@@ -87,12 +87,16 @@ func nestedDotForDepth(_ depth: Int) -> Color {
     nestedDepthSolids[depth % nestedDepthSolids.count]
 }
 
-func nestedDateLabel(startDays: Int64?, endDays: Int64?) -> String? {
-    guard startDays != nil || endDays != nil else { return nil }
+private let nestedDateFormatter: DateFormatter = {
     let fmt = DateFormatter()
     fmt.dateStyle = .medium
     fmt.timeStyle = .none
-    func s(_ d: Int64) -> String { fmt.string(from: nestedDate(fromEpochDays: d)) }
+    return fmt
+}()
+
+func nestedDateLabel(startDays: Int64?, endDays: Int64?) -> String? {
+    guard startDays != nil || endDays != nil else { return nil }
+    func s(_ d: Int64) -> String { nestedDateFormatter.string(from: nestedDate(fromEpochDays: d)) }
     switch (startDays, endDays) {
     case let (.some(a), .some(b)): return a == b ? s(a) : "\(s(a)) → \(s(b))"
     case let (.some(a), nil): return "from \(s(a))"
@@ -109,6 +113,7 @@ struct NestedRowView: View {
     let isEditing: Bool
 
     @State private var editText = ""
+    @State private var rowHeight: CGFloat = 32
     @FocusState private var fieldFocused: Bool
 
     private var item: NestedListItem { row.node.item }
@@ -175,45 +180,77 @@ struct NestedRowView: View {
                             .foregroundStyle(nestedPriorityColor(item.priority.name))
                             .padding(.top, 1)
                     }
-                    if isEditing {
-                        TextField("", text: $editText)
-                            .textFieldStyle(.plain)
-                            .font(nestedRowFont(item.textStyle.name))
-                            .focused($fieldFocused)
-                            .onAppear {
-                                editText = item.text
-                                fieldFocused = true
-                            }
-                            .onSubmit { state.commitEdit(id: item.id, text: editText) }
-                            .onKeyPress(keys: [.return]) { press in
-                                guard press.modifiers.contains(.shift) else { return .ignored }
-                                state.commitEdit(id: item.id, text: editText)
-                                state.startAddSibling(of: item.id)
-                                return .handled
-                            }
-                            .onKeyPress(.escape) {
-                                state.cancelEdit()
-                                return .handled
-                            }
-                            .onKeyPress(keys: [.tab]) { press in
-                                state.commitEdit(id: item.id, text: editText)
-                                if press.modifiers.contains(.shift) {
-                                    state.outdentSelected()
-                                } else {
-                                    state.indentSelected()
-                                }
-                                state.startEdit(id: item.id)
-                                return .handled
-                            }
-                    } else {
-                        Text(item.text.isEmpty ? "Untitled item" : item.text)
-                            .font(nestedRowFont(item.textStyle.name))
-                            .foregroundStyle(nestedTextColor)
-                            .strikethrough(item.checked)
+                    // Overlay (not ZStack/branch swap): the Text always defines
+                    // the row height, so entering edit mode never pushes
+                    // layout down. An NSTextField carries extra vertical
+                    // insets vs Text at the same font, which made the row
+                    // grow a few points while editing. The overlay child is
+                    // layout-neutral, so the field floats in the Text frame
+                    // (1-2pt overflow is absorbed by the row padding below).
+                    Text(item.text.isEmpty ? "Untitled item" : item.text)
+                        .font(nestedRowFont(item.textStyle.name))
+                        .foregroundStyle(nestedTextColor)
+                        .strikethrough(item.checked)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                        .opacity(isEditing ? 0 : 1)
+                        .onTapGesture(count: 2) { state.startEdit(id: item.id) }
+                        .overlay {
+                            if isEditing {
+                                TextField("", text: $editText)
+                                    .textFieldStyle(.plain)
+                                    .font(nestedRowFont(item.textStyle.name))
+                                    .focused($fieldFocused)
+                                    .onAppear {
+                                        editText = item.text
+                                        fieldFocused = true
+                                    }
+                                    .onSubmit {
+                                        fieldFocused = false
+                                        state.commitEdit(id: item.id, text: editText)
+                                    }
+                                    .onKeyPress(keys: [.return]) { press in
+                                        guard press.modifiers.contains(.shift) else { return .ignored }
+                                        fieldFocused = false
+                                        state.commitEdit(id: item.id, text: editText)
+                                        state.startAddSibling(of: item.id)
+                                        return .handled
+                                    }
+                                    .onKeyPress(.escape) {
+                                        fieldFocused = false
+                                        state.cancelEdit()
+                                        return .handled
+                                    }
+                                    .onKeyPress(keys: [.tab]) { press in
+                                        fieldFocused = false
+                                        state.commitEdit(id: item.id, text: editText)
+                                        if press.modifiers.contains(.shift) {
+                                            state.outdentSelected()
+                                        } else {
+                                            state.indentSelected()
+                                        }
+                                        state.startEdit(id: item.id)
+                                        return .handled
+                                    }
+                                    .onKeyPress(keys: [.upArrow, .downArrow]) { press in
+                                        // Same trap as the draft field: NSText eats
+                                        // arrows, so the outline-level handler never
+                                        // fires while editing. Commit (sync for
+                                        // selection) then move, so navigation keeps
+                                        // working after Return commits an edit.
+                                        fieldFocused = false
+                                        state.commitEdit(id: item.id, text: editText)
+                                        if press.modifiers.contains(.command) {
+                                            if press.key == .upArrow { state.moveSelectedUp() } else { state.moveSelectedDown() }
+                                        } else {
+                                            state.moveSelection(by: press.key == .upArrow ? -1 : 1)
+                                        }
+                                        return .handled
+                                    }
+                                    .frame(maxWidth: .infinity, alignment: .leading)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .contentShape(Rectangle())
-                            .onTapGesture(count: 2) { state.startEdit(id: item.id) }
-                    }
+                            }
+                        }
                 }
                 metadata
             }
@@ -222,7 +259,6 @@ struct NestedRowView: View {
             .background(rowBackground)
             .clipShape(RoundedRectangle(cornerRadius: 6))
             .contentShape(Rectangle())
-            .onTapGesture { state.select(id: item.id) }
         }
         .background(alignment: .topLeading) {
             // Guide continuation from the toggle down through the children.
@@ -239,27 +275,47 @@ struct NestedRowView: View {
             }
         }
         .background(nestedCanvasColor)
-        .onDrag {
-            NSItemProvider(object: "nested:\(item.id)" as NSString)
-        }
-        .onDrop(of: [.text], isTargeted: nil) { providers in
-            guard let provider = providers.first else { return false }
-            _ = provider.loadObject(ofClass: NSString.self) { payload, _ in
-                guard let s = payload as? String, s.hasPrefix("nested:")
-                else { return }
-                let dragged = String(s.dropFirst("nested:".count))
-                DispatchQueue.main.async {
-                    // Option held while dropping = nest as child; else sibling gap.
-                    let opts = NSEvent.modifierFlags.contains(.option)
-                    if opts {
-                        state.dropAsChild(draggedId: dragged, onto: item.id)
-                    } else {
-                        state.drop(draggedId: dragged, onto: item.id)
+        .opacity(state.draggedId == item.id ? 0.35 : 1.0)
+        .background(
+            GeometryReader { geo in
+                Color.clear
+                    .onAppear { rowHeight = geo.size.height }
+                    .onChange(of: geo.size.height) { _, newH in
+                        if abs(rowHeight - newH) > 1 { rowHeight = newH }
                     }
-                }
             }
-            return true
+        )
+        .onDrag({
+            state.draggedId = item.id
+            return NSItemProvider(object: "nested:\(item.id)" as NSString)
+        }) {
+            dragPreview
         }
+        .onDrop(
+            of: [.text],
+            delegate: NestedRowDropDelegate(
+                row: row,
+                state: state,
+                rowHeight: rowHeight
+            )
+        )
+    }
+
+    private var dragPreview: some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(nestedDotForDepth(row.depth))
+                .frame(width: 7, height: 7)
+            Text(item.text.isEmpty ? "Untitled item" : item.text)
+                .font(nestedRowFont(item.textStyle.name))
+                .foregroundStyle(nestedTextColor)
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(nestedSelectedColor)
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+        .shadow(color: .black.opacity(0.18), radius: 4, y: 2)
     }
 
     private var nestedTextColor: Color {
@@ -382,5 +438,184 @@ struct NestedRowView: View {
         if let t = m.targetValue, !t.isEmpty { s += "/\(t)" }
         if let u = m.displayUnit() { s += " \(u)" }
         return s.trimmingCharacters(in: .whitespaces)
+    }
+}
+
+// MARK: - Drop Indicator
+
+struct DropIndicatorLine: View {
+    let depth: Int
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 0) {
+            ForEach(0..<depth, id: \.self) { level in
+                Rectangle()
+                    .fill(nestedGuideColor(level))
+                    .frame(width: 1)
+                    .padding(.leading, 10)
+                    .frame(width: 16, alignment: .leading)
+            }
+            Circle()
+                .fill(Color.accentColor)
+                .frame(width: 7, height: 7)
+                .frame(width: 16)
+                .padding(.leading, 3)
+            Capsule()
+                .fill(Color.accentColor)
+                .frame(height: 2.5)
+                .padding(.trailing, 12)
+        }
+        .frame(height: 8)
+        .padding(.vertical, 1)
+        .background(nestedCanvasColor)
+        .animation(.spring(response: 0.22, dampingFraction: 0.82), value: depth)
+    }
+}
+
+// MARK: - Drop Delegates
+
+struct NestedRowDropDelegate: DropDelegate {
+    let row: NestedRow
+    let state: NestedEditorState
+    let rowHeight: CGFloat
+
+    func validateDrop(info: DropInfo) -> Bool {
+        info.hasItemsConforming(to: [.text])
+    }
+
+    func dropEntered(info: DropInfo) {
+        updateTarget(info: info)
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        updateTarget(info: info)
+        if state.dropTarget != nil {
+            return DropProposal(operation: .move)
+        } else {
+            return DropProposal(operation: .forbidden)
+        }
+    }
+
+    func dropExited(info: DropInfo) {
+        if state.dropTarget?.displayRowId == row.id {
+            state.clearDropTarget()
+        }
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        guard let provider = info.itemProviders(for: [.text]).first else {
+            state.clearDropTarget()
+            return false
+        }
+
+        let isBelow = info.location.y > (rowHeight / 2)
+        let locX = info.location.x
+        let currentTarget = state.dropTarget
+
+        _ = provider.loadObject(ofClass: NSString.self) { payload, _ in
+            guard let s = payload as? String, s.hasPrefix("nested:") else {
+                DispatchQueue.main.async { state.clearDropTarget() }
+                return
+            }
+            let dragged = String(s.dropFirst("nested:".count))
+            DispatchQueue.main.async {
+                let target = currentTarget ?? state.resolveDropTarget(
+                    hoveredRow: row,
+                    isBelow: isBelow,
+                    pointerX: locX,
+                    draggedItemId: dragged
+                )
+                if let target = target {
+                    state.executeDrop(target: target, draggedId: dragged)
+                } else {
+                    state.clearDropTarget()
+                }
+            }
+        }
+        return true
+    }
+
+    private func updateTarget(info: DropInfo) {
+        let isBelow = info.location.y > (rowHeight / 2)
+        state.updateDropTarget(
+            hoveredRow: row,
+            isBelow: isBelow,
+            pointerX: info.location.x,
+            draggedItemId: nil
+        )
+    }
+}
+
+struct OutlineBottomDropDelegate: DropDelegate {
+    let state: NestedEditorState
+
+    func validateDrop(info: DropInfo) -> Bool {
+        info.hasItemsConforming(to: [.text])
+    }
+
+    func dropEntered(info: DropInfo) {
+        updateTarget(info: info)
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        updateTarget(info: info)
+        return state.dropTarget != nil ? DropProposal(operation: .move) : DropProposal(operation: .forbidden)
+    }
+
+    func dropExited(info: DropInfo) {
+        if state.dropTarget?.below == true {
+            state.clearDropTarget()
+        }
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        guard let provider = info.itemProviders(for: [.text]).first else {
+            state.clearDropTarget()
+            return false
+        }
+        let currentTarget = state.dropTarget
+        let locX = info.location.x
+        let rows = state.visibleRows
+        let lastRow = rows.last
+
+        _ = provider.loadObject(ofClass: NSString.self) { payload, _ in
+            guard let s = payload as? String, s.hasPrefix("nested:") else {
+                DispatchQueue.main.async { state.clearDropTarget() }
+                return
+            }
+            let dragged = String(s.dropFirst("nested:".count))
+            DispatchQueue.main.async {
+                let target: NestedDropTarget?
+                if let current = currentTarget {
+                    target = current
+                } else if let last = lastRow {
+                    target = state.resolveDropTarget(
+                        hoveredRow: last,
+                        isBelow: true,
+                        pointerX: locX,
+                        draggedItemId: dragged
+                    )
+                } else {
+                    target = nil
+                }
+
+                if let target = target {
+                    state.executeDrop(target: target, draggedId: dragged)
+                } else {
+                    state.clearDropTarget()
+                }
+            }
+        }
+        return true
+    }
+
+    private func updateTarget(info: DropInfo) {
+        guard let last = state.visibleRows.last else { return }
+        state.updateDropTarget(
+            hoveredRow: last,
+            isBelow: true,
+            pointerX: info.location.x,
+            draggedItemId: nil
+        )
     }
 }

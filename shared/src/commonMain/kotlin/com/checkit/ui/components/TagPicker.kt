@@ -41,7 +41,8 @@ fun TagOptionMenu(
     availableTags: List<TagItem>,
     selectedTagIds: Set<String>,
     onTagToggle: (String) -> Unit,
-    onNewTagClick: () -> Unit = {}
+    onNewTagClick: () -> Unit = {},
+    icon: (@Composable (hasSelectedTags: Boolean, onClick: () -> Unit) -> Unit)? = null
 ) {
     var expanded by remember { mutableStateOf(false) }
     val hasSelectedTags = selectedTagIds.isNotEmpty()
@@ -50,25 +51,29 @@ fun TagOptionMenu(
         isExpanded = expanded,
         onDismissRequest = { expanded = false },
         anchor = {
-            IconButton(
-                onClick = {
-                    expanded = true
-                }
-            ) {
-                Box(modifier = Modifier.size(24.dp)) {
-                    Icon(
-                        imageVector = Icons.Outlined.LocalOffer,
-                        contentDescription = if (hasSelectedTags) "Tag filters active" else "View options",
-                        tint = if (hasSelectedTags) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                    if (hasSelectedTags) {
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .size(8.dp)
-                                .background(MaterialTheme.colorScheme.primary, CircleShape)
+            if (icon != null) {
+                icon(hasSelectedTags) { expanded = true }
+            } else {
+                IconButton(
+                    onClick = {
+                        expanded = true
+                    }
+                ) {
+                    Box(modifier = Modifier.size(24.dp)) {
+                        Icon(
+                            imageVector = Icons.Outlined.LocalOffer,
+                            contentDescription = if (hasSelectedTags) "Tag filters active" else "View options",
+                            tint = if (hasSelectedTags) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.align(Alignment.Center)
                         )
+                        if (hasSelectedTags) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .size(8.dp)
+                                    .background(MaterialTheme.colorScheme.primary, CircleShape)
+                            )
+                        }
                     }
                 }
             }

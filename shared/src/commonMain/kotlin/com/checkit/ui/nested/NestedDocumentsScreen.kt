@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,11 +15,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Sync
@@ -42,6 +46,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import checkit.shared.generated.resources.Res
@@ -51,6 +56,7 @@ import checkit.shared.generated.resources.nested_delete_document
 import checkit.shared.generated.resources.nested_documents_empty
 import checkit.shared.generated.resources.nested_lists_title
 import checkit.shared.generated.resources.nested_new_document
+import checkit.shared.generated.resources.nested_rename_document
 import checkit.shared.generated.resources.nested_untitled_document
 import com.checkit.data.NestedSyncStatus
 import com.checkit.ui.components.TinyTopAppBar
@@ -92,6 +98,7 @@ internal fun NestedDocumentsScreen(
                 ) {
                     items(state.documents, key = { it.id }) { document ->
                         val isSelected = activeEditor?.documentId == document.id
+                        val renameLabel = stringResource(Res.string.nested_rename_document)
                         NavigationDrawerItem(
                             label = {
                                 Text(
@@ -107,8 +114,16 @@ internal fun NestedDocumentsScreen(
                             },
                             icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = null) },
                             badge = {
-                                IconButton(onClick = { viewModel.requestDeleteDocument(document) }, modifier = Modifier.size(24.dp)) {
-                                    Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    IconButton(
+                                        onClick = { viewModel.startRenameDocument(document) },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(Icons.Default.Edit, contentDescription = renameLabel, modifier = Modifier.size(16.dp))
+                                    }
+                                    IconButton(onClick = { viewModel.requestDeleteDocument(document) }, modifier = Modifier.size(24.dp)) {
+                                        Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    }
                                 }
                             },
                             colors = NavigationDrawerItemDefaults.colors(
@@ -251,11 +266,26 @@ internal fun NestedDocumentsScreen(
     }
 
     if (state.showNewDocumentDialog) {
-        NewDocumentDialog(
+        DocumentDialog(
             title = state.newDocumentTitle,
+            dialogTitle = stringResource(Res.string.nested_new_document),
+            confirmLabel = stringResource(Res.string.nested_new_document),
             onTitleChange = viewModel::updateNewDocumentTitle,
             onConfirm = { viewModel.addDocument(state.newDocumentTitle) },
             onDismiss = viewModel::cancelNewDocument
+        )
+    }
+
+    state.renamingDocument?.let { renaming ->
+        val trimmed = state.newDocumentTitle.trim()
+        DocumentDialog(
+            title = state.newDocumentTitle,
+            dialogTitle = stringResource(Res.string.nested_rename_document),
+            confirmLabel = stringResource(Res.string.nested_rename_document),
+            confirmEnabled = trimmed.isNotBlank() && trimmed != renaming.title.trim(),
+            onTitleChange = viewModel::updateNewDocumentTitle,
+            onConfirm = { viewModel.renameDocument(state.newDocumentTitle) },
+            onDismiss = viewModel::cancelRenameDocument
         )
     }
 
@@ -379,26 +409,31 @@ private fun NestedSyncDocumentsRow(
 }
 
 @Composable
-private fun NewDocumentDialog(
+private fun DocumentDialog(
     title: String,
+    dialogTitle: String,
+    confirmLabel: String,
     onTitleChange: (String) -> Unit,
     onConfirm: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    confirmEnabled: Boolean = title.isNotBlank()
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(Res.string.nested_new_document)) },
+        title = { Text(dialogTitle) },
         text = {
             OutlinedTextField(
                 value = title,
                 onValueChange = onTitleChange,
                 singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { if (confirmEnabled) onConfirm() }),
                 modifier = Modifier.fillMaxWidth()
             )
         },
         confirmButton = {
-            TextButton(onClick = onConfirm, enabled = title.isNotBlank()) {
-                Text(stringResource(Res.string.nested_new_document))
+            TextButton(onClick = onConfirm, enabled = confirmEnabled) {
+                Text(confirmLabel)
             }
         },
         dismissButton = {

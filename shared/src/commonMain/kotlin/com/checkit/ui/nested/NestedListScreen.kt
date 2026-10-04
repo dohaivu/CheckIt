@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -54,8 +56,16 @@ import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.UnfoldLess
+import androidx.compose.material.icons.filled.UnfoldMore
+import androidx.compose.material.icons.filled.AddBox
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.SelectAll
+import androidx.compose.material.icons.filled.Today
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material.icons.filled.ZoomOut
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.LocalOffer
 import androidx.compose.material.icons.rounded.CheckBox
 import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
 import androidx.compose.material3.AlertDialog
@@ -71,8 +81,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -93,6 +105,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
@@ -115,9 +128,11 @@ import checkit.shared.generated.resources.nested_add_child
 import checkit.shared.generated.resources.nested_add_sibling
 import checkit.shared.generated.resources.nested_batch_delete
 import checkit.shared.generated.resources.nested_confirm_delete
+import checkit.shared.generated.resources.nested_collapse_all
 import checkit.shared.generated.resources.nested_delete_confirm
 import checkit.shared.generated.resources.nested_delete_confirm_multiple
 import checkit.shared.generated.resources.nested_edit_note
+import checkit.shared.generated.resources.nested_expand_all
 import checkit.shared.generated.resources.nested_indent
 import checkit.shared.generated.resources.nested_move_down
 import checkit.shared.generated.resources.nested_move_up
@@ -128,7 +143,6 @@ import checkit.shared.generated.resources.nested_zoom_out
 import com.checkit.domain.FocusPeriod
 import com.checkit.domain.MetricItem
 import com.checkit.domain.MetricRollupPolicy
-import com.checkit.domain.MetricUnit
 import com.checkit.domain.NestedColorToken
 import com.checkit.domain.NestedItemNode
 import com.checkit.domain.NestedListItem
@@ -141,16 +155,27 @@ import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.CompactFlatTextField
 import com.checkit.ui.components.DateRangePill
 import com.checkit.ui.components.FocusPeriodHeader
+import com.checkit.ui.components.MetricsSection
 import com.checkit.ui.components.PeriodPicker
 import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TagPill
-import com.checkit.ui.displayName
 import com.checkit.ui.displayUnit
 import com.checkit.ui.noRippleClickable
-import com.checkit.ui.progressRatio
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
+
+// Palette shared with macOS NestedRowView (nestedDepthSolids): guides cycle
+// one muted color per depth at 0.5 opacity; the toggle ring/dot uses the
+// same depth solid at full opacity so nesting can be followed by hue.
+private val nestedDepthSolids: List<Color> = listOf(
+    Color(0xFFD97F5F), // 0 terracotta
+    Color(0xFF7EA38A), // 1 sage
+    Color(0xFF7B9EBD), // 2 dusty blue
+    Color(0xFFC09F5E), // 3 warm sand
+)
+
+private val nestedGuideColors: List<Color> = nestedDepthSolids.map { it.copy(alpha = 0.5f) }
 
 @Composable
 internal fun NestedListScreen(
@@ -221,6 +246,8 @@ internal fun NestedListScreen(
                     state = state,
                     onZoomIn = viewModel::zoomInSelected,
                     onZoomOut = viewModel::zoomOut,
+                    onExpandAll = viewModel::expandAll,
+                    onCollapseAll = viewModel::collapseAll,
                     onIndent = { state.selectedItemId?.let(viewModel::indent) },
                     onOutdent = { state.selectedItemId?.let(viewModel::outdent) },
                     onMoveUp = { state.selectedItemId?.let(viewModel::moveUp) },
@@ -254,7 +281,7 @@ internal fun NestedListScreen(
                 )
             }
             HorizontalDivider(
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
             )
         }
 
@@ -594,128 +621,199 @@ private fun NestedFormattingBottomBar(
         NestedColorToken.Yellow, NestedColorToken.Green, NestedColorToken.Blue,
         NestedColorToken.Purple, NestedColorToken.Pink
     )
-    Row(
+    val subtleInactiveColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f)
+
+    Surface(
         modifier = Modifier
-            .horizontalScroll(rememberScrollState())
-            .background(
-                MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.95f),
-                RoundedCornerShape(18.dp)
-            )
-            .padding(horizontal = 8.dp, vertical = 0.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally)
+            .padding(bottom = 8.dp, start = 8.dp, end = 8.dp)
+            .navigationBarsPadding(),
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.95f),
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
     ) {
-        Box {
-            IconButton(onClick = { styleExpanded = true }, modifier = Modifier.size(32.dp)) {
-                Icon(
-                    imageVector = Icons.Default.FormatSize,
-                    contentDescription = "Text style",
-                    tint = if (item.textStyle != NestedTextStyle.Body) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            DropdownMenu(expanded = styleExpanded, onDismissRequest = { styleExpanded = false }) {
-                NestedTextStyle.entries.forEach { style ->
+        Row(
+            modifier = Modifier
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = 6.dp, vertical = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterHorizontally)
+        ) {
+            // Group 1: Typography & Style
+            val hasCustomStyle = item.textStyle != NestedTextStyle.Body || item.checkboxEnabled
+            Box {
+                IconButton(
+                    onClick = { styleExpanded = true },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.FormatSize,
+                        contentDescription = "Text style",
+                        tint = if (hasCustomStyle) MaterialTheme.colorScheme.primary else subtleInactiveColor,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                DropdownMenu(expanded = styleExpanded, onDismissRequest = { styleExpanded = false }) {
+                    NestedTextStyle.entries.forEach { style ->
+                        DropdownMenuItem(
+                            text = { Text(style.name) },
+                            modifier = if (style == item.textStyle) {
+                                Modifier.background(MaterialTheme.colorScheme.secondaryContainer)
+                            } else {
+                                Modifier
+                            },
+                            onClick = {
+                                styleExpanded = false
+                                onFormattingChange(style, item.textColor, item.backgroundColor)
+                            }
+                        )
+                    }
                     DropdownMenuItem(
-                        text = { Text(style.name) },
-                        modifier = if (style == item.textStyle) {
+                        text = { Text("Checkbox") },
+                        modifier = if (item.checkboxEnabled) {
                             Modifier.background(MaterialTheme.colorScheme.secondaryContainer)
                         } else {
                             Modifier
                         },
                         onClick = {
                             styleExpanded = false
-                            onFormattingChange(style, item.textColor, item.backgroundColor)
+                            onToggleCheckbox()
                         }
                     )
                 }
-                DropdownMenuItem(
-                    text = { Text("Checkbox") },
-                    modifier = if (item.checkboxEnabled) {
-                        Modifier.background(MaterialTheme.colorScheme.secondaryContainer)
-                    } else {
-                        Modifier
-                    },
-                    onClick = {
-                        styleExpanded = false
-                        onToggleCheckbox()
+            }
+
+            ColorTokenMenu(
+                icon = Icons.Default.FormatColorText,
+                selected = item.textColor,
+                tokens = colorTokens
+            ) { token -> onFormattingChange(item.textStyle, token, item.backgroundColor) }
+
+            ColorTokenMenu(
+                icon = Icons.Default.FormatColorFill,
+                selected = item.backgroundColor,
+                tokens = colorTokens,
+                filled = true
+            ) { token -> onFormattingChange(item.textStyle, item.textColor, token) }
+
+            VerticalDivider(
+                modifier = Modifier
+                    .height(16.dp)
+                    .padding(horizontal = 2.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+            )
+
+            // Group 2: Metadata (Priority, Date Range, Tags)
+            val hasPriority = item.priority != TaskPriority.None
+            Box {
+                IconButton(
+                    onClick = { priorityExpanded = true },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Flag,
+                        contentDescription = "Priority",
+                        tint = if (hasPriority) priorityColor(item.priority) else subtleInactiveColor,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                DropdownMenu(expanded = priorityExpanded, onDismissRequest = { priorityExpanded = false }) {
+                    TaskPriority.entries.forEach { priority ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = "${priorityMarker(priority)}  ${priority.name}",
+                                    color = priorityColor(priority)
+                                )
+                            },
+                            onClick = {
+                                priorityExpanded = false
+                                onPriorityChange(priority)
+                            }
+                        )
                     }
-                )
-            }
-        }
-        ColorTokenMenu(
-            icon = Icons.Default.FormatColorText,
-            selected = item.textColor,
-            tokens = colorTokens
-        ) { token -> onFormattingChange(item.textStyle, token, item.backgroundColor) }
-        ColorTokenMenu(
-            icon = Icons.Default.FormatColorFill,
-            selected = item.backgroundColor,
-            tokens = colorTokens,
-            filled = true
-        ) { token -> onFormattingChange(item.textStyle, item.textColor, token) }
-
-        // Priority button (separated)
-        Box {
-            IconButton(onClick = { priorityExpanded = true }, modifier = Modifier.size(32.dp)) {
-                Icon(
-                    imageVector = Icons.Default.Flag,
-                    contentDescription = "Priority",
-                    tint = priorityColor(item.priority)
-                )
-            }
-            DropdownMenu(expanded = priorityExpanded, onDismissRequest = { priorityExpanded = false }) {
-                TaskPriority.entries.forEach { priority ->
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                text = "${priorityMarker(priority)}  ${priority.name}",
-                                color = priorityColor(priority)
-                            )
-                        },
-                        onClick = {
-                            priorityExpanded = false
-                            onPriorityChange(priority)
-                        }
-                    )
                 }
             }
-        }
 
-        // Date Range button (separated, opens PeriodPicker dialog)
-        val hasDateRange = item.startDate != null || item.endDate != null
-        IconButton(
-            onClick = { showPeriodPicker = true },
-            modifier = Modifier.size(32.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.DateRange,
-                contentDescription = "Date range",
-                tint = if (hasDateRange) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-
-        TagOptionMenu(
-            availableTags = availableTags,
-            selectedTagIds = item.tags.map { it.id }.toSet(),
-            onTagToggle = { tagId ->
-                val selected = item.tags.map { it.id }.toMutableSet()
-                if (!selected.add(tagId)) selected.remove(tagId)
-                onTagsChange(selected.toList())
+            val hasDateRange = item.startDate != null || item.endDate != null
+            IconButton(
+                onClick = { showPeriodPicker = true },
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.DateRange,
+                    contentDescription = "Date range",
+                    tint = if (hasDateRange) MaterialTheme.colorScheme.primary else subtleInactiveColor,
+                    modifier = Modifier.size(18.dp)
+                )
             }
-        )
-        IconButton(onClick = onToggleNote, modifier = Modifier.size(32.dp)) {
-            Icon(
-                imageVector = Icons.Default.EditNote,
-                contentDescription = "Edit note",
-                tint = if (!item.note.isNullOrEmpty()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+
+            TagOptionMenu(
+                availableTags = availableTags,
+                selectedTagIds = item.tags.map { it.id }.toSet(),
+                onTagToggle = { tagId ->
+                    val selected = item.tags.map { it.id }.toMutableSet()
+                    if (!selected.add(tagId)) selected.remove(tagId)
+                    onTagsChange(selected.toList())
+                },
+                icon = { hasSelected, onClick ->
+                    IconButton(
+                        onClick = onClick,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Box(modifier = Modifier.size(18.dp)) {
+                            Icon(
+                                imageVector = Icons.Outlined.LocalOffer,
+                                contentDescription = "Tags",
+                                tint = if (hasSelected) MaterialTheme.colorScheme.primary else subtleInactiveColor,
+                                modifier = Modifier.align(Alignment.Center)
+                            )
+                            if (hasSelected) {
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .size(6.dp)
+                                        .background(MaterialTheme.colorScheme.primary, CircleShape)
+                                )
+                            }
+                        }
+                    }
+                }
             )
-        }
-        IconButton(onClick = { onSetChecked(!item.checked) }, modifier = Modifier.size(32.dp)) {
-            Icon(
-                imageVector = Icons.Default.Done,
-                contentDescription = if (item.checked) "Uncheck" else "Check off",
-                tint = if (item.checked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+
+            VerticalDivider(
+                modifier = Modifier
+                    .height(16.dp)
+                    .padding(horizontal = 2.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
             )
+
+            // Group 3: Quick Actions (Note, Check off)
+            val hasNote = !item.note.isNullOrEmpty()
+            IconButton(
+                onClick = onToggleNote,
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.EditNote,
+                    contentDescription = "Edit note",
+                    tint = if (hasNote) MaterialTheme.colorScheme.primary else subtleInactiveColor,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            IconButton(
+                onClick = { onSetChecked(!item.checked) },
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Done,
+                    contentDescription = if (item.checked) "Uncheck" else "Check off",
+                    tint = if (item.checked) MaterialTheme.colorScheme.primary else subtleInactiveColor,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
         }
     }
 
@@ -776,55 +874,66 @@ private fun ColorTokenMenu(
     onSelected: (NestedColorToken) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
+    val isColorActive = selected != NestedColorToken.Default
+    val subtleInactiveColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f)
     Box {
-        IconButton(onClick = { expanded = true }, modifier = Modifier.size(32.dp)) {
+        IconButton(
+            onClick = { expanded = true },
+            modifier = Modifier.size(32.dp)
+        ) {
             Icon(
                 imageVector = icon,
                 contentDescription = if (filled) "Background color" else "Text color",
-                tint = nestedColor(selected)
+                tint = if (isColorActive) nestedColor(selected) else subtleInactiveColor,
+                modifier = Modifier.size(18.dp)
             )
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            tokens.forEach { token ->
-                DropdownMenuItem(
-                    leadingIcon = { ColorTokenSwatch(token, filled = filled) },
-                    text = { Text(token.name) },
-                    modifier = if (token == selected) {
-                        Modifier.background(MaterialTheme.colorScheme.secondaryContainer)
-                    } else {
-                        Modifier
-                    },
-                    onClick = {
-                        expanded = false
-                        onSelected(token)
+            Row(
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                tokens.forEach { token ->
+                    val color = nestedColor(token)
+                    val isSelected = token == selected
+                    Box(
+                        modifier = Modifier
+                            .size(24.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (token == NestedColorToken.Default) MaterialTheme.colorScheme.surfaceVariant else color
+                            )
+                            .border(
+                                width = if (isSelected) 2.dp else 1.dp,
+                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                                shape = CircleShape
+                            )
+                            .clickable {
+                                expanded = false
+                                onSelected(token)
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (isSelected) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = token.name,
+                                tint = if (token == NestedColorToken.Default) MaterialTheme.colorScheme.onSurfaceVariant else Color.White,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        } else if (token == NestedColorToken.Default) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Default",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                modifier = Modifier.size(12.dp)
+                            )
+                        }
                     }
-                )
+                }
             }
         }
-    }
-}
-
-@Composable
-private fun ColorTokenSwatch(
-    token: NestedColorToken,
-    filled: Boolean = false
-) {
-    val color = when (token) {
-        NestedColorToken.Default -> MaterialTheme.colorScheme.onSurfaceVariant
-        NestedColorToken.Red -> androidx.compose.ui.graphics.Color(0xFFE57373)
-        NestedColorToken.Orange -> androidx.compose.ui.graphics.Color(0xFFFFB74D)
-        NestedColorToken.Yellow -> androidx.compose.ui.graphics.Color(0xFFFFD54F)
-        NestedColorToken.Green -> androidx.compose.ui.graphics.Color(0xFF81C784)
-        NestedColorToken.Blue -> androidx.compose.ui.graphics.Color(0xFF64B5F6)
-        NestedColorToken.Purple -> androidx.compose.ui.graphics.Color(0xFFBA68C8)
-        NestedColorToken.Pink -> androidx.compose.ui.graphics.Color(0xFFF06292)
-    }
-    Box(modifier = Modifier
-            .size(20.dp)
-            .clip(CircleShape)
-            .background(if (filled && token != NestedColorToken.Default) color.copy(alpha = 0.28f) else androidx.compose.ui.graphics.Color.Transparent)
-            .border(1.dp, color.copy(alpha = 0.75f), CircleShape), contentAlignment = Alignment.Center) {
-        if (!filled && token != NestedColorToken.Default) Box(Modifier.size(10.dp).clip(CircleShape).background(color))
     }
 }
 
@@ -1008,7 +1117,6 @@ private fun NestedItemDetailsDialog(
     var progress by remember(item.id) { mutableStateOf(item.progressPercent) }
     var metrics by remember(item.id) { mutableStateOf(item.manualMetrics) }
     var policyExpanded by remember { mutableStateOf(false) }
-    var unitExpandedIndex by remember { mutableStateOf<Int?>(null) }
 
     val directChildCount = node.children.size
     val totalChildCount = remember(node) { countTotalDescendants(node) }
@@ -1244,194 +1352,12 @@ private fun NestedItemDetailsDialog(
                 }
 
                 // Section 3: Custom/Manual Metrics
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "CUSTOM METRICS",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Bold
-                        )
-                        TextButton(
-                            onClick = {
-                                metrics = metrics + MetricItem(
-                                    name = "",
-                                    value = "",
-                                    sortOrder = metrics.size
-                                )
-                            },
-                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
-                            modifier = Modifier.height(28.dp)
-                        ) {
-                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
-                            Spacer(Modifier.width(2.dp))
-                            Text("Add", style = MaterialTheme.typography.labelMedium)
-                        }
-                    }
-
-                    if (metrics.isEmpty()) {
-                        Text(
-                            text = "No custom metrics added.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                        )
-                    }
-
-                    metrics.forEachIndexed { index, metric ->
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
-                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
-                                .padding(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Icon(
-                                    imageVector = if (metric.isCompleted) Icons.Rounded.CheckBox else Icons.Rounded.CheckBoxOutlineBlank,
-                                    contentDescription = if (metric.isCompleted) "Mark incomplete" else "Mark complete",
-                                    tint = if (metric.isCompleted) {
-                                        MaterialTheme.colorScheme.primary
-                                    } else {
-                                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)
-                                    },
-                                    modifier = Modifier
-                                        .size(22.dp)
-                                        .then(Modifier.clickable {
-                                            metrics = metrics.toMutableList().also { it[index] = metric.copy(isCompleted = !metric.isCompleted) }
-                                        })
-                                )
-                                CompactFlatTextField(
-                                    value = metric.name,
-                                    onValueChange = { value ->
-                                        metrics = metrics.toMutableList().also { it[index] = metric.copy(name = value) }
-                                    },
-                                    placeholder = "Metric name",
-                                    modifier = Modifier.weight(1f)
-                                )
-                                IconButton(
-                                    onClick = { metrics = metrics.filterIndexed { metricIndex, _ -> metricIndex != index } },
-                                    modifier = Modifier.size(28.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Delete,
-                                        contentDescription = "Delete metric",
-                                        tint = MaterialTheme.colorScheme.error,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
-                            }
-
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                CompactFlatTextField(
-                                    value = metric.value,
-                                    onValueChange = { value ->
-                                        metrics = metrics.toMutableList().also { it[index] = metric.copy(value = value) }
-                                    },
-                                    placeholder = "Value",
-                                    modifier = Modifier.weight(1f)
-                                )
-                                CompactFlatTextField(
-                                    value = metric.targetValue.orEmpty(),
-                                    onValueChange = { value ->
-                                        metrics = metrics.toMutableList().also { it[index] = metric.copy(targetValue = value) }
-                                    },
-                                    placeholder = "Target",
-                                    modifier = Modifier.weight(1f)
-                                )
-                                Box(modifier = Modifier.weight(1f)) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(34.dp)
-                                            .clip(RoundedCornerShape(6.dp))
-                                            .background(MaterialTheme.colorScheme.surface)
-                                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
-                                            .clickable { unitExpandedIndex = index }
-                                            .padding(horizontal = 6.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Text(
-                                            text = metric.unit.displayName(metric.customUnit),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                        Icon(
-                                            imageVector = Icons.Default.KeyboardArrowDown,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(14.dp)
-                                        )
-                                    }
-                                    DropdownMenu(
-                                        expanded = unitExpandedIndex == index,
-                                        onDismissRequest = { unitExpandedIndex = null }
-                                    ) {
-                                        MetricUnit.entries.forEach { unit ->
-                                            DropdownMenuItem(
-                                                text = { Text(unit.displayName(), style = MaterialTheme.typography.bodySmall) },
-                                                onClick = {
-                                                    metrics = metrics.toMutableList().also {
-                                                        it[index] = metric.copy(
-                                                            unit = unit,
-                                                            customUnit = if (unit == MetricUnit.Custom) metric.customUnit else null
-                                                        )
-                                                    }
-                                                    unitExpandedIndex = null
-                                                }
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-
-                            if (metric.unit == MetricUnit.Custom) {
-                                CompactFlatTextField(
-                                    value = metric.customUnit.orEmpty(),
-                                    onValueChange = { value ->
-                                        metrics = metrics.toMutableList().also { it[index] = metric.copy(customUnit = value) }
-                                    },
-                                    placeholder = "Custom unit (e.g. kg, pts)",
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                            }
-
-                            metric.progressRatio()?.let { ratio ->
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    LinearProgressIndicator(
-                                        progress = { ratio },
-                                        modifier = Modifier.weight(1f),
-                                    )
-                                    Text(
-                                        text = "${(ratio * 100).roundToInt()}%",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
+                MetricsSection(
+                    metrics = metrics,
+                    enabled = true,
+                    onMetricsChange = { metrics = it },
+                    emptyHint = "No custom metrics added."
+                )
             }
         },
         confirmButton = {
@@ -1733,6 +1659,8 @@ private fun EditorToolbar(
     state: NestedEditorState.Active,
     onZoomIn: () -> Unit,
     onZoomOut: () -> Unit,
+    onExpandAll: () -> Unit,
+    onCollapseAll: () -> Unit,
     onIndent: () -> Unit,
     onOutdent: () -> Unit,
     onMoveUp: () -> Unit,
@@ -1751,45 +1679,81 @@ private fun EditorToolbar(
     val canZoomIn = hasSelection && (selectedNode?.hasChildren == true)
     val canZoomOut = state.zoomPath.isNotEmpty()
     val canAddSibling = hasSelection && (selectedNode?.item?.parentId != null)
+    val hasCollapsible = state.tree.nodeById.values.any { it.hasChildren }
     var showMore by remember { mutableStateOf(false) }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(horizontal = 8.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(3.dp)
-    ) {
-        ToolbarButton(Icons.Default.ZoomIn, stringResource(Res.string.nested_zoom_in), canZoomIn, onZoomIn)
-        ToolbarButton(Icons.Default.ZoomOut, stringResource(Res.string.nested_zoom_out), canZoomOut, onZoomOut)
-        ToolbarButton(Icons.AutoMirrored.Filled.KeyboardArrowLeft, stringResource(Res.string.nested_outdent), hasSelection, onOutdent)
-        ToolbarButton(Icons.AutoMirrored.Filled.KeyboardArrowRight, stringResource(Res.string.nested_indent), hasSelection, onIndent)
-        ToolbarButton(Icons.Default.KeyboardArrowUp, stringResource(Res.string.nested_move_up), hasSelection, onMoveUp)
-        ToolbarButton(Icons.Default.KeyboardArrowDown, stringResource(Res.string.nested_move_down), hasSelection, onMoveDown)
-        ToolbarButton(Icons.Default.Add, stringResource(Res.string.nested_add_child), hasSelection, onAddChild)
-        ToolbarButton(Icons.AutoMirrored.Filled.NoteAdd, stringResource(Res.string.nested_add_sibling), canAddSibling, onAddSibling)
-        Box {
-            ToolbarButton(Icons.Default.MoreVert, "More actions", true) { showMore = true }
-            DropdownMenu(
-                expanded = showMore,
-                onDismissRequest = { showMore = false }
-            ) {
-                ToolbarMenuItem("Details", hasSelection, onManageDetails)
-                ToolbarMenuItem("Add root item", true) {
-                    showMore = false; onAddRoot()
-                }
-                ToolbarMenuItem("Select items", true) {
-                    showMore = false; onEnterSelection()
-                }
-                ToolbarMenuItem("Add to daily plan", hasSelection) {
-                    showMore = false; onAddToDailyPlan()
-                }
-                ToolbarMenuItem("Copy to Task", hasSelection) {
-                    showMore = false; onCopyToTask()
-                }
-                ToolbarMenuItem(stringResource(Res.string.nested_batch_delete), hasSelection) {
-                    showMore = false; onDelete()
+
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                .padding(horizontal = 6.dp, vertical = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.Start)
+        ) {
+            // Group 1: Zoom & Fold
+            ToolbarButton(Icons.Default.ZoomIn, stringResource(Res.string.nested_zoom_in), canZoomIn, onZoomIn)
+            ToolbarButton(Icons.Default.ZoomOut, stringResource(Res.string.nested_zoom_out), canZoomOut, onZoomOut)
+            ToolbarButton(Icons.Default.UnfoldMore, stringResource(Res.string.nested_expand_all), hasCollapsible, onExpandAll)
+            ToolbarButton(Icons.Default.UnfoldLess, stringResource(Res.string.nested_collapse_all), hasCollapsible, onCollapseAll)
+
+            VerticalDivider(
+                modifier = Modifier
+                    .height(14.dp)
+                    .padding(horizontal = 1.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+            )
+
+            // Group 2: Indent & Move
+            ToolbarButton(Icons.AutoMirrored.Filled.KeyboardArrowLeft, stringResource(Res.string.nested_outdent), hasSelection, onOutdent)
+            ToolbarButton(Icons.AutoMirrored.Filled.KeyboardArrowRight, stringResource(Res.string.nested_indent), hasSelection, onIndent)
+            ToolbarButton(Icons.Default.KeyboardArrowUp, stringResource(Res.string.nested_move_up), hasSelection, onMoveUp)
+            ToolbarButton(Icons.Default.KeyboardArrowDown, stringResource(Res.string.nested_move_down), hasSelection, onMoveDown)
+
+            VerticalDivider(
+                modifier = Modifier
+                    .height(14.dp)
+                    .padding(horizontal = 1.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+            )
+
+            // Group 3: Add Items
+            ToolbarButton(Icons.Default.Add, stringResource(Res.string.nested_add_child), hasSelection, onAddChild)
+            ToolbarButton(Icons.AutoMirrored.Filled.NoteAdd, stringResource(Res.string.nested_add_sibling), canAddSibling, onAddSibling)
+
+            VerticalDivider(
+                modifier = Modifier
+                    .height(14.dp)
+                    .padding(horizontal = 1.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+            )
+
+            // Group 4: More
+            Box {
+                ToolbarButton(Icons.Default.MoreVert, "More actions", true) { showMore = true }
+                DropdownMenu(
+                    expanded = showMore,
+                    onDismissRequest = { showMore = false }
+                ) {
+                    ToolbarMenuItem("Details", Icons.Outlined.Info, hasSelection) {
+                        showMore = false; onManageDetails()
+                    }
+                    ToolbarMenuItem("Add root item", Icons.Default.AddBox, true) {
+                        showMore = false; onAddRoot()
+                    }
+                    ToolbarMenuItem("Select items", Icons.Default.SelectAll, true) {
+                        showMore = false; onEnterSelection()
+                    }
+                    ToolbarMenuItem("Add to daily plan", Icons.Default.Today, hasSelection) {
+                        showMore = false; onAddToDailyPlan()
+                    }
+                    ToolbarMenuItem("Copy to Task", Icons.Default.ContentCopy, hasSelection) {
+                        showMore = false; onCopyToTask()
+                    }
+                    ToolbarMenuItem(stringResource(Res.string.nested_batch_delete), Icons.Default.Delete, hasSelection) {
+                        showMore = false; onDelete()
+                    }
                 }
             }
         }
@@ -1797,9 +1761,24 @@ private fun EditorToolbar(
 }
 
 @Composable
-private fun ToolbarMenuItem(label: String, enabled: Boolean, onClick: () -> Unit) {
-    androidx.compose.material3.DropdownMenuItem(
-        text = { Text(label) },
+private fun ToolbarMenuItem(
+    label: String,
+    icon: ImageVector? = null,
+    enabled: Boolean,
+    onClick: () -> Unit
+) {
+    DropdownMenuItem(
+        text = { Text(label, style = MaterialTheme.typography.bodyMedium) },
+        leadingIcon = icon?.let {
+            {
+                Icon(
+                    imageVector = it,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                )
+            }
+        },
         onClick = onClick,
         enabled = enabled
     )
@@ -1812,12 +1791,12 @@ private fun ToolbarButton(
     enabled: Boolean,
     onClick: () -> Unit
 ) {
-    IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(32.dp)) {
+    IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(30.dp)) {
         Icon(
             imageVector = icon,
             contentDescription = label,
-            tint = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
-            modifier = Modifier.size(20.dp)
+            tint = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f),
+            modifier = Modifier.size(18.dp)
         )
     }
 }
@@ -1892,12 +1871,7 @@ private fun NestedTree(
     isDragged: Boolean = false
 ) {
     val item = node.item
-    val guideColors = listOf(
-        MaterialTheme.colorScheme.primary.copy(alpha = 0.34f),
-        MaterialTheme.colorScheme.secondary.copy(alpha = 0.34f),
-        MaterialTheme.colorScheme.tertiary.copy(alpha = 0.34f),
-        MaterialTheme.colorScheme.outline.copy(alpha = 0.30f)
-    )
+    val guideColors = nestedGuideColors
     val isSelected = item.id in state.selection.selectedIds ||
             (!state.selection.isActive && state.selectedItemId == item.id)
     val isEditing = state.editingTextItemId == item.id
@@ -1915,7 +1889,10 @@ private fun NestedTree(
                         if (!isDragged) {
                             // Draw in the unpadded container so every depth shares the
                             // same x-coordinate across all rows.
-                            val dotSize = if (item.collapsed && node.hasChildren) 14.dp else 7.dp
+                            // Dot geometry must match the composable below: parents always
+                            // use the 14.dp outer ring, leaves use the 7.dp solid dot,
+                            // so guides stay center-aligned and touch the outer edge.
+                            val dotSize = if (node.hasChildren) 14.dp else 7.dp
                             val dotTop = 12.dp.toPx()
                             val dotSizePx = dotSize.toPx()
                             val dotCenterY = dotTop + dotSizePx / 2
@@ -1986,7 +1963,7 @@ private fun NestedTree(
                             ),
                         contentAlignment = Alignment.TopStart
                     ) {
-                        val dotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.68f)
+                        val dotColor = nestedDepthSolids[depth % nestedDepthSolids.size]
                         Box(
                             modifier = Modifier
                                 .width(16.dp)
@@ -1996,10 +1973,10 @@ private fun NestedTree(
                             Box(
                                 modifier = Modifier
                                     .padding(top = 12.dp)
-                                    .size(if (item.collapsed && node.hasChildren) 14.dp else 7.dp)
+                                    .size(if (node.hasChildren) 14.dp else 7.dp)
                                     .clip(CircleShape)
                                     .then(
-                                        if (item.collapsed && node.hasChildren) {
+                                        if (node.hasChildren) {
                                             Modifier.border(2.dp, dotColor, CircleShape)
                                         } else {
                                             Modifier.background(dotColor)
@@ -2062,7 +2039,7 @@ private fun NestedTree(
                                 colors = CheckboxDefaults.colors(uncheckedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
                             )
                         } else {
-                            Spacer(Modifier.width(8.dp))
+                            Spacer(Modifier.width(4.dp))
                         }
 
                         Column(modifier = Modifier.weight(1f)) {
@@ -2438,12 +2415,7 @@ private fun NewItemRow(
     onCancel: () -> Unit,
     continuingLevels: Set<Int>
 ) {
-    val guideColors = listOf(
-        MaterialTheme.colorScheme.primary.copy(alpha = 0.34f),
-        MaterialTheme.colorScheme.secondary.copy(alpha = 0.34f),
-        MaterialTheme.colorScheme.tertiary.copy(alpha = 0.34f),
-        MaterialTheme.colorScheme.outline.copy(alpha = 0.30f)
-    )
+    val guideColors = nestedGuideColors
     Column(
         modifier = Modifier
             .fillMaxWidth()

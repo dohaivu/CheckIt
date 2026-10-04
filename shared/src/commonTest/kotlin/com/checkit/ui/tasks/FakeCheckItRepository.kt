@@ -312,6 +312,7 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
             startTimeMinutes = input.startTimeMinutes,
             endTimeMinutes = input.endTimeMinutes,
             repeatRRule = input.repeatRRule,
+            metrics = input.metrics,
             sortOrder = 0,
             createdAtMillis = 0L,
             updatedAtMillis = 0L
@@ -337,7 +338,8 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
                         doDate = input.doDate,
                         startTimeMinutes = input.startTimeMinutes,
                         endTimeMinutes = input.endTimeMinutes,
-                        repeatRRule = input.repeatRRule
+                        repeatRRule = input.repeatRRule,
+                        metrics = input.metrics
                     )
                 } else it
             })
@@ -998,6 +1000,7 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
     override suspend fun setNestedItemCheckboxEnabled(itemId: String, checkboxEnabled: Boolean) {}
     override suspend fun setNestedItemsChecked(itemIds: List<String>, checked: Boolean) {}
     override suspend fun toggleNestedItemCollapsed(itemId: String) {}
+    override suspend fun setNestedItemsCollapsed(itemIds: List<String>, collapsed: Boolean) {}
     override suspend fun moveNestedItems(moves: List<NestedItemMove>) {}
     override suspend fun deleteNestedItems(itemIds: List<String>) {}
 

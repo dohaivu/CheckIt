@@ -24,6 +24,7 @@ import com.checkit.domain.usecase.RenameNestedDocumentUseCase
 import com.checkit.domain.usecase.ReplaceNestedManualMetricsUseCase
 import com.checkit.domain.usecase.SetNestedItemCheckboxEnabledUseCase
 import com.checkit.domain.usecase.SetNestedItemsCheckedUseCase
+import com.checkit.domain.usecase.SetNestedItemsCollapsedUseCase
 import com.checkit.domain.usecase.ToggleNestedItemCollapsedUseCase
 import com.checkit.domain.usecase.UpdateNestedItemDateRangeUseCase
 import com.checkit.domain.usecase.UpdateNestedItemFormattingUseCase
@@ -33,6 +34,8 @@ import com.checkit.domain.usecase.UpdateNestedItemPriorityUseCase
 import com.checkit.domain.usecase.UpdateNestedItemProgressUseCase
 import com.checkit.domain.usecase.UpdateNestedItemTagsUseCase
 import com.checkit.domain.usecase.UpdateNestedItemTextUseCase
+import com.checkit.domain.usecase.NestedMarkdownExportOptions
+import com.checkit.domain.usecase.toMarkdown
 import com.checkit.infrastructure.initKoin
 import com.checkit.ui.quicknote.QuickNoteAppleBridge
 import kotlinx.coroutines.CoroutineScope
@@ -94,6 +97,7 @@ class NestedAppleHelper(
     private val setCheckboxEnabled: SetNestedItemCheckboxEnabledUseCase,
     private val setItemsChecked: SetNestedItemsCheckedUseCase,
     private val toggleCollapsedUseCase: ToggleNestedItemCollapsedUseCase,
+    private val setItemsCollapsed: SetNestedItemsCollapsedUseCase,
     private val moveItems: MoveNestedItemsUseCase,
     private val deleteItems: DeleteNestedItemsUseCase,
 ) {
@@ -304,6 +308,24 @@ class NestedAppleHelper(
         scope.launch { runCatching { toggleCollapsedUseCase(itemId) } }
     }
 
+    /**
+     * Expand/collapse-all for Swift. [scopeIds] are scope roots resolved in
+     * Swift (selection, else zoom focus); empty means the whole document.
+     */
+    fun expandSubtrees(documentId: String, scopeIds: List<String>) {
+        scope.launch {
+            val items = latestTrees[documentId]?.flatItems.orEmpty()
+            runCatching { setItemsCollapsed(items, scopeIds, false) }
+        }
+    }
+
+    fun collapseSubtrees(documentId: String, scopeIds: List<String>) {
+        scope.launch {
+            val items = latestTrees[documentId]?.flatItems.orEmpty()
+            runCatching { setItemsCollapsed(items, scopeIds, true) }
+        }
+    }
+
     fun indent(documentId: String, itemId: String) {
         applyMove(documentId) { items -> moveItems.indent(items, itemId) }
     }
@@ -354,6 +376,17 @@ class NestedAppleHelper(
 
     fun findNode(tree: NestedDocumentTree, itemId: String): NestedItemNode? =
         tree.nodeById[itemId]
+
+    fun exportTreeToMarkdown(tree: NestedDocumentTree, includeTitle: Boolean = false): String =
+        tree.toMarkdown(NestedMarkdownExportOptions(includeDocumentTitle = includeTitle))
+
+    fun exportNodeToMarkdown(node: NestedItemNode, includeNotes: Boolean = true): String =
+        node.toMarkdown(NestedMarkdownExportOptions(includeNotes = includeNotes))
+
+    fun exportDocumentToMarkdown(documentId: String, includeTitle: Boolean = false): String {
+        val tree = latestTrees[documentId] ?: return ""
+        return tree.toMarkdown(NestedMarkdownExportOptions(includeDocumentTitle = includeTitle))
+    }
 
     fun close() {
         scope.cancel()

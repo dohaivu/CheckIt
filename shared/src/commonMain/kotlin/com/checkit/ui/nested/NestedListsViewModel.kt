@@ -30,7 +30,9 @@ import com.checkit.domain.usecase.RenameNestedDocumentUseCase
 import com.checkit.domain.usecase.ReplaceNestedManualMetricsUseCase
 import com.checkit.domain.usecase.SetNestedItemCheckboxEnabledUseCase
 import com.checkit.domain.usecase.SetNestedItemsCheckedUseCase
+import com.checkit.domain.usecase.SetNestedItemsCollapsedUseCase
 import com.checkit.domain.usecase.ToggleNestedItemCollapsedUseCase
+import com.checkit.domain.usecase.resolveCollapseScopeRoots
 import com.checkit.domain.usecase.UpdateNestedItemDateRangeUseCase
 import com.checkit.domain.usecase.UpdateNestedItemFormattingUseCase
 import com.checkit.domain.usecase.UpdateNestedItemMetricSettingsUseCase
@@ -113,6 +115,7 @@ data class NestedUiState(
     val isListLoading: Boolean = true,
     val documentDeleting: NestedDocument? = null,
     val showNewDocumentDialog: Boolean = false,
+    val renamingDocument: NestedDocument? = null,
     val newDocumentTitle: String = "",
     val editor: NestedEditorState? = null,
     val syncState: NestedSyncState = NestedSyncState(),
@@ -141,6 +144,7 @@ class NestedListsViewModel(
     private val setCheckboxEnabledUseCase: SetNestedItemCheckboxEnabledUseCase,
     private val setItemsCheckedUseCase: SetNestedItemsCheckedUseCase,
     private val toggleCollapsedUseCase: ToggleNestedItemCollapsedUseCase,
+    private val setItemsCollapsedUseCase: SetNestedItemsCollapsedUseCase,
     private val moveItemsUseCase: MoveNestedItemsUseCase,
     private val deleteItemsUseCase: DeleteNestedItemsUseCase,
     private val settingsRepository: SettingsRepository,
@@ -261,7 +265,7 @@ class NestedListsViewModel(
     // --- Document Management ---
 
     fun startNewDocument() {
-        _uiState.update { it.copy(showNewDocumentDialog = true, newDocumentTitle = "") }
+        _uiState.update { it.copy(showNewDocumentDialog = true, renamingDocument = null, newDocumentTitle = "") }
     }
 
     fun updateNewDocumentTitle(title: String) {
@@ -273,14 +277,39 @@ class NestedListsViewModel(
     }
 
     fun addDocument(title: String) {
+        if (title.isBlank()) return
         viewModelScope.launch {
             runCatching { addDocumentUseCase(title) }
-                .onSuccess { id -> 
-                    _uiState.update { it.copy(showNewDocumentDialog = false) }
-                    openDocument(id) 
+                .onSuccess { id ->
+                    _uiState.update { it.copy(showNewDocumentDialog = false, newDocumentTitle = "") }
+                    openDocument(id)
                 }
                 .onFailure { error ->
                     _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to create document"))
+                }
+        }
+    }
+
+    fun startRenameDocument(document: NestedDocument) {
+        _uiState.update {
+            it.copy(renamingDocument = document, showNewDocumentDialog = false, newDocumentTitle = document.title)
+        }
+    }
+
+    fun cancelRenameDocument() {
+        _uiState.update { it.copy(renamingDocument = null) }
+    }
+
+    fun renameDocument(title: String) {
+        val target = _uiState.value.renamingDocument ?: return
+        if (title.isBlank()) return
+        viewModelScope.launch {
+            runCatching { renameDocumentUseCase(target.id, title) }
+                .onSuccess {
+                    _uiState.update { it.copy(renamingDocument = null, newDocumentTitle = "") }
+                }
+                .onFailure { error ->
+                    _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to rename document"))
                 }
         }
     }
@@ -567,6 +596,23 @@ class NestedListsViewModel(
 
     fun toggleCollapsed(itemId: String) {
         viewModelScope.launch { toggleCollapsedUseCase(itemId) }
+    }
+
+    fun expandAll() = setCollapsedForScope(false)
+
+    fun collapseAll() = setCollapsedForScope(true)
+
+    private fun setCollapsedForScope(collapsed: Boolean) {
+        val active = getActiveEditor() ?: return
+        val scopeRoots = resolveCollapseScopeRoots(
+            items = active.tree.flatItems,
+            selectedIds = active.selection.selectedIds,
+            selectedItemId = active.selectedItemId,
+            focusedItemId = active.focusedItem?.item?.id
+        )
+        viewModelScope.launch {
+            setItemsCollapsedUseCase(active.tree.flatItems, scopeRoots, collapsed)
+        }
     }
 
     fun indent(itemId: String) = applyMove { items -> moveItemsUseCase.indent(items, itemId) }

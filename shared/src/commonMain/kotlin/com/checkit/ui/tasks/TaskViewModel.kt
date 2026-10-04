@@ -9,6 +9,7 @@ import com.checkit.data.SubTaskWriteInput
 import com.checkit.data.TaskWriteInput
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
+import com.checkit.domain.MetricItem
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
@@ -477,6 +478,7 @@ class TaskViewModel(
                     label = task.label,
                     isPinned = task.isPinned,
                     selectedTagIds = task.tags.map { it.id }.toSet(),
+                    metrics = task.metrics,
                     dailyPlanItem = dailyPlan,
                     trashedAtMillis = task.trashedAtMillis
                 )
@@ -621,6 +623,7 @@ class TaskViewModel(
     }
 
     fun updateTaskLabel(label: String) = updateTaskForm(saveImmediately = false) { it.copy(label = label) }
+    fun updateTaskMetrics(metrics: List<MetricItem>) = updateTaskForm { it.copy(metrics = metrics) }
     fun updateNoteLabel(label: String) = updateNoteForm { it.copy(label = label, error = null) }
 
     fun saveEditor() {
@@ -903,7 +906,8 @@ class TaskViewModel(
                 startTimeMinutes = startTimeMinutes,
                 selectedOffsets = reminderOffsets
             ),
-            tagIds = selectedTagIds.toList()
+            tagIds = selectedTagIds.toList(),
+            metrics = metrics.filter { it.value.isNotBlank() }
         )
     }
 
@@ -929,7 +933,8 @@ class TaskViewModel(
                 startTimeMinutes = startTimeMinutes,
                 selectedOffsets = reminderOffsets
             ),
-            tagIds = tags.map { it.id }
+            tagIds = tags.map { it.id },
+            metrics = metrics.filter { it.value.isNotBlank() }
         )
     }
 

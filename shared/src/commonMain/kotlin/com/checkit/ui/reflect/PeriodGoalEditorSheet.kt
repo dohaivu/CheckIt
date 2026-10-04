@@ -2,12 +2,10 @@ package com.checkit.ui.reflect
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -19,33 +17,16 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.rounded.CheckBox
-import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
 import androidx.compose.material3.Button
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastJoinToString
@@ -54,21 +35,16 @@ import checkit.shared.generated.resources.cancel
 import checkit.shared.generated.resources.reflect_review_card_title
 import checkit.shared.generated.resources.reflect_review_save
 import com.checkit.domain.MetricItem
-import com.checkit.domain.MetricUnit
 import com.checkit.domain.Period
-import com.checkit.ui.components.RatingBar
 import com.checkit.ui.components.AppEditorBottomSheet
-import com.checkit.ui.components.CompactFlatTextField
 import com.checkit.ui.components.MarkdownTextField
+import com.checkit.ui.components.MetricsSection
+import com.checkit.ui.components.RatingBar
 import com.checkit.ui.components.icons.AppIcons
 import com.checkit.ui.components.icons.Target
-import com.checkit.ui.displayName
 import com.checkit.ui.periodDetail
-import com.checkit.ui.progressRatio
 import org.jetbrains.compose.resources.stringResource
-import kotlin.math.roundToInt
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun PeriodGoalEditorSheet(
     editor: ReflectGoalEditorState,
@@ -231,7 +207,7 @@ internal fun PeriodGoalEditorSheet(
             }
 
             Text(
-                text = ReflectionPrompts.get(editor.focus.period).goalPrompt,
+                text = ReflectionPrompts.get(editor.focus.period).goalText,
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary,
             )
@@ -256,7 +232,7 @@ internal fun PeriodGoalEditorSheet(
                 enabled = !editor.isSaving
             )
 
-            PeriodMetricsSection(
+            MetricsSection(
                 metrics = editor.metrics,
                 enabled = !editor.isSaving,
                 onMetricsChange = onMetricsChange
@@ -282,9 +258,10 @@ internal fun PeriodGoalEditorSheet(
 
 internal data class ReflectionPrompt(
     val reviewSections: List<String>,
-    val goalPrompt: String
+    val goalPrompts: List<String>
 ) {
     val reviewText: String get() = reviewSections.fastJoinToString("\n")
+    val goalText: String get() = goalPrompts.fastJoinToString("\n")
 }
 
 internal object ReflectionPrompts {
@@ -294,7 +271,10 @@ internal object ReflectionPrompts {
                 "What were your wins?",
                 "Where did you feel friction? What distracted you? How can I prevent it tomorrow?",
             ),
-            goalPrompt = "What can I make slightly better today? Why? If/When-Then"
+            goalPrompts = listOf(
+                "What can I make slightly better today? Why? If/When-Then",
+                "How you want to be?"
+            )
         )
         Period.Week -> ReflectionPrompt(
             reviewSections = listOf(
@@ -302,7 +282,7 @@ internal object ReflectionPrompts {
                 "Which tactics worked well? What didn't work?",
                 "What needs to change next week?"
             ),
-            goalPrompt = "What are the 3 primary objectives for this week?"
+            goalPrompts = listOf("What are the 3 primary objectives for this week?")
         )
         Period.Month -> ReflectionPrompt(
             reviewSections = listOf(
@@ -310,216 +290,21 @@ internal object ReflectionPrompts {
                 "How is your big-picture progress? Review active quarterly/yearly goals.",
                 "What macro trends are you noticing? What recurring friction or bottlenecks appeared?"
             ),
-            goalPrompt = "What are the 3 key milestones for this month?"
+            goalPrompts = listOf("What are the 3 key milestones for this month?")
         )
         Period.Quarter -> ReflectionPrompt(
             reviewSections = listOf(
                 "What are the quarterly trends?",
                 "How is the macro progress?"
             ),
-            goalPrompt = "What are the 3 key results for this quarter?"
+            goalPrompts = listOf("What are the 3 key results for this quarter?")
         )
         Period.Year -> ReflectionPrompt(
             reviewSections = listOf(
                 "What are your biggest annual achievements?",
                 "How have you progressed toward your long-term vision?"
             ),
-            goalPrompt = "What are the 3 most important goals for the coming year?"
+            goalPrompts = listOf("What are the 3 most important goals for the coming year?")
         )
-    }
-}
-
-/** Add/edit/delete custom metrics for the goal (mirrors nested-item details dialog, section 3). */
-@Composable
-private fun PeriodMetricsSection(
-    metrics: List<MetricItem>,
-    enabled: Boolean,
-    onMetricsChange: (List<MetricItem>) -> Unit
-) {
-    var unitExpandedIndex by remember { mutableStateOf<Int?>(null) }
-
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = "CUSTOM METRICS",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold
-            )
-            TextButton(
-                onClick = {
-                    if (!enabled) return@TextButton
-                    onMetricsChange(
-                        metrics + MetricItem(
-                            name = "",
-                            value = "",
-                            sortOrder = metrics.size
-                        )
-                    )
-                },
-                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
-                modifier = Modifier.height(28.dp)
-            ) {
-                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
-                Spacer(Modifier.width(2.dp))
-                Text("Add", style = MaterialTheme.typography.labelMedium)
-            }
-        }
-
-        metrics.forEachIndexed { index, metric ->
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
-                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
-                    .padding(8.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(
-                        imageVector = if (metric.isCompleted) Icons.Rounded.CheckBox else Icons.Rounded.CheckBoxOutlineBlank,
-                        contentDescription = if (metric.isCompleted) "Mark incomplete" else "Mark complete",
-                        tint = if (metric.isCompleted) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)
-                        },
-                        modifier = Modifier
-                            .size(22.dp)
-                            .then(if (enabled) Modifier.clickable { onMetricsChange(metrics.toMutableList().also { it[index] = metric.copy(isCompleted = !metric.isCompleted) }) } else Modifier)
-                    )
-                    CompactFlatTextField(
-                        value = metric.name,
-                        onValueChange = { value ->
-                            onMetricsChange(metrics.toMutableList().also { it[index] = metric.copy(name = value) })
-                        },
-                        placeholder = "Metric name",
-                        modifier = Modifier.weight(1f)
-                    )
-                    IconButton(
-                        onClick = { onMetricsChange(metrics.filterIndexed { metricIndex, _ -> metricIndex != index }) },
-                        modifier = Modifier.size(28.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "Delete metric",
-                            tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                }
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    CompactFlatTextField(
-                        value = metric.value,
-                        onValueChange = { value ->
-                            onMetricsChange(metrics.toMutableList().also { it[index] = metric.copy(value = value) })
-                        },
-                        placeholder = "Value",
-                        modifier = Modifier.weight(1f)
-                    )
-                    CompactFlatTextField(
-                        value = metric.targetValue.orEmpty(),
-                        onValueChange = { value ->
-                            onMetricsChange(metrics.toMutableList().also { it[index] = metric.copy(targetValue = value) })
-                        },
-                        placeholder = "Target",
-                        modifier = Modifier.weight(1f)
-                    )
-                    Box(modifier = Modifier.weight(1f)) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(34.dp)
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(MaterialTheme.colorScheme.surface)
-                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
-                                .clickable(enabled = enabled) { unitExpandedIndex = index }
-                                .padding(horizontal = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = metric.unit.displayName(metric.customUnit),
-                                style = MaterialTheme.typography.bodySmall,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Icon(
-                                imageVector = Icons.Default.KeyboardArrowDown,
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp)
-                            )
-                        }
-                        DropdownMenu(
-                            expanded = unitExpandedIndex == index,
-                            onDismissRequest = { unitExpandedIndex = null }
-                        ) {
-                            MetricUnit.entries.forEach { unit ->
-                                DropdownMenuItem(
-                                    text = { Text(unit.displayName(), style = MaterialTheme.typography.bodySmall) },
-                                    onClick = {
-                                        onMetricsChange(
-                                            metrics.toMutableList().also {
-                                                it[index] = metric.copy(
-                                                    unit = unit,
-                                                    customUnit = if (unit == MetricUnit.Custom) metric.customUnit else null
-                                                )
-                                            }
-                                        )
-                                        unitExpandedIndex = null
-                                    },
-                                    modifier = Modifier.height(30.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-
-                if (metric.unit == MetricUnit.Custom) {
-                    CompactFlatTextField(
-                        value = metric.customUnit.orEmpty(),
-                        onValueChange = { value ->
-                            onMetricsChange(metrics.toMutableList().also { it[index] = metric.copy(customUnit = value) })
-                        },
-                        placeholder = "Custom unit (e.g. kg, pts)",
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-
-                metric.progressRatio()?.let { ratio ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        LinearProgressIndicator(
-                            progress = { ratio },
-                            modifier = Modifier.weight(1f),
-                        )
-                        Text(
-                            text = "${(ratio * 100).roundToInt()}%",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                }
-            }
-        }
     }
 }

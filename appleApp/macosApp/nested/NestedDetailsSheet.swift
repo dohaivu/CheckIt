@@ -280,7 +280,7 @@ struct NestedFormattingBar: View {
                 }
             } label: {
                 Image(systemName: "paintbrush")
-                    .foregroundStyle(item.textColor.name == "Default" ? .secondary : Color.accentColor)
+                    .tint(item.textColor.name == "Default" ? .secondary : Color.accentColor)
             }
             .menuStyle(.borderlessButton)
             .frame(width: 28, height: 28)
@@ -296,7 +296,7 @@ struct NestedFormattingBar: View {
                 }
             } label: {
                 Image(systemName: "paintpalette")
-                    .foregroundStyle(item.backgroundColor.name == "Default" ? .secondary : Color.accentColor)
+                    .tint(item.backgroundColor.name == "Default" ? .secondary : Color.accentColor)
             }
             .menuStyle(.borderlessButton)
             .frame(width: 28, height: 28)
@@ -312,7 +312,7 @@ struct NestedFormattingBar: View {
                 }
             } label: {
                 Image(systemName: "flag")
-                    .foregroundStyle(item.priority.name == "None" ? .secondary : Color.accentColor)
+                    .tint(item.priority.name == "None" ? .secondary : Color.accentColor)
             }
             .menuStyle(.borderlessButton)
             .frame(width: 28, height: 28)

@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -33,6 +34,7 @@ import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskType
 import com.checkit.ui.components.CompactDetailChip
 import com.checkit.ui.components.DateTimeRangeDetailChip
+import com.checkit.ui.components.MetricChip
 import com.checkit.ui.components.SupportingPills
 import com.checkit.ui.components.asMarkdownAnnotatedString
 import com.checkit.ui.HabitIcon
@@ -205,6 +207,17 @@ internal fun DetailTaskRowContent(task: TaskItem, showList: Boolean) {
             list = if (showList) task.list else null,
 //            tags = task.tags
         )
+        if (task.metrics.isNotEmpty()) {
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                task.metrics.forEach { metric ->
+                    MetricChip(metric = metric)
+                }
+            }
+        }
     }
 }
 

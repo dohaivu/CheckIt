@@ -1,6 +1,11 @@
 package com.checkit.ui.myday
 
-import androidx.compose.animation.core.*
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -38,10 +43,10 @@ import androidx.compose.ui.unit.dp
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.TagItem
-import com.checkit.ui.components.statusBreathingGlow
-import com.checkit.ui.shortcutDurationLabel
 import com.checkit.ui.cardColor
+import com.checkit.ui.components.statusBreathingGlow
 import com.checkit.ui.theme.toColor
+import com.checkit.ui.toDurationLabel
 import kotlin.math.roundToInt
 
 @Composable
@@ -100,7 +105,7 @@ private fun DayTagTotals(items: List<DailyPlanItem>) {
 private fun TagTimeChip(tag: TagItem, minutes: Int) {
     val tagColor = remember(tag) { tag.color.toColor().copy(alpha = 0.9f) }
     Text(
-        text = "${tag.name} ${minutes.shortcutDurationLabel()}",
+        text = "${tag.name} ${minutes.toDurationLabel(true)}",
         style = MaterialTheme.typography.labelSmall,
         color = Color.White,
         modifier = Modifier

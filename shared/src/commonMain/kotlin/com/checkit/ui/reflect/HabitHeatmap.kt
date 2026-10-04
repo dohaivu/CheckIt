@@ -30,6 +30,7 @@ import com.checkit.domain.calculateRoutineStreak
 import com.checkit.domain.routineIntensityByDate
 import com.checkit.domain.routineStreakDates
 import com.checkit.ui.localizedMonthTitle
+import com.checkit.ui.theme.toColor
 import com.checkit.ui.today
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
@@ -55,7 +56,9 @@ data class HeatmapSeries(
     val title: String,
     val intensityByDate: Map<LocalDate, Float>,
     val streak: Int,
-    val totalDone: Int
+    val totalDone: Int,
+    /** Row-level color; falls back to the section [baseColor] when null. */
+    val baseColor: Color? = null
 )
 
 @Composable
@@ -167,7 +170,7 @@ private fun HeatmapSeriesSection(
                 if (index > 0) {
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
                 }
-                HeatmapSeriesCard(series = row, baseColor = baseColor, monthCount = monthCount)
+                HeatmapSeriesCard(series = row, baseColor = row.baseColor ?: baseColor, monthCount = monthCount)
             }
         }
     }
@@ -180,33 +183,6 @@ private fun consistencySubtitle(today: LocalDate, monthCount: Int): String =
     } else {
         "Your consistency over the last $monthCount months."
     }
-
-@Composable
-private fun HabitHeatmapCard(
-    checkin: HabitCheckin,
-    modifier: Modifier = Modifier,
-    monthCount: Int = DefaultHeatmapMonthCount
-) {
-    val today = today()
-    val months = remember(checkin.doneMinutesByDate, today, monthCount) { buildHeatmapMonths(today, monthCount) }
-    val intensityByDate = remember(checkin.doneMinutesByDate) {
-        checkin.doneMinutesByDate.mapValues { (_, minutes) ->
-            (minutes.toFloat() / HeatmapMaxMinutes).coerceIn(0f, 1f)
-        }
-    }
-    HeatmapSeriesCard(
-        series = HeatmapSeries(
-            key = checkin.habitKey,
-            title = checkin.title,
-            intensityByDate = intensityByDate,
-            streak = checkin.streak,
-            totalDone = checkin.totalDone
-        ),
-        baseColor = HabitHeatmapDone,
-        months = months,
-        modifier = modifier
-    )
-}
 
 @Composable
 private fun HeatmapSeriesCard(
@@ -409,7 +385,8 @@ internal fun buildRoutineSeries(
             title = routine.title.ifBlank { "Routine" },
             intensityByDate = routineIntensityByDate(rows),
             streak = calculateRoutineStreak(doneDates, routine.activeWeekdays, today),
-            totalDone = doneDates.size
+            totalDone = doneDates.size,
+            baseColor = routine.color.toColor()
         )
     }.sortedWith(compareByDescending<HeatmapSeries> { it.streak }.thenBy { it.title.lowercase() })
 }

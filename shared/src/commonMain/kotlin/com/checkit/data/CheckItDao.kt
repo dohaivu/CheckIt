@@ -405,6 +405,7 @@ interface CheckItDao {
             endTimeMinutes = :endTimeMinutes,
             repeatRRule = :repeatRRule,
             label = :label,
+            metricsJson = :metricsJson,
             updatedAtMillis = :updatedAtMillis,
             dirty = 1
         WHERE id = :taskId
@@ -422,6 +423,7 @@ interface CheckItDao {
         endTimeMinutes: Int?,
         repeatRRule: String?,
         label: String?,
+        metricsJson: String,
         updatedAtMillis: Long
     )
 
@@ -662,6 +664,24 @@ interface CheckItDao {
 
     @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM routines")
     suspend fun nextRoutineSortOrder(): Int
+
+    @Query(
+        """
+        UPDATE routines
+        SET sortOrder = :sortOrder,
+            updatedAtMillis = :updatedAtMillis,
+            dirty = 1
+        WHERE id = :routineId
+        """
+    )
+    suspend fun updateRoutineSortOrder(routineId: String, sortOrder: Int, updatedAtMillis: Long)
+
+    @Transaction
+    suspend fun updateRoutineSortOrders(orderedIds: List<String>, updatedAtMillis: Long) {
+        orderedIds.forEachIndexed { index, routineId ->
+            updateRoutineSortOrder(routineId, index, updatedAtMillis)
+        }
+    }
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertRoutineLog(log: RoutineLogEntity)
@@ -1232,6 +1252,9 @@ interface CheckItDao {
     @Query("UPDATE nested_list_items SET collapsed = :collapsed, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
     suspend fun setNestedItemCollapsed(itemId: String, collapsed: Boolean, updatedAtMillis: Long)
 
+    @Query("UPDATE nested_list_items SET collapsed = :collapsed, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id IN (:itemIds)")
+    suspend fun setNestedItemsCollapsed(itemIds: List<String>, collapsed: Boolean, updatedAtMillis: Long)
+
     @Query("UPDATE nested_list_items SET collapsed = NOT collapsed, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
     suspend fun toggleNestedItemCollapsed(itemId: String, updatedAtMillis: Long)
 
@@ -1246,9 +1269,29 @@ interface CheckItDao {
     /**
      * Tombstones instead of hard delete so deletions sync; rows are
      * hard-deleted later via [getPurgeableNestedItemTombstones] once uploaded.
+     *
+     * Cascades to all descendants so children of a deleted parent don't
+     * resurface as extra roots in [com.checkit.domain.buildNestedTree].
      */
     @Query("UPDATE nested_list_items SET deleted = 1, updatedAtMillis = :nowMillis, dirty = 1 WHERE id IN (:itemIds)")
-    suspend fun deleteNestedItems(itemIds: List<String>, nowMillis: Long)
+    suspend fun markNestedItemsDeleted(itemIds: List<String>, nowMillis: Long)
+
+    @Query(
+        "WITH RECURSIVE descendants(id) AS (" +
+            "SELECT id FROM nested_list_items WHERE id IN (:itemIds) " +
+            "UNION ALL " +
+            "SELECT n.id FROM nested_list_items n INNER JOIN descendants d ON n.parentId = d.id" +
+            ") SELECT id FROM descendants"
+    )
+    suspend fun nestedSubtreeIds(itemIds: List<String>): List<String>
+
+    @Transaction
+    suspend fun deleteNestedItems(itemIds: List<String>, nowMillis: Long) {
+        if (itemIds.isEmpty()) return
+        val ids = nestedSubtreeIds(itemIds)
+        if (ids.isEmpty()) return
+        markNestedItemsDeleted(ids, nowMillis)
+    }
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertNestedItemTag(link: NestedItemTagEntity)

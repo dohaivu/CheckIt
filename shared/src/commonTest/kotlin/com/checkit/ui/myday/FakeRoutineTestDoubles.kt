@@ -27,17 +27,30 @@ internal class FakeRoutineRepository(initial: List<Routine> = emptyList()) : Rou
         description: String,
         reminderMinutes: Int?,
         activeWeekdays: Set<DayOfWeek>,
-        steps: List<RoutineStepTemplate>
+        steps: List<RoutineStepTemplate>,
+        color: String
     ): String {
         val routineId = id ?: "generated"
         routines.removeAll { it.id == routineId }
-        routines.add(Routine(id = routineId, title = title.trim(), description = description.trim(), reminderMinutes = reminderMinutes, activeWeekdays = activeWeekdays, steps = steps))
+        routines.add(Routine(id = routineId, title = title.trim(), description = description.trim(), reminderMinutes = reminderMinutes, activeWeekdays = activeWeekdays, steps = steps, color = color))
         routinesFlow.value = routines.toList()
         return routineId
     }
 
     override suspend fun deleteRoutine(id: String) {
         routines.removeAll { it.id == id }
+        routinesFlow.value = routines.toList()
+    }
+
+    override suspend fun updateRoutineOrders(orderedIds: List<String>) {
+        val byId = routines.associateBy { it.id }
+        routines.clear()
+        orderedIds.mapNotNullTo(routines) { byId[it] }
+        // Keep any rows missing from orderedIds (defensive) at the end.
+        byId.values.filter { it.id !in orderedIds.toSet() }.forEach { routines.add(it) }
+        routines.forEachIndexed { index, routine ->
+            routines[index] = routine.copy(sortOrder = index)
+        }
         routinesFlow.value = routines.toList()
     }
 

@@ -134,6 +134,24 @@ class RoutineUseCasesTest {
     }
 
     @Test
+    fun saveRoutinePersistsColor() = runTest {
+        val repo = FakeRoutineRepository()
+        val scheduler = FakeRoutineReminderScheduler()
+
+        SaveRoutineUseCase(repo, scheduler)(
+            id = null,
+            title = "Morning",
+            description = "",
+            reminderMinutes = null,
+            activeWeekdays = AllWeekdays,
+            steps = emptyList(),
+            color = "#16A34A"
+        )
+
+        assertEquals("#16A34A", repo.routines.single().color)
+    }
+
+    @Test
     fun saveRoutineWithoutReminderCancelsExisting() = runTest {
         val repo = FakeRoutineRepository(listOf(routineWithSteps("r1", listOf("s1"))))
         val scheduler = FakeRoutineReminderScheduler()

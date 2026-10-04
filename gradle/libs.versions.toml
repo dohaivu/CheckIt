@@ -12,7 +12,6 @@ androidx-testExt = "1.3.0"
 androidx-work = "2.12.0"
 androidx-credentials = "1.6.0"
 googleid = "1.2.1"
-androidx-media3 = "1.10.1"
 jetbrain-androidx-lifecycle = "2.11.0"
 jetbrain-androidx-navigation3 = "1.2.0-beta01"
 jetbrain-androidx-navigation-event = "1.1.0"
@@ -25,7 +24,7 @@ datastore = "1.2.1"
 junit = "4.13.2"
 kotlin = "2.4.20"
 room = "3.0.3"
-ksp = "2.3.11"
+ksp = "2.3.12"
 sqlite = "2.7.1"
 coil = "3.6.3"
 ktor = "3.6.0"
@@ -36,8 +35,6 @@ kotlinx-atomicfu = "0.33.0"
 koin-bom = "4.2.2"
 koin-plugin = "1.2.1"
 kermit = "2.2.0"
-vico = "3.2.3"
-calendar = "2.10.1"
 androidgitversion = "0.4.14"
 doistx-normalize = "1.4.0"
 markdownRenderer = "0.45.0"
@@ -104,9 +101,6 @@ coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" 
 coil-ktor3 = { module = "io.coil-kt.coil3:coil-network-ktor3", version.ref = "coil" }
 kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
 kermit-io = { module = "co.touchlab:kermit-io", version.ref = "kermit" }
-#vico-compose = { group = "com.patrykandpatrick.vico", name = "compose", version.ref = "vico" }
-#vico-compose-m3 = { group = "com.patrykandpatrick.vico", name = "compose-m3", version.ref = "vico" }
-#calendar-compose = { module = "com.kizitonwose.calendar:compose-multiplatform", version.ref = "calendar" }
 doist-normalize = { module = "com.doist.x:normalize", version.ref = "doistx-normalize" }
 markdown-renderer = { module = "com.mikepenz:multiplatform-markdown-renderer-m3", version.ref = "markdownRenderer" }
 compose-colorpicker = { module = "com.github.skydoves:colorpicker-compose", version.ref = "colorpicker" }

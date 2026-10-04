@@ -108,6 +108,7 @@ import com.checkit.ui.journal.JournalListSheet
 import com.checkit.ui.journal.JournalSection
 import com.checkit.ui.journal.JournalThoughtCard
 import com.checkit.ui.localizedCompactDateWithDayName
+import com.checkit.ui.localizedShortName
 import com.checkit.ui.periodDetail
 import com.checkit.ui.quicknote.QuickNoteContent
 import com.checkit.ui.quicknote.QuickNoteViewModel
@@ -124,6 +125,7 @@ import com.checkit.ui.tasks.views.TimelineView
 import com.checkit.ui.today
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.number
 import org.jetbrains.compose.resources.stringResource
 
 /** Swipable top-level segments of the My Day tab. */
@@ -159,20 +161,27 @@ internal fun MyDayScreen(
         topBar = {
             TinyTopAppBar(
                 title = {
-                    Column(
-                        modifier = Modifier.height(56.dp),
-                        verticalArrangement = Arrangement.Center,
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            MyDaySegments.entries.forEach { segment ->
-                                val selected = pagerState.currentPage == segment.ordinal
-                                Text(
-                                    text = buildAnnotatedString {
+                        MyDaySegments.entries.forEach { segment ->
+                            val selected = pagerState.currentPage == segment.ordinal
+                            Text(
+                                text = buildAnnotatedString {
+                                    if (segment == MyDaySegments.MyDay) {
+                                        append(state.today.dayOfWeek.localizedShortName())
+                                        withStyle(
+                                            SpanStyle(
+                                                fontWeight = FontWeight.SemiBold,
+                                                fontSize = MaterialTheme.typography.titleMedium.fontSize,
+                                            )
+                                        ) {
+                                            append(" ${state.today.day}.${state.today.month.number}")
+                                        }
+                                    } else {
                                         append(segment.title)
-                                        if (segment == MyDaySegments.QuickNotes && quickNotes.next.isNotEmpty()) {
+                                        if (quickNotes.next.isNotEmpty()) {
                                             withStyle(
                                                 SpanStyle(
                                                     fontWeight = FontWeight.Normal,
@@ -182,26 +191,19 @@ internal fun MyDayScreen(
                                                 append(" ${quickNotes.next.size}")
                                             }
                                         }
-                                    },
-                                    style = MaterialTheme.typography.headlineMedium,
-                                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                                    modifier = Modifier.clickable(
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        indication = null,
-                                    ) {
-                                        scope.launch { pagerState.animateScrollToPage(segment.ordinal) }
-                                    },
-                                )
-                            }
+                                    }
+                                },
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                modifier = Modifier.clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                ) {
+                                    scope.launch { pagerState.animateScrollToPage(segment.ordinal) }
+                                },
+                            )
                         }
-                        Text(
-                            state.today.localizedCompactDateWithDayName(),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = if (!onQuickPage) MaterialTheme.colorScheme.onSurfaceVariant
-                            else Color.Transparent,
-                            maxLines = 1,
-                        )
                     }
                 },
                 actions = {
@@ -215,6 +217,7 @@ internal fun MyDayScreen(
                                 Icons.Default.Refresh,
                                 contentDescription = "Refresh",
                                 modifier = Modifier.size(24.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                             )
                         }
                     }
@@ -227,6 +230,7 @@ internal fun MyDayScreen(
                                 Icons.Default.AutoAwesome,
                                 contentDescription = "Smart Schedule",
                                 modifier = Modifier.size(20.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                             )
                         }
                         IconButton(
@@ -237,6 +241,7 @@ internal fun MyDayScreen(
                                 Icons.Default.RateReview,
                                 contentDescription = stringResource(Res.string.day_close_open),
                                 modifier = Modifier.size(20.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                             )
                         }
                         IconButton(
@@ -247,6 +252,7 @@ internal fun MyDayScreen(
                                 Icons.Default.Lightbulb,
                                 contentDescription = "Add to My Day",
                                 modifier = Modifier.size(20.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                             )
                         }
                         IconButton(
@@ -257,6 +263,7 @@ internal fun MyDayScreen(
                                 Icons.Default.AddTask,
                                 contentDescription = null,
                                 modifier = Modifier.size(20.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                             )
                         }
                     }
@@ -423,6 +430,7 @@ internal fun MyDayScreen(
                                     onToggleStep = viewModel::toggleRoutineStep,
                                     onSaveRoutine = viewModel::saveRoutine,
                                     onDeleteRoutine = viewModel::deleteRoutine,
+                                    onMoveRoutine = viewModel::moveRoutine,
                                     modifier = Modifier.weight(1f)
                                 )
                             }

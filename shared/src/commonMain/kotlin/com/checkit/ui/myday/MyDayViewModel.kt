@@ -7,6 +7,7 @@ import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.LeftoverAction
+import com.checkit.domain.RoutineDefaultColorHex
 import com.checkit.domain.RoutineStepTemplate
 import com.checkit.domain.SprintManager
 import kotlinx.datetime.DayOfWeek
@@ -32,6 +33,7 @@ import com.checkit.domain.usecase.SaveRoutineUseCase
 import com.checkit.domain.usecase.SmartScheduleDailyPlanUseCase
 import com.checkit.domain.usecase.SprintTransitionUseCase
 import com.checkit.domain.usecase.ToggleRoutineStepUseCase
+import com.checkit.domain.usecase.UpdateRoutineOrderUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
 import com.checkit.domain.usecase.UpdateJournalEntryUseCase
 import com.checkit.domain.usecase.UpsertDailyPlanItemUseCase
@@ -74,6 +76,7 @@ class MyDayViewModel(
     saveRoutine: SaveRoutineUseCase,
     deleteRoutine: DeleteRoutineUseCase,
     toggleRoutineStep: ToggleRoutineStepUseCase,
+    updateRoutineOrder: UpdateRoutineOrderUseCase,
     val sprintManager: SprintManager,
     sprintTransition: SprintTransitionUseCase
 ) : ViewModel() {
@@ -103,7 +106,8 @@ class MyDayViewModel(
         resetStaleRoutineToday = resetStaleRoutineToday,
         saveRoutine = saveRoutine,
         deleteRoutine = deleteRoutine,
-        toggleRoutineStep = toggleRoutineStep
+        toggleRoutineStep = toggleRoutineStep,
+        updateRoutineOrder = updateRoutineOrder
     )
 
     private val state = MyDayStateHolder(viewModelScope)
@@ -144,9 +148,11 @@ class MyDayViewModel(
         description: String,
         reminderMinutes: Int?,
         activeWeekdays: Set<DayOfWeek>,
-        steps: List<RoutineStepTemplate>
-    ) = routines.saveRoutine(id, title, description, reminderMinutes, activeWeekdays, steps)
+        steps: List<RoutineStepTemplate>,
+        color: String = RoutineDefaultColorHex
+    ) = routines.saveRoutine(id, title, description, reminderMinutes, activeWeekdays, steps, color)
     fun deleteRoutine(id: String) = routines.deleteRoutine(id)
+    fun moveRoutine(orderedIds: List<String>) = routines.moveRoutine(orderedIds)
 
     // Day review
     fun openDayClose() = dayClose.open()

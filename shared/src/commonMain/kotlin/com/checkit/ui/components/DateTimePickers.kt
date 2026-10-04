@@ -57,10 +57,10 @@ import androidx.compose.ui.window.DialogProperties
 import com.checkit.ui.MinutesPerDay
 import com.checkit.ui.TimeRangeShortcutDurations
 import com.checkit.ui.duration
-import com.checkit.ui.shortcutDurationLabel
-import com.checkit.ui.toClockLabel
 import com.checkit.ui.tasks.views.ContentContainerAlpha
 import com.checkit.ui.tasks.views.currentTimeMinutes
+import com.checkit.ui.toClockLabel
+import com.checkit.ui.toDurationLabel
 import com.checkit.ui.toUtcLocalDate
 import com.checkit.ui.toUtcStartMillis
 import com.checkit.ui.validTimeRangeEnd
@@ -490,7 +490,7 @@ private fun TimeRangeSelectionRow(
                 )
                 TimeRangeShortcutDurations.forEach { duration ->
                     PickerShortcut(
-                        text = duration.shortcutDurationLabel(),
+                        text = duration.toDurationLabel(),
                         onClick = {
                             val start = startTime ?: currentTimeMinutes()
                             onStartTimeChange(start)
