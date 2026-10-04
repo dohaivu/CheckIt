@@ -32,6 +32,15 @@ data class TaskBoard(
         }
         map
     }
+
+    val allOpenTasksCount: Int
+        get() = tasks.count { !it.isTrashed && it.status == TaskStatus.Open }
+
+    val openTasksCountByListId: Map<String, Int>
+        get() = tasks
+            .filter { !it.isTrashed && it.status == TaskStatus.Open && it.list != null }
+            .groupingBy { it.list!!.id }
+            .eachCount()
 }
 
 data class ListItem(

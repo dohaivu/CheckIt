@@ -61,6 +61,8 @@ internal fun TaskScreen(
                     isBoardSelected = state.selectedListId == null,
                     selectedListId = state.selectedListId,
                     isTagsSelected = false,
+                    allTasksCount = state.board.allOpenTasksCount,
+                    listTaskCounts = state.board.openTasksCountByListId,
                     onBoardClick = {
                         viewModel.selectBoard()
                         scope.launch { drawerState.close() }

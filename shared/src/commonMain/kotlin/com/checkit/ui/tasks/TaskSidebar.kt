@@ -41,6 +41,8 @@ internal fun TaskSidebar(
     isBoardSelected: Boolean,
     selectedListId: String?,
     isTagsSelected: Boolean,
+    allTasksCount: Int = 0,
+    listTaskCounts: Map<String, Int> = emptyMap(),
     onBoardClick: () -> Unit,
     onListClick: (String) -> Unit,
     onTagsClick: () -> Unit,
@@ -60,6 +62,7 @@ internal fun TaskSidebar(
                 icon = materialIcon("AllInclusive"),
                 color = MaterialTheme.colorScheme.primary,
                 selected = isBoardSelected,
+                count = allTasksCount,
                 onClick = onBoardClick
             )
         }
@@ -84,6 +87,7 @@ internal fun TaskSidebar(
                 icon = materialIcon(list.icon),
                 color = list.color.toColor(),
                 selected = selectedListId == list.id,
+                count = listTaskCounts[list.id] ?: 0,
                 onClick = { onListClick(list.id) },
                 onLongClick = {
                     onEditListClick(list)
@@ -143,6 +147,7 @@ private fun SidebarItem(
     selected: Boolean,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
+    count: Int? = null,
     trailing: (@Composable () -> Unit)? = null
 ) {
     val background = if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
@@ -174,6 +179,18 @@ private fun SidebarItem(
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
             modifier = Modifier.weight(1f)
         )
+        if (count != null && count > 0) {
+            val countColor = if (selected) {
+                MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+            }
+            Text(
+                text = count.toString(),
+                style = MaterialTheme.typography.bodySmall,
+                color = countColor
+            )
+        }
         trailing?.invoke()
     }
 }
