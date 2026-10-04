@@ -35,11 +35,20 @@ jobs:
         run: |
           export ANDROID_SDK_ROOT="${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}"
           export ANDROID_HOME="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
-          SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
-          test -x "$SDKMANAGER" || SDKMANAGER="$(find "$ANDROID_SDK_ROOT/cmdline-tools" -maxdepth 2 -name sdkmanager | head -n 1)"
+          # Refresh cmdline-tools: preinstalled 12.0 cannot resolve current
+          # packages (e.g. platforms;android-37). Pin the same version the
+          # android-actions/setup-android action used.
+          CMDLINE_VERSION="16.0"
+          SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/$CMDLINE_VERSION/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then
+            curl -o "$RUNNER_TEMP/cmdtools.zip" "https://dl.google.com/android/repository/commandlinetools-linux-12266719_latest.zip"
+            mkdir -p "$RUNNER_TEMP/cmdtools" "$ANDROID_SDK_ROOT/cmdline-tools/$CMDLINE_VERSION"
+            unzip -o -q "$RUNNER_TEMP/cmdtools.zip" -d "$RUNNER_TEMP/cmdtools"
+            cp -r "$RUNNER_TEMP/cmdtools/cmdline-tools/." "$ANDROID_SDK_ROOT/cmdline-tools/$CMDLINE_VERSION/"
+          fi
           test -x "$SDKMANAGER"
-          "$SDKMANAGER" --install "platform-tools" "platforms;android-37"
           yes | "$SDKMANAGER" --licenses > /dev/null || true
+          "$SDKMANAGER" --install "platform-tools" "platforms;android-37"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
