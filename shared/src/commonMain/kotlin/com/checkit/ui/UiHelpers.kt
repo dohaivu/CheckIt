@@ -344,6 +344,8 @@ fun MetricUnit.displayName(customUnit: String? = null): String = when (this) {
     MetricUnit.Lan -> "lần"
     MetricUnit.Km -> "km"
     MetricUnit.Rating -> "rating"
+    MetricUnit.Countdown -> "Countdown"
+    MetricUnit.DueDate -> "Due date"
 }
 
 fun MetricItem.displayUnit(): String? = when (unit) {
@@ -358,7 +360,67 @@ fun MetricItem.displayUnit(): String? = when (unit) {
     MetricUnit.VND -> "đ"
     MetricUnit.Lan -> "lần"
     MetricUnit.Km -> "km"
+    MetricUnit.Countdown -> null
+    MetricUnit.DueDate -> null
 }
+
+fun MetricItem.isDateBased(): Boolean =
+    unit == MetricUnit.Countdown || unit == MetricUnit.DueDate
+
+fun MetricItem.dueLocalDate(): LocalDate? =
+    dueDateEpochDays?.let { runCatching { LocalDate.fromEpochDays(it) }.getOrNull() }
+
+/** Remaining days for Countdown: due - today. Null when not a Countdown or no due date. */
+fun MetricItem.daysRemaining(today: LocalDate = today()): Int? {
+    if (unit != MetricUnit.Countdown) return null
+    val due = dueDateEpochDays ?: return null
+    return (due - today.toEpochDays()).toInt()
+}
+
+fun MetricItem.countdownLabel(today: LocalDate = today()): String {
+    val remaining = daysRemaining(today) ?: return "No date"
+    return when {
+        remaining > 1 -> "$remaining days left"
+        remaining == 1 -> "1 day left"
+        remaining == 0 -> "Due today"
+        remaining == -1 -> "Overdue by 1 day"
+        else -> "Overdue by ${-remaining} days"
+    }
+}
+
+fun MetricItem.dueDateLabel(): String {
+    val date = dueLocalDate() ?: return "No date"
+    val base = date.compact()
+    val time = dueTimeMinutes?.takeIf { unit == MetricUnit.DueDate }?.toClockLabel()
+    return if (time != null) "$base, $time" else base
+}
+
+/** Date-based display text: Countdown shows remaining days, DueDate shows the date. */
+fun MetricItem.dateBasedDisplay(today: LocalDate = today()): String = when (unit) {
+    MetricUnit.Countdown -> {
+        val label = countdownLabel(today)
+        val due = dueLocalDate()?.let { " · Due ${it.compact()}" }.orEmpty()
+        "$label$due"
+    }
+    MetricUnit.DueDate -> dueDateLabel()
+    else -> value
+}
+
+/** True when a date-based metric is past due (time-aware for DueDate) and not completed. */
+fun MetricItem.isMetricOverdue(today: LocalDate = today()): Boolean {
+    if (!isDateBased() || isCompleted) return false
+    val due = dueLocalDate() ?: return false
+    val deadline = if (unit == MetricUnit.DueDate) dueTimeMinutes else null
+    return due.isOverdue(today, deadline, false)
+}
+
+/**
+ * Save-time validity: date-based units carry no [MetricItem.value], so they
+ * are kept when a due date is set; other units need a non-blank value.
+ * This drops empty draft rows (Add without filling) without losing dates.
+ */
+fun MetricItem.isValidForSave(): Boolean =
+    if (isDateBased()) dueDateEpochDays != null else value.isNotBlank()
 
 
 fun MetricItem.toAnnotatedString(valueColor: Color): androidx.compose.ui.text.AnnotatedString =
@@ -367,24 +429,35 @@ fun MetricItem.toAnnotatedString(valueColor: Color): androidx.compose.ui.text.An
             append(name)
             append(" ")
         }
-        withStyle(
-            SpanStyle(
-                fontWeight = FontWeight.Bold,
-                color = valueColor
-            )
-        ) {
-            append(value)
-        }
-        if (!targetValue.isNullOrBlank()) {
-            append("/")
-            withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-                append(targetValue)
+        if (isDateBased()) {
+            withStyle(
+                SpanStyle(
+                    fontWeight = FontWeight.Bold,
+                    color = valueColor
+                )
+            ) {
+                append(dateBasedDisplay())
             }
-        }
-        val unit = displayUnit()
-        if (unit != null) {
-            append(" ")
-            append(unit)
+        } else {
+            withStyle(
+                SpanStyle(
+                    fontWeight = FontWeight.Bold,
+                    color = valueColor
+                )
+            ) {
+                append(value)
+            }
+            if (!targetValue.isNullOrBlank()) {
+                append("/")
+                withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                    append(targetValue)
+                }
+            }
+            val unit = displayUnit()
+            if (unit != null) {
+                append(" ")
+                append(unit)
+            }
         }
     }
 
@@ -394,24 +467,29 @@ fun MetricItem.toPlainString(): String {
             append(name)
             append(" ")
         }
-        append(value)
+        if (isDateBased()) {
+            append(dateBasedDisplay())
+        } else {
+            append(value)
 
-        if (!targetValue.isNullOrBlank()) {
-            append("/${targetValue}")
-        }
-        val unit = displayUnit()
-        if (unit != null) {
-            append(" ")
-            append(unit)
+            if (!targetValue.isNullOrBlank()) {
+                append("/${targetValue}")
+            }
+            val unit = displayUnit()
+            if (unit != null) {
+                append(" ")
+                append(unit)
+            }
         }
     }
 }
 
 /**
  * Returns the value/target ratio in 0..1, or null when either side is not a
- * valid number or the target is not positive.
+ * valid number or the target is not positive. Date-based units never report progress.
  */
 fun MetricItem.progressRatio(): Float? {
+    if (isDateBased()) return null
     val value = value.trim().replace(',', '.').toDoubleOrNull() ?: return null
     val target = targetValue?.trim()?.replace(',', '.')?.toDoubleOrNull() ?: return null
     if (target <= 0) return null

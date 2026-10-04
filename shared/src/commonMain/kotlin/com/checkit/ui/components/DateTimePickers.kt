@@ -27,7 +27,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.DateRangePicker
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -56,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import com.checkit.ui.MinutesPerDay
 import com.checkit.ui.TimeRangeShortcutDurations
+import com.checkit.ui.compact
 import com.checkit.ui.duration
 import com.checkit.ui.tasks.views.ContentContainerAlpha
 import com.checkit.ui.tasks.views.currentTimeMinutes
@@ -66,7 +66,6 @@ import com.checkit.ui.toUtcStartMillis
 import com.checkit.ui.validTimeRangeEnd
 import kotlinx.datetime.LocalDate
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun DatePicker(
     modifier: Modifier = Modifier,
@@ -175,7 +174,55 @@ internal fun DatePicker(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun DatePicker(
+    date: LocalDate?,
+    onDateChange: (LocalDate?) -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    isOverdue: Boolean = false
+) {
+    var showPicker by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        DetailChip(
+            icon = Icons.Default.Event,
+            label = date?.compact() ?: "Pick due date",
+            iconTint = if (date != null) MaterialTheme.colorScheme.primary else Color.Unspecified,
+            isHighlighted = isOverdue,
+            onClick = { if (enabled) showPicker = true },
+        )
+    }
+
+    if (enabled && showPicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = date?.toUtcStartMillis()
+        )
+        AppPickerDialog(
+            onDismissRequest = { showPicker = false },
+            onClear = {
+                onDateChange(null)
+                showPicker = false
+            },
+            onConfirm = {
+                onDateChange(datePickerState.selectedDateMillis?.toUtcLocalDate() ?: date)
+                showPicker = false
+            }
+        ) {
+            DatePicker(
+                state = datePickerState,
+                title = null,
+                headline = null,
+                showModeToggle = false,
+                colors = DatePickerDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
+            )
+        }
+    }
+}
+
 @Composable
 internal fun DateRangePicker(
     modifier: Modifier = Modifier,
@@ -250,7 +297,6 @@ internal fun DateRangePicker(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun TimePicker(
     label: String,

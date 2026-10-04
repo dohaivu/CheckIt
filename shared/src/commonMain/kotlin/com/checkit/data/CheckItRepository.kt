@@ -28,6 +28,7 @@ import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.NestedColorToken
 import com.checkit.domain.MetricRollupPolicy
 import com.checkit.domain.MetricItem
+import com.checkit.domain.MetricUnit
 
 import com.checkit.domain.buildNestedTree
 import com.checkit.domain.SubTaskItem
@@ -1888,7 +1889,8 @@ private fun MetricItem.normalized() = copy(
     name = name.trim(),
     value = value.trim(),
     targetValue = targetValue?.trim()?.takeIf { it.isNotEmpty() },
-    customUnit = customUnit?.trim()?.takeIf { it.isNotEmpty() }
+    customUnit = customUnit?.trim()?.takeIf { it.isNotEmpty() },
+    dueTimeMinutes = dueTimeMinutes?.takeIf { unit == MetricUnit.DueDate }
 )
 
 private fun TaskEntity.decodedMetrics(): List<MetricItem> = runCatching {

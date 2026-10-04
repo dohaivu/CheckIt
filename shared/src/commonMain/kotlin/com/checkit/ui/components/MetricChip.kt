@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.MetricItem
+import com.checkit.ui.isMetricOverdue
 import com.checkit.ui.toAnnotatedString
 
 @Composable
@@ -24,18 +25,23 @@ fun MetricChip(
     metric: MetricItem,
     modifier: Modifier = Modifier.Companion
 ) {
-    val content = metric.toAnnotatedString(valueColor = MaterialTheme.colorScheme.primary)
+    val isOverdue = metric.isMetricOverdue()
+    val valueColor = when {
+        isOverdue -> MaterialTheme.colorScheme.error
+        else -> MaterialTheme.colorScheme.primary
+    }
+    val content = metric.toAnnotatedString(valueColor = valueColor)
 
     val isCompleted = metric.isCompleted
-    val containerColor = if (isCompleted) {
-        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f)
-    } else {
-        MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f)
+    val containerColor = when {
+        isCompleted -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f)
+        isOverdue -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.9f)
+        else -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f)
     }
-    val contentColor = if (isCompleted) {
-        MaterialTheme.colorScheme.onPrimaryContainer
-    } else {
-        MaterialTheme.colorScheme.onTertiaryContainer
+    val contentColor = when {
+        isCompleted -> MaterialTheme.colorScheme.onPrimaryContainer
+        isOverdue -> MaterialTheme.colorScheme.onErrorContainer
+        else -> MaterialTheme.colorScheme.onTertiaryContainer
     }
     Row(
         modifier = modifier

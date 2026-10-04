@@ -364,12 +364,19 @@ enum class MetricUnit {
     VND,
     Lan,
     Km,
+    Countdown,
+    DueDate,
     Custom
 }
 
 /**
  * A manually tracked metric attached to a [PeriodGoal] or nested list item:
  * free-form name/value pair with an optional unit. Stored inline as JSON.
+ *
+ * Date-based units ([MetricUnit.Countdown] and [MetricUnit.DueDate]) ignore
+ * [value]/[targetValue] and derive their display from [dueDateEpochDays]:
+ * - Countdown shows remaining days vs today.
+ * - DueDate shows the compact date plus optional [dueTimeMinutes].
  */
 @Serializable
 data class MetricItem(
@@ -380,5 +387,7 @@ data class MetricItem(
     val customUnit: String? = null,
     val sortOrder: Int = 0,
     val enabled: Boolean = true,
-    val isCompleted: Boolean = false
+    val isCompleted: Boolean = false,
+    val dueDateEpochDays: Int? = null,
+    val dueTimeMinutes: Int? = null
 )

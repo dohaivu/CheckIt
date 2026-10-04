@@ -156,10 +156,11 @@ import com.checkit.ui.components.CompactFlatTextField
 import com.checkit.ui.components.DateRangePill
 import com.checkit.ui.components.FocusPeriodHeader
 import com.checkit.ui.components.MetricsSection
+import com.checkit.ui.components.MetricChip
 import com.checkit.ui.components.PeriodPicker
 import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TagPill
-import com.checkit.ui.displayUnit
+import com.checkit.ui.isValidForSave
 import com.checkit.ui.noRippleClickable
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
@@ -988,7 +989,7 @@ private fun NestedItemMetadataPreview(
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (summary.doneItemCount > 0) {
-                MetricChip(buildAnnotatedString {
+                SummaryChip(buildAnnotatedString {
                     withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)) {
                         append("${summary.doneItemCount}")
                     }
@@ -996,7 +997,7 @@ private fun NestedItemMetadataPreview(
                 })
             }
             if (showTracked && summary.trackedMinutes > 0) {
-                MetricChip(buildAnnotatedString {
+                SummaryChip(buildAnnotatedString {
                     withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)) {
                         append("${summary.trackedMinutes}")
                     }
@@ -1004,33 +1005,8 @@ private fun NestedItemMetadataPreview(
                 })
             }
             item.manualMetrics.filter { it.enabled }.forEach { metric ->
-                if (metric.value.isNotBlank() || metric.isCompleted) {
-                    MetricChip(
-                        content = buildAnnotatedString {
-                            if (metric.name.isNotBlank()) {
-                                append(metric.name)
-                                append(" ")
-                            }
-                            if (metric.value.isNotBlank()) {
-                                withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)) {
-                                    append(metric.value)
-                                }
-                            }
-                            if (!metric.targetValue.isNullOrBlank()) {
-                                append("/")
-                                withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-                                    append(metric.targetValue)
-                                }
-                            }
-                            val unit = metric.displayUnit()
-                            if (unit != null) {
-                                append(" ")
-                                append(unit)
-                            }
-                        },
-                        manual = true,
-                        isCompleted = metric.isCompleted
-                    )
+                if (metric.isCompleted || metric.isValidForSave()) {
+                    MetricChip(metric = metric)
                 }
             }
         }
@@ -1064,19 +1040,9 @@ private fun NestedItemMetadataPreview(
 }
 
 @Composable
-private fun MetricChip(content: AnnotatedString, manual: Boolean = false, isCompleted: Boolean = false) {
-    val containerColor = when {
-        isCompleted && manual -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f)
-        isCompleted -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
-        manual -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.85f)
-        else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
-    }
-    val contentColor = when {
-        isCompleted && manual -> MaterialTheme.colorScheme.onPrimaryContainer
-        isCompleted -> MaterialTheme.colorScheme.onPrimaryContainer
-        manual -> MaterialTheme.colorScheme.onTertiaryContainer
-        else -> MaterialTheme.colorScheme.onSurfaceVariant
-    }
+private fun SummaryChip(content: AnnotatedString) {
+    val containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+    val contentColor = MaterialTheme.colorScheme.onSurfaceVariant
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(6.dp))
@@ -1085,14 +1051,6 @@ private fun MetricChip(content: AnnotatedString, manual: Boolean = false, isComp
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(3.dp)
     ) {
-        if (isCompleted) {
-            Icon(
-                imageVector = Icons.Filled.Check,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(12.dp)
-            )
-        }
         Text(
             text = content,
             style = MaterialTheme.typography.labelSmall,
@@ -1368,7 +1326,7 @@ private fun NestedItemDetailsDialog(
                         policy,
                         showTrackedMinutes,
                         progress?.coerceIn(0, 100),
-                        metrics.filter { it.value.isNotBlank() }
+                        metrics.filter { it.isValidForSave() }
                     )
                 }
             ) {

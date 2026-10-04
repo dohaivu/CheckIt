@@ -44,6 +44,7 @@ import com.checkit.domain.usecase.UpdateNoteUseCase
 import com.checkit.domain.usecase.UpdateTaskUseCase
 import com.checkit.ui.MinutesPerDay
 import com.checkit.ui.UiEvent
+import com.checkit.ui.isValidForSave
 import com.checkit.ui.today
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -907,7 +908,7 @@ class TaskViewModel(
                 selectedOffsets = reminderOffsets
             ),
             tagIds = selectedTagIds.toList(),
-            metrics = metrics.filter { it.value.isNotBlank() }
+            metrics = metrics.filter { it.isValidForSave() }
         )
     }
 
@@ -934,7 +935,7 @@ class TaskViewModel(
                 selectedOffsets = reminderOffsets
             ),
             tagIds = tags.map { it.id },
-            metrics = metrics.filter { it.value.isNotBlank() }
+            metrics = metrics.filter { it.isValidForSave() }
         )
     }
 
