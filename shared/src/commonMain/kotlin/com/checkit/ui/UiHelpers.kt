@@ -490,10 +490,71 @@ fun MetricItem.toPlainString(): String {
  */
 fun MetricItem.progressRatio(): Float? {
     if (isDateBased()) return null
-    val value = value.trim().replace(',', '.').toDoubleOrNull() ?: return null
-    val target = targetValue?.trim()?.replace(',', '.')?.toDoubleOrNull() ?: return null
+    val value = parseMetricDouble(value) ?: return null
+    val target = targetValue?.let(::parseMetricDouble) ?: return null
     if (target <= 0) return null
     return (value / target).toFloat().coerceIn(0f, 1f)
+}
+
+/** Units whose value is a number (free-text units like None/Custom excluded). */
+fun MetricUnit.isNumeric(): Boolean = when (this) {
+    MetricUnit.Percentage,
+    MetricUnit.Points,
+    MetricUnit.Items,
+    MetricUnit.Hours,
+    MetricUnit.Days,
+    MetricUnit.Rating,
+    MetricUnit.VND,
+    MetricUnit.Lan,
+    MetricUnit.Km -> true
+    MetricUnit.None,
+    MetricUnit.Countdown,
+    MetricUnit.DueDate,
+    MetricUnit.Custom -> false
+}
+
+/** Countable whole-number units that suit a stepper. */
+fun MetricUnit.isIntegerUnit(): Boolean = when (this) {
+    MetricUnit.Points,
+    MetricUnit.Items,
+    MetricUnit.Lan -> true
+    else -> false
+}
+
+/** Lenient number parse: trims, accepts comma decimals. Null when not a number. */
+fun parseMetricDouble(raw: String): Double? =
+    raw.trim().replace(',', '.').toDoubleOrNull()
+
+/**
+ * Input-time sanitizer per unit. Integers keep digits only; decimals keep
+ * digits plus one dot and a leading minus; other units pass through untouched.
+ * Never clamps (so typing "100" isn't fought) — clamp on commit/display.
+ */
+fun sanitizeMetricInput(unit: MetricUnit, raw: String): String {
+    if (!unit.isNumeric()) return raw
+    val normalized = raw.replace(',', '.')
+    if (unit.isIntegerUnit()) return normalized.filter { it.isDigit() }
+    val builder = StringBuilder()
+    var dotSeen = false
+    normalized.forEach { c ->
+        when {
+            c.isDigit() -> builder.append(c)
+            c == '.' && !dotSeen -> {
+                dotSeen = true
+                builder.append(c)
+            }
+            c == '-' && builder.isEmpty() -> builder.append(c)
+        }
+    }
+    return builder.toString()
+}
+
+/** Compact display for slider-derived values: "45", "45.5" — never "45.0". */
+fun formatMetricDouble(value: Double): String {
+    if (value.isNaN() || value.isInfinite()) return ""
+    val rounded = kotlin.math.round(value * 10) / 10.0
+    return if (rounded == kotlin.math.floor(rounded)) rounded.toLong().toString()
+    else rounded.toString().trimEnd('0').trimEnd('.')
 }
 
 @Composable

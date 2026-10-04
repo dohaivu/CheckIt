@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -38,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.MetricItem
@@ -46,8 +48,11 @@ import com.checkit.ui.countdownLabel
 import com.checkit.ui.displayName
 import com.checkit.ui.dueLocalDate
 import com.checkit.ui.isDateBased
+import com.checkit.ui.isIntegerUnit
 import com.checkit.ui.isMetricOverdue
+import com.checkit.ui.isNumeric
 import com.checkit.ui.progressRatio
+import com.checkit.ui.sanitizeMetricInput
 import com.checkit.ui.tasks.views.ContentAlpha
 import com.checkit.ui.today
 import kotlin.math.roundToInt
@@ -225,34 +230,104 @@ internal fun MetricsSection(
                         )
                     }
                 } else {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        CompactFlatTextField(
-                            value = metric.value,
-                            onValueChange = { value ->
-                                update(metric.copy(value = value))
-                            },
-                            placeholder = "Value",
-                            modifier = Modifier.weight(1f)
-                        )
-                        CompactFlatTextField(
-                            value = metric.targetValue.orEmpty(),
-                            onValueChange = { value ->
-                                update(metric.copy(targetValue = value))
-                            },
-                            placeholder = "Target",
-                            modifier = Modifier.weight(1f)
-                        )
-                        UnitDropdown(
-                            metric = metric,
-                            enabled = enabled,
-                            expanded = unitExpandedIndex == index,
-                            onExpandedChange = { unitExpandedIndex = if (it) index else null },
-                            onUnitChange = { unit -> update(metric.applyUnitChange(unit)) },
-                            modifier = Modifier.weight(1f)
-                        )
+                    when (metric.unit) {
+                        MetricUnit.Rating -> {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                StarRatingInput(
+                                    value = metric.value,
+                                    onValueChange = { update(metric.copy(value = it)) },
+                                    enabled = enabled,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                MetricTargetField(
+                                    metric = metric,
+                                    onValueChange = { update(metric.copy(targetValue = it)) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                                UnitDropdown(
+                                    metric = metric,
+                                    enabled = enabled,
+                                    expanded = unitExpandedIndex == index,
+                                    onExpandedChange = { unitExpandedIndex = if (it) index else null },
+                                    onUnitChange = { unit -> update(metric.applyUnitChange(unit)) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
+                        MetricUnit.Percentage -> {
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                PercentageInput(
+                                    value = metric.value,
+                                    onValueChange = { update(metric.copy(value = it)) },
+                                    enabled = enabled,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    MetricTargetField(
+                                        metric = metric,
+                                        onValueChange = { update(metric.copy(targetValue = it)) },
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    UnitDropdown(
+                                        metric = metric,
+                                        enabled = enabled,
+                                        expanded = unitExpandedIndex == index,
+                                        onExpandedChange = { unitExpandedIndex = if (it) index else null },
+                                        onUnitChange = { unit -> update(metric.applyUnitChange(unit)) },
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                            }
+                        }
+                        else -> {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                when {
+                                    metric.unit.isIntegerUnit() -> StepperInput(
+                                        value = metric.value,
+                                        onValueChange = { update(metric.copy(value = it)) },
+                                        enabled = enabled,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    metric.unit.isNumeric() -> CompactFlatTextField(
+                                        value = metric.value,
+                                        onValueChange = { update(metric.copy(value = sanitizeMetricInput(metric.unit, it))) },
+                                        placeholder = "Value",
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    else -> CompactFlatTextField(
+                                        value = metric.value,
+                                        onValueChange = { value ->
+                                            update(metric.copy(value = value))
+                                        },
+                                        placeholder = "Value",
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                                MetricTargetField(
+                                    metric = metric,
+                                    onValueChange = { update(metric.copy(targetValue = it)) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                                UnitDropdown(
+                                    metric = metric,
+                                    enabled = enabled,
+                                    expanded = unitExpandedIndex == index,
+                                    onExpandedChange = { unitExpandedIndex = if (it) index else null },
+                                    onUnitChange = { unit -> update(metric.applyUnitChange(unit)) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
                     }
 
                     if (metric.unit == MetricUnit.Custom) {
@@ -317,6 +392,25 @@ private fun MetricItem.applyUnitChange(unit: MetricUnit): MetricItem = when (uni
         customUnit = null,
         dueDateEpochDays = null,
         dueTimeMinutes = null
+    )
+}
+
+@Composable
+private fun MetricTargetField(
+    metric: MetricItem,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    CompactFlatTextField(
+        value = metric.targetValue.orEmpty(),
+        onValueChange = { onValueChange(if (metric.unit.isNumeric()) sanitizeMetricInput(metric.unit, it) else it) },
+        placeholder = "Target",
+        keyboardOptions = when {
+            metric.unit.isIntegerUnit() -> KeyboardOptions(keyboardType = KeyboardType.Number)
+            metric.unit.isNumeric() -> KeyboardOptions(keyboardType = KeyboardType.Decimal)
+            else -> KeyboardOptions.Default
+        },
+        modifier = modifier
     )
 }
 
