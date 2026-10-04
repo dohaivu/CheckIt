@@ -44,6 +44,7 @@ import com.checkit.domain.usecase.DeleteJournalEntryUseCase
 import com.checkit.domain.usecase.DeleteListUseCase
 import com.checkit.domain.usecase.DeleteRoutineUseCase
 import com.checkit.domain.usecase.ExportBackupUseCase
+import com.checkit.domain.usecase.ExportNestedListToMarkdownUseCase
 import com.checkit.domain.usecase.ImportBackupUseCase
 import com.checkit.domain.usecase.DeleteSectionUseCase
 import com.checkit.domain.usecase.DeleteNestedDocumentUseCase
@@ -269,6 +270,7 @@ val provideInteractorModule = module {
     single { SetNestedItemsCollapsedUseCase(get()) }
     single { MoveNestedItemsUseCase(get()) }
     single { DeleteNestedItemsUseCase(get()) }
+    single { ExportNestedListToMarkdownUseCase() }
     single {
         NestedAppleHelper(
             observeDocuments = get(),

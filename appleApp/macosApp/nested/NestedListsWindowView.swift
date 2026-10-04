@@ -120,6 +120,12 @@ struct NestedListsWindowView: View {
             List(state.documents, id: \.id, selection: docSelection) { doc in
                 Label(doc.title.isEmpty ? "Untitled document" : doc.title, systemImage: "list.bullet")
                     .contextMenu {
+                        Button {
+                            state.copyDocumentAsMarkdown(id: doc.id)
+                        } label: {
+                            Label("Copy as Markdown", systemImage: "doc.on.doc")
+                        }
+                        Divider()
                         Button("Rename") { renameDoc = doc; showRename = true }
                         Button("Delete", role: .destructive) { deleteDoc = doc }
                     }
@@ -223,6 +229,23 @@ struct NestedListsWindowView: View {
                 Divider()
                 bottomBar
             }
+            .overlay(alignment: .bottom) {
+                if let toast = state.toastMessage {
+                    HStack(spacing: 6) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                        Text(toast)
+                            .font(.subheadline).bold()
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(.regularMaterial, in: Capsule())
+                    .shadow(color: .black.opacity(0.15), radius: 8, y: 3)
+                    .padding(.bottom, 48)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
+            .animation(.spring(response: 0.3, dampingFraction: 0.8), value: state.toastMessage)
         }
     }
 
@@ -353,6 +376,10 @@ struct NestedListsWindowView: View {
                 editorBtn("Delete", system: "trash", help: "Delete (Del)") {
                     if sel != nil { state.showDeleteConfirm = true }
                 }
+                barSeparator
+                editorBtn("Copy Markdown", system: "doc.on.doc", help: "Copy selected as Markdown (⌘C)") {
+                    state.copySelectedAsMarkdown()
+                }
                 .disabled(sel == nil)
             }
             .frame(maxWidth: .infinity, alignment: .center)
@@ -434,6 +461,61 @@ struct NestedListsWindowView: View {
                         .onTapGesture {
                             state.select(id: row.id)
                             focusedRow = row.id
+                        }
+                        .contextMenu {
+                            Button {
+                                state.startEdit(id: row.id)
+                            } label: {
+                                Label("Edit", systemImage: "pencil")
+                            }
+                            Button {
+                                state.startAddChild(of: row.id)
+                            } label: {
+                                Label("Add Child", systemImage: "plus")
+                            }
+                            Button {
+                                state.startAddSibling(of: row.id)
+                            } label: {
+                                Label("Add Sibling Below", systemImage: "text.badge.plus")
+                            }
+                            Divider()
+                            if row.node.hasChildren {
+                                Button {
+                                    state.toggleCollapse(id: row.id)
+                                } label: {
+                                    Label(row.node.item.collapsed ? "Expand" : "Collapse", systemImage: row.node.item.collapsed ? "chevron.right" : "chevron.down")
+                                }
+                                Button {
+                                    state.zoomTo(id: row.id)
+                                } label: {
+                                    Label("Zoom In", systemImage: "plus.magnifyingglass")
+                                }
+                            }
+                            Button {
+                                state.toggleCheck(id: row.id, checked: !row.node.item.checked)
+                            } label: {
+                                Label(row.node.item.checked ? "Mark as Incomplete" : "Mark as Complete", systemImage: row.node.item.checked ? "circle" : "checkmark.circle")
+                            }
+                            Divider()
+                            Button {
+                                state.copyItemAsMarkdown(id: row.id)
+                            } label: {
+                                Label("Copy Item as Markdown", systemImage: "doc.on.doc")
+                            }
+                            if row.node.hasChildren {
+                                Button {
+                                    state.copySubtreeAsMarkdown(id: row.id)
+                                } label: {
+                                    Label("Copy Subtree as Markdown", systemImage: "list.bullet.indent")
+                                }
+                            }
+                            Divider()
+                            Button(role: .destructive) {
+                                state.select(id: row.id)
+                                state.showDeleteConfirm = true
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
                         }
                     }
                     if !rows.isEmpty {
@@ -524,6 +606,14 @@ struct NestedListsWindowView: View {
                 guard state.editingId == nil, state.selectedId != nil else { return .ignored }
                 state.showDeleteConfirm = true
                 return .handled
+            }
+            .onKeyPress(keys: [KeyEquivalent("c"), KeyEquivalent("C")]) { press in
+                guard state.editingId == nil, state.draft == nil, state.selectedId != nil else { return .ignored }
+                if press.modifiers.contains(.command) {
+                    state.copySelectedAsMarkdown()
+                    return .handled
+                }
+                return .ignored
             }
             .onKeyPress(.escape) {
                 if state.editingId != nil { state.cancelEdit(); return .handled }

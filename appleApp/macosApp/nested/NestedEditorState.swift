@@ -76,6 +76,7 @@ final class NestedEditorState: ObservableObject {
     @Published var draggedId: String? = nil
     @Published var dropTarget: NestedDropTarget? = nil
     @Published private(set) var visibleRows: [NestedRow] = []
+    @Published var toastMessage: String? = nil
 
     private let helper: NestedAppleHelper
     private var docsSub: NestedAppleSubscription?
@@ -719,4 +720,69 @@ final class NestedEditorState: ObservableObject {
             self.editingId = nil
         }
     }
+
+    // MARK: - Markdown export
+
+    func markdown(includeTitle: Bool = false) -> String {
+        guard let tree else { return "" }
+        return helper.exportTreeToMarkdown(tree: tree, includeTitle: includeTitle)
+    }
+
+    func markdownForZoom(includeTitle: Bool = false) -> String {
+        guard let tree else { return "" }
+        if let zid = zoomPath.last, let node = indexById[zid] {
+            return helper.exportNodeToMarkdown(node: node, includeNotes: true)
+        }
+        return helper.exportTreeToMarkdown(tree: tree, includeTitle: includeTitle)
+    }
+
+    func markdown(for itemId: String) -> String {
+        guard let node = indexById[itemId] else { return "" }
+        return helper.exportNodeToMarkdown(node: node, includeNotes: true)
+    }
+
+    func copySelectedAsMarkdown() {
+        guard let id = selectedId else { return }
+        copySubtreeAsMarkdown(id: id)
+    }
+
+    func copyDocumentAsMarkdown(id: String? = nil, includeTitle: Bool = true) {
+        let text: String
+        if let id = id, id != selectedDocId {
+            text = helper.exportDocumentToMarkdown(documentId: id, includeTitle: includeTitle)
+        } else {
+            text = markdownForZoom(includeTitle: includeTitle)
+        }
+        guard !text.isEmpty else { return }
+        copyToClipboard(text, message: "Copied document as Markdown")
+    }
+
+    func copyItemAsMarkdown(id: String) {
+        guard let node = indexById[id] else { return }
+        let singleNode = NestedItemNode(item: node.item, children: [])
+        let text = helper.exportNodeToMarkdown(node: singleNode, includeNotes: true)
+        guard !text.isEmpty else { return }
+        copyToClipboard(text, message: "Copied item as Markdown")
+    }
+
+    func copySubtreeAsMarkdown(id: String) {
+        guard let node = indexById[id] else { return }
+        let text = helper.exportNodeToMarkdown(node: node, includeNotes: true)
+        guard !text.isEmpty else { return }
+        let msg = node.hasChildren ? "Copied subtree as Markdown" : "Copied item as Markdown"
+        copyToClipboard(text, message: msg)
+    }
+
+    private func copyToClipboard(_ text: String, message: String = "Copied as Markdown") {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+        toastMessage = message
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            if self?.toastMessage == message {
+                self?.toastMessage = nil
+            }
+        }
+    }
 }
+

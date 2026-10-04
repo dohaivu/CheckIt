@@ -34,6 +34,8 @@ import com.checkit.domain.usecase.UpdateNestedItemPriorityUseCase
 import com.checkit.domain.usecase.UpdateNestedItemProgressUseCase
 import com.checkit.domain.usecase.UpdateNestedItemTagsUseCase
 import com.checkit.domain.usecase.UpdateNestedItemTextUseCase
+import com.checkit.domain.usecase.NestedMarkdownExportOptions
+import com.checkit.domain.usecase.toMarkdown
 import com.checkit.infrastructure.initKoin
 import com.checkit.ui.quicknote.QuickNoteAppleBridge
 import kotlinx.coroutines.CoroutineScope
@@ -374,6 +376,17 @@ class NestedAppleHelper(
 
     fun findNode(tree: NestedDocumentTree, itemId: String): NestedItemNode? =
         tree.nodeById[itemId]
+
+    fun exportTreeToMarkdown(tree: NestedDocumentTree, includeTitle: Boolean = false): String =
+        tree.toMarkdown(NestedMarkdownExportOptions(includeDocumentTitle = includeTitle))
+
+    fun exportNodeToMarkdown(node: NestedItemNode, includeNotes: Boolean = true): String =
+        node.toMarkdown(NestedMarkdownExportOptions(includeNotes = includeNotes))
+
+    fun exportDocumentToMarkdown(documentId: String, includeTitle: Boolean = false): String {
+        val tree = latestTrees[documentId] ?: return ""
+        return tree.toMarkdown(NestedMarkdownExportOptions(includeDocumentTitle = includeTitle))
+    }
 
     fun close() {
         scope.cancel()
