@@ -389,6 +389,7 @@ private fun RoutineCard(
     modifier: Modifier = Modifier,
     isDragging: Boolean = false
 ) {
+    val cardColor = remember(routine.color) { routine.color.toColor() }
     val validStepIds = remember(routine.steps) { routine.steps.map { it.id }.toSet() }
     val percent = remember(routine.steps, checkedStepIds) {
         routinePercent(routine.steps.size, checkedStepIds, validStepIds)
@@ -403,20 +404,19 @@ private fun RoutineCard(
             .clip(RoundedCornerShape(16.dp))
             .background(
                 if (isDragging) MaterialTheme.colorScheme.surfaceContainerHigh
-                else routine.color.toColor().copy(alpha = 0.10f)
+                else cardColor.copy(alpha = 0.06f)
                     .compositeOver(MaterialTheme.colorScheme.surfaceContainerLow)
             )
             .border(
-                width = if (isDragging) 1.5.dp else 1.dp,
-                color = if (isDragging) MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
-                else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+                width = if (isDragging) 2.dp else 1.5.dp,
+                color = if (isDragging) cardColor else cardColor.copy(alpha = 0.5f),
                 shape = RoundedCornerShape(16.dp)
             )
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = 16.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Row(
@@ -424,183 +424,183 @@ private fun RoutineCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(
-                    text = routine.title,
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-
-                Box(
-                    modifier = Modifier
-                        .size(28.dp)
-                        .clip(CircleShape)
-                        .clickable(onClick = onEdit),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                        contentDescription = "Edit routine",
-                        modifier = Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    Text(
+                        text = routine.title,
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
-                }
-            }
-            if (routine.description.isNotBlank()) {
-                Text(
-                    text = routine.description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                routine.reminderMinutes?.let { minutes ->
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Schedule,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = minutes.toClockLabel(),
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-                if (routine.activeWeekdays != AllWeekdays) {
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Repeat,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = formatActiveWeekdays(routine.activeWeekdays),
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
-            if (routine.steps.isNotEmpty()) {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "$completedCount of ${routine.steps.size} completed",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = "$percent%",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = if (percent == 100) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
-                    val animatedProgress by animateFloatAsState(
-                        targetValue = percent / 100f,
-                        label = "routineProgress"
-                    )
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .height(4.dp)
+                            .size(28.dp)
                             .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
+                            .clickable(onClick = onEdit),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxHeight()
-                                .fillMaxWidth(animatedProgress)
-                                .clip(CircleShape)
-                                .background(
-                                    if (percent == 100) MaterialTheme.colorScheme.primary
-                                    else MaterialTheme.colorScheme.primary.copy(alpha = 0.85f)
-                                )
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                            contentDescription = "Edit routine",
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                         )
                     }
                 }
-            }
 
-            if (routine.steps.isNotEmpty()) {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                    modifier = Modifier.alpha(if (scheduledToday) 1f else 0.55f)
+                if (routine.description.isNotBlank()) {
+                    Text(
+                        text = routine.description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    routine.steps.forEach { step ->
-                        val checked = step.id in checkedStepIds
+                    routine.reminderMinutes?.let { minutes ->
                         Row(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(10.dp))
-                                .clickable(
-                                    enabled = scheduledToday,
-                                    onClick = { onToggleStep(step.id) }
-                                )
-                                .padding(horizontal = 6.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.Top,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(cardColor.copy(alpha = 0.12f))
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             Icon(
-                                imageVector = if (checked) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
+                                imageVector = Icons.Default.Schedule,
                                 contentDescription = null,
-                                tint = if (checked) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
-                                },
-                                modifier = Modifier
-                                    .size(20.dp)
-                                    .padding(top = 1.dp)
+                                modifier = Modifier.size(14.dp),
+                                tint = cardColor
                             )
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = step.title,
-                                    style = MaterialTheme.typography.bodyMedium.copy(
-                                        textDecoration = if (checked) TextDecoration.LineThrough else null
-                                    ),
-                                    color = if (checked) {
-                                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurface
-                                    }
-                                )
-                                if (step.description.isNotBlank()) {
-                                    Text(
-                                        text = step.description.asMarkdownAnnotatedString(),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                            Text(
+                                text = minutes.toClockLabel(),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    if (routine.activeWeekdays != AllWeekdays) {
+                        Row(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(cardColor.copy(alpha = 0.12f))
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Repeat,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                                tint = cardColor
+                            )
+                            Text(
+                                text = formatActiveWeekdays(routine.activeWeekdays),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
+                if (routine.steps.isNotEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "$completedCount of ${routine.steps.size} completed",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = "$percent%",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = if (percent == 100) cardColor else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        val animatedProgress by animateFloatAsState(
+                            targetValue = percent / 100f,
+                            label = "routineProgress"
+                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(5.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .fillMaxWidth(animatedProgress)
+                                    .clip(CircleShape)
+                                    .background(cardColor)
+                            )
+                        }
+                    }
+                }
+
+                if (routine.steps.isNotEmpty()) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                        modifier = Modifier.alpha(if (scheduledToday) 1f else 0.55f)
+                    ) {
+                        routine.steps.forEach { step ->
+                            val checked = step.id in checkedStepIds
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .clickable(
+                                        enabled = scheduledToday,
+                                        onClick = { onToggleStep(step.id) }
                                     )
+                                    .padding(horizontal = 6.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.Top,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (checked) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
+                                    contentDescription = null,
+                                    tint = if (checked) {
+                                        cardColor
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
+                                    },
+                                    modifier = Modifier
+                                        .size(20.dp)
+                                        .padding(top = 1.dp)
+                                )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = step.title,
+                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                            textDecoration = if (checked) TextDecoration.LineThrough else null
+                                        ),
+                                        color = if (checked) {
+                                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurface
+                                        }
+                                    )
+                                    if (step.description.isNotBlank()) {
+                                        Text(
+                                            text = step.description.asMarkdownAnnotatedString(),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -609,7 +609,6 @@ private fun RoutineCard(
             }
         }
     }
-}
 
 @Composable
 private fun RoutineEditorSheet(
