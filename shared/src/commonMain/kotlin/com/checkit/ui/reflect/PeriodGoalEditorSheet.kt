@@ -62,7 +62,7 @@ internal fun PeriodGoalEditorSheet(
         listOf(
             MarkdownTemplate(
                 name = "Wins & Friction",
-                content = "## Wins\n- \n\n## Friction & Distractions\n- \n\n## Adjustments\n- ",
+                content = "## \uD83C\uDFC6 Wins\n- \n\n## ⚠\uFE0F Friction & Distractions\n- \n\n## \uD83D\uDE80 Adjustments\n- ",
                 description = "Wins, friction, and adjustments"
             ),
             MarkdownTemplate(

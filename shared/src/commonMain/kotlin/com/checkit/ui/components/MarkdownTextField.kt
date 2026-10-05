@@ -116,6 +116,60 @@ internal fun currentFormattedNow(): String {
     return "${currentFormattedDate()} ${currentFormattedTime()}"
 }
 
+val commonAppenderCommands =
+    listOf(
+        AppenderCommandItem(
+            name = "3-points",
+            label = "3 Points",
+            action = { text, slashIndex, cursorIndex ->
+                applySlashReplacement(text, slashIndex, cursorIndex, "1. \n2. \n3. \n")
+            }
+        )
+    )
+
+val markdownAppenderCommands = listOf(
+    AppenderCommandItem(
+        name = "heading",
+        label = "Heading",
+        description = "Insert heading ## ",
+        action = { text, slashIndex, cursorIndex ->
+            applySlashReplacement(text, slashIndex, cursorIndex, "## ")
+        }
+    ),
+    AppenderCommandItem(
+        name = "bullet",
+        label = "Bullet List",
+        description = "Insert bullet list - ",
+        action = { text, slashIndex, cursorIndex ->
+            applySlashReplacement(text, slashIndex, cursorIndex, "- ")
+        }
+    ),
+    AppenderCommandItem(
+        name = "number",
+        label = "Numbered List",
+        description = "Insert numbered list 1. ",
+        action = { text, slashIndex, cursorIndex ->
+            applySlashReplacement(text, slashIndex, cursorIndex, "1. ")
+        }
+    ),
+    AppenderCommandItem(
+        name = "quote",
+        label = "Quote",
+        description = "Insert blockquote > ",
+        action = { text, slashIndex, cursorIndex ->
+            applySlashReplacement(text, slashIndex, cursorIndex, "> ")
+        }
+    ),
+    AppenderCommandItem(
+        name = "todo",
+        label = "Task Checklist",
+        description = "Insert checkbox - [ ] ",
+        action = { text, slashIndex, cursorIndex ->
+            applySlashReplacement(text, slashIndex, cursorIndex, "- [ ] ")
+        }
+    )
+)
+
 internal fun defaultAppenderCommands(templates: List<MarkdownTemplate> = emptyList()): List<AppenderCommandItem> {
     val items = mutableListOf<AppenderCommandItem>()
 
@@ -161,58 +215,6 @@ internal fun defaultAppenderCommands(templates: List<MarkdownTemplate> = emptyLi
             description = "Current date and time (${currentFormattedNow()})",
             action = { text, slashIndex, cursorIndex ->
                 applySlashReplacement(text, slashIndex, cursorIndex, currentFormattedNow())
-            }
-        )
-    )
-
-    // Standard Markdown formatting helpers
-    items.add(
-        AppenderCommandItem(
-            name = "heading",
-            label = "Heading",
-            description = "Insert heading ## ",
-            action = { text, slashIndex, cursorIndex ->
-                applySlashReplacement(text, slashIndex, cursorIndex, "## ")
-            }
-        )
-    )
-    items.add(
-        AppenderCommandItem(
-            name = "bullet",
-            label = "Bullet List",
-            description = "Insert bullet list - ",
-            action = { text, slashIndex, cursorIndex ->
-                applySlashReplacement(text, slashIndex, cursorIndex, "- ")
-            }
-        )
-    )
-    items.add(
-        AppenderCommandItem(
-            name = "number",
-            label = "Numbered List",
-            description = "Insert numbered list 1. ",
-            action = { text, slashIndex, cursorIndex ->
-                applySlashReplacement(text, slashIndex, cursorIndex, "1. ")
-            }
-        )
-    )
-    items.add(
-        AppenderCommandItem(
-            name = "quote",
-            label = "Quote",
-            description = "Insert blockquote > ",
-            action = { text, slashIndex, cursorIndex ->
-                applySlashReplacement(text, slashIndex, cursorIndex, "> ")
-            }
-        )
-    )
-    items.add(
-        AppenderCommandItem(
-            name = "todo",
-            label = "Task Checklist",
-            description = "Insert checkbox - [ ] ",
-            action = { text, slashIndex, cursorIndex ->
-                applySlashReplacement(text, slashIndex, cursorIndex, "- [ ] ")
             }
         )
     )
@@ -349,7 +351,7 @@ fun MarkdownTextField(
     }
 
     val availableSlashCommands = remember(templates, customAppenderCommands) {
-        defaultAppenderCommands(templates) + customAppenderCommands
+        defaultAppenderCommands(templates) + customAppenderCommands + commonAppenderCommands + markdownAppenderCommands
     }
 
     val slashQuery = remember(textFieldValue.text, textFieldValue.selection.start, isFocused) {
@@ -372,8 +374,8 @@ fun MarkdownTextField(
             textFieldValue.text.substring(0, slashQuery.slashIndex.coerceAtMost(textFieldValue.text.length)).count { it == '\n' }
         } else 0
     }
-    val yOffsetPx = with(density) { (22.dp * (lineIndex + 1) + 10.dp).roundToPx() }
-    val xOffsetPx = with(density) { 12.dp.roundToPx() }
+    val yOffsetPx = with(density) { (20.dp * (lineIndex + 1)).roundToPx() }
+    val xOffsetPx = with(density) { 10.dp.roundToPx() }
 
     Box(modifier = modifier) {
         Column {
