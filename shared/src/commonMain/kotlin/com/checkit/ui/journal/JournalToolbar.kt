@@ -7,7 +7,8 @@ enum class JournalToolbarAction {
     Heading,
     Bullet,
     Numbered,
-    Quote
+    Quote,
+    SlashCommand
 }
 
 data class JournalCursorEdit(
@@ -40,6 +41,11 @@ fun applyJournalToolbarAction(
         JournalToolbarAction.Bullet -> toggleLinePrefix(safeText, selStart, selEnd, "- ")
         JournalToolbarAction.Quote -> toggleLinePrefix(safeText, selStart, selEnd, "> ")
         JournalToolbarAction.Numbered -> toggleNumberedPrefix(safeText, selStart, selEnd)
+        JournalToolbarAction.SlashCommand -> {
+            val insert = "/"
+            val newText = safeText.substring(0, selStart) + insert + safeText.substring(selStart)
+            JournalCursorEdit(newText, selStart + 1, selStart + 1)
+        }
     }
 }
 

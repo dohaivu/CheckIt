@@ -56,7 +56,6 @@ import com.checkit.ui.myday.JournalEntryEditorState
 
 private enum class JournalEditorMode { Write, Details }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 internal fun JournalEntryEditorSheet(
     state: JournalEntryEditorState,
