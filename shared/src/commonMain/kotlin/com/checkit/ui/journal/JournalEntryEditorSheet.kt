@@ -23,7 +23,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -40,8 +39,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -52,6 +51,7 @@ import com.checkit.ui.components.DeleteOverflowMenu
 import com.checkit.ui.components.MarkdownToolbar
 import com.checkit.ui.components.MarkdownVisualTransformation
 import com.checkit.ui.components.TagPicker
+import com.checkit.ui.components.applyToolbarAction
 import com.checkit.ui.myday.JournalEntryEditorState
 
 private enum class JournalEditorMode { Write, Details }
@@ -224,7 +224,7 @@ internal fun JournalEntryEditorSheet(
             // Static toolbar above footer: stays pinned while content scrolls
             MarkdownToolbar(
                 onAction = { action ->
-                    val edit = applyJournalToolbarAction(
+                    val edit = applyToolbarAction(
                         text = contentValue.text,
                         selectionStart = contentValue.selection.start,
                         selectionEnd = contentValue.selection.end,
