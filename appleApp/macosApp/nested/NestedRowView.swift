@@ -302,10 +302,13 @@ struct NestedRowView: View {
     }
 
     private var nestedTextColor: Color {
+        // Android parity (NestedListScreen): rows in a checked branch (self
+        // or any ancestor checked) fade to onSurfaceVariant at 0.68 alpha.
+        if row.isInCheckedBranch { return Color.secondary.opacity(0.68) }
         // Explicit light-theme ink: .primary would turn white in dark mode
         // and vanish on the paper canvas. Warm charcoal is softer than pure
         // black for long sessions.
-        item.textColor.name == "Default" ? nestedInkColor : nestedTokenColor(item.textColor.name)
+        return item.textColor.name == "Default" ? nestedInkColor : nestedTokenColor(item.textColor.name)
     }
 
     private var isSelected: Bool { state.selectedId == item.id }
