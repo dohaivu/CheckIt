@@ -79,9 +79,15 @@ data class NestedFilterState(
     val focus: FocusPeriod? = null,
     val query: String = "",
     val hideChecked: Boolean = false,
-    val selectedTagIds: Set<String> = emptySet()
+    val selectedTagIds: Set<String> = emptySet(),
+    val displayType: NestedDisplayType = NestedDisplayType.All
 ) {
-    val isActive: Boolean get() = focus != null || query.isNotBlank() || hideChecked || selectedTagIds.isNotEmpty()
+    val isActive: Boolean get() = focus != null || query.isNotBlank() || hideChecked || selectedTagIds.isNotEmpty() || displayType != NestedDisplayType.All
+}
+
+enum class NestedDisplayType {
+    All,
+    Working
 }
 
 sealed interface NestedEditorOverlay {
@@ -386,7 +392,11 @@ class NestedListsViewModel(
     }
 
     fun resetFilters() {
-        updateActiveEditor { it.copy(filters = it.filters.copy(focus = null, query = "", hideChecked = false, selectedTagIds = emptySet())) }
+        updateActiveEditor { it.copy(filters = it.filters.copy(focus = null, query = "", hideChecked = false, selectedTagIds = emptySet(), displayType = NestedDisplayType.All)) }
+    }
+
+    fun updateDisplayType(displayType: NestedDisplayType) {
+        updateActiveEditor { it.copy(filters = it.filters.copy(displayType = displayType)) }
     }
 
     fun nextFilterPeriod() {

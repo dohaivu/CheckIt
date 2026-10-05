@@ -2,7 +2,13 @@ package com.checkit.ui.nested
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -15,6 +21,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -27,6 +34,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListLayoutInfo
 import androidx.compose.foundation.lazy.items
@@ -42,6 +50,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.NoteAdd
+import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -62,6 +71,7 @@ import androidx.compose.material.icons.filled.AddBox
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.Today
+import androidx.compose.material.icons.filled.Work
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material.icons.filled.ZoomOut
 import androidx.compose.material.icons.outlined.Info
@@ -102,6 +112,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
@@ -119,8 +130,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.zIndex
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.cancel
@@ -162,6 +176,7 @@ import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TagPill
 import com.checkit.ui.isValidForSave
 import com.checkit.ui.noRippleClickable
+import com.checkit.ui.tasks.views.ViewOptionChip
 import com.checkit.ui.theme.parseHexColorOrNull
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
@@ -194,14 +209,15 @@ internal fun NestedListScreen(
         focusedNode?.let { listOf(it) } ?: tree.rootNodes
     }
     val visibleRoots = remember(unfilteredRoots, state.filters) {
-        if (state.filters.isVisible) {
+        if (state.filters.isVisible || state.filters.displayType != NestedDisplayType.All) {
             filterNestedTree(
                 roots = unfilteredRoots,
                 start = state.filters.focus?.start,
                 end = state.filters.focus?.endInclusive,
                 query = state.filters.query,
                 hideChecked = state.filters.hideChecked,
-                selectedTagIds = state.filters.selectedTagIds
+                selectedTagIds = state.filters.selectedTagIds,
+                workingOnly = state.filters.displayType == NestedDisplayType.Working
             )
         } else {
             unfilteredRoots
@@ -230,11 +246,26 @@ internal fun NestedListScreen(
                     onCurrentPeriod = viewModel::currentFilterPeriod
                 )
             }
-            BreadcrumbBar(
-                breadcrumbs = breadcrumbs,
-                onCrumbClick = { itemId -> viewModel.zoomToItem(itemId) },
-                onRootClick = viewModel::zoomToRoot
-            )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surface)
+                    .padding(horizontal = 12.dp, vertical = 2.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                BreadcrumbBar(
+                    breadcrumbs = breadcrumbs,
+                    onCrumbClick = { itemId -> viewModel.zoomToItem(itemId) },
+                    onRootClick = viewModel::zoomToRoot
+                )
+
+                NestedDisplayTypeMenu(
+                    selected = state.filters.displayType,
+                    onSelect = viewModel::updateDisplayType
+                )
+            }
 
             if (state.selection.isActive) {
                 SelectionToolbar(
@@ -1551,10 +1582,8 @@ private fun BreadcrumbBar(
     val scrollState = rememberScrollState()
     Row(
         modifier = Modifier
-            .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surface)
-            .horizontalScroll(scrollState)
-            .padding(horizontal = 12.dp, vertical = 0.dp),
+            .horizontalScroll(scrollState),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
@@ -1603,6 +1632,110 @@ private fun BreadcrumbBar(
         }
     }
 }
+
+// ---------------- display type ----------------
+
+@Composable
+private fun NestedDisplayTypeMenu(
+    selected: NestedDisplayType,
+    onSelect: (NestedDisplayType) -> Unit
+) {
+    var isPopupOpen by remember { mutableStateOf(false) }
+    val visibleState = remember { MutableTransitionState(false) }
+
+    Box(
+        modifier = Modifier.wrapContentSize(Alignment.TopEnd)
+    ) {
+        IconButton(
+            onClick = {
+                isPopupOpen = true
+                visibleState.targetState = true
+            },
+            modifier = Modifier.size(30.dp)
+        ) {
+            Icon(
+                imageVector = selected.icon(),
+                contentDescription = "view options",
+                tint = if (selected == NestedDisplayType.All) {
+                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                } else {
+                    MaterialTheme.colorScheme.primary
+                },
+                modifier = Modifier.size(18.dp)
+            )
+        }
+
+        if (isPopupOpen) {
+            if (visibleState.isIdle && !visibleState.targetState) {
+                isPopupOpen = false
+            }
+
+            Popup(
+                alignment = Alignment.TopEnd,
+                offset = IntOffset(x = 0, y = 130),
+                onDismissRequest = { visibleState.targetState = false },
+                properties = PopupProperties(focusable = true),
+            ) {
+                AnimatedVisibility(
+                    visibleState = visibleState,
+                    enter = scaleIn(
+                        initialScale = 0.7f,
+                        transformOrigin = TransformOrigin(1f, 0f),
+                        animationSpec = tween(200)
+                    ) + fadeIn(),
+                    exit = scaleOut(
+                        targetScale = 0.7f,
+                        transformOrigin = TransformOrigin(1f, 0f),
+                        animationSpec = tween(150)
+                    ) + fadeOut()
+                ) {
+                    Surface(
+                        shape = MaterialTheme.shapes.medium,
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                        tonalElevation = 8.dp,
+                        modifier = Modifier
+                            .padding(horizontal = 12.dp)
+                            .heightIn(min = 36.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                NestedDisplayType.entries.forEach { displayType ->
+                                    ViewOptionChip(
+                                        icon = displayType.icon(),
+                                        label = displayType.label(),
+                                        selected = selected == displayType,
+                                        onClick = {
+                                            onSelect(displayType)
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun NestedDisplayType.icon(): ImageVector =
+    when (this) {
+        NestedDisplayType.All -> Icons.AutoMirrored.Filled.ViewList
+        NestedDisplayType.Working -> Icons.Default.Work
+    }
+
+private fun NestedDisplayType.label(): String =
+    when (this) {
+        NestedDisplayType.All -> "All"
+        NestedDisplayType.Working -> "Working"
+    }
 
 // ---------------- toolbar ----------------
 

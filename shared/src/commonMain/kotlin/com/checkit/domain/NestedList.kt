@@ -120,6 +120,10 @@ fun calculateNestedMetricSummaries(roots: List<NestedItemNode>): Map<String, Nes
 /**
  * Prunes the tree, keeping only nodes that overlap with [start] to [end]
  * (inclusive) OR have descendants that do. Supports text [query] and [hideChecked] status.
+ *
+ * With [workingOnly], nodes must additionally be "working" items (priority,
+ * due date, or an enabled date-based metric) — same ancestor/descendant
+ * keep semantics as the other positive filters.
  */
 fun filterNestedTree(
     roots: List<NestedItemNode>,
@@ -127,10 +131,17 @@ fun filterNestedTree(
     end: LocalDate?,
     query: String = "",
     hideChecked: Boolean = false,
-    selectedTagIds: Set<String> = emptySet()
+    selectedTagIds: Set<String> = emptySet(),
+    workingOnly: Boolean = false
 ): List<NestedItemNode> {
-    return roots.mapNotNull { filterNestedNode(it, start, end, query, hideChecked, selectedTagIds) }
+    return roots.mapNotNull { filterNestedNode(it, start, end, query, hideChecked, selectedTagIds, workingOnly = workingOnly) }
 }
+
+/** A "working" item carries actionable state: priority, due date, or an enabled date-based metric. */
+fun isWorkingItem(item: NestedListItem): Boolean =
+    item.priority != TaskPriority.None ||
+        item.startDate != null || item.endDate != null ||
+        item.manualMetrics.any { it.enabled && (it.unit == MetricUnit.Countdown || it.unit == MetricUnit.DueDate) }
 
 private fun filterNestedNode(
     node: NestedItemNode,
@@ -139,7 +150,8 @@ private fun filterNestedNode(
     query: String,
     hideChecked: Boolean,
     selectedTagIds: Set<String> = emptySet(),
-    forceKeep: Boolean = false
+    forceKeep: Boolean = false,
+    workingOnly: Boolean = false
 ): NestedItemNode? {
     val item = node.item
 
@@ -168,16 +180,21 @@ private fun filterNestedNode(
     } else {
         true
     }
+    val matchesWorking = if (workingOnly) {
+        isWorkingItem(item)
+    } else {
+        true
+    }
 
-    // Direct match means it satisfies search, date and tag constraints
-    val matchesSelf = matchesDate && matchesQuery && matchesTags
+    // Direct match means it satisfies search, date, tag and working constraints
+    val matchesSelf = matchesDate && matchesQuery && matchesTags && matchesWorking
 
     // If an ancestor matched OR this node matches, we "force keep" descendants
     val shouldForceKeepDescendants = forceKeep || matchesSelf
 
     // 3. Recurse children
     val filteredChildren = node.children.mapNotNull {
-        filterNestedNode(it, start, end, query, hideChecked, selectedTagIds, shouldForceKeepDescendants)
+        filterNestedNode(it, start, end, query, hideChecked, selectedTagIds, shouldForceKeepDescendants, workingOnly)
     }
 
     // Keep node if:
