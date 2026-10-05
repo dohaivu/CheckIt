@@ -328,6 +328,30 @@ struct NestedListsWindowView: View {
         // Plain centered row (no ScrollView): the ~12 buttons fit the 760pt
         // detail minimum, and a scroll view would pin content left.
         return HStack(spacing: 6) {
+                HStack(spacing: 4) {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundStyle(.secondary)
+                        .imageScale(.small)
+                    TextField("Search items", text: $state.searchQuery)
+                        .textFieldStyle(.plain)
+                        .frame(width: 130)
+                    if !state.searchQuery.isEmpty {
+                        Button {
+                            state.searchQuery = ""
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .imageScale(.small)
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .help("Clear search")
+                    }
+                }
+                .padding(.horizontal, 7)
+                .padding(.vertical, 4)
+                .background(RoundedRectangle(cornerRadius: 7).fill(Color.secondary.opacity(0.12)))
+                .accessibilityLabel("Search items")
+                barSeparator
                 editorBtn("Zoom In", system: "plus.magnifyingglass", help: "Zoom in") {
                     state.zoomInSelected()
                 }
@@ -434,6 +458,22 @@ struct NestedListsWindowView: View {
 
     // MARK: - Outline list + keyboard
 
+    private var hasSearchText: Bool {
+        !state.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var emptyTitle: String {
+        if hasSearchText { return "No matches" }
+        return state.displayType == .working ? "No working items" : "Nothing here yet"
+    }
+
+    private var emptySubtitle: String {
+        if hasSearchText { return "No items match the current search." }
+        return state.displayType == .working
+            ? "Nothing here has a priority, due date, or countdown."
+            : "Start with a root item, then indent items to build your outline."
+    }
+
     private var outlineList: some View {
         let rows = state.visibleRows
         return ScrollViewReader { proxy in
@@ -444,10 +484,8 @@ struct NestedListsWindowView: View {
                     }
                     if rows.isEmpty, state.draft == nil {
                         VStack(spacing: 8) {
-                            Text(state.displayType == .working ? "No working items" : "Nothing here yet").font(.headline)
-                            Text(state.displayType == .working
-                                 ? "Nothing here has a priority, due date, or countdown."
-                                 : "Start with a root item, then indent items to build your outline.")
+                            Text(emptyTitle).font(.headline)
+                            Text(emptySubtitle)
                                 .foregroundStyle(.secondary)
                             Button("Add item") { state.startAddRoot() }
                         }

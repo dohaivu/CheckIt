@@ -123,4 +123,30 @@ class NestedWorkingFilterTest {
         val filtered = filterNestedTree(tree, start = null, end = null, hideChecked = true, workingOnly = true)
         assertTrue(filtered.isEmpty())
     }
+
+    @Test
+    fun outlineRootsAppliesQuery() {
+        val roots = buildNestedTree(
+            listOf(
+                item("groceries", null, 0),
+                item("buy milk", "groceries", 0),
+                item("other", null, 1),
+            )
+        )
+        val filtered = filterOutlineRoots(roots, query = "milk")
+        assertEquals(listOf("groceries", "buy milk"), flatIds(filtered))
+    }
+
+    @Test
+    fun outlineRootsCombinesQueryAndWorking() {
+        val roots = buildNestedTree(
+            listOf(
+                item("groceries", null, 0),
+                item("buy milk", "groceries", 0, priority = TaskPriority.Low),
+                item("buy eggs", "groceries", 1),
+            )
+        )
+        val filtered = filterOutlineRoots(roots, query = "buy", workingOnly = true)
+        assertEquals(listOf("groceries", "buy milk"), flatIds(filtered))
+    }
 }

@@ -144,12 +144,17 @@ fun isWorkingItem(item: NestedListItem): Boolean =
         item.manualMetrics.any { it.enabled && (it.unit == MetricUnit.Countdown || it.unit == MetricUnit.DueDate) }
 
 /**
- * Swift-friendly Working-view projection: keeps working items plus ancestor
- * context, using the same keep semantics as [filterNestedTree]. Lets Apple
- * clients reuse the shared logic without date/tag interop friction.
+ * Swift-friendly outline projection for the macOS Working/search UI: text
+ * [query] plus the Working filter (priority / due date / countdown metric),
+ * with the same ancestor-context keep semantics as [filterNestedTree].
+ * Lets Apple clients reuse the shared logic without date/tag interop friction.
  */
-fun filterWorkingRoots(roots: List<NestedItemNode>): List<NestedItemNode> =
-    filterNestedTree(roots, start = null, end = null, workingOnly = true)
+fun filterOutlineRoots(
+    roots: List<NestedItemNode>,
+    query: String = "",
+    workingOnly: Boolean = false
+): List<NestedItemNode> =
+    filterNestedTree(roots, start = null, end = null, query = query, workingOnly = workingOnly)
 
 private fun filterNestedNode(
     node: NestedItemNode,

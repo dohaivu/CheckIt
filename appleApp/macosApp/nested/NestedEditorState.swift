@@ -79,6 +79,9 @@ final class NestedEditorState: ObservableObject {
     @Published var displayType: NestedDisplayFilter = .all {
         didSet { recomputeVisibleRows() }
     }
+    @Published var searchQuery: String = "" {
+        didSet { recomputeVisibleRows() }
+    }
     @Published var editingId: String? = nil
     @Published var draft: NestedDraft? = nil
     @Published var showDeleteConfirm = false
@@ -261,10 +264,12 @@ final class NestedEditorState: ObservableObject {
         } else {
             zoomRoots = tree.rootNodes
         }
-        // Reuse the shared Working projection (priority / due date /
-        // countdown metric + ancestor context) instead of reimplementing it.
-        let roots: [NestedItemNode] = displayType == .working
-            ? NestedListKt.filterWorkingRoots(roots: zoomRoots)
+        // Reuse the shared outline projection (text query + Working filter:
+        // priority / due date / countdown metric + ancestor context) instead
+        // of reimplementing it.
+        let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        let roots: [NestedItemNode] = (displayType == .working || !query.isEmpty)
+            ? NestedListKt.filterOutlineRoots(roots: zoomRoots, query: query, workingOnly: displayType == .working)
             : zoomRoots
         var out: [NestedRow] = []
         var stack = roots.reversed().map { ($0, 0) }
