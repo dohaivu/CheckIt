@@ -127,8 +127,8 @@ fun calculateNestedMetricSummaries(roots: List<NestedItemNode>): Map<String, Nes
  */
 fun filterNestedTree(
     roots: List<NestedItemNode>,
-    start: LocalDate?,
-    end: LocalDate?,
+    start: LocalDate? = null,
+    end: LocalDate? = null,
     query: String = "",
     hideChecked: Boolean = false,
     selectedTagIds: Set<String> = emptySet(),
@@ -142,6 +142,14 @@ fun isWorkingItem(item: NestedListItem): Boolean =
     item.priority != TaskPriority.None ||
         item.startDate != null || item.endDate != null ||
         item.manualMetrics.any { it.enabled && (it.unit == MetricUnit.Countdown || it.unit == MetricUnit.DueDate) }
+
+/**
+ * Swift-friendly Working-view projection: keeps working items plus ancestor
+ * context, using the same keep semantics as [filterNestedTree]. Lets Apple
+ * clients reuse the shared logic without date/tag interop friction.
+ */
+fun filterWorkingRoots(roots: List<NestedItemNode>): List<NestedItemNode> =
+    filterNestedTree(roots, start = null, end = null, workingOnly = true)
 
 private fun filterNestedNode(
     node: NestedItemNode,

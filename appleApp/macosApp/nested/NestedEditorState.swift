@@ -16,6 +16,13 @@ import Combine
 import AppKit
 import Shared
 
+/// Outline display filter. Named to avoid clashing with the shared
+/// Kotlin `NestedDisplayType` (Android filter state) in the Shared module.
+enum NestedDisplayFilter {
+    case all
+    case working
+}
+
 /// One visible outline row: node + indent depth.
 struct NestedRow: Identifiable, Equatable {
     let id: String
@@ -69,6 +76,9 @@ final class NestedEditorState: ObservableObject {
         didSet { recomputeVisibleRows() }
     }
     @Published var selectedId: String? = nil
+    @Published var displayType: NestedDisplayFilter = .all {
+        didSet { recomputeVisibleRows() }
+    }
     @Published var editingId: String? = nil
     @Published var draft: NestedDraft? = nil
     @Published var showDeleteConfirm = false
@@ -245,12 +255,17 @@ final class NestedEditorState: ObservableObject {
             visibleRows = []
             return
         }
-        let roots: [NestedItemNode]
+        let zoomRoots: [NestedItemNode]
         if let zid = zoomPath.last, let focused = nodeIndex[zid] {
-            roots = [focused]
+            zoomRoots = [focused]
         } else {
-            roots = tree.rootNodes
+            zoomRoots = tree.rootNodes
         }
+        // Reuse the shared Working projection (priority / due date /
+        // countdown metric + ancestor context) instead of reimplementing it.
+        let roots: [NestedItemNode] = displayType == .working
+            ? NestedListKt.filterWorkingRoots(roots: zoomRoots)
+            : zoomRoots
         var out: [NestedRow] = []
         var stack = roots.reversed().map { ($0, 0) }
         while let (node, depth) = stack.popLast() {

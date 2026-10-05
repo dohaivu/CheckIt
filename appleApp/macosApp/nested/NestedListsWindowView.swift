@@ -381,6 +381,28 @@ struct NestedListsWindowView: View {
                     state.copySelectedAsMarkdown()
                 }
                 .disabled(sel == nil)
+                barSeparator
+                Menu {
+                    Toggle(isOn: Binding(
+                        get: { state.displayType == .all },
+                        set: { if $0 { state.displayType = .all } }
+                    )) {
+                        Label("All", systemImage: "list.bullet")
+                    }
+                    Toggle(isOn: Binding(
+                        get: { state.displayType == .working },
+                        set: { if $0 { state.displayType = .working } }
+                    )) {
+                        Label("Working", systemImage: "briefcase")
+                    }
+                } label: {
+                    Image(systemName: state.displayType == .all ? "list.bullet" : "briefcase")
+                        .imageScale(.medium)
+                        .frame(width: 28, height: 28)
+                }
+                .menuStyle(.borderlessButton)
+                .accessibilityLabel("Display")
+                .help(state.displayType == .all ? "Show all items" : "Show working items (priority, due date, countdown)")
             }
             .frame(maxWidth: .infinity, alignment: .center)
             .padding(.horizontal, 10)
@@ -422,8 +444,10 @@ struct NestedListsWindowView: View {
                     }
                     if rows.isEmpty, state.draft == nil {
                         VStack(spacing: 8) {
-                            Text("Nothing here yet").font(.headline)
-                            Text("Start with a root item, then indent items to build your outline.")
+                            Text(state.displayType == .working ? "No working items" : "Nothing here yet").font(.headline)
+                            Text(state.displayType == .working
+                                 ? "Nothing here has a priority, due date, or countdown."
+                                 : "Start with a root item, then indent items to build your outline.")
                                 .foregroundStyle(.secondary)
                             Button("Add item") { state.startAddRoot() }
                         }
