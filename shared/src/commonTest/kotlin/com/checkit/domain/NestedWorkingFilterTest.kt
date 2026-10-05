@@ -149,4 +149,41 @@ class NestedWorkingFilterTest {
         val filtered = filterOutlineRoots(roots, query = "buy", workingOnly = true)
         assertEquals(listOf("groceries", "buy milk"), flatIds(filtered))
     }
+
+    @Test
+    fun queryMatchKeepsWorkingDescendants() {
+        val roots = buildNestedTree(
+            listOf(
+                item("project", null, 0),
+                item("task", "project", 0, priority = TaskPriority.High),
+            )
+        )
+        val filtered = filterOutlineRoots(roots, query = "project", workingOnly = true)
+        assertEquals(listOf("project", "task"), flatIds(filtered))
+    }
+
+    @Test
+    fun workingAncestorKeepsQueryMatchingChild() {
+        val roots = buildNestedTree(
+            listOf(
+                item("buy milk", null, 0, priority = TaskPriority.Low),
+                item("oat milk", "buy milk", 0),
+            )
+        )
+        val filtered = filterOutlineRoots(roots, query = "oat", workingOnly = true)
+        assertEquals(listOf("buy milk", "oat milk"), flatIds(filtered))
+    }
+
+    @Test
+    fun unrelatedWorkingItemsStillPrunedByQuery() {
+        val roots = buildNestedTree(
+            listOf(
+                item("project", null, 0),
+                item("task", "project", 0, priority = TaskPriority.High),
+                item("unrelated", null, 1, priority = TaskPriority.Medium),
+            )
+        )
+        val filtered = filterOutlineRoots(roots, query = "project", workingOnly = true)
+        assertEquals(listOf("project", "task"), flatIds(filtered))
+    }
 }
