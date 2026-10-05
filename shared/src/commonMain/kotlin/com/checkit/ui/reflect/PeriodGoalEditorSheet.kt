@@ -23,6 +23,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,6 +41,7 @@ import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.MarkdownTextField
 import com.checkit.ui.components.MetricsSection
 import com.checkit.ui.components.RatingBar
+import com.checkit.ui.components.SlashTemplate
 import com.checkit.ui.components.icons.AppIcons
 import com.checkit.ui.components.icons.Target
 import com.checkit.ui.periodDetail
@@ -56,6 +58,46 @@ internal fun PeriodGoalEditorSheet(
     onDismiss: () -> Unit
 ) {
     val periodLabel = editor.focus.periodDetail()
+    val reviewTemplates = remember {
+        listOf(
+            SlashTemplate(
+                name = "Wins & Friction",
+                content = "## Wins\n- \n\n## Friction & Distractions\n- \n\n## Adjustments\n- ",
+                description = "Wins, friction, and adjustments"
+            ),
+            SlashTemplate(
+                name = "Weekly Review",
+                content = "## Completed vs Planned\n- \n\n## What Worked\n- \n\n## Changes Needed\n- ",
+                description = "Progress review template"
+            ),
+            SlashTemplate(
+                name = "Highlights",
+                content = "## Highlights & Achievements\n- \n\n## Macro Trends\n- \n\n## Key Takeaways\n- ",
+                description = "Highlights and trends"
+            )
+        )
+    }
+
+    val goalTemplates = remember {
+        listOf(
+            SlashTemplate(
+                name = "Top 3 Focus",
+                content = "## Key Objectives\n1. \n2. \n3. \n",
+                description = "Top 3 objectives template"
+            ),
+            SlashTemplate(
+                name = "If-Then Plan",
+                content = "## Core Focus\n- \n\n## If-Then Rule\n- If \n  Then ",
+                description = "Focus and implementation intention"
+            ),
+            SlashTemplate(
+                name = "Milestones",
+                content = "## Milestones\n- [ ] \n- [ ] \n- [ ] \n",
+                description = "Milestones checklist template"
+            )
+        )
+    }
+
     AppEditorBottomSheet(
         onDismiss = onDismiss,
         sheetGesturesEnabled = false,
@@ -120,7 +162,8 @@ internal fun PeriodGoalEditorSheet(
                         .padding(10.dp),
                     placeholder = "Jot down your reflection ...",
                     minLines = 6,
-                    enabled = !editor.isSaving
+                    enabled = !editor.isSaving,
+                    templates = reviewTemplates
                 )
 
                 Row(
@@ -229,7 +272,8 @@ internal fun PeriodGoalEditorSheet(
                     .padding(10.dp),
                 placeholder = "What will you focus on?",
                 minLines = 5,
-                enabled = !editor.isSaving
+                enabled = !editor.isSaving,
+                templates = goalTemplates
             )
 
             MetricsSection(

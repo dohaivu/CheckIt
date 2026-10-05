@@ -10,13 +10,19 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -24,19 +30,247 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
+import com.checkit.ui.journal.JournalCursorEdit
 import com.checkit.ui.journal.JournalToolbarAction
 import com.checkit.ui.journal.applyJournalToolbarAction
 import com.checkit.ui.tasks.views.ContentContainerAlpha
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.number
+import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Clock
+
+data class SlashTemplate(
+    val name: String,
+    val content: String,
+    val description: String? = null
+)
+
+data class SlashCommandItem(
+    val name: String,
+    val label: String,
+    val description: String? = null,
+    val action: (text: String, slashIndex: Int, cursorIndex: Int) -> JournalCursorEdit
+)
+
+internal data class SlashQuery(
+    val slashIndex: Int,
+    val query: String
+)
+
+internal fun detectSlashQuery(text: String, cursorIndex: Int): SlashQuery? {
+    if (cursorIndex <= 0 || cursorIndex > text.length) return null
+    val textBeforeCursor = text.substring(0, cursorIndex)
+    val lastSlashIndex = textBeforeCursor.lastIndexOf('/')
+    if (lastSlashIndex == -1) return null
+
+    // Ensure '/' is at start of line or preceded by whitespace
+    val isPrecededBySpaceOrNewline = lastSlashIndex == 0 || textBeforeCursor[lastSlashIndex - 1].isWhitespace()
+    if (!isPrecededBySpaceOrNewline) return null
+
+    val query = textBeforeCursor.substring(lastSlashIndex + 1)
+    // Avoid triggering if space or newline was typed after '/'
+    if (query.contains(' ') || query.contains('\n')) return null
+
+    return SlashQuery(slashIndex = lastSlashIndex, query = query)
+}
+
+internal fun applySlashReplacement(
+    text: String,
+    slashIndex: Int,
+    cursorIndex: Int,
+    replacement: String
+): JournalCursorEdit {
+    val prefix = text.substring(0, slashIndex)
+    val suffix = text.substring(cursorIndex.coerceAtMost(text.length))
+    val newText = prefix + replacement + suffix
+    val newCursor = slashIndex + replacement.length
+    return JournalCursorEdit(
+        text = newText,
+        selectionStart = newCursor,
+        selectionEnd = newCursor
+    )
+}
+
+internal fun currentFormattedDate(): String {
+    val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+    return "${now.year}-${now.month.number.toString().padStart(2, '0')}-${now.day.toString().padStart(2, '0')}"
+}
+
+internal fun currentFormattedTime(): String {
+    val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+    return "${now.hour.toString().padStart(2, '0')}:${now.minute.toString().padStart(2, '0')}"
+}
+
+internal fun currentFormattedNow(): String {
+    return "${currentFormattedDate()} ${currentFormattedTime()}"
+}
+
+internal fun defaultSlashCommands(templates: List<SlashTemplate> = emptyList()): List<SlashCommandItem> {
+    val items = mutableListOf<SlashCommandItem>()
+
+    // Custom templates
+    templates.forEach { template ->
+        items.add(
+            SlashCommandItem(
+                name = template.name.lowercase().replace(" ", "-"),
+                label = template.name,
+                description = template.description ?: "Custom template",
+                action = { text, slashIndex, cursorIndex ->
+                    applySlashReplacement(text, slashIndex, cursorIndex, template.content)
+                }
+            )
+        )
+    }
+
+    // Dynamic Date & Time appenders
+    items.add(
+        SlashCommandItem(
+            name = "date",
+            label = "Date",
+            description = "Current date (${currentFormattedDate()})",
+            action = { text, slashIndex, cursorIndex ->
+                applySlashReplacement(text, slashIndex, cursorIndex, currentFormattedDate())
+            }
+        )
+    )
+    items.add(
+        SlashCommandItem(
+            name = "time",
+            label = "Time",
+            description = "Current time (${currentFormattedTime()})",
+            action = { text, slashIndex, cursorIndex ->
+                applySlashReplacement(text, slashIndex, cursorIndex, currentFormattedTime())
+            }
+        )
+    )
+    items.add(
+        SlashCommandItem(
+            name = "now",
+            label = "Date & Time",
+            description = "Current date and time (${currentFormattedNow()})",
+            action = { text, slashIndex, cursorIndex ->
+                applySlashReplacement(text, slashIndex, cursorIndex, currentFormattedNow())
+            }
+        )
+    )
+
+    // Standard Markdown formatting helpers
+    items.add(
+        SlashCommandItem(
+            name = "heading",
+            label = "Heading",
+            description = "Insert heading ## ",
+            action = { text, slashIndex, cursorIndex ->
+                applySlashReplacement(text, slashIndex, cursorIndex, "## ")
+            }
+        )
+    )
+    items.add(
+        SlashCommandItem(
+            name = "bullet",
+            label = "Bullet List",
+            description = "Insert bullet list - ",
+            action = { text, slashIndex, cursorIndex ->
+                applySlashReplacement(text, slashIndex, cursorIndex, "- ")
+            }
+        )
+    )
+    items.add(
+        SlashCommandItem(
+            name = "number",
+            label = "Numbered List",
+            description = "Insert numbered list 1. ",
+            action = { text, slashIndex, cursorIndex ->
+                applySlashReplacement(text, slashIndex, cursorIndex, "1. ")
+            }
+        )
+    )
+    items.add(
+        SlashCommandItem(
+            name = "quote",
+            label = "Quote",
+            description = "Insert blockquote > ",
+            action = { text, slashIndex, cursorIndex ->
+                applySlashReplacement(text, slashIndex, cursorIndex, "> ")
+            }
+        )
+    )
+    items.add(
+        SlashCommandItem(
+            name = "todo",
+            label = "Task Checklist",
+            description = "Insert checkbox - [ ] ",
+            action = { text, slashIndex, cursorIndex ->
+                applySlashReplacement(text, slashIndex, cursorIndex, "- [ ] ")
+            }
+        )
+    )
+
+    return items
+}
+
+@Composable
+fun MarkdownSlashPopup(
+    items: List<SlashCommandItem>,
+    onSelect: (SlashCommandItem) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (items.isEmpty()) return
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f))
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(8.dp)
+            )
+            .heightIn(max = 160.dp)
+            .verticalScroll(rememberScrollState())
+            .padding(vertical = 2.dp)
+    ) {
+        items.forEach { item ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onSelect(item) }
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "/${item.name}",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontFamily = FontFamily.Monospace,
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                )
+
+                Text(
+                    text = item.label,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
+    }
+}
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -100,6 +334,8 @@ fun MarkdownTextField(
     enabled: Boolean = true,
     readOnly: Boolean = false,
     showToolbar: Boolean = true,
+    templates: List<SlashTemplate> = emptyList(),
+    customSlashCommands: List<SlashCommandItem> = emptyList(),
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     contentPadding: PaddingValues = PaddingValues(horizontal = 0.dp, vertical = 0.dp),
     textFieldModifier: Modifier = Modifier.fillMaxWidth()
@@ -117,54 +353,111 @@ fun MarkdownTextField(
         )
     }
 
-    Column(modifier = modifier) {
-        AppOutlinedTextField(
-            value = textFieldValue,
-            onValueChange = { newValue ->
-                textFieldValue = newValue
-                if (newValue.text != lastExternalText) {
-                    lastExternalText = newValue.text
-                    onValueChange(newValue.text)
-                }
-            },
-            textStyle = textStyle,
-            placeholder = placeholder,
-            placeholderStyle = placeholderStyle,
-            minLines = minLines,
-            maxLines = maxLines,
-            keyboardOptions = keyboardOptions,
-            keyboardActions = keyboardActions,
-            enabled = enabled,
-            readOnly = readOnly,
-            interactionSource = interactionSource,
-            visualTransformation = remember { MarkdownVisualTransformation() },
-            contentPadding = contentPadding,
-            modifier = textFieldModifier
-                .focusRequester(focusRequester)
-                .onFocusChanged { isFocused = it.isFocused }
-        )
+    val availableSlashCommands = remember(templates, customSlashCommands) {
+        defaultSlashCommands(templates) + customSlashCommands
+    }
 
-        if (showToolbar && isFocused && enabled && !readOnly) {
-            Spacer(Modifier.height(6.dp))
-            MarkdownToolbar(
-                onAction = { action ->
-                    val edit = applyJournalToolbarAction(
-                        text = textFieldValue.text,
-                        selectionStart = textFieldValue.selection.start,
-                        selectionEnd = textFieldValue.selection.end,
-                        action = action
-                    )
-                    val newTextFieldValue = textFieldValue.copy(
-                        text = edit.text,
-                        selection = TextRange(edit.selectionStart, edit.selectionEnd)
-                    )
-                    textFieldValue = newTextFieldValue
-                    lastExternalText = edit.text
-                    onValueChange(edit.text)
-                    focusRequester.requestFocus()
+    val slashQuery = remember(textFieldValue.text, textFieldValue.selection.start, isFocused) {
+        if (isFocused) detectSlashQuery(textFieldValue.text, textFieldValue.selection.start) else null
+    }
+
+    val matchingSlashItems = remember(slashQuery, availableSlashCommands) {
+        if (slashQuery == null) emptyList()
+        else {
+            val q = slashQuery.query.lowercase()
+            availableSlashCommands.filter {
+                it.name.lowercase().contains(q) || it.label.lowercase().contains(q)
+            }
+        }
+    }
+
+    val density = LocalDensity.current
+    val lineIndex = remember(textFieldValue.text, slashQuery?.slashIndex) {
+        if (slashQuery != null) {
+            textFieldValue.text.substring(0, slashQuery.slashIndex.coerceAtMost(textFieldValue.text.length)).count { it == '\n' }
+        } else 0
+    }
+    val yOffsetPx = with(density) { (22.dp * (lineIndex + 1) + 10.dp).roundToPx() }
+    val xOffsetPx = with(density) { 12.dp.roundToPx() }
+
+    Box(modifier = modifier) {
+        Column {
+            AppOutlinedTextField(
+                value = textFieldValue,
+                onValueChange = { newValue ->
+                    textFieldValue = newValue
+                    if (newValue.text != lastExternalText) {
+                        lastExternalText = newValue.text
+                        onValueChange(newValue.text)
+                    }
                 },
-                modifier = Modifier.fillMaxWidth()
+                textStyle = textStyle,
+                placeholder = placeholder,
+                placeholderStyle = placeholderStyle,
+                minLines = minLines,
+                maxLines = maxLines,
+                keyboardOptions = keyboardOptions,
+                keyboardActions = keyboardActions,
+                enabled = enabled,
+                readOnly = readOnly,
+                interactionSource = interactionSource,
+                visualTransformation = remember { MarkdownVisualTransformation() },
+                contentPadding = contentPadding,
+                modifier = textFieldModifier
+                    .focusRequester(focusRequester)
+                    .onFocusChanged { isFocused = it.isFocused }
             )
+
+            if (showToolbar && isFocused && enabled && !readOnly && slashQuery == null) {
+                Spacer(Modifier.height(6.dp))
+                MarkdownToolbar(
+                    onAction = { action ->
+                        val edit = applyJournalToolbarAction(
+                            text = textFieldValue.text,
+                            selectionStart = textFieldValue.selection.start,
+                            selectionEnd = textFieldValue.selection.end,
+                            action = action
+                        )
+                        val newTextFieldValue = textFieldValue.copy(
+                            text = edit.text,
+                            selection = TextRange(edit.selectionStart, edit.selectionEnd)
+                        )
+                        textFieldValue = newTextFieldValue
+                        lastExternalText = edit.text
+                        onValueChange(edit.text)
+                        focusRequester.requestFocus()
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+
+        if (slashQuery != null && matchingSlashItems.isNotEmpty() && enabled && !readOnly) {
+            Popup(
+                alignment = Alignment.TopStart,
+                offset = IntOffset(x = xOffsetPx, y = yOffsetPx),
+                properties = PopupProperties(focusable = false)
+            ) {
+                MarkdownSlashPopup(
+                    items = matchingSlashItems,
+                    onSelect = { item ->
+                        val edit = item.action(
+                            textFieldValue.text,
+                            slashQuery.slashIndex,
+                            textFieldValue.selection.start
+                        )
+                        val newTextFieldValue = textFieldValue.copy(
+                            text = edit.text,
+                            selection = TextRange(edit.selectionStart, edit.selectionEnd)
+                        )
+                        textFieldValue = newTextFieldValue
+                        lastExternalText = edit.text
+                        onValueChange(edit.text)
+                        focusRequester.requestFocus()
+                    },
+                    modifier = Modifier.widthIn(max = 280.dp)
+                )
+            }
         }
     }
 }
