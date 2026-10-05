@@ -336,20 +336,20 @@ struct NestedListsWindowView: View {
                     state.zoomOut()
                 }
                 .disabled(state.zoomPath.isEmpty)
-                editorBtn("Expand All", system: "chevron.down.2", help: "Expand all (⌥→)") {
+                editorBtn("Expand All", system: "chevron.down.2", help: "Expand all (ShiftCtrl→)") {
                     state.expandAll()
                 }
                 .disabled(!hasCollapsible)
-                editorBtn("Collapse All", system: "chevron.up.2", help: "Collapse all (⌥←)") {
+                editorBtn("Collapse All", system: "chevron.up.2", help: "Collapse all (ShiftCtrl←)") {
                     state.collapseAll()
                 }
                 .disabled(!hasCollapsible)
                 barSeparator
-                editorBtn("Outdent", system: "arrow.left.to.line", help: "Outdent (Cmd←)") {
+                editorBtn("Outdent", system: "arrow.left.to.line", help: "Outdent (Shift+Tab)") {
                     state.outdentSelected()
                 }
                 .disabled(sel == nil)
-                editorBtn("Indent", system: "arrow.right.to.line", help: "Indent (Cmd→)") {
+                editorBtn("Indent", system: "arrow.right.to.line", help: "Indent (Tab)") {
                     state.indentSelected()
                 }
                 .disabled(sel == nil)
@@ -630,15 +630,11 @@ struct NestedListsWindowView: View {
     // MARK: - Outline arrow keys
 
     /// Extracted from outlineList so the giant list expression stays within
-    /// the type-checker's limits. Cmd+Opt+Left/Right = collapse/expand all
-    /// under the selection (else current view); Cmd+Left/Right = outdent/indent.
+    /// the type-checker's limits. Shift+Ctrl+Left/Right = collapse/expand all
+    /// under the selection (else current view);
     private func handleOutlineArrowKey(_ press: KeyPress) -> KeyPress.Result {
-        if press.modifiers.contains(.option) {
+        if press.modifiers.contains(.control) {
             if press.key == .leftArrow { state.collapseAll() } else { state.expandAll() }
-            return .handled
-        }
-        if press.modifiers.contains(.command) {
-            if press.key == .leftArrow { state.outdentSelected() } else { state.indentSelected() }
             return .handled
         }
         guard state.editingId == nil, let id = state.selectedId,
