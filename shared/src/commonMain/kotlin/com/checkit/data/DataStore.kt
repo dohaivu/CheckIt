@@ -30,6 +30,7 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
                 colorSchemeModeCode = prefs[KEY_COLOR_SCHEME] ?: UserSettings().colorSchemeModeCode,
                 taskWorkspaceViewCode = prefs[KEY_TASK_WORKSPACE_VIEW] ?: UserSettings().taskWorkspaceViewCode,
                 taskListDisplayTypeCode = prefs[KEY_TASK_LIST_DISPLAY_TYPE] ?: UserSettings().taskListDisplayTypeCode,
+                nestedDisplayTypeCode = prefs[KEY_NESTED_DISPLAY_TYPE] ?: UserSettings().nestedDisplayTypeCode,
                 taskShowCompleted = prefs[KEY_TASK_SHOW_COMPLETED] ?: UserSettings().taskShowCompleted,
                 taskSortOptionCode = prefs[KEY_TASK_SORT_OPTION] ?: UserSettings().taskSortOptionCode,
                 planReminderEnabled = prefs[KEY_PLAN_REMINDER_ENABLED] ?: UserSettings().planReminderEnabled,
@@ -72,6 +73,10 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
 
     suspend fun setTaskListDisplayTypeCode(code: String) {
         dataStore.edit { it[KEY_TASK_LIST_DISPLAY_TYPE] = code }
+    }
+
+    suspend fun setNestedDisplayTypeCode(code: String) {
+        dataStore.edit { it[KEY_NESTED_DISPLAY_TYPE] = code }
     }
 
     suspend fun setTaskShowCompleted(showCompleted: Boolean) {
@@ -221,6 +226,7 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
         val KEY_COLOR_SCHEME = stringPreferencesKey("color_scheme_mode")
         val KEY_TASK_WORKSPACE_VIEW = stringPreferencesKey("task_workspace_view")
         val KEY_TASK_LIST_DISPLAY_TYPE = stringPreferencesKey("task_list_display_type")
+        val KEY_NESTED_DISPLAY_TYPE = stringPreferencesKey("nested_display_type")
         val KEY_TASK_SHOW_COMPLETED = booleanPreferencesKey("task_show_completed")
         val KEY_TASK_SORT_OPTION = stringPreferencesKey("task_sort_option")
         val KEY_PLAN_REMINDER_ENABLED = booleanPreferencesKey("plan_reminder_enabled")

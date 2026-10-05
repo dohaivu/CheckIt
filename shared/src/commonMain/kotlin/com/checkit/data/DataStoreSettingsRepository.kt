@@ -28,6 +28,10 @@ class DataStoreSettingsRepository(
         dataStore.setTaskListDisplayTypeCode(code)
     }
 
+    override suspend fun setNestedDisplayTypeCode(code: String) {
+        dataStore.setNestedDisplayTypeCode(code)
+    }
+
     override suspend fun setTaskShowCompleted(showCompleted: Boolean) {
         dataStore.setTaskShowCompleted(showCompleted)
     }

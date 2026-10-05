@@ -10,6 +10,7 @@ data class UserSettings(
     val colorSchemeModeCode: String = "sky_blue",
     val taskWorkspaceViewCode: String = "List",
     val taskListDisplayTypeCode: String = "Standard",
+    val nestedDisplayTypeCode: String = "All",
     val taskShowCompleted: Boolean = false,
     val taskSortOptionCode: String = "Custom",
     val planReminderEnabled: Boolean = true,
@@ -40,6 +41,7 @@ interface SettingsRepository {
     suspend fun setColorSchemeModeCode(code: String)
     suspend fun setTaskWorkspaceViewCode(code: String)
     suspend fun setTaskListDisplayTypeCode(code: String)
+    suspend fun setNestedDisplayTypeCode(code: String)
     suspend fun setTaskShowCompleted(showCompleted: Boolean)
     suspend fun setTaskSortOptionCode(code: String)
     suspend fun setPlanReminderEnabled(enabled: Boolean)

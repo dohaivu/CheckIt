@@ -87,7 +87,12 @@ data class NestedFilterState(
 
 enum class NestedDisplayType {
     All,
-    Working
+    Working;
+
+    companion object {
+        fun fromCode(code: String): NestedDisplayType =
+            entries.firstOrNull { it.name == code } ?: All
+    }
 }
 
 sealed interface NestedEditorOverlay {
@@ -167,6 +172,7 @@ class NestedListsViewModel(
     private var editorObservationJob: Job? = null
     private val moveMutex = Mutex()
     private var latestTags: List<TagItem> = emptyList()
+    private var latestNestedDisplayType: NestedDisplayType = NestedDisplayType.All
 
     init {
         collectDocuments()
@@ -189,6 +195,16 @@ class NestedListsViewModel(
                     if (current.editor is NestedEditorState.Active) {
                         current.copy(editor = current.editor.copy(availableTags = tags))
                     } else current
+                }
+            }
+        }
+        viewModelScope.launch {
+            settingsRepository.settings.collect { settings ->
+                val displayType = NestedDisplayType.fromCode(settings.nestedDisplayTypeCode)
+                latestNestedDisplayType = displayType
+                updateActiveEditor { active ->
+                    if (active.filters.displayType == displayType) active
+                    else active.copy(filters = active.filters.copy(displayType = displayType))
                 }
             }
         }
@@ -230,7 +246,8 @@ class NestedListsViewModel(
                         val active = (current.editor as? NestedEditorState.Active) ?: NestedEditorState.Active(
                             documentId = documentId,
                             tree = tree,
-                            availableTags = latestTags
+                            availableTags = latestTags,
+                            filters = NestedFilterState(displayType = latestNestedDisplayType)
                         )
                         current.copy(editor = active.copy(tree = tree))
                     }
@@ -396,7 +413,19 @@ class NestedListsViewModel(
     }
 
     fun updateDisplayType(displayType: NestedDisplayType) {
-        updateActiveEditor { it.copy(filters = it.filters.copy(displayType = displayType)) }
+        var shouldPersist = false
+        updateActiveEditor { active ->
+            if (active.filters.displayType == displayType) active
+            else {
+                shouldPersist = true
+                active.copy(filters = active.filters.copy(displayType = displayType))
+            }
+        }
+        if (shouldPersist) {
+            viewModelScope.launch {
+                settingsRepository.setNestedDisplayTypeCode(displayType.name)
+            }
+        }
     }
 
     fun nextFilterPeriod() {

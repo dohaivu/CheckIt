@@ -80,7 +80,10 @@ final class NestedEditorState: ObservableObject {
     }
     @Published var selectedId: String? = nil
     @Published var displayType: NestedDisplayFilter = .all {
-        didSet { recomputeVisibleRows() }
+        didSet {
+            UserDefaults.standard.set(displayType == .working ? "working" : "all", forKey: "nested.displayType")
+            recomputeVisibleRows()
+        }
     }
     @Published var searchQuery: String = "" {
         didSet { recomputeVisibleRows() }
@@ -106,6 +109,9 @@ final class NestedEditorState: ObservableObject {
     init() {
         NestedAppleBridge.shared.ensureKoin()
         helper = NestedAppleBridge.shared.helper()
+        if UserDefaults.standard.string(forKey: "nested.displayType") == "working" {
+            displayType = .working
+        }
     }
 
     func start() {

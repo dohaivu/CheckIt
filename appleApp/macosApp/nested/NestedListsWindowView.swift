@@ -422,6 +422,7 @@ struct NestedListsWindowView: View {
                 } label: {
                     Image(systemName: state.displayType == .all ? "list.bullet" : "briefcase")
                         .imageScale(.medium)
+                        .tint(state.displayType == .working ? Color.accentColor : Color.secondary)
                         .frame(width: 28, height: 28)
                 }
                 .menuStyle(.borderlessButton)
