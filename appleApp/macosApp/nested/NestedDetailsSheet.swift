@@ -344,6 +344,21 @@ struct NestedFormattingBar: View {
 
     private let tokens = ["Default", "Red", "Orange", "Yellow", "Green", "Blue", "Purple", "Pink"]
 
+    /// Filled-flag tint from the shared TaskPriority palette (None → secondary).
+    private func priorityTint(_ name: String) -> Color {
+        let entry: TaskPriority?
+        switch name {
+        case "Low": entry = TaskPriority.low
+        case "Medium": entry = TaskPriority.medium
+        case "High": entry = TaskPriority.high
+        default: entry = nil
+        }
+        if let hex = entry?.priorityHex(), let color = Color(nestedHex: hex) {
+            return color
+        }
+        return .secondary
+    }
+
     private func barBtn(
         _ system: String,
         tint: Color = .secondary,
@@ -418,14 +433,21 @@ struct NestedFormattingBar: View {
             // Priority
             Menu {
                 ForEach(["None", "Low", "Medium", "High"], id: \.self) { p in
-                    Toggle(p, isOn: Binding(
+                    Toggle(isOn: Binding(
                         get: { p == item.priority.name },
                         set: { if $0 { state.updatePriority(id: item.id, name: p) } }
-                    ))
+                    )) {
+                        Label {
+                            Text(p)
+                        } icon: {
+                            Image(systemName: "flag.fill")
+                                .foregroundStyle(priorityTint(p))
+                        }
+                    }
                 }
             } label: {
-                Image(systemName: "flag")
-                    .tint(item.priority.name == "None" ? .secondary : Color.accentColor)
+                Image(systemName: item.priority.name == "None" ? "flag" : "flag.fill")
+                    .tint(priorityTint(item.priority.name))
             }
             .menuStyle(.borderlessButton)
             .frame(width: 28, height: 28)

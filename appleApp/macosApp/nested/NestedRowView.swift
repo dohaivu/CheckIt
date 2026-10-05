@@ -22,24 +22,6 @@ func nestedTokenColor(_ name: String) -> Color {
     }
 }
 
-func nestedPriorityMarker(_ name: String) -> String {
-    switch name {
-    case "Low": "!"
-    case "Medium": "!!"
-    case "High": "!!!"
-    default: ""
-    }
-}
-
-func nestedPriorityColor(_ name: String) -> Color {
-    switch name {
-    case "Low": .green
-    case "Medium": .orange
-    case "High": .red
-    default: .secondary
-    }
-}
-
 func nestedRowFont(_ styleName: String) -> Font {
     switch styleName {
     case "Header": .title3.weight(.semibold)
@@ -173,12 +155,13 @@ struct NestedRowView: View {
                         .buttonStyle(.plain)
                         .help(item.checked ? "Uncheck" : "Check off")
                     }
-                    let marker = nestedPriorityMarker(item.priority.name)
-                    if !marker.isEmpty {
-                        Text(marker)
-                            .font(.headline).bold()
-                            .foregroundStyle(nestedPriorityColor(item.priority.name))
+                    if let hex = item.priority.priorityHex(),
+                       let color = Color(nestedHex: hex) {
+                        Image(systemName: "flag.fill")
+                            .imageScale(.small)
+                            .foregroundStyle(color)
                             .padding(.top, 1)
+                            .help("Priority: \(item.priority.name)")
                     }
                     // Overlay (not ZStack/branch swap): the Text always defines
                     // the row height, so entering edit mode never pushes

@@ -342,7 +342,22 @@ enum class TaskPriority {
     None,
     Low,
     Medium,
-    High
+    High;
+
+    /**
+     * Hex RGB (e.g. "#E53935") for the nested-outline priority flag, shared
+     * by Android Compose and macOS SwiftUI. Named `priorityHex` (rather than
+     * `priorityColor`) so it never shadows the existing
+     * `TaskPriority.priorityColor(): Color` extension used by the task UI,
+     * which uses a different palette. Null when unset ([None]) so callers
+     * can fall back to a theme color.
+     */
+    fun priorityHex(): String? = when (this) {
+        None -> null
+        Low -> "#4CAF50"
+        Medium -> "#FF9800"
+        High -> "#E53935"
+    }
 }
 
 enum class DueDatePreset {

@@ -162,6 +162,7 @@ import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TagPill
 import com.checkit.ui.isValidForSave
 import com.checkit.ui.noRippleClickable
+import com.checkit.ui.theme.parseHexColorOrNull
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
@@ -722,10 +723,13 @@ private fun NestedFormattingBottomBar(
                 DropdownMenu(expanded = priorityExpanded, onDismissRequest = { priorityExpanded = false }) {
                     TaskPriority.entries.forEach { priority ->
                         DropdownMenuItem(
-                            text = {
-                                Text(
-                                    text = "${priorityMarker(priority)}  ${priority.name}",
-                                    color = priorityColor(priority)
+                            text = { Text(priority.name) },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Flag,
+                                    contentDescription = null,
+                                    tint = priorityColor(priority),
+                                    modifier = Modifier.size(18.dp)
                                 )
                             },
                             onClick = {
@@ -938,24 +942,14 @@ private fun ColorTokenMenu(
     }
 }
 
-private fun priorityMarker(priority: TaskPriority): String = when (priority) {
-    TaskPriority.None -> ""
-    TaskPriority.Low -> "!"
-    TaskPriority.Medium -> "!!"
-    TaskPriority.High -> "!!!"
-}
-
 @Composable
-private fun priorityColor(priority: TaskPriority): Color = when (priority) {
-    TaskPriority.None -> MaterialTheme.colorScheme.onSurfaceVariant
-    TaskPriority.Low -> Color(0xFF4CAF50)
-    TaskPriority.Medium -> Color(0xFFFF9800)
-    TaskPriority.High -> Color(0xFFE53935)
-}
+private fun priorityColor(priority: TaskPriority): Color =
+    priority.priorityHex()?.parseHexColorOrNull()
+        ?: MaterialTheme.colorScheme.onSurfaceVariant
 
 @Composable
 private fun NestedItemMetadataPreview(
-    item: com.checkit.domain.NestedListItem,
+    item: NestedListItem,
     summary: NestedMetricSummary,
     isLeaf: Boolean
 ) {
@@ -2055,12 +2049,11 @@ private fun NestedTree(
                         }
 
                         if (item.priority != TaskPriority.None) {
-                            Text(
-                                text = priorityMarker(item.priority),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = priorityColor(item.priority),
-                                modifier = Modifier.padding(end = 4.dp).align(Alignment.Top)
+                            Icon(
+                                imageVector = Icons.Default.Flag,
+                                contentDescription = null,
+                                tint = priorityColor(item.priority),
+                                modifier = Modifier.size(18.dp)
                             )
                         }
 
