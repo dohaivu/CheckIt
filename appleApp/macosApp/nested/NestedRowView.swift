@@ -396,8 +396,7 @@ struct NestedRowView: View {
                                 Image(systemName: "checkmark.circle.fill")
                                     .font(.caption2).foregroundStyle(.green)
                             }
-                            Text(metricLabel(m)).font(.caption)
-                                .foregroundStyle(overdue ? .red : .primary)
+                            Text(metricLabel(m))
                         }
                         .padding(.horizontal, 6).padding(.vertical, 1)
                         .background((overdue ? Color.red : Color.accentColor).opacity(0.12), in: RoundedRectangle(cornerRadius: 5))
@@ -433,17 +432,48 @@ struct NestedRowView: View {
         }
     }
 
-    private func metricLabel(_ m: MetricItem) -> String {
-        var s = ""
-        if !m.name.isEmpty { s += m.name + " " }
-        if m.isDateBased() {
-            s += m.dateBasedDisplayToday()
-        } else {
-            if !m.value.isEmpty { s += m.value }
-            if let t = m.targetValue, !t.isEmpty { s += "/\(t)" }
-            if let u = m.displayUnit() { s += " \(u)" }
+    private func metricLabel(_ m: MetricItem) -> AttributedString {
+        // Mirrors shared toAnnotatedString: name/unit small and secondary,
+        // value and target bigger, bold and highlighted (red when overdue).
+        var result = AttributedString("")
+        let overdue = m.isMetricOverdueToday()
+        let highlight: Color = overdue ? .red : .accentColor
+        if !m.name.isEmpty {
+            var name = AttributedString(m.name + " ")
+            name.font = .caption
+            name.foregroundColor = .secondary
+            result += name
         }
-        return s.trimmingCharacters(in: .whitespaces)
+        if m.isDateBased() {
+            var value = AttributedString(m.dateBasedDisplayToday())
+            value.font = .callout.bold()
+            value.foregroundColor = highlight
+            result += value
+        } else {
+            if !m.value.isEmpty {
+                var value = AttributedString(m.value)
+                value.font = .callout.bold()
+                value.foregroundColor = highlight
+                result += value
+            }
+            if let t = m.targetValue, !t.isEmpty {
+                var slash = AttributedString("/")
+                slash.font = .caption
+                slash.foregroundColor = .secondary
+                result += slash
+                var target = AttributedString(t)
+                target.font = .callout.bold()
+                target.foregroundColor = .primary
+                result += target
+            }
+            if let u = m.displayUnit() {
+                var unit = AttributedString(" " + u)
+                unit.font = .caption
+                unit.foregroundColor = .secondary
+                result += unit
+            }
+        }
+        return result
     }
 }
 
