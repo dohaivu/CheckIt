@@ -422,6 +422,14 @@ fun MetricItem.isMetricOverdue(today: LocalDate = today()): Boolean {
 fun MetricItem.isValidForSave(): Boolean =
     if (isDateBased()) dueDateEpochDays != null else value.isNotBlank()
 
+/**
+ * Zero-arg variants for Swift callers (Kotlin default arguments are not
+ * visible to Swift, and building a kotlinx LocalDate there is awkward).
+ */
+fun MetricItem.dateBasedDisplayToday(): String = dateBasedDisplay()
+fun MetricItem.countdownLabelToday(): String = countdownLabel()
+fun MetricItem.isMetricOverdueToday(): Boolean = isMetricOverdue()
+
 
 fun MetricItem.toAnnotatedString(valueColor: Color): androidx.compose.ui.text.AnnotatedString =
     buildAnnotatedString {

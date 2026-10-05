@@ -349,7 +349,7 @@ struct NestedRowView: View {
         // their own tracked minutes; parents only when showTrackedMinutes.
         let isLeaf = !row.node.hasChildren
         let showTracked = isLeaf || item.showTrackedMinutes
-        let visibleMetrics = item.manualMetrics.filter { $0.enabled && (!$0.value.isEmpty || $0.isCompleted) }
+        let visibleMetrics = item.manualMetrics.filter { $0.enabled && ($0.isCompleted || $0.isValidForSave()) }
         if progress != nil || (summary?.doneItemCount ?? 0) > 0
             || (showTracked && (summary?.trackedMinutes ?? 0) > 0)
             || (note != nil && !(note!.isEmpty)) || !item.tags.isEmpty || dateText != nil
@@ -390,15 +390,17 @@ struct NestedRowView: View {
                             .background(Color.secondary.opacity(0.15), in: RoundedRectangle(cornerRadius: 5))
                     }
                     ForEach(visibleMetrics, id: \.name) { m in
+                        let overdue = m.isMetricOverdueToday()
                         HStack(spacing: 2) {
                             if m.isCompleted {
                                 Image(systemName: "checkmark.circle.fill")
                                     .font(.caption2).foregroundStyle(.green)
                             }
                             Text(metricLabel(m)).font(.caption)
+                                .foregroundStyle(overdue ? .red : .primary)
                         }
                         .padding(.horizontal, 6).padding(.vertical, 1)
-                        .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 5))
+                        .background((overdue ? Color.red : Color.accentColor).opacity(0.12), in: RoundedRectangle(cornerRadius: 5))
                     }
                 }
                 if let n = note, !n.isEmpty {
@@ -434,9 +436,13 @@ struct NestedRowView: View {
     private func metricLabel(_ m: MetricItem) -> String {
         var s = ""
         if !m.name.isEmpty { s += m.name + " " }
-        if !m.value.isEmpty { s += m.value }
-        if let t = m.targetValue, !t.isEmpty { s += "/\(t)" }
-        if let u = m.displayUnit() { s += " \(u)" }
+        if m.isDateBased() {
+            s += m.dateBasedDisplayToday()
+        } else {
+            if !m.value.isEmpty { s += m.value }
+            if let t = m.targetValue, !t.isEmpty { s += "/\(t)" }
+            if let u = m.displayUnit() { s += " \(u)" }
+        }
         return s.trimmingCharacters(in: .whitespaces)
     }
 }

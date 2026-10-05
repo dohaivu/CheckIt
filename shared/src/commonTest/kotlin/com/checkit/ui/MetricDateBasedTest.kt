@@ -89,6 +89,21 @@ class MetricDateBasedTest {
     }
 
     @Test
+    fun todayVariantsAgreeWithExplicitToday() {
+        val now = today()
+        val dueEpoch = (now.toEpochDays() + 2).toInt()
+        val metric = MetricItem(
+            name = "X",
+            value = "",
+            unit = MetricUnit.Countdown,
+            dueDateEpochDays = dueEpoch
+        )
+        assertEquals(metric.dateBasedDisplay(now), metric.dateBasedDisplayToday())
+        assertEquals(metric.countdownLabel(now), metric.countdownLabelToday())
+        assertEquals(metric.isMetricOverdue(now), metric.isMetricOverdueToday())
+    }
+
+    @Test
     fun plainStringUsesDerivedDisplay() {        assertTrue(countdown(LocalDate(2026, 10, 7)).dateBasedDisplay(today).contains("3 days left"))
         assertTrue(dueDate(LocalDate(2026, 10, 5), 14 * 60 + 30).dateBasedDisplay().endsWith(", 2:30 PM"))
         assertEquals("Countdown", MetricUnit.Countdown.displayName())
