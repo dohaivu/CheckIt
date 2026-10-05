@@ -55,13 +55,13 @@ import kotlinx.datetime.number
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
 
-data class SlashTemplate(
+data class MarkdownTemplate(
     val name: String,
     val content: String,
     val description: String? = null
 )
 
-data class SlashCommandItem(
+data class AppenderCommandItem(
     val name: String,
     val label: String,
     val description: String? = null,
@@ -121,13 +121,13 @@ internal fun currentFormattedNow(): String {
     return "${currentFormattedDate()} ${currentFormattedTime()}"
 }
 
-internal fun defaultSlashCommands(templates: List<SlashTemplate> = emptyList()): List<SlashCommandItem> {
-    val items = mutableListOf<SlashCommandItem>()
+internal fun defaultAppenderCommands(templates: List<MarkdownTemplate> = emptyList()): List<AppenderCommandItem> {
+    val items = mutableListOf<AppenderCommandItem>()
 
     // Custom templates
     templates.forEach { template ->
         items.add(
-            SlashCommandItem(
+            AppenderCommandItem(
                 name = template.name.lowercase().replace(" ", "-"),
                 label = template.name,
                 description = template.description ?: "Custom template",
@@ -140,7 +140,7 @@ internal fun defaultSlashCommands(templates: List<SlashTemplate> = emptyList()):
 
     // Dynamic Date & Time appenders
     items.add(
-        SlashCommandItem(
+        AppenderCommandItem(
             name = "date",
             label = "Date",
             description = "Current date (${currentFormattedDate()})",
@@ -150,7 +150,7 @@ internal fun defaultSlashCommands(templates: List<SlashTemplate> = emptyList()):
         )
     )
     items.add(
-        SlashCommandItem(
+        AppenderCommandItem(
             name = "time",
             label = "Time",
             description = "Current time (${currentFormattedTime()})",
@@ -160,7 +160,7 @@ internal fun defaultSlashCommands(templates: List<SlashTemplate> = emptyList()):
         )
     )
     items.add(
-        SlashCommandItem(
+        AppenderCommandItem(
             name = "now",
             label = "Date & Time",
             description = "Current date and time (${currentFormattedNow()})",
@@ -172,7 +172,7 @@ internal fun defaultSlashCommands(templates: List<SlashTemplate> = emptyList()):
 
     // Standard Markdown formatting helpers
     items.add(
-        SlashCommandItem(
+        AppenderCommandItem(
             name = "heading",
             label = "Heading",
             description = "Insert heading ## ",
@@ -182,7 +182,7 @@ internal fun defaultSlashCommands(templates: List<SlashTemplate> = emptyList()):
         )
     )
     items.add(
-        SlashCommandItem(
+        AppenderCommandItem(
             name = "bullet",
             label = "Bullet List",
             description = "Insert bullet list - ",
@@ -192,7 +192,7 @@ internal fun defaultSlashCommands(templates: List<SlashTemplate> = emptyList()):
         )
     )
     items.add(
-        SlashCommandItem(
+        AppenderCommandItem(
             name = "number",
             label = "Numbered List",
             description = "Insert numbered list 1. ",
@@ -202,7 +202,7 @@ internal fun defaultSlashCommands(templates: List<SlashTemplate> = emptyList()):
         )
     )
     items.add(
-        SlashCommandItem(
+        AppenderCommandItem(
             name = "quote",
             label = "Quote",
             description = "Insert blockquote > ",
@@ -212,7 +212,7 @@ internal fun defaultSlashCommands(templates: List<SlashTemplate> = emptyList()):
         )
     )
     items.add(
-        SlashCommandItem(
+        AppenderCommandItem(
             name = "todo",
             label = "Task Checklist",
             description = "Insert checkbox - [ ] ",
@@ -226,9 +226,9 @@ internal fun defaultSlashCommands(templates: List<SlashTemplate> = emptyList()):
 }
 
 @Composable
-fun MarkdownSlashPopup(
-    items: List<SlashCommandItem>,
-    onSelect: (SlashCommandItem) -> Unit,
+fun AppenderPopup(
+    items: List<AppenderCommandItem>,
+    onSelect: (AppenderCommandItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
     if (items.isEmpty()) return
@@ -334,8 +334,8 @@ fun MarkdownTextField(
     enabled: Boolean = true,
     readOnly: Boolean = false,
     showToolbar: Boolean = true,
-    templates: List<SlashTemplate> = emptyList(),
-    customSlashCommands: List<SlashCommandItem> = emptyList(),
+    templates: List<MarkdownTemplate> = emptyList(),
+    customAppenderCommands: List<AppenderCommandItem> = emptyList(),
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     contentPadding: PaddingValues = PaddingValues(horizontal = 0.dp, vertical = 0.dp),
     textFieldModifier: Modifier = Modifier.fillMaxWidth()
@@ -353,8 +353,8 @@ fun MarkdownTextField(
         )
     }
 
-    val availableSlashCommands = remember(templates, customSlashCommands) {
-        defaultSlashCommands(templates) + customSlashCommands
+    val availableSlashCommands = remember(templates, customAppenderCommands) {
+        defaultAppenderCommands(templates) + customAppenderCommands
     }
 
     val slashQuery = remember(textFieldValue.text, textFieldValue.selection.start, isFocused) {
@@ -438,7 +438,7 @@ fun MarkdownTextField(
                 offset = IntOffset(x = xOffsetPx, y = yOffsetPx),
                 properties = PopupProperties(focusable = false)
             ) {
-                MarkdownSlashPopup(
+                AppenderPopup(
                     items = matchingSlashItems,
                     onSelect = { item ->
                         val edit = item.action(

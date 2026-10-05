@@ -50,15 +50,15 @@ class MarkdownTextFieldTest {
     }
 
     @Test
-    fun defaultSlashCommands_includesDateAndCustomTemplates() {
+    fun defaultAppenderCommands_includesDateAndCustomTemplates() {
         val templates = listOf(
-            SlashTemplate(
+            MarkdownTemplate(
                 name = "Wins",
                 content = "## Wins\n- ",
                 description = "Wins template"
             )
         )
-        val commands = defaultSlashCommands(templates)
+        val commands = defaultAppenderCommands(templates)
 
         val winsCommand = commands.firstOrNull { it.name == "wins" }
         assertNotNull(winsCommand)

@@ -38,10 +38,10 @@ import checkit.shared.generated.resources.reflect_review_save
 import com.checkit.domain.MetricItem
 import com.checkit.domain.Period
 import com.checkit.ui.components.AppEditorBottomSheet
+import com.checkit.ui.components.MarkdownTemplate
 import com.checkit.ui.components.MarkdownTextField
 import com.checkit.ui.components.MetricsSection
 import com.checkit.ui.components.RatingBar
-import com.checkit.ui.components.SlashTemplate
 import com.checkit.ui.components.icons.AppIcons
 import com.checkit.ui.components.icons.Target
 import com.checkit.ui.periodDetail
@@ -60,17 +60,17 @@ internal fun PeriodGoalEditorSheet(
     val periodLabel = editor.focus.periodDetail()
     val reviewTemplates = remember {
         listOf(
-            SlashTemplate(
+            MarkdownTemplate(
                 name = "Wins & Friction",
                 content = "## Wins\n- \n\n## Friction & Distractions\n- \n\n## Adjustments\n- ",
                 description = "Wins, friction, and adjustments"
             ),
-            SlashTemplate(
+            MarkdownTemplate(
                 name = "Weekly Review",
                 content = "## Completed vs Planned\n- \n\n## What Worked\n- \n\n## Changes Needed\n- ",
                 description = "Progress review template"
             ),
-            SlashTemplate(
+            MarkdownTemplate(
                 name = "Highlights",
                 content = "## Highlights & Achievements\n- \n\n## Macro Trends\n- \n\n## Key Takeaways\n- ",
                 description = "Highlights and trends"
@@ -80,17 +80,17 @@ internal fun PeriodGoalEditorSheet(
 
     val goalTemplates = remember {
         listOf(
-            SlashTemplate(
+            MarkdownTemplate(
                 name = "Top 3 Focus",
                 content = "## Key Objectives\n1. \n2. \n3. \n",
                 description = "Top 3 objectives template"
             ),
-            SlashTemplate(
+            MarkdownTemplate(
                 name = "If-Then Plan",
                 content = "## Core Focus\n- \n\n## If-Then Rule\n- If \n  Then ",
                 description = "Focus and implementation intention"
             ),
-            SlashTemplate(
+            MarkdownTemplate(
                 name = "Milestones",
                 content = "## Milestones\n- [ ] \n- [ ] \n- [ ] \n",
                 description = "Milestones checklist template"
