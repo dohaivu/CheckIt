@@ -262,6 +262,15 @@ data class NestedItemMove(
     val position: Int
 )
 
+/** Sort orders for a parent's children. Performance is O(g log g) on the sibling group only. */
+enum class NestedSortOrder {
+    NameAsc,
+    AddedDesc,
+    CompletedDesc,
+    IncompleteFirst,
+    PriorityDesc,
+}
+
 /**
  * Builds the item tree for a document. Groups by parent, sorts siblings by
  * (position, id), recurses. Roots are items whose [NestedListItem.parentId] is

@@ -70,6 +70,7 @@ import androidx.compose.material.icons.filled.UnfoldMore
 import androidx.compose.material.icons.filled.AddBox
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.SelectAll
+import androidx.compose.material.icons.filled.SortByAlpha
 import androidx.compose.material.icons.filled.Today
 import androidx.compose.material.icons.filled.Work
 import androidx.compose.material.icons.filled.ZoomIn
@@ -89,6 +90,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
@@ -161,6 +163,7 @@ import com.checkit.domain.NestedColorToken
 import com.checkit.domain.NestedItemNode
 import com.checkit.domain.NestedListItem
 import com.checkit.domain.NestedMetricSummary
+import com.checkit.domain.NestedSortOrder
 import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.TagItem
 import com.checkit.domain.TaskPriority
@@ -204,6 +207,7 @@ internal fun NestedListScreen(
     onCopyToTask: (title: String, note: String?, subtaskTexts: List<String>) -> Unit = { _, _, _ -> }
 ) {
     var detailsItemId by remember { mutableStateOf<String?>(null) }
+    var showSortDialog by remember { mutableStateOf(false) }
     val tree = state.tree
     val focusedNode = state.focusedItem
     val unfilteredRoots = remember(focusedNode, tree.rootNodes) {
@@ -292,6 +296,7 @@ internal fun NestedListScreen(
                     onAddRoot = viewModel::startAddRoot,
                     onManageDetails = { state.selectedItemId?.let { detailsItemId = it } },
                     onEnterSelection = viewModel::enterSelectionMode,
+                    onSortChildren = { showSortDialog = true },
                     onAddToDailyPlan = {
                         state.selectedItemId?.let { id ->
                             state.tree.nodeById[id]?.item?.let { item ->
@@ -633,6 +638,81 @@ internal fun NestedListScreen(
             )
         }
     }
+
+    if (showSortDialog) {
+        state.selectedItemId?.let { state.tree.nodeById[it] }?.let { node ->
+            SortChildrenDialog(
+                itemText = node.item.text.ifBlank { "Untitled item" },
+                onDismiss = { showSortDialog = false },
+                onApply = { order ->
+                    viewModel.sortChildrenOfSelected(order)
+                    showSortDialog = false
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun SortChildrenDialog(
+    itemText: String,
+    onDismiss: () -> Unit,
+    onApply: (NestedSortOrder) -> Unit
+) {
+    var selected by remember { mutableStateOf(NestedSortOrder.NameAsc) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Sort children") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = itemText,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                NestedSortOrder.entries.forEach { order ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { selected = order }
+                            .padding(horizontal = 4.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = selected == order,
+                            onClick = { selected = order }
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = order.label(),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onApply(selected) }) {
+                Text("Sort")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(Res.string.cancel))
+            }
+        }
+    )
+}
+
+private fun NestedSortOrder.label(): String = when (this) {
+    NestedSortOrder.NameAsc -> "Name (A–Z)"
+    NestedSortOrder.AddedDesc -> "Newest first"
+    NestedSortOrder.CompletedDesc -> "Recently completed"
+    NestedSortOrder.IncompleteFirst -> "Incomplete on top"
+    NestedSortOrder.PriorityDesc -> "Priority (high first)"
 }
 
 @Composable
@@ -1765,11 +1845,13 @@ private fun EditorToolbar(
     onManageDetails: () -> Unit,
     onAddToDailyPlan: () -> Unit,
     onCopyToTask: () -> Unit,
-    onEnterSelection: () -> Unit
+    onEnterSelection: () -> Unit,
+    onSortChildren: () -> Unit
 ) {
     val hasSelection = state.selectedItemId != null
     val selectedNode = state.selectedItemId?.let { id -> state.tree.nodeById[id] }
     val canZoomIn = hasSelection && (selectedNode?.hasChildren == true)
+    val canSortChildren = selectedNode?.hasChildren == true
     val canZoomOut = state.zoomPath.isNotEmpty()
     val canAddSibling = hasSelection && (selectedNode?.item?.parentId != null)
     val hasCollapsible = state.tree.nodeById.values.any { it.hasChildren }
@@ -1846,6 +1928,9 @@ private fun EditorToolbar(
                     }
                     ToolbarMenuItem(stringResource(Res.string.nested_batch_delete), Icons.Default.Delete, hasSelection) {
                         showMore = false; onDelete()
+                    }
+                    ToolbarMenuItem("Sort children", Icons.Default.SortByAlpha, canSortChildren) {
+                        showMore = false; onSortChildren()
                     }
                 }
             }

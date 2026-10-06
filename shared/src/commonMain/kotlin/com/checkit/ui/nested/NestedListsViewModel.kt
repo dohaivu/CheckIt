@@ -13,6 +13,7 @@ import com.checkit.domain.NestedDocument
 import com.checkit.domain.NestedDocumentTree
 import com.checkit.domain.NestedItemNode
 import com.checkit.domain.NestedListItem
+import com.checkit.domain.NestedSortOrder
 import com.checkit.domain.computeNestedInsertPosition
 
 import com.checkit.domain.NestedTextStyle
@@ -658,6 +659,11 @@ class NestedListsViewModel(
     fun outdent(itemId: String) = applyMove { items -> moveItemsUseCase.outdent(items, itemId) }
     fun moveUp(itemId: String) = applyMove { items -> moveItemsUseCase.moveUp(items, itemId) }
     fun moveDown(itemId: String) = applyMove { items -> moveItemsUseCase.moveDown(items, itemId) }
+
+    fun sortChildrenOfSelected(order: NestedSortOrder) {
+        val id = getActiveEditor()?.selectedItemId ?: return
+        applyMove { items -> moveItemsUseCase.sortChildren(items, id, order) }
+    }
 
     fun canStartDrag(): Boolean {
         val active = getActiveEditor() ?: return false

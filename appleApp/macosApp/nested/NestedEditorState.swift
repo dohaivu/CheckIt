@@ -426,6 +426,11 @@ final class NestedEditorState: ObservableObject {
         helper.moveDown(documentId: selectedDocId, itemId: id)
     }
 
+    func sortChildrenOfSelected(order: String) {
+        guard let id = selectedId, !selectedDocId.isEmpty else { return }
+        helper.sortChildren(documentId: selectedDocId, parentId: id, orderName: order)
+    }
+
     func toggleCollapse(id: String) { helper.toggleCollapsed(itemId: id) }
 
     /// Scope roots for expand-all / collapse-all: selection (when it has

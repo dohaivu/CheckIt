@@ -7,6 +7,7 @@ import com.checkit.domain.NestedDocument
 import com.checkit.domain.NestedDocumentTree
 import com.checkit.domain.NestedItemNode
 import com.checkit.domain.NestedListItem
+import com.checkit.domain.NestedSortOrder
 import com.checkit.domain.NestedMetricSummary
 import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.computeNestedInsertPosition
@@ -349,6 +350,12 @@ class NestedAppleHelper(
         applyMove(documentId) { items ->
             moveItems.moveToPosition(items, itemId, targetParentId.takeIf { it.isNotEmpty() }, targetIndex)
         }
+    }
+
+    /** Sorts the children of [parentId]; [orderName] is a [NestedSortOrder] name. */
+    fun sortChildren(documentId: String, parentId: String, orderName: String) {
+        val order = runCatching { NestedSortOrder.valueOf(orderName) }.getOrNull() ?: return
+        applyMove(documentId) { items -> moveItems.sortChildren(items, parentId, order) }
     }
 
     fun deleteItemList(itemIds: List<String>) {

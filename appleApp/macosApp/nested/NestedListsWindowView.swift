@@ -428,6 +428,22 @@ struct NestedListsWindowView: View {
                 .menuStyle(.borderlessButton)
                 .accessibilityLabel("Display")
                 .help(state.displayType == .all ? "Show all items" : "Show working items (priority, due date, countdown)")
+                barSeparator
+                Menu {
+                    Button("Name (A–Z)") { state.sortChildrenOfSelected(order: "NameAsc") }
+                    Button("Newest first") { state.sortChildrenOfSelected(order: "AddedDesc") }
+                    Button("Recently completed") { state.sortChildrenOfSelected(order: "CompletedDesc") }
+                    Button("Incomplete on top") { state.sortChildrenOfSelected(order: "IncompleteFirst") }
+                    Button("Priority (high first)") { state.sortChildrenOfSelected(order: "PriorityDesc") }
+                } label: {
+                    Image(systemName: "arrow.up.arrow.down")
+                        .imageScale(.medium)
+                        .frame(width: 28, height: 28)
+                }
+                .menuStyle(.borderlessButton)
+                .accessibilityLabel("Sort children")
+                .help("Sort children of selected item")
+                .disabled(!(node?.hasChildren ?? false))
             }
             .frame(maxWidth: .infinity, alignment: .center)
             .padding(.horizontal, 10)

@@ -7,6 +7,7 @@ import com.checkit.domain.NestedDocumentTree
 import com.checkit.domain.NestedItemMove
 import com.checkit.domain.NestedListItem
 import com.checkit.domain.NestedItemNode
+import com.checkit.domain.NestedSortOrder
 import com.checkit.domain.TagItem
 import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.NestedColorToken
@@ -306,6 +307,29 @@ class MoveNestedItemsUseCase(
     }
 
     /**
+     * Sorts the children of [parentId] by [order] and renormalizes the group
+     * to contiguous 0-based positions. Empty when the parent is unknown,
+     * childless, or already sorted. Comparators always end with
+     * (position, id) so ties keep a stable, deterministic order.
+     */
+    fun sortChildren(
+        items: List<NestedListItem>,
+        parentId: String?,
+        order: NestedSortOrder
+    ): List<NestedItemMove> {
+        val siblings = siblingsOf(items, parentId)
+        if (siblings.size < 2) return emptyList()
+        val comparator = when (order) {
+            NestedSortOrder.NameAsc -> compareBy<NestedListItem> { it.text.lowercase() }
+            NestedSortOrder.AddedDesc -> compareByDescending<NestedListItem> { it.createdAtMillis }
+            NestedSortOrder.CompletedDesc -> compareByDescending<NestedListItem> { it.completedAtMillis ?: Long.MIN_VALUE }
+            NestedSortOrder.IncompleteFirst -> compareBy<NestedListItem> { it.checked }
+            NestedSortOrder.PriorityDesc -> compareBy<NestedListItem> { it.priority.sortRank() }
+        }.thenBy { it.position }.thenBy { it.id }
+        return renormalizeGroup(siblings.sortedWith(comparator), parentId)
+    }
+
+    /**
      * Places [itemId] as child of [newParentId] at [newIndex]. The index refers
      * to the target group *excluding* the dragged item (so same-parent reorders
      * behave like gap-based drops). Returns moves that renormalize both affected
@@ -352,6 +376,14 @@ class MoveNestedItemsUseCase(
     private fun siblingsOf(items: List<NestedListItem>, parentId: String?): List<NestedListItem> =
         items.filter { it.parentId == parentId }
             .sortedWith(compareBy<NestedListItem> { it.position }.thenBy { it.id })
+
+    /** Rank for PriorityDesc: High first, None last (matches task sort convention). */
+    private fun TaskPriority.sortRank(): Int = when (this) {
+        TaskPriority.High -> 0
+        TaskPriority.Medium -> 1
+        TaskPriority.Low -> 2
+        TaskPriority.None -> 3
+    }
 }
 
 /** Deletes items and all of their descendants (cascade via [CheckItDao.deleteNestedItems]). */
