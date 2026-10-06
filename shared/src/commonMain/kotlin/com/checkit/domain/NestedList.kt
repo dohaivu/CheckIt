@@ -53,6 +53,8 @@ data class NestedListItem(
     val note: String? = null,
     val checkboxEnabled: Boolean = false,
     val checked: Boolean = false,
+    /** When the item was last checked; null when never checked or unchecked. */
+    val completedAtMillis: Long? = null,
     val collapsed: Boolean = false,
     val textStyle: NestedTextStyle = NestedTextStyle.Body,
     val textColor: NestedColorToken = NestedColorToken.Default,

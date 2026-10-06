@@ -178,6 +178,7 @@ import com.checkit.ui.isValidForSave
 import com.checkit.ui.noRippleClickable
 import com.checkit.ui.tasks.views.ViewOptionChip
 import com.checkit.ui.theme.parseHexColorOrNull
+import com.checkit.ui.toDateTimeLabel
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
@@ -1135,6 +1136,13 @@ private fun NestedItemDetailsDialog(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
+                item.completedAtMillis?.let { completedAt ->
+                    Text(
+                        text = "Completed · ${completedAt.toDateTimeLabel()}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         },
         text = {

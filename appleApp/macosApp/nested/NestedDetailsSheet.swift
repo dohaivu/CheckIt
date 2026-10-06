@@ -122,6 +122,10 @@ struct NestedDetailsSheet: View {
         VStack(alignment: .leading, spacing: 12) {
             Text(item.text.isEmpty ? "Untitled item" : item.text)
                 .font(.headline).lineLimit(2)
+            if let ms = item.completedAtMillis?.int64Value {
+                Text("Completed · \(Date(timeIntervalSince1970: TimeInterval(ms) / 1000).formatted(date: .abbreviated, time: .shortened))")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     // Time & rollup

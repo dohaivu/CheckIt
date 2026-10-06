@@ -281,6 +281,13 @@ fun Long.toClockLabel(): String {
     return (local.hour * 60 + local.minute).toClockLabel()
 }
 
+/** Epoch millis rendered as a local date-time label ("Oct 6, 2026, 2:32 PM"). */
+fun Long.toDateTimeLabel(): String {
+    val local = Instant.fromEpochMilliseconds(this)
+        .toLocalDateTime(TimeZone.currentSystemDefault())
+    return "${local.date.shortMonthName()} ${local.date.day}, ${local.date.year}, ${toClockLabel()}"
+}
+
 enum class TimelineItemType { Task, Note, DailyPlan, Journal }
 
 data class TimelineItem(

@@ -2022,6 +2022,7 @@ private fun NestedListItemEntity.toNestedListItem(
     note = note,
     checkboxEnabled = checkboxEnabled,
     checked = checked,
+    completedAtMillis = completedAtMillis,
     collapsed = collapsed,
     textStyle = runCatching { com.checkit.domain.NestedTextStyle.valueOf(textStyle) }.getOrDefault(com.checkit.domain.NestedTextStyle.Body),
     textColor = runCatching { com.checkit.domain.NestedColorToken.valueOf(textColor) }.getOrDefault(com.checkit.domain.NestedColorToken.Default),
