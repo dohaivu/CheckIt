@@ -119,52 +119,80 @@ struct NestedDetailsSheet: View {
     @State private var metrics: [NestedMetricDraft] = []
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        let node = state.indexById[item.id]
+        let children = node?.children ?? []
+        let isLeaf = children.isEmpty
+        let directChildCount = children.count
+        let totalChildCount = totalDescendants(of: node)
+        let summary = state.summary(for: item.id)
+        let doneChildCount = summary?.doneItemCount ?? 0
+        let totalTrackedMinutes = summary?.trackedMinutes ?? 0
+        return VStack(alignment: .leading, spacing: 12) {
+            Text("Item details").font(.headline)
             Text(item.text.isEmpty ? "Untitled item" : item.text)
-                .font(.headline).lineLimit(2)
+                .foregroundStyle(.secondary).lineLimit(2)
             if let ms = item.completedAtMillis?.int64Value {
                 Text("Completed · \(Date(timeIntervalSince1970: TimeInterval(ms) / 1000).formatted(date: .abbreviated, time: .shortened))")
                     .font(.caption).foregroundStyle(.secondary)
             }
             ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 10) {
+                    // Overview stat cards (Android Section 1 parity)
+                    HStack(spacing: 6) {
+                        statCard(
+                            title: "Children",
+                            value: directChildCount == totalChildCount
+                                ? "\(totalChildCount)" : "\(directChildCount) (\(totalChildCount))",
+                            subtitle: totalChildCount > 0 ? "\(doneChildCount) done" : "Leaf item"
+                        )
+                        statCard(
+                            title: "Actual time",
+                            value: "\(item.actualMinutes)m",
+                            subtitle: (!isLeaf && totalTrackedMinutes != Int(item.actualMinutes))
+                                ? "Total: \(totalTrackedMinutes)m" : "Direct time"
+                        )
+                    }
                     // Time & rollup
-                    GroupBox("Time & rollup") {
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack {
-                                Text("Actual")
-                                TextField("0", text: $minutes)
-                                    .textFieldStyle(.roundedBorder)
-                                    .frame(width: 70)
-                                Text("min").foregroundStyle(.secondary)
-                            }
-                            Picker("Rollup", selection: $policy) {
+                    section("Time & rollup") {
+                        HStack {
+                            TextField("0", text: $minutes)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(width: 70)
+                            Text("min").foregroundStyle(.secondary)
+                            Picker("", selection: $policy) {
                                 Text("Include children").tag("IncludeChildren")
                                 Text("Own item only").tag("OwnOnly")
                                 Text("Exclude from parent").tag("ExcludeFromParent")
                             }
                             .pickerStyle(.menu)
-                            Toggle("Show tracked minutes on row", isOn: $showTracked)
+                            .labelsHidden()
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    // Progress
-                    GroupBox("Progress") {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Toggle("Show progress", isOn: $showProgress)
-                            if showProgress {
-                                HStack {
-                                    Slider(value: $progress, in: 0...100, step: 1)
-                                    Text("\(Int(progress))%").frame(width: 44, alignment: .trailing)
+                        if !isLeaf {
+                            Toggle(isOn: $showTracked) {
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text("Show tracked minutes on row")
+                                    Text("\(totalTrackedMinutes) min total rollup")
+                                        .font(.caption).foregroundStyle(.secondary)
                                 }
                             }
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    // Progress
+                    section("Progress") {
+                        Toggle("Show progress", isOn: $showProgress)
+                        if showProgress {
+                            HStack {
+                                Slider(value: $progress, in: 0...100)
+                                Text("\(Int(progress))%")
+                                    .font(.callout).bold()
+                                    .foregroundStyle(Color.accentColor)
+                                    .frame(width: 44, alignment: .trailing)
+                            }
+                        }
                     }
                     // Custom metrics
-                    GroupBox("Custom metrics") {
-                        VStack(alignment: .leading, spacing: 8) {
-                            ForEach($metrics) { $m in
+                    section("Custom metrics") {
+                        ForEach($metrics) { $m in
                                 VStack(alignment: .leading, spacing: 6) {
                                     HStack {
                                         Toggle("", isOn: $m.completed).labelsHidden()
@@ -243,10 +271,8 @@ struct NestedDetailsSheet: View {
                             }
                             .buttonStyle(.link)
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
-            }
             HStack {
                 Spacer()
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
@@ -282,6 +308,41 @@ struct NestedDetailsSheet: View {
         }
     }
 
+    /// Android Section parity: all-caps header in the highlight color over
+    /// a soft container, mirroring NestedItemDetailsDialog.
+    private func section<Content: View>(
+        _ title: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title.uppercased())
+                .font(.caption).bold()
+                .foregroundStyle(Color.accentColor)
+            content()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 10).padding(.vertical, 8)
+        .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+    }
+
+    private func statCard(title: String, value: String, subtitle: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title).font(.caption).foregroundStyle(.secondary)
+            Text(value).font(.headline).bold()
+            Text(subtitle).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 10).padding(.vertical, 8)
+        .background(Color.secondary.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
+    }
+
+    private func totalDescendants(of node: NestedItemNode?) -> Int {
+        guard let node else { return 0 }
+        var count = node.children.count
+        for child in node.children { count += totalDescendants(of: child) }
+        return count
+    }
+
     @ViewBuilder
     private func unitPicker(for metric: Binding<NestedMetricDraft>) -> some View {
         Picker("", selection: Binding(
@@ -304,7 +365,7 @@ struct NestedDetailsSheet: View {
     private func save() {
         let mins = Int32(minutes.trimmingCharacters(in: .whitespaces)) ?? 0
         state.updateMetricsSettings(id: item.id, minutes: mins, policy: policy, show: showTracked)
-        state.updateProgress(id: item.id, value: showProgress ? Int32(progress) : nil)
+        state.updateProgress(id: item.id, value: showProgress ? Int32(progress.rounded()) : nil)
         // Encode as MetricItem JSON for the shared decoder.
         // Date-based units carry no value/target; the shared bridge
         // (isValidForSave) keeps them when a due date is set.
