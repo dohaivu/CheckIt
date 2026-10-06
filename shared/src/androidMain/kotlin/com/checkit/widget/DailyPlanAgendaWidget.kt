@@ -71,13 +71,13 @@ import com.checkit.ui.theme.toColor
 import com.checkit.ui.toDurationLabel
 import com.checkit.ui.today
 import kotlinx.coroutines.flow.first
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import androidx.glance.color.ColorProvider as DayNightColorProvider
 
-val today = today()
 class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
 
     private val observeNotesForDate: ObserveNotesForDateUseCase by inject()
@@ -109,11 +109,11 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
         provideContent {
             val quickNotes by observeQuickNotesForWidget(limit = 5).collectAsState(initial = emptyList())
             val projection = remember(items, notes) { items.toDayViewProjection(notes, emptyList()) }
-            val allDayItems = remember(projection) {
-                projection.toWidgetItems(timed = false)
+            val allDayItems = remember(projection, today) {
+                projection.toWidgetItems(timed = false, today = today)
             }
-            val timedItems = remember(projection) {
-                projection.toWidgetItems(timed = true)
+            val timedItems = remember(projection, today) {
+                projection.toWidgetItems(timed = true, today = today)
             }
 
             val totalCount = remember(allDayItems, timedItems) { allDayItems.size + timedItems.size }
@@ -708,7 +708,8 @@ private sealed class GlanceAgendaItem {
     }
 
     data class DailyPlan(
-        val item: DailyPlanItem
+        val item: DailyPlanItem,
+        val today: LocalDate
     ) : GlanceAgendaItem() {
         override val startTimeMinutes: Int? = item.startTimeMinutes
         override val endTimeMinutes: Int? = item.endTimeMinutes
@@ -724,8 +725,8 @@ private sealed class GlanceAgendaItem {
     }
 }
 
-private fun DayViewProjection.toWidgetItems(timed: Boolean): List<GlanceAgendaItem> {
-    val widgetItems = items.map { GlanceAgendaItem.DailyPlan(it) } + notes.map { GlanceAgendaItem.Note(it) }
+private fun DayViewProjection.toWidgetItems(timed: Boolean, today: LocalDate): List<GlanceAgendaItem> {
+    val widgetItems = items.map { GlanceAgendaItem.DailyPlan(it, today) } + notes.map { GlanceAgendaItem.Note(it) }
     
     return widgetItems
         .asSequence()
