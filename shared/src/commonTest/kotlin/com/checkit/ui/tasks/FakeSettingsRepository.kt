@@ -33,6 +33,10 @@ class FakeSettingsRepository(initialSettings: UserSettings = UserSettings()) : S
         settingsFlow.update { it.copy(taskListDisplayTypeCode = code) }
     }
 
+    override suspend fun setNestedDisplayTypeCode(code: String) {
+        settingsFlow.update { it.copy(nestedDisplayTypeCode = code) }
+    }
+
     override suspend fun setTaskShowCompleted(showCompleted: Boolean) {
         settingsFlow.update { it.copy(taskShowCompleted = showCompleted) }
     }

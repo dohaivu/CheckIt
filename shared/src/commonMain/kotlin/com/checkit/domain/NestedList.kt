@@ -53,6 +53,8 @@ data class NestedListItem(
     val note: String? = null,
     val checkboxEnabled: Boolean = false,
     val checked: Boolean = false,
+    /** When the item was last checked; null when never checked or unchecked. */
+    val completedAtMillis: Long? = null,
     val collapsed: Boolean = false,
     val textStyle: NestedTextStyle = NestedTextStyle.Body,
     val textColor: NestedColorToken = NestedColorToken.Default,
@@ -118,18 +120,43 @@ fun calculateNestedMetricSummaries(roots: List<NestedItemNode>): Map<String, Nes
 }
 
 /**
+ * Swift-friendly outline projection for the macOS Working/search UI: text
+ * [query] plus the Working filter (priority / due date / countdown metric),
+ * with the same ancestor-context keep semantics as [filterNestedTree].
+ * Lets Apple clients reuse the shared logic without date/tag interop friction.
+ */
+fun filterOutlineRoots(
+    roots: List<NestedItemNode>,
+    query: String = "",
+    workingOnly: Boolean = false
+): List<NestedItemNode> =
+    filterNestedTree(roots, start = null, end = null, query = query, workingOnly = workingOnly)
+
+/**
  * Prunes the tree, keeping only nodes that overlap with [start] to [end]
  * (inclusive) OR have descendants that do. Supports text [query] and [hideChecked] status.
+ *
+ * With [workingOnly], the finder-filtered regions are refined to working
+ * items (priority, due date, or an enabled date-based metric) in a second
+ * pass — same ancestor/descendant keep semantics as the other positive
+ * filters. Two passes (instead of one AND pass) so a query-matching parent
+ * with working children, or vice versa, isn't pruned to nothing.
  */
 fun filterNestedTree(
     roots: List<NestedItemNode>,
-    start: LocalDate?,
-    end: LocalDate?,
+    start: LocalDate? = null,
+    end: LocalDate? = null,
     query: String = "",
     hideChecked: Boolean = false,
-    selectedTagIds: Set<String> = emptySet()
+    selectedTagIds: Set<String> = emptySet(),
+    workingOnly: Boolean = false
 ): List<NestedItemNode> {
-    return roots.mapNotNull { filterNestedNode(it, start, end, query, hideChecked, selectedTagIds) }
+    val found = roots.mapNotNull { filterNestedNode(it, start, end, query, hideChecked, selectedTagIds) }
+    if (!workingOnly) return found
+    // Refine (see KDoc): checked subtrees were already pruned above.
+    return found.mapNotNull {
+        filterNestedNode(it, null, null, "", hideChecked = false, workingOnly = true)
+    }
 }
 
 private fun filterNestedNode(
@@ -139,7 +166,8 @@ private fun filterNestedNode(
     query: String,
     hideChecked: Boolean,
     selectedTagIds: Set<String> = emptySet(),
-    forceKeep: Boolean = false
+    forceKeep: Boolean = false,
+    workingOnly: Boolean = false
 ): NestedItemNode? {
     val item = node.item
 
@@ -168,16 +196,21 @@ private fun filterNestedNode(
     } else {
         true
     }
+    val matchesWorking = if (workingOnly) {
+        isWorkingItem(item)
+    } else {
+        true
+    }
 
-    // Direct match means it satisfies search, date and tag constraints
-    val matchesSelf = matchesDate && matchesQuery && matchesTags
+    // Direct match means it satisfies search, date, tag and working constraints
+    val matchesSelf = matchesDate && matchesQuery && matchesTags && matchesWorking
 
     // If an ancestor matched OR this node matches, we "force keep" descendants
     val shouldForceKeepDescendants = forceKeep || matchesSelf
 
     // 3. Recurse children
     val filteredChildren = node.children.mapNotNull {
-        filterNestedNode(it, start, end, query, hideChecked, selectedTagIds, shouldForceKeepDescendants)
+        filterNestedNode(it, start, end, query, hideChecked, selectedTagIds, shouldForceKeepDescendants, workingOnly)
     }
 
     // Keep node if:
@@ -190,6 +223,12 @@ private fun filterNestedNode(
         null
     }
 }
+
+/** A "working" item carries actionable state: priority, due date, or an enabled date-based metric. */
+fun isWorkingItem(item: NestedListItem): Boolean =
+    item.priority != TaskPriority.None ||
+            item.startDate != null || item.endDate != null ||
+            item.manualMetrics.any { it.enabled && (it.unit == MetricUnit.Countdown || it.unit == MetricUnit.DueDate) }
 
 /**
  * Computes the (parentId, position) for inserting a new item, mirroring the
@@ -222,6 +261,15 @@ data class NestedItemMove(
     val parentId: String?,
     val position: Int
 )
+
+/** Sort orders for a parent's children. Performance is O(g log g) on the sibling group only. */
+enum class NestedSortOrder {
+    NameAsc,
+    AddedDesc,
+    CompletedDesc,
+    IncompleteFirst,
+    PriorityDesc,
+}
 
 /**
  * Builds the item tree for a document. Groups by parent, sorts siblings by

@@ -86,4 +86,36 @@ class MarkdownParsingTest {
         assertEquals(8, strikeSpan.start)
         assertEquals(25, strikeSpan.end) // Includes raw "~~strikethrough~~"
     }
+
+    @Test
+    fun parseMarkdownToAnnotatedString_parsesBlockquote() {
+        val input = "> This is a quote"
+        val result = parseMarkdownToAnnotatedString(input)
+
+        assertEquals("│  This is a quote", result.text)
+
+        val italicSpan = result.spanStyles.firstOrNull { it.item.fontStyle == FontStyle.Italic }
+        assertTrue(italicSpan != null, "Expected italic style for quote")
+        assertEquals(0, italicSpan.start)
+        assertEquals(18, italicSpan.end)
+
+        val barSpan = result.spanStyles.firstOrNull { it.item.fontWeight == FontWeight.Bold }
+        assertTrue(barSpan != null, "Expected bold style for quote prefix bar")
+        assertEquals(0, barSpan.start)
+        assertEquals(2, barSpan.end)
+    }
+
+    @Test
+    fun markdownVisualTransformation_appliesQuoteStyle() {
+        val transformation = MarkdownVisualTransformation()
+        val input = AnnotatedString("> A blockquote line")
+        val transformed = transformation.filter(input)
+
+        assertEquals("> A blockquote line", transformed.text.text)
+
+        val italicSpan = transformed.text.spanStyles.firstOrNull { it.item.fontStyle == FontStyle.Italic }
+        assertTrue(italicSpan != null, "Expected italic style for quote line")
+        assertEquals(0, italicSpan.start)
+        assertEquals(19, italicSpan.end)
+    }
 }

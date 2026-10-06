@@ -637,6 +637,8 @@ data class NestedListItemEntity(
     val note: String? = null,
     val checkboxEnabled: Boolean = false,
     val checked: Boolean = false,
+    /** When the item was last checked; cleared on uncheck. */
+    val completedAtMillis: Long? = null,
     val collapsed: Boolean = false,
     val textStyle: String = "Body",
     val textColor: String = "Default",
@@ -760,7 +762,7 @@ data class RoutineLogEntity(
         RoutineLogEntity::class,
         QuickNoteEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)
@@ -792,13 +794,22 @@ private val TaskMetricsMigration2To3 = object : Migration(2, 3) {
     }
 }
 
+/** v3 -> v4: adds the nested-item completed-at column; existing rows stay null. */
+private val NestedCompletedAtMigration3To4 = object : Migration(3, 4) {
+    override suspend fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            "ALTER TABLE nested_list_items ADD COLUMN completedAtMillis INTEGER"
+        )
+    }
+}
+
 fun buildCheckItDatabase(
     builder: RoomDatabase.Builder<CheckItDatabase>
 ): CheckItDatabase {
     return builder
         .fallbackToDestructiveMigration(false)
         .fallbackToDestructiveMigrationOnDowngrade(false)
-        .addMigrations(RoutineColorMigration1To2, TaskMetricsMigration2To3)
+        .addMigrations(RoutineColorMigration1To2, TaskMetricsMigration2To3, NestedCompletedAtMigration3To4)
         .setQueryCoroutineContext(Dispatchers.IO)
         .setDriver(BundledSQLiteDriver())
         .addCallback(object : RoomDatabase.Callback() {

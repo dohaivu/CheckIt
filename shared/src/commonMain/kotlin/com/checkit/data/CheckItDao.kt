@@ -1246,7 +1246,7 @@ interface CheckItDao {
     @Query("UPDATE nested_list_items SET checkboxEnabled = :checkboxEnabled, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
     suspend fun setNestedItemCheckboxEnabled(itemId: String, checkboxEnabled: Boolean, updatedAtMillis: Long)
 
-    @Query("UPDATE nested_list_items SET checked = :checked, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id IN (:itemIds)")
+    @Query("UPDATE nested_list_items SET checked = :checked, completedAtMillis = CASE WHEN :checked THEN :updatedAtMillis ELSE NULL END, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id IN (:itemIds)")
     suspend fun setNestedItemsChecked(itemIds: List<String>, checked: Boolean, updatedAtMillis: Long)
 
     @Query("UPDATE nested_list_items SET collapsed = :collapsed, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")

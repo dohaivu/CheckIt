@@ -7,40 +7,30 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -49,21 +39,17 @@ import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.TagItem
 import com.checkit.ui.components.AppEditorBottomSheet
-import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.AutocompleteTextField
 import com.checkit.ui.components.DatePicker
-import com.checkit.ui.components.DeleteOverflowMenu
+import com.checkit.ui.components.EditorOverflowMenu
 import com.checkit.ui.components.LabelTextField
 import com.checkit.ui.components.MarkdownTextField
-import com.checkit.ui.components.MarkdownVisualTransformation
 import com.checkit.ui.components.TagPicker
-import com.checkit.ui.tasks.views.currentTimeMinutes
 import com.checkit.ui.today
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.minus
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun DailyPlanItemEditorSheet(
     state: DailyPlanItemEditorState,
@@ -97,7 +83,9 @@ internal fun DailyPlanItemEditorSheet(
     ) {
         DailyPlanItemSheetHeader(
             state = state,
-            onDelete = onDelete
+            onDelete = onDelete,
+            onDuplicate = onDuplicate,
+            onUpgradeToTask = onUpgradeToTask
         )
         LazyColumn(
             modifier = Modifier
@@ -105,7 +93,7 @@ internal fun DailyPlanItemEditorSheet(
                 .weight(1f)
                 .padding(horizontal = 20.dp),
             contentPadding = PaddingValues(top = 10.dp, bottom = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             item {
                 DailyPlanItemFormContent(
@@ -130,10 +118,8 @@ internal fun DailyPlanItemEditorSheet(
             state = state,
             enabled = enabled,
             onAdd = onAdd,
-            onDuplicate = onDuplicate,
             onStartSprint = onStartSprint,
-            onStartOngoingSprint = onStartOngoingSprint,
-            onUpgradeToTask = onUpgradeToTask
+            onStartOngoingSprint = onStartOngoingSprint
         )
     }
 }
@@ -141,10 +127,14 @@ internal fun DailyPlanItemEditorSheet(
 @Composable
 private fun DailyPlanItemSheetHeader(
     state: DailyPlanItemEditorState,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onDuplicate: () -> Unit,
+    onUpgradeToTask: () -> Unit
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Row(
@@ -170,8 +160,44 @@ private fun DailyPlanItemSheetHeader(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            if (state.canDelete) {
-                DeleteOverflowMenu(onDelete = onDelete)
+
+            val hasDuplicate = state.isEditMode && state.source == DailyPlanItemSource.MyDayTask
+            val hasUpgrade = state.isEditMode && state.taskId == null
+            val hasDelete = state.canDelete
+
+            if (hasDuplicate || hasUpgrade || hasDelete) {
+                EditorOverflowMenu { onDismiss ->
+                    if (hasDuplicate) {
+                        DropdownMenuItem(
+                            text = { Text("Schedule new session") },
+                            leadingIcon = { Icon(Icons.Default.ContentCopy, contentDescription = null) },
+                            onClick = {
+                                onDismiss()
+                                onDuplicate()
+                            }
+                        )
+                    }
+                    if (hasUpgrade) {
+                        DropdownMenuItem(
+                            text = { Text("Upgrade to task") },
+                            leadingIcon = { Icon(Icons.Default.TaskAlt, contentDescription = null) },
+                            onClick = {
+                                onDismiss()
+                                onUpgradeToTask()
+                            }
+                        )
+                    }
+                    if (hasDelete) {
+                        DropdownMenuItem(
+                            text = { Text("Delete") },
+                            leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
+                            onClick = {
+                                onDismiss()
+                                onDelete()
+                            }
+                        )
+                    }
+                }
             }
         }
     }
@@ -182,15 +208,15 @@ private fun DailyPlanItemSheetFooter(
     state: DailyPlanItemEditorState,
     enabled: Boolean,
     onAdd: () -> Unit,
-    onDuplicate: () -> Unit,
     onStartSprint: () -> Unit,
-    onStartOngoingSprint: () -> Unit,
-    onUpgradeToTask: () -> Unit
+    onStartOngoingSprint: () -> Unit
 ) {
     if (enabled) {
         if (state.isAddMode) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -201,51 +227,31 @@ private fun DailyPlanItemSheetFooter(
                     Text("Add to My Day")
                 }
             }
-        } else {
+        } else if (state.source == DailyPlanItemSource.MyDayTask) {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                if (state.source == DailyPlanItemSource.MyDayTask) {
-                    if (state.status == DailyPlanItemStatus.Planned && state.startTimeMinutes != null) {
-                        Button(
-                            onClick = onStartOngoingSprint,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(Icons.Default.Bolt, contentDescription = null)
-                            Spacer(Modifier.size(8.dp))
-                            Text("Focus ongoing")
-                        }
-                    }
-
+                if (state.status == DailyPlanItemStatus.Planned && state.startTimeMinutes != null) {
                     Button(
-                        onClick = onStartSprint,
+                        onClick = onStartOngoingSprint,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Icon(Icons.Default.Schedule, contentDescription = null)
+                        Icon(Icons.Default.Bolt, contentDescription = null)
                         Spacer(Modifier.size(8.dp))
-                        Text(if (state.status == DailyPlanItemStatus.Done) "Start new Focus" else "Start focus")
-                    }
-
-                    OutlinedButton(
-                        onClick = onDuplicate,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Default.ContentCopy, contentDescription = null)
-                        Spacer(Modifier.size(8.dp))
-                        Text("Schedule new Session")
+                        Text("Focus ongoing")
                     }
                 }
 
-                if (state.isEditMode && state.taskId == null) {
-                    OutlinedButton(
-                        onClick = onUpgradeToTask,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Default.TaskAlt, contentDescription = null)
-                        Spacer(Modifier.size(8.dp))
-                        Text("Upgrade to Task")
-                    }
+                Button(
+                    onClick = onStartSprint,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.Schedule, contentDescription = null)
+                    Spacer(Modifier.size(8.dp))
+                    Text(if (state.status == DailyPlanItemStatus.Done) "Start new focus" else "Start focus")
                 }
             }
         }
@@ -290,10 +296,8 @@ private fun DailyPlanItemFormContent(
     val sourceLocked = state.isEditMode
     val displaySource = state.displaySource()
     val doneChecked = state.status == DailyPlanItemStatus.Done
-    val doneTypeChecked = state.source == DailyPlanItemSource.MyDayTask
-    val reminderChecked = state.source == DailyPlanItemSource.MyDayReminder
 
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(0.dp),
@@ -305,12 +309,36 @@ private fun DailyPlanItemFormContent(
                 recentLabels = recentLabels,
                 placeholder = "Add label",
                 enabled = enabled,
-                maxWidth = 80.dp
+                maxWidth = 100.dp
             )
             state.nestedListItemId?.let {
                 Spacer(Modifier.weight(1f))
                 Icon(Icons.Default.Link, contentDescription = "item link", modifier = Modifier.size(20.dp))
             }
+        }
+
+        // Choice Chips for Type Selection (Add Mode) or Status Chip (Edit Mode)
+        if (!sourceLocked) {
+            TypeChoiceChips(
+                selectedSource = state.source,
+                onSourceSelected = { nextSource ->
+                    val nextStatus = if (nextSource == DailyPlanItemSource.MyDayNote) {
+                        DailyPlanItemStatus.Done
+                    } else {
+                        nextSource.inferredAddStatus(state.startTimeMinutes)
+                    }
+                    onStatusChange(nextStatus == DailyPlanItemStatus.Done)
+                    onSourceChange(nextSource)
+                },
+                enabled = enabled
+            )
+        } else if (displaySource.usesStatusControl()) {
+            StatusChoiceChip(
+                source = displaySource,
+                doneChecked = doneChecked,
+                onDoneChange = onStatusChange,
+                enabled = enabled
+            )
         }
 
         AutocompleteTextField(
@@ -340,47 +368,15 @@ private fun DailyPlanItemFormContent(
             maxLines = 5,
             placeholder = if (sourceLocked) null else "Add details",
             enabled = enabled,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
         )
+
         state.error?.let { error ->
             Text(
                 text = error,
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(horizontal = 4.dp)
-            )
-        }
-
-        if (sourceLocked) {
-            FixedTypeControls(
-                source = displaySource,
-                doneChecked = doneChecked,
-                onDoneChange = onStatusChange,
-                enabled = enabled
-            )
-        } else {
-            AddModeIntentControls(
-                doneTypeChecked = doneTypeChecked,
-                reminderChecked = reminderChecked,
-                onDoneTypeChange = { checked ->
-                    val nextSource = if (checked) DailyPlanItemSource.MyDayTask else DailyPlanItemSource.MyDayNote
-                    val nextStatus = nextSource.inferredAddStatus(state.startTimeMinutes)
-                    onStatusChange(nextStatus == DailyPlanItemStatus.Done)
-                    onSourceChange(nextSource)
-                },
-                onReminderChange = { checked ->
-                    val nextSource = if (checked) {
-                        DailyPlanItemSource.MyDayReminder
-                    } else if (doneTypeChecked) {
-                        DailyPlanItemSource.MyDayTask
-                    } else {
-                        DailyPlanItemSource.MyDayNote
-                    }
-                    val nextStatus = nextSource.inferredAddStatus(state.startTimeMinutes)
-                    onStatusChange(nextStatus == DailyPlanItemStatus.Done)
-                    onSourceChange(nextSource)
-                },
-                enabled = enabled
             )
         }
 
@@ -402,7 +398,6 @@ private fun DailyPlanItemFormContent(
         )
 
         LabeledTagPicker(
-            source = displaySource,
             availableTags = availableTags,
             selectedTagIds = state.selectedTagIds,
             onTagToggle = onTagToggle,
@@ -413,60 +408,69 @@ private fun DailyPlanItemFormContent(
 }
 
 @Composable
-private fun FixedTypeControls(
+private fun TypeChoiceChips(
+    selectedSource: DailyPlanItemSource,
+    onSourceSelected: (DailyPlanItemSource) -> Unit,
+    enabled: Boolean
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        FilterChip(
+            selected = selectedSource == DailyPlanItemSource.MyDayTask,
+            onClick = { onSourceSelected(DailyPlanItemSource.MyDayTask) },
+            label = { Text("Task") },
+            leadingIcon = {
+                Icon(Icons.Default.TaskAlt, contentDescription = null, modifier = Modifier.size(16.dp))
+            },
+            enabled = enabled
+        )
+        FilterChip(
+            selected = selectedSource == DailyPlanItemSource.MyDayNote,
+            onClick = { onSourceSelected(DailyPlanItemSource.MyDayNote) },
+            label = { Text("Note") },
+            leadingIcon = {
+                Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null, modifier = Modifier.size(16.dp))
+            },
+            enabled = enabled
+        )
+        FilterChip(
+            selected = selectedSource == DailyPlanItemSource.MyDayReminder,
+            onClick = { onSourceSelected(DailyPlanItemSource.MyDayReminder) },
+            label = { Text("Reminder") },
+            leadingIcon = {
+                Icon(Icons.Default.Schedule, contentDescription = null, modifier = Modifier.size(16.dp))
+            },
+            enabled = enabled
+        )
+    }
+}
+
+@Composable
+private fun StatusChoiceChip(
     source: DailyPlanItemSource,
     doneChecked: Boolean,
     onDoneChange: (Boolean) -> Unit,
     enabled: Boolean
 ) {
-    if (!source.usesStatusControl()) return
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerLow)
-            .padding(horizontal = 12.dp, vertical = 8.dp)
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer),
-                contentAlignment = Alignment.Center
-            ) {
+        FilterChip(
+            selected = doneChecked,
+            onClick = { onDoneChange(!doneChecked) },
+            label = { Text(source.statusTitle(doneChecked)) },
+            leadingIcon = {
                 Icon(
-                    imageVector = source.icon(),
+                    imageVector = if (doneChecked) Icons.Default.TaskAlt else source.icon(),
                     contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                    tint = MaterialTheme.colorScheme.primary
+                    modifier = Modifier.size(16.dp)
                 )
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Status",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = FontWeight.Medium
-                )
-                Text(
-                    text = source.statusTitle(doneChecked),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-            Switch(
-                checked = doneChecked,
-                onCheckedChange = onDoneChange,
-                enabled = enabled
-            )
-        }
+            },
+            enabled = enabled
+        )
     }
 }
 
@@ -481,11 +485,15 @@ private fun TimeSection(
     onTimeChange: (Int?, Int?) -> Unit,
     enabled: Boolean
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
         Text(
-            text = source.timeLabel(),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            text = "Schedule",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
             fontWeight = FontWeight.Medium
         )
         DatePicker(
@@ -502,89 +510,36 @@ private fun TimeSection(
 }
 
 @Composable
-private fun AddModeIntentControls(
-    doneTypeChecked: Boolean,
-    reminderChecked: Boolean,
-    onDoneTypeChange: (Boolean) -> Unit,
-    onReminderChange: (Boolean) -> Unit,
-    enabled: Boolean
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerLow)
-            .padding(vertical = 4.dp)
-    ) {
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Task",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-                Switch(
-                    checked = doneTypeChecked,
-                    onCheckedChange = onDoneTypeChange,
-                    enabled = enabled
-                )
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Reminder",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-                Switch(
-                    checked = reminderChecked,
-                    onCheckedChange = onReminderChange,
-                    enabled = enabled
-                )
-            }
-        }
-    }
-}
-
-@Composable
 private fun LabeledTagPicker(
-    source: DailyPlanItemSource,
     availableTags: List<TagItem>,
     selectedTagIds: Set<String>,
     onTagToggle: (String) -> Unit,
     onNewTagClick: () -> Unit,
     enabled: Boolean
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
         Text(
-            text = source.tagsLabel(),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            text = "Tags",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
             fontWeight = FontWeight.Medium
         )
-        TagPicker(
-            availableTags = availableTags,
-            selectedTagIds = selectedTagIds,
-            onTagToggle = onTagToggle,
-            onNewTagClick = onNewTagClick,
-            enabled = enabled
-        )
+        Box(
+            modifier = Modifier.weight(1f, fill = false),
+            contentAlignment = Alignment.CenterEnd
+        ) {
+            TagPicker(
+                availableTags = availableTags,
+                selectedTagIds = selectedTagIds,
+                onTagToggle = onTagToggle,
+                onNewTagClick = onNewTagClick,
+                enabled = enabled
+            )
+        }
     }
 }
 
@@ -613,8 +568,8 @@ private fun DailyPlanItemSource.titlePlaceholder(): String = when (this) {
 
 private fun DailyPlanItemSource.statusTitle(doneChecked: Boolean): String = when (this) {
     DailyPlanItemSource.ExistingTask,
-    DailyPlanItemSource.MyDayTask -> if (doneChecked) "Completed" else "Not completed"
-    DailyPlanItemSource.MyDayReminder -> if (doneChecked) "Reminder passed" else "Reminder pending"
+    DailyPlanItemSource.MyDayTask -> if (doneChecked) "Completed" else "Incomplete"
+    DailyPlanItemSource.MyDayReminder -> if (doneChecked) "Passed" else "Pending"
     DailyPlanItemSource.MyDayNote -> "Saved"
 }
 
@@ -627,10 +582,6 @@ private fun DailyPlanItemSource.supportingLabel(): String = when (this) {
 
 private fun DailyPlanItemSource.usesStatusControl(): Boolean =
     this != DailyPlanItemSource.MyDayNote
-
-private fun DailyPlanItemSource.timeLabel(): String = "Time"
-
-private fun DailyPlanItemSource.tagsLabel(): String = "Tags"
 
 private fun DailyPlanItemSource.icon(): ImageVector = when (this) {
     DailyPlanItemSource.MyDayNote -> Icons.AutoMirrored.Filled.Notes

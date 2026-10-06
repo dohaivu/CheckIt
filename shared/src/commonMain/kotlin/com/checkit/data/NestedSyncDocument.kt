@@ -43,6 +43,7 @@ object NestedSyncDocument {
     const val FIELD_NOTE = "note"
     const val FIELD_CHECKBOX_ENABLED = "checkboxEnabled"
     const val FIELD_CHECKED = "checked"
+    const val FIELD_COMPLETED_AT = "completedAtMillis"
     const val FIELD_COLLAPSED = "collapsed"
     const val FIELD_TEXT_STYLE = "textStyle"
     const val FIELD_TEXT_COLOR = "textColor"
@@ -80,6 +81,7 @@ object NestedSyncDocument {
         note: String?,
         checkboxEnabled: Boolean,
         checked: Boolean,
+        completedAtMillis: Long? = null,
         collapsed: Boolean,
         textStyle: String,
         textColor: String,
@@ -105,6 +107,7 @@ object NestedSyncDocument {
         FIELD_NOTE to note,
         FIELD_CHECKBOX_ENABLED to checkboxEnabled,
         FIELD_CHECKED to checked,
+        FIELD_COMPLETED_AT to completedAtMillis,
         FIELD_COLLAPSED to collapsed,
         FIELD_TEXT_STYLE to textStyle,
         FIELD_TEXT_COLOR to textColor,
@@ -152,6 +155,7 @@ object NestedSyncDocument {
             note = map[FIELD_NOTE] as? String,
             checkboxEnabled = map[FIELD_CHECKBOX_ENABLED] as? Boolean ?: false,
             checked = map[FIELD_CHECKED] as? Boolean ?: false,
+            completedAtMillis = (map[FIELD_COMPLETED_AT] as? Number)?.toLong(),
             collapsed = map[FIELD_COLLAPSED] as? Boolean ?: false,
             textStyle = map[FIELD_TEXT_STYLE] as? String ?: "Body",
             textColor = map[FIELD_TEXT_COLOR] as? String ?: "Default",
@@ -298,6 +302,7 @@ data class RemoteNestedItem(
     val note: String?,
     val checkboxEnabled: Boolean,
     val checked: Boolean,
+    val completedAtMillis: Long? = null,
     val collapsed: Boolean,
     val textStyle: String,
     val textColor: String,

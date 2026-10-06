@@ -268,6 +268,23 @@ class MarkdownVisualTransformation : VisualTransformation {
                             end = currentLineStart + markerLength
                         )
                     }
+                    // Blockquotes: Starts with "> " or ">"
+                    line.startsWith("> ") || line.startsWith(">") -> {
+                        val prefixLen = if (line.startsWith("> ")) 2 else 1
+                        addStyle(
+                            style = SpanStyle(
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace
+                            ),
+                            start = currentLineStart,
+                            end = currentLineStart + prefixLen
+                        )
+                        addStyle(
+                            style = SpanStyle(fontStyle = FontStyle.Italic),
+                            start = currentLineStart,
+                            end = currentLineStart + lineLength
+                        )
+                    }
                 }
                 // Move index tracker past the current line and its \n newline token
                 currentLineStart += lineLength + 1
@@ -316,9 +333,11 @@ fun parseMarkdownToAnnotatedString(markdown: String?): AnnotatedString {
         lines.forEachIndexed { index, line ->
             var cleanLine = line
             var isHeader = false
+            var isQuote = false
             var headerStyle: SpanStyle? = null
+            var quoteStyle: SpanStyle? = null
 
-            // 1. Process Line-Based Elements (Headers & Lists)
+            // 1. Process Line-Based Elements (Headers, Lists & Quotes)
             when {
                 cleanLine.startsWith("# ") -> {
                     cleanLine = cleanLine.removePrefix("# ")
@@ -338,6 +357,16 @@ fun parseMarkdownToAnnotatedString(markdown: String?): AnnotatedString {
                 cleanLine.startsWith("- ") || cleanLine.startsWith("* ") -> {
                     cleanLine = "•  " + cleanLine.substring(2)
                 }
+                cleanLine.startsWith("> ") -> {
+                    cleanLine = "│  " + cleanLine.substring(2)
+                    isQuote = true
+                    quoteStyle = SpanStyle(fontStyle = FontStyle.Italic)
+                }
+                cleanLine.startsWith(">") -> {
+                    cleanLine = "│  " + cleanLine.substring(1).trimStart()
+                    isQuote = true
+                    quoteStyle = SpanStyle(fontStyle = FontStyle.Italic)
+                }
             }
 
             // Track exactly where this line starts in our main builder string
@@ -353,6 +382,18 @@ fun parseMarkdownToAnnotatedString(markdown: String?): AnnotatedString {
             // Apply header styling if matched
             if (isHeader && headerStyle != null) {
                 addStyle(headerStyle, lineStartIndex, lineEndIndex)
+            }
+
+            // Apply quote styling and indicator prefix style if matched
+            if (isQuote) {
+                addStyle(
+                    style = SpanStyle(fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace),
+                    start = lineStartIndex,
+                    end = (lineStartIndex + 2).coerceAtMost(lineEndIndex)
+                )
+                if (quoteStyle != null) {
+                    addStyle(quoteStyle, lineStartIndex, lineEndIndex)
+                }
             }
 
             // Apply all saved bold, italic, and strikethrough styles using their adjusted positions

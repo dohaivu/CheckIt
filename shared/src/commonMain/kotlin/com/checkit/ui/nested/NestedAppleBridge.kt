@@ -7,11 +7,13 @@ import com.checkit.domain.NestedDocument
 import com.checkit.domain.NestedDocumentTree
 import com.checkit.domain.NestedItemNode
 import com.checkit.domain.NestedListItem
+import com.checkit.domain.NestedSortOrder
 import com.checkit.domain.NestedMetricSummary
 import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.computeNestedInsertPosition
 import com.checkit.domain.TagItem
 import com.checkit.domain.TaskPriority
+import com.checkit.ui.isValidForSave
 import com.checkit.domain.usecase.AddNestedDocumentUseCase
 import com.checkit.domain.usecase.AddNestedItemUseCase
 import com.checkit.domain.usecase.DeleteNestedDocumentUseCase
@@ -279,13 +281,14 @@ class NestedAppleHelper(
      * JSONSerialization instead of Kotlin enum constructors.
      * Shape matches MetricItem: [{"name":"","value":"","targetValue":null,
      * "unit":"None","customUnit":null,"sortOrder":0,"enabled":true,
-     * "isCompleted":false}]. Blank values are dropped.
+     * "isCompleted":false}]. Empty drafts are dropped (blank values, or
+     * date-based units without a due date).
      */
     fun replaceMetricsJson(itemId: String, json: String) {
         scope.launch {
             runCatching {
                 val decoded = Json.decodeFromString<List<MetricItem>>(json)
-                replaceManualMetrics(itemId, decoded.filter { it.value.isNotBlank() })
+                replaceManualMetrics(itemId, decoded.filter { it.isValidForSave() })
             }
         }
     }
@@ -347,6 +350,12 @@ class NestedAppleHelper(
         applyMove(documentId) { items ->
             moveItems.moveToPosition(items, itemId, targetParentId.takeIf { it.isNotEmpty() }, targetIndex)
         }
+    }
+
+    /** Sorts the children of [parentId]; [orderName] is a [NestedSortOrder] name. */
+    fun sortChildren(documentId: String, parentId: String, orderName: String) {
+        val order = runCatching { NestedSortOrder.valueOf(orderName) }.getOrNull() ?: return
+        applyMove(documentId) { items -> moveItems.sortChildren(items, parentId, order) }
     }
 
     fun deleteItemList(itemIds: List<String>) {

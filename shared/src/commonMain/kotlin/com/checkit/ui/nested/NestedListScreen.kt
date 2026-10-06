@@ -2,7 +2,13 @@ package com.checkit.ui.nested
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -15,6 +21,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -27,6 +34,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListLayoutInfo
 import androidx.compose.foundation.lazy.items
@@ -42,6 +50,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.NoteAdd
+import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -61,7 +70,9 @@ import androidx.compose.material.icons.filled.UnfoldMore
 import androidx.compose.material.icons.filled.AddBox
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.SelectAll
+import androidx.compose.material.icons.filled.SortByAlpha
 import androidx.compose.material.icons.filled.Today
+import androidx.compose.material.icons.filled.Work
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material.icons.filled.ZoomOut
 import androidx.compose.material.icons.outlined.Info
@@ -79,6 +90,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
@@ -102,6 +114,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
@@ -119,8 +132,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.zIndex
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.cancel
@@ -147,6 +163,7 @@ import com.checkit.domain.NestedColorToken
 import com.checkit.domain.NestedItemNode
 import com.checkit.domain.NestedListItem
 import com.checkit.domain.NestedMetricSummary
+import com.checkit.domain.NestedSortOrder
 import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.TagItem
 import com.checkit.domain.TaskPriority
@@ -156,11 +173,15 @@ import com.checkit.ui.components.CompactFlatTextField
 import com.checkit.ui.components.DateRangePill
 import com.checkit.ui.components.FocusPeriodHeader
 import com.checkit.ui.components.MetricsSection
+import com.checkit.ui.components.MetricChip
 import com.checkit.ui.components.PeriodPicker
 import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TagPill
-import com.checkit.ui.displayUnit
+import com.checkit.ui.isValidForSave
 import com.checkit.ui.noRippleClickable
+import com.checkit.ui.tasks.views.ViewOptionChip
+import com.checkit.ui.theme.parseHexColorOrNull
+import com.checkit.ui.toDateTimeLabel
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
@@ -186,20 +207,22 @@ internal fun NestedListScreen(
     onCopyToTask: (title: String, note: String?, subtaskTexts: List<String>) -> Unit = { _, _, _ -> }
 ) {
     var detailsItemId by remember { mutableStateOf<String?>(null) }
+    var showSortDialog by remember { mutableStateOf(false) }
     val tree = state.tree
     val focusedNode = state.focusedItem
     val unfilteredRoots = remember(focusedNode, tree.rootNodes) {
         focusedNode?.let { listOf(it) } ?: tree.rootNodes
     }
     val visibleRoots = remember(unfilteredRoots, state.filters) {
-        if (state.filters.isVisible) {
+        if (state.filters.isVisible || state.filters.displayType != NestedDisplayType.All) {
             filterNestedTree(
                 roots = unfilteredRoots,
                 start = state.filters.focus?.start,
                 end = state.filters.focus?.endInclusive,
                 query = state.filters.query,
                 hideChecked = state.filters.hideChecked,
-                selectedTagIds = state.filters.selectedTagIds
+                selectedTagIds = state.filters.selectedTagIds,
+                workingOnly = state.filters.displayType == NestedDisplayType.Working
             )
         } else {
             unfilteredRoots
@@ -228,11 +251,26 @@ internal fun NestedListScreen(
                     onCurrentPeriod = viewModel::currentFilterPeriod
                 )
             }
-            BreadcrumbBar(
-                breadcrumbs = breadcrumbs,
-                onCrumbClick = { itemId -> viewModel.zoomToItem(itemId) },
-                onRootClick = viewModel::zoomToRoot
-            )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surface)
+                    .padding(horizontal = 12.dp, vertical = 2.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                BreadcrumbBar(
+                    breadcrumbs = breadcrumbs,
+                    onCrumbClick = { itemId -> viewModel.zoomToItem(itemId) },
+                    onRootClick = viewModel::zoomToRoot
+                )
+
+                NestedDisplayTypeMenu(
+                    selected = state.filters.displayType,
+                    onSelect = viewModel::updateDisplayType
+                )
+            }
 
             if (state.selection.isActive) {
                 SelectionToolbar(
@@ -258,6 +296,7 @@ internal fun NestedListScreen(
                     onAddRoot = viewModel::startAddRoot,
                     onManageDetails = { state.selectedItemId?.let { detailsItemId = it } },
                     onEnterSelection = viewModel::enterSelectionMode,
+                    onSortChildren = { showSortDialog = true },
                     onAddToDailyPlan = {
                         state.selectedItemId?.let { id ->
                             state.tree.nodeById[id]?.item?.let { item ->
@@ -599,6 +638,81 @@ internal fun NestedListScreen(
             )
         }
     }
+
+    if (showSortDialog) {
+        state.selectedItemId?.let { state.tree.nodeById[it] }?.let { node ->
+            SortChildrenDialog(
+                itemText = node.item.text.ifBlank { "Untitled item" },
+                onDismiss = { showSortDialog = false },
+                onApply = { order ->
+                    viewModel.sortChildrenOfSelected(order)
+                    showSortDialog = false
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun SortChildrenDialog(
+    itemText: String,
+    onDismiss: () -> Unit,
+    onApply: (NestedSortOrder) -> Unit
+) {
+    var selected by remember { mutableStateOf(NestedSortOrder.NameAsc) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Sort children") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = itemText,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                NestedSortOrder.entries.forEach { order ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { selected = order }
+                            .padding(horizontal = 4.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = selected == order,
+                            onClick = { selected = order }
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = order.label(),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onApply(selected) }) {
+                Text("Sort")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(Res.string.cancel))
+            }
+        }
+    )
+}
+
+private fun NestedSortOrder.label(): String = when (this) {
+    NestedSortOrder.NameAsc -> "Name (A–Z)"
+    NestedSortOrder.AddedDesc -> "Newest first"
+    NestedSortOrder.CompletedDesc -> "Recently completed"
+    NestedSortOrder.IncompleteFirst -> "Incomplete on top"
+    NestedSortOrder.PriorityDesc -> "Priority (high first)"
 }
 
 @Composable
@@ -721,10 +835,13 @@ private fun NestedFormattingBottomBar(
                 DropdownMenu(expanded = priorityExpanded, onDismissRequest = { priorityExpanded = false }) {
                     TaskPriority.entries.forEach { priority ->
                         DropdownMenuItem(
-                            text = {
-                                Text(
-                                    text = "${priorityMarker(priority)}  ${priority.name}",
-                                    color = priorityColor(priority)
+                            text = { Text(priority.name) },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Flag,
+                                    contentDescription = null,
+                                    tint = priorityColor(priority),
+                                    modifier = Modifier.size(18.dp)
                                 )
                             },
                             onClick = {
@@ -937,24 +1054,14 @@ private fun ColorTokenMenu(
     }
 }
 
-private fun priorityMarker(priority: TaskPriority): String = when (priority) {
-    TaskPriority.None -> ""
-    TaskPriority.Low -> "!"
-    TaskPriority.Medium -> "!!"
-    TaskPriority.High -> "!!!"
-}
-
 @Composable
-private fun priorityColor(priority: TaskPriority): Color = when (priority) {
-    TaskPriority.None -> MaterialTheme.colorScheme.onSurfaceVariant
-    TaskPriority.Low -> Color(0xFF4CAF50)
-    TaskPriority.Medium -> Color(0xFFFF9800)
-    TaskPriority.High -> Color(0xFFE53935)
-}
+private fun priorityColor(priority: TaskPriority): Color =
+    priority.priorityHex()?.parseHexColorOrNull()
+        ?: MaterialTheme.colorScheme.onSurfaceVariant
 
 @Composable
 private fun NestedItemMetadataPreview(
-    item: com.checkit.domain.NestedListItem,
+    item: NestedListItem,
     summary: NestedMetricSummary,
     isLeaf: Boolean
 ) {
@@ -988,7 +1095,7 @@ private fun NestedItemMetadataPreview(
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (summary.doneItemCount > 0) {
-                MetricChip(buildAnnotatedString {
+                SummaryChip(buildAnnotatedString {
                     withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)) {
                         append("${summary.doneItemCount}")
                     }
@@ -996,7 +1103,7 @@ private fun NestedItemMetadataPreview(
                 })
             }
             if (showTracked && summary.trackedMinutes > 0) {
-                MetricChip(buildAnnotatedString {
+                SummaryChip(buildAnnotatedString {
                     withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)) {
                         append("${summary.trackedMinutes}")
                     }
@@ -1004,33 +1111,8 @@ private fun NestedItemMetadataPreview(
                 })
             }
             item.manualMetrics.filter { it.enabled }.forEach { metric ->
-                if (metric.value.isNotBlank() || metric.isCompleted) {
-                    MetricChip(
-                        content = buildAnnotatedString {
-                            if (metric.name.isNotBlank()) {
-                                append(metric.name)
-                                append(" ")
-                            }
-                            if (metric.value.isNotBlank()) {
-                                withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)) {
-                                    append(metric.value)
-                                }
-                            }
-                            if (!metric.targetValue.isNullOrBlank()) {
-                                append("/")
-                                withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-                                    append(metric.targetValue)
-                                }
-                            }
-                            val unit = metric.displayUnit()
-                            if (unit != null) {
-                                append(" ")
-                                append(unit)
-                            }
-                        },
-                        manual = true,
-                        isCompleted = metric.isCompleted
-                    )
+                if (metric.isCompleted || metric.isValidForSave()) {
+                    MetricChip(metric = metric)
                 }
             }
         }
@@ -1064,19 +1146,9 @@ private fun NestedItemMetadataPreview(
 }
 
 @Composable
-private fun MetricChip(content: AnnotatedString, manual: Boolean = false, isCompleted: Boolean = false) {
-    val containerColor = when {
-        isCompleted && manual -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f)
-        isCompleted -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
-        manual -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.85f)
-        else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
-    }
-    val contentColor = when {
-        isCompleted && manual -> MaterialTheme.colorScheme.onPrimaryContainer
-        isCompleted -> MaterialTheme.colorScheme.onPrimaryContainer
-        manual -> MaterialTheme.colorScheme.onTertiaryContainer
-        else -> MaterialTheme.colorScheme.onSurfaceVariant
-    }
+private fun SummaryChip(content: AnnotatedString) {
+    val containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+    val contentColor = MaterialTheme.colorScheme.onSurfaceVariant
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(6.dp))
@@ -1085,14 +1157,6 @@ private fun MetricChip(content: AnnotatedString, manual: Boolean = false, isComp
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(3.dp)
     ) {
-        if (isCompleted) {
-            Icon(
-                imageVector = Icons.Filled.Check,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(12.dp)
-            )
-        }
         Text(
             text = content,
             style = MaterialTheme.typography.labelSmall,
@@ -1152,6 +1216,13 @@ private fun NestedItemDetailsDialog(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
+                item.completedAtMillis?.let { completedAt ->
+                    Text(
+                        text = "Completed · ${completedAt.toDateTimeLabel()}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         },
         text = {
@@ -1368,7 +1439,7 @@ private fun NestedItemDetailsDialog(
                         policy,
                         showTrackedMinutes,
                         progress?.coerceIn(0, 100),
-                        metrics.filter { it.value.isNotBlank() }
+                        metrics.filter { it.isValidForSave() }
                     )
                 }
             ) {
@@ -1599,10 +1670,8 @@ private fun BreadcrumbBar(
     val scrollState = rememberScrollState()
     Row(
         modifier = Modifier
-            .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surface)
-            .horizontalScroll(scrollState)
-            .padding(horizontal = 12.dp, vertical = 0.dp),
+            .horizontalScroll(scrollState),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
@@ -1652,6 +1721,110 @@ private fun BreadcrumbBar(
     }
 }
 
+// ---------------- display type ----------------
+
+@Composable
+private fun NestedDisplayTypeMenu(
+    selected: NestedDisplayType,
+    onSelect: (NestedDisplayType) -> Unit
+) {
+    var isPopupOpen by remember { mutableStateOf(false) }
+    val visibleState = remember { MutableTransitionState(false) }
+
+    Box(
+        modifier = Modifier.wrapContentSize(Alignment.TopEnd)
+    ) {
+        IconButton(
+            onClick = {
+                isPopupOpen = true
+                visibleState.targetState = true
+            },
+            modifier = Modifier.size(30.dp)
+        ) {
+            Icon(
+                imageVector = selected.icon(),
+                contentDescription = "view options",
+                tint = if (selected == NestedDisplayType.All) {
+                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                } else {
+                    MaterialTheme.colorScheme.primary
+                },
+                modifier = Modifier.size(18.dp)
+            )
+        }
+
+        if (isPopupOpen) {
+            if (visibleState.isIdle && !visibleState.targetState) {
+                isPopupOpen = false
+            }
+
+            Popup(
+                alignment = Alignment.TopEnd,
+                offset = IntOffset(x = 0, y = 130),
+                onDismissRequest = { visibleState.targetState = false },
+                properties = PopupProperties(focusable = true),
+            ) {
+                AnimatedVisibility(
+                    visibleState = visibleState,
+                    enter = scaleIn(
+                        initialScale = 0.7f,
+                        transformOrigin = TransformOrigin(1f, 0f),
+                        animationSpec = tween(200)
+                    ) + fadeIn(),
+                    exit = scaleOut(
+                        targetScale = 0.7f,
+                        transformOrigin = TransformOrigin(1f, 0f),
+                        animationSpec = tween(150)
+                    ) + fadeOut()
+                ) {
+                    Surface(
+                        shape = MaterialTheme.shapes.medium,
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                        tonalElevation = 8.dp,
+                        modifier = Modifier
+                            .padding(horizontal = 12.dp)
+                            .heightIn(min = 36.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                NestedDisplayType.entries.forEach { displayType ->
+                                    ViewOptionChip(
+                                        icon = displayType.icon(),
+                                        label = displayType.label(),
+                                        selected = selected == displayType,
+                                        onClick = {
+                                            onSelect(displayType)
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun NestedDisplayType.icon(): ImageVector =
+    when (this) {
+        NestedDisplayType.All -> Icons.AutoMirrored.Filled.ViewList
+        NestedDisplayType.Working -> Icons.Default.Work
+    }
+
+private fun NestedDisplayType.label(): String =
+    when (this) {
+        NestedDisplayType.All -> "All"
+        NestedDisplayType.Working -> "Working"
+    }
+
 // ---------------- toolbar ----------------
 
 @Composable
@@ -1672,11 +1845,13 @@ private fun EditorToolbar(
     onManageDetails: () -> Unit,
     onAddToDailyPlan: () -> Unit,
     onCopyToTask: () -> Unit,
-    onEnterSelection: () -> Unit
+    onEnterSelection: () -> Unit,
+    onSortChildren: () -> Unit
 ) {
     val hasSelection = state.selectedItemId != null
     val selectedNode = state.selectedItemId?.let { id -> state.tree.nodeById[id] }
     val canZoomIn = hasSelection && (selectedNode?.hasChildren == true)
+    val canSortChildren = selectedNode?.hasChildren == true
     val canZoomOut = state.zoomPath.isNotEmpty()
     val canAddSibling = hasSelection && (selectedNode?.item?.parentId != null)
     val hasCollapsible = state.tree.nodeById.values.any { it.hasChildren }
@@ -1753,6 +1928,9 @@ private fun EditorToolbar(
                     }
                     ToolbarMenuItem(stringResource(Res.string.nested_batch_delete), Icons.Default.Delete, hasSelection) {
                         showMore = false; onDelete()
+                    }
+                    ToolbarMenuItem("Sort children", Icons.Default.SortByAlpha, canSortChildren) {
+                        showMore = false; onSortChildren()
                     }
                 }
             }
@@ -2097,12 +2275,11 @@ private fun NestedTree(
                         }
 
                         if (item.priority != TaskPriority.None) {
-                            Text(
-                                text = priorityMarker(item.priority),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = priorityColor(item.priority),
-                                modifier = Modifier.padding(end = 4.dp).align(Alignment.Top)
+                            Icon(
+                                imageVector = Icons.Default.Flag,
+                                contentDescription = null,
+                                tint = priorityColor(item.priority),
+                                modifier = Modifier.size(18.dp)
                             )
                         }
 

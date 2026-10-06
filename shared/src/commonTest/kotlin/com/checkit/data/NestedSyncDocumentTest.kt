@@ -68,6 +68,7 @@ class NestedSyncDocumentTest {
             note = "2%",
             checkboxEnabled = true,
             checked = false,
+            completedAtMillis = 150L,
             collapsed = true,
             textStyle = "Header",
             textColor = "Blue",
@@ -101,6 +102,7 @@ class NestedSyncDocumentTest {
         assertEquals("Header", remote?.textStyle)
         assertEquals("High", remote?.priority)
         assertEquals(25, remote?.actualMinutes)
+        assertEquals(150L, remote?.completedAtMillis)
         assertEquals(listOf("tag-1", "tag-2"), remote?.tagIds)
         assertEquals(50, remote?.progressPercent)
         assertFalse(remote?.deleted ?: true)

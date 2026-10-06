@@ -32,6 +32,15 @@ data class TaskBoard(
         }
         map
     }
+
+    val allOpenTasksCount: Int
+        get() = tasks.count { !it.isTrashed && it.status == TaskStatus.Open }
+
+    val openTasksCountByListId: Map<String, Int>
+        get() = tasks
+            .filter { !it.isTrashed && it.status == TaskStatus.Open && it.list != null }
+            .groupingBy { it.list!!.id }
+            .eachCount()
 }
 
 data class ListItem(
@@ -333,7 +342,22 @@ enum class TaskPriority {
     None,
     Low,
     Medium,
-    High
+    High;
+
+    /**
+     * Hex RGB (e.g. "#E53935") for the nested-outline priority flag, shared
+     * by Android Compose and macOS SwiftUI. Named `priorityHex` (rather than
+     * `priorityColor`) so it never shadows the existing
+     * `TaskPriority.priorityColor(): Color` extension used by the task UI,
+     * which uses a different palette. Null when unset ([None]) so callers
+     * can fall back to a theme color.
+     */
+    fun priorityHex(): String? = when (this) {
+        None -> null
+        Low -> "#4CAF50"
+        Medium -> "#FF9800"
+        High -> "#E53935"
+    }
 }
 
 enum class DueDatePreset {
@@ -355,12 +379,19 @@ enum class MetricUnit {
     VND,
     Lan,
     Km,
+    Countdown,
+    DueDate,
     Custom
 }
 
 /**
  * A manually tracked metric attached to a [PeriodGoal] or nested list item:
  * free-form name/value pair with an optional unit. Stored inline as JSON.
+ *
+ * Date-based units ([MetricUnit.Countdown] and [MetricUnit.DueDate]) ignore
+ * [value]/[targetValue] and derive their display from [dueDateEpochDays]:
+ * - Countdown shows remaining days vs today.
+ * - DueDate shows the compact date plus optional [dueTimeMinutes].
  */
 @Serializable
 data class MetricItem(
@@ -371,5 +402,7 @@ data class MetricItem(
     val customUnit: String? = null,
     val sortOrder: Int = 0,
     val enabled: Boolean = true,
-    val isCompleted: Boolean = false
+    val isCompleted: Boolean = false,
+    val dueDateEpochDays: Int? = null,
+    val dueTimeMinutes: Int? = null
 )

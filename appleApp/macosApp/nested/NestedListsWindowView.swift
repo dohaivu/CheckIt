@@ -328,6 +328,30 @@ struct NestedListsWindowView: View {
         // Plain centered row (no ScrollView): the ~12 buttons fit the 760pt
         // detail minimum, and a scroll view would pin content left.
         return HStack(spacing: 6) {
+                HStack(spacing: 4) {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundStyle(.secondary)
+                        .imageScale(.small)
+                    TextField("Search items", text: $state.searchQuery)
+                        .textFieldStyle(.plain)
+                        .frame(width: 130)
+                    if !state.searchQuery.isEmpty {
+                        Button {
+                            state.searchQuery = ""
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .imageScale(.small)
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .help("Clear search")
+                    }
+                }
+                .padding(.horizontal, 7)
+                .padding(.vertical, 4)
+                .background(RoundedRectangle(cornerRadius: 7).fill(Color.secondary.opacity(0.12)))
+                .accessibilityLabel("Search items")
+                barSeparator
                 editorBtn("Zoom In", system: "plus.magnifyingglass", help: "Zoom in") {
                     state.zoomInSelected()
                 }
@@ -336,20 +360,20 @@ struct NestedListsWindowView: View {
                     state.zoomOut()
                 }
                 .disabled(state.zoomPath.isEmpty)
-                editorBtn("Expand All", system: "chevron.down.2", help: "Expand all (⌥→)") {
+                editorBtn("Expand All", system: "chevron.down.2", help: "Expand all (ShiftCtrl→)") {
                     state.expandAll()
                 }
                 .disabled(!hasCollapsible)
-                editorBtn("Collapse All", system: "chevron.up.2", help: "Collapse all (⌥←)") {
+                editorBtn("Collapse All", system: "chevron.up.2", help: "Collapse all (ShiftCtrl←)") {
                     state.collapseAll()
                 }
                 .disabled(!hasCollapsible)
                 barSeparator
-                editorBtn("Outdent", system: "arrow.left.to.line", help: "Outdent (Cmd←)") {
+                editorBtn("Outdent", system: "arrow.left.to.line", help: "Outdent (Shift+Tab)") {
                     state.outdentSelected()
                 }
                 .disabled(sel == nil)
-                editorBtn("Indent", system: "arrow.right.to.line", help: "Indent (Cmd→)") {
+                editorBtn("Indent", system: "arrow.right.to.line", help: "Indent (Tab)") {
                     state.indentSelected()
                 }
                 .disabled(sel == nil)
@@ -381,6 +405,45 @@ struct NestedListsWindowView: View {
                     state.copySelectedAsMarkdown()
                 }
                 .disabled(sel == nil)
+                barSeparator
+                Menu {
+                    Toggle(isOn: Binding(
+                        get: { state.displayType == .all },
+                        set: { if $0 { state.displayType = .all } }
+                    )) {
+                        Label("All", systemImage: "list.bullet")
+                    }
+                    Toggle(isOn: Binding(
+                        get: { state.displayType == .working },
+                        set: { if $0 { state.displayType = .working } }
+                    )) {
+                        Label("Working", systemImage: "briefcase")
+                    }
+                } label: {
+                    Image(systemName: state.displayType == .all ? "list.bullet" : "briefcase")
+                        .imageScale(.medium)
+                        .tint(state.displayType == .working ? Color.accentColor : Color.secondary)
+                        .frame(width: 28, height: 28)
+                }
+                .menuStyle(.borderlessButton)
+                .accessibilityLabel("Display")
+                .help(state.displayType == .all ? "Show all items" : "Show working items (priority, due date, countdown)")
+                barSeparator
+                Menu {
+                    Button("Name (A–Z)") { state.sortChildrenOfSelected(order: "NameAsc") }
+                    Button("Newest first") { state.sortChildrenOfSelected(order: "AddedDesc") }
+                    Button("Recently completed") { state.sortChildrenOfSelected(order: "CompletedDesc") }
+                    Button("Incomplete on top") { state.sortChildrenOfSelected(order: "IncompleteFirst") }
+                    Button("Priority (high first)") { state.sortChildrenOfSelected(order: "PriorityDesc") }
+                } label: {
+                    Image(systemName: "arrow.up.arrow.down")
+                        .imageScale(.medium)
+                        .frame(width: 28, height: 28)
+                }
+                .menuStyle(.borderlessButton)
+                .accessibilityLabel("Sort children")
+                .help("Sort children of selected item")
+                .disabled(!(node?.hasChildren ?? false))
             }
             .frame(maxWidth: .infinity, alignment: .center)
             .padding(.horizontal, 10)
@@ -412,6 +475,22 @@ struct NestedListsWindowView: View {
 
     // MARK: - Outline list + keyboard
 
+    private var hasSearchText: Bool {
+        !state.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var emptyTitle: String {
+        if hasSearchText { return "No matches" }
+        return state.displayType == .working ? "No working items" : "Nothing here yet"
+    }
+
+    private var emptySubtitle: String {
+        if hasSearchText { return "No items match the current search." }
+        return state.displayType == .working
+            ? "Nothing here has a priority, due date, or countdown."
+            : "Start with a root item, then indent items to build your outline."
+    }
+
     private var outlineList: some View {
         let rows = state.visibleRows
         return ScrollViewReader { proxy in
@@ -422,8 +501,8 @@ struct NestedListsWindowView: View {
                     }
                     if rows.isEmpty, state.draft == nil {
                         VStack(spacing: 8) {
-                            Text("Nothing here yet").font(.headline)
-                            Text("Start with a root item, then indent items to build your outline.")
+                            Text(emptyTitle).font(.headline)
+                            Text(emptySubtitle)
                                 .foregroundStyle(.secondary)
                             Button("Add item") { state.startAddRoot() }
                         }
@@ -630,15 +709,11 @@ struct NestedListsWindowView: View {
     // MARK: - Outline arrow keys
 
     /// Extracted from outlineList so the giant list expression stays within
-    /// the type-checker's limits. Cmd+Opt+Left/Right = collapse/expand all
-    /// under the selection (else current view); Cmd+Left/Right = outdent/indent.
+    /// the type-checker's limits. Shift+Ctrl+Left/Right = collapse/expand all
+    /// under the selection (else current view);
     private func handleOutlineArrowKey(_ press: KeyPress) -> KeyPress.Result {
-        if press.modifiers.contains(.option) {
+        if press.modifiers.contains(.control) {
             if press.key == .leftArrow { state.collapseAll() } else { state.expandAll() }
-            return .handled
-        }
-        if press.modifiers.contains(.command) {
-            if press.key == .leftArrow { state.outdentSelected() } else { state.indentSelected() }
             return .handled
         }
         guard state.editingId == nil, let id = state.selectedId,

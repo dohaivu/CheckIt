@@ -24,6 +24,7 @@ import com.checkit.domain.usecase.SavePeriodGoalUseCase
 import com.checkit.ui.UiEvent
 import com.checkit.ui.components.ReportPeriod
 import com.checkit.ui.firstDayOfMonth
+import com.checkit.ui.isValidForSave
 import com.checkit.ui.today
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -339,7 +340,7 @@ class ReflectViewModel(
                     review = editor.review,
                     goal = editor.goal,
                     rating = editor.rating,
-                    metrics = editor.metrics.filter { it.value.isNotBlank() }
+                    metrics = editor.metrics.filter { it.isValidForSave() }
                 )
             }.onSuccess {
                 _editor.value = null

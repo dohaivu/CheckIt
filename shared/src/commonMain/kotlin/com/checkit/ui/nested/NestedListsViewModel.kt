@@ -13,6 +13,7 @@ import com.checkit.domain.NestedDocument
 import com.checkit.domain.NestedDocumentTree
 import com.checkit.domain.NestedItemNode
 import com.checkit.domain.NestedListItem
+import com.checkit.domain.NestedSortOrder
 import com.checkit.domain.computeNestedInsertPosition
 
 import com.checkit.domain.NestedTextStyle
@@ -79,9 +80,20 @@ data class NestedFilterState(
     val focus: FocusPeriod? = null,
     val query: String = "",
     val hideChecked: Boolean = false,
-    val selectedTagIds: Set<String> = emptySet()
+    val selectedTagIds: Set<String> = emptySet(),
+    val displayType: NestedDisplayType = NestedDisplayType.All
 ) {
-    val isActive: Boolean get() = focus != null || query.isNotBlank() || hideChecked || selectedTagIds.isNotEmpty()
+    val isActive: Boolean get() = focus != null || query.isNotBlank() || hideChecked || selectedTagIds.isNotEmpty() || displayType != NestedDisplayType.All
+}
+
+enum class NestedDisplayType {
+    All,
+    Working;
+
+    companion object {
+        fun fromCode(code: String): NestedDisplayType =
+            entries.firstOrNull { it.name == code } ?: All
+    }
 }
 
 sealed interface NestedEditorOverlay {
@@ -161,6 +173,7 @@ class NestedListsViewModel(
     private var editorObservationJob: Job? = null
     private val moveMutex = Mutex()
     private var latestTags: List<TagItem> = emptyList()
+    private var latestNestedDisplayType: NestedDisplayType = NestedDisplayType.All
 
     init {
         collectDocuments()
@@ -183,6 +196,16 @@ class NestedListsViewModel(
                     if (current.editor is NestedEditorState.Active) {
                         current.copy(editor = current.editor.copy(availableTags = tags))
                     } else current
+                }
+            }
+        }
+        viewModelScope.launch {
+            settingsRepository.settings.collect { settings ->
+                val displayType = NestedDisplayType.fromCode(settings.nestedDisplayTypeCode)
+                latestNestedDisplayType = displayType
+                updateActiveEditor { active ->
+                    if (active.filters.displayType == displayType) active
+                    else active.copy(filters = active.filters.copy(displayType = displayType))
                 }
             }
         }
@@ -224,7 +247,8 @@ class NestedListsViewModel(
                         val active = (current.editor as? NestedEditorState.Active) ?: NestedEditorState.Active(
                             documentId = documentId,
                             tree = tree,
-                            availableTags = latestTags
+                            availableTags = latestTags,
+                            filters = NestedFilterState(displayType = latestNestedDisplayType)
                         )
                         current.copy(editor = active.copy(tree = tree))
                     }
@@ -386,7 +410,23 @@ class NestedListsViewModel(
     }
 
     fun resetFilters() {
-        updateActiveEditor { it.copy(filters = it.filters.copy(focus = null, query = "", hideChecked = false, selectedTagIds = emptySet())) }
+        updateActiveEditor { it.copy(filters = it.filters.copy(focus = null, query = "", hideChecked = false, selectedTagIds = emptySet(), displayType = NestedDisplayType.All)) }
+    }
+
+    fun updateDisplayType(displayType: NestedDisplayType) {
+        var shouldPersist = false
+        updateActiveEditor { active ->
+            if (active.filters.displayType == displayType) active
+            else {
+                shouldPersist = true
+                active.copy(filters = active.filters.copy(displayType = displayType))
+            }
+        }
+        if (shouldPersist) {
+            viewModelScope.launch {
+                settingsRepository.setNestedDisplayTypeCode(displayType.name)
+            }
+        }
     }
 
     fun nextFilterPeriod() {
@@ -619,6 +659,11 @@ class NestedListsViewModel(
     fun outdent(itemId: String) = applyMove { items -> moveItemsUseCase.outdent(items, itemId) }
     fun moveUp(itemId: String) = applyMove { items -> moveItemsUseCase.moveUp(items, itemId) }
     fun moveDown(itemId: String) = applyMove { items -> moveItemsUseCase.moveDown(items, itemId) }
+
+    fun sortChildrenOfSelected(order: NestedSortOrder) {
+        val id = getActiveEditor()?.selectedItemId ?: return
+        applyMove { items -> moveItemsUseCase.sortChildren(items, id, order) }
+    }
 
     fun canStartDrag(): Boolean {
         val active = getActiveEditor() ?: return false

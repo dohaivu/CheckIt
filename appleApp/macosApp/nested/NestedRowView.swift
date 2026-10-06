@@ -22,24 +22,6 @@ func nestedTokenColor(_ name: String) -> Color {
     }
 }
 
-func nestedPriorityMarker(_ name: String) -> String {
-    switch name {
-    case "Low": "!"
-    case "Medium": "!!"
-    case "High": "!!!"
-    default: ""
-    }
-}
-
-func nestedPriorityColor(_ name: String) -> Color {
-    switch name {
-    case "Low": .green
-    case "Medium": .orange
-    case "High": .red
-    default: .secondary
-    }
-}
-
 func nestedRowFont(_ styleName: String) -> Font {
     switch styleName {
     case "Header": .title3.weight(.semibold)
@@ -173,12 +155,13 @@ struct NestedRowView: View {
                         .buttonStyle(.plain)
                         .help(item.checked ? "Uncheck" : "Check off")
                     }
-                    let marker = nestedPriorityMarker(item.priority.name)
-                    if !marker.isEmpty {
-                        Text(marker)
-                            .font(.headline).bold()
-                            .foregroundStyle(nestedPriorityColor(item.priority.name))
+                    if let hex = item.priority.priorityHex(),
+                       let color = Color(nestedHex: hex) {
+                        Image(systemName: "flag.fill")
+                            .imageScale(.small)
+                            .foregroundStyle(color)
                             .padding(.top, 1)
+                            .help("Priority: \(item.priority.name)")
                     }
                     // Overlay (not ZStack/branch swap): the Text always defines
                     // the row height, so entering edit mode never pushes
@@ -319,10 +302,13 @@ struct NestedRowView: View {
     }
 
     private var nestedTextColor: Color {
+        // Android parity (NestedListScreen): rows in a checked branch (self
+        // or any ancestor checked) fade to onSurfaceVariant at 0.68 alpha.
+        if row.isInCheckedBranch { return Color.secondary.opacity(0.68) }
         // Explicit light-theme ink: .primary would turn white in dark mode
         // and vanish on the paper canvas. Warm charcoal is softer than pure
         // black for long sessions.
-        item.textColor.name == "Default" ? nestedInkColor : nestedTokenColor(item.textColor.name)
+        return item.textColor.name == "Default" ? nestedInkColor : nestedTokenColor(item.textColor.name)
     }
 
     private var isSelected: Bool { state.selectedId == item.id }
@@ -349,7 +335,7 @@ struct NestedRowView: View {
         // their own tracked minutes; parents only when showTrackedMinutes.
         let isLeaf = !row.node.hasChildren
         let showTracked = isLeaf || item.showTrackedMinutes
-        let visibleMetrics = item.manualMetrics.filter { $0.enabled && (!$0.value.isEmpty || $0.isCompleted) }
+        let visibleMetrics = item.manualMetrics.filter { $0.enabled && ($0.isCompleted || $0.isValidForSave()) }
         if progress != nil || (summary?.doneItemCount ?? 0) > 0
             || (showTracked && (summary?.trackedMinutes ?? 0) > 0)
             || (note != nil && !(note!.isEmpty)) || !item.tags.isEmpty || dateText != nil
@@ -390,15 +376,16 @@ struct NestedRowView: View {
                             .background(Color.secondary.opacity(0.15), in: RoundedRectangle(cornerRadius: 5))
                     }
                     ForEach(visibleMetrics, id: \.name) { m in
+                        let overdue = m.isMetricOverdueToday()
                         HStack(spacing: 2) {
                             if m.isCompleted {
                                 Image(systemName: "checkmark.circle.fill")
                                     .font(.caption2).foregroundStyle(.green)
                             }
-                            Text(metricLabel(m)).font(.caption)
+                            Text(metricLabel(m))
                         }
                         .padding(.horizontal, 6).padding(.vertical, 1)
-                        .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 5))
+                        .background((overdue ? Color.red : Color.accentColor).opacity(0.12), in: RoundedRectangle(cornerRadius: 5))
                     }
                 }
                 if let n = note, !n.isEmpty {
@@ -431,13 +418,48 @@ struct NestedRowView: View {
         }
     }
 
-    private func metricLabel(_ m: MetricItem) -> String {
-        var s = ""
-        if !m.name.isEmpty { s += m.name + " " }
-        if !m.value.isEmpty { s += m.value }
-        if let t = m.targetValue, !t.isEmpty { s += "/\(t)" }
-        if let u = m.displayUnit() { s += " \(u)" }
-        return s.trimmingCharacters(in: .whitespaces)
+    private func metricLabel(_ m: MetricItem) -> AttributedString {
+        // Mirrors shared toAnnotatedString: name/unit small and secondary,
+        // value and target bigger, bold and highlighted (red when overdue).
+        var result = AttributedString("")
+        let overdue = m.isMetricOverdueToday()
+        let highlight: Color = overdue ? .red : .accentColor
+        if !m.name.isEmpty {
+            var name = AttributedString(m.name + " ")
+            name.font = .caption
+            name.foregroundColor = .secondary
+            result += name
+        }
+        if m.isDateBased() {
+            var value = AttributedString(m.dateBasedDisplayToday())
+            value.font = .callout.bold()
+            value.foregroundColor = highlight
+            result += value
+        } else {
+            if !m.value.isEmpty {
+                var value = AttributedString(m.value)
+                value.font = .callout.bold()
+                value.foregroundColor = highlight
+                result += value
+            }
+            if let t = m.targetValue, !t.isEmpty {
+                var slash = AttributedString("/")
+                slash.font = .caption
+                slash.foregroundColor = .secondary
+                result += slash
+                var target = AttributedString(t)
+                target.font = .callout.bold()
+                target.foregroundColor = .primary
+                result += target
+            }
+            if let u = m.displayUnit() {
+                var unit = AttributedString(" " + u)
+                unit.font = .caption
+                unit.foregroundColor = .secondary
+                result += unit
+            }
+        }
+        return result
     }
 }
 
