@@ -427,7 +427,7 @@ struct NestedListsWindowView: View {
                 }
                 .menuStyle(.borderlessButton)
                 .accessibilityLabel("Display")
-                .help(state.displayType == .all ? "Show all items" : "Show working items (priority, due date, countdown)")
+                .help(state.displayType == .all ? "Show all items" : "Show working items (priority, due date, open tasks, progress)")
                 barSeparator
                 Menu {
                     Button("Name (A–Z)") { state.sortChildrenOfSelected(order: "NameAsc") }
@@ -487,7 +487,7 @@ struct NestedListsWindowView: View {
     private var emptySubtitle: String {
         if hasSearchText { return "No items match the current search." }
         return state.displayType == .working
-            ? "Nothing here has a priority, due date, or countdown."
+            ? "Nothing needs attention — no priority, due dates, open tasks, or tracked progress."
             : "Start with a root item, then indent items to build your outline."
     }
 

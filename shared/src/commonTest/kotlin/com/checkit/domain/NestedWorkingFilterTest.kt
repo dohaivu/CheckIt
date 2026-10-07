@@ -15,7 +15,11 @@ class NestedWorkingFilterTest {
         priority: TaskPriority = TaskPriority.None,
         startDate: LocalDate? = null,
         endDate: LocalDate? = null,
-        metrics: List<MetricItem> = emptyList()
+        metrics: List<MetricItem> = emptyList(),
+        checkboxEnabled: Boolean = false,
+        checked: Boolean = false,
+        progressPercent: Int? = null,
+        actualMinutes: Int = 0
     ) = NestedListItem(
         id = id,
         documentId = "doc-1",
@@ -26,6 +30,10 @@ class NestedWorkingFilterTest {
         startDate = startDate,
         endDate = endDate,
         manualMetrics = metrics,
+        checkboxEnabled = checkboxEnabled,
+        checked = checked,
+        progressPercent = progressPercent,
+        actualMinutes = actualMinutes,
         createdAtMillis = 0L,
         updatedAtMillis = 0L,
     )
@@ -74,6 +82,26 @@ class NestedWorkingFilterTest {
     }
 
     @Test
+    fun openCheckboxMarksWorking() {
+        assertTrue(isWorkingItem(item("a", null, checkboxEnabled = true)))
+    }
+
+    @Test
+    fun checkedCheckboxWithoutOtherSignalsIsNotWorking() {
+        assertFalse(isWorkingItem(item("a", null, checkboxEnabled = true, checked = true)))
+    }
+
+    @Test
+    fun progressMarksWorking() {
+        assertTrue(isWorkingItem(item("a", null, progressPercent = 40)))
+    }
+
+    @Test
+    fun trackedTimeMarksWorking() {
+        assertTrue(isWorkingItem(item("a", null, actualMinutes = 25)))
+    }
+
+    @Test
     fun workingOnlyKeepsMatchesAndAncestors() {
         val roots = buildNestedTree(
             listOf(
@@ -111,17 +139,28 @@ class NestedWorkingFilterTest {
     }
 
     @Test
-    fun workingOnlyComposesWithHideChecked() {
+    fun workingImpliesHideChecked() {
         val roots = buildNestedTree(
             listOf(
-                item("busy", null, 0, priority = TaskPriority.High),
+                item("done", null, 0, priority = TaskPriority.High, checked = true),
+                item("child", "done", 0, priority = TaskPriority.Low),
+                item("open", null, 1, checkboxEnabled = true),
             )
         )
-        val tree = roots.map {
-            it.copy(item = it.item.copy(checked = true))
-        }
-        val filtered = filterNestedTree(tree, start = null, end = null, hideChecked = true, workingOnly = true)
-        assertTrue(filtered.isEmpty())
+        val filtered = filterNestedTree(roots, start = null, end = null, workingOnly = true)
+        assertEquals(listOf("open"), flatIds(filtered))
+    }
+
+    @Test
+    fun workingImpliesHideCheckedWithQuery() {
+        val roots = buildNestedTree(
+            listOf(
+                item("task done", null, 0, priority = TaskPriority.High, checked = true),
+                item("task open", null, 1, priority = TaskPriority.Low),
+            )
+        )
+        val filtered = filterOutlineRoots(roots, query = "task", workingOnly = true)
+        assertEquals(listOf("task open"), flatIds(filtered))
     }
 
     @Test

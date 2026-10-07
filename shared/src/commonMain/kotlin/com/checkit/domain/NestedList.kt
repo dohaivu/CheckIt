@@ -121,9 +121,9 @@ fun calculateNestedMetricSummaries(roots: List<NestedItemNode>): Map<String, Nes
 
 /**
  * Swift-friendly outline projection for the macOS Working/search UI: text
- * [query] plus the Working filter (priority / due date / countdown metric),
- * with the same ancestor-context keep semantics as [filterNestedTree].
- * Lets Apple clients reuse the shared logic without date/tag interop friction.
+ * [query] plus the Working filter, with the same ancestor-context keep
+ * semantics as [filterNestedTree]. Lets Apple clients reuse the shared
+ * logic without date/tag interop friction.
  */
 fun filterOutlineRoots(
     roots: List<NestedItemNode>,
@@ -137,10 +137,11 @@ fun filterOutlineRoots(
  * (inclusive) OR have descendants that do. Supports text [query] and [hideChecked] status.
  *
  * With [workingOnly], the finder-filtered regions are refined to working
- * items (priority, due date, or an enabled date-based metric) in a second
- * pass — same ancestor/descendant keep semantics as the other positive
- * filters. Two passes (instead of one AND pass) so a query-matching parent
- * with working children, or vice versa, isn't pruned to nothing.
+ * items (see [isWorkingItem]) in a second pass — same ancestor/descendant
+ * keep semantics as the other positive filters. Two passes (instead of one
+ * AND pass) so a query-matching parent with working children, or vice
+ * versa, isn't pruned to nothing. Working implies hide-checked: done work
+ * is noise in a needs-attention view (All stays for review).
  */
 fun filterNestedTree(
     roots: List<NestedItemNode>,
@@ -153,9 +154,11 @@ fun filterNestedTree(
 ): List<NestedItemNode> {
     val found = roots.mapNotNull { filterNestedNode(it, start, end, query, hideChecked, selectedTagIds) }
     if (!workingOnly) return found
-    // Refine (see KDoc): checked subtrees were already pruned above.
+    // Refine (see KDoc): checked subtrees were already pruned above when
+    // hideChecked is set; Working additionally implies hide-checked, since
+    // done work is noise in a needs-attention view (All stays for review).
     return found.mapNotNull {
-        filterNestedNode(it, null, null, "", hideChecked = false, workingOnly = true)
+        filterNestedNode(it, null, null, "", hideChecked = true, workingOnly = true)
     }
 }
 
@@ -224,11 +227,15 @@ private fun filterNestedNode(
     }
 }
 
-/** A "working" item carries actionable state: priority, due date, or an enabled date-based metric. */
+/** A "working" item carries actionable state: priority, due date, an enabled
+ * date-based metric, an open checkbox, visible progress, or tracked time. */
 fun isWorkingItem(item: NestedListItem): Boolean =
     item.priority != TaskPriority.None ||
             item.startDate != null || item.endDate != null ||
-            item.manualMetrics.any { it.enabled && (it.unit == MetricUnit.Countdown || it.unit == MetricUnit.DueDate) }
+            item.manualMetrics.any { it.enabled && (it.unit == MetricUnit.Countdown || it.unit == MetricUnit.DueDate) } ||
+            (item.checkboxEnabled && !item.checked) ||
+            item.progressPercent != null ||
+            item.actualMinutes > 0
 
 /**
  * Computes the (parentId, position) for inserting a new item, mirroring the
