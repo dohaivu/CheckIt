@@ -86,8 +86,22 @@ final class NestedEditorState: ObservableObject {
         }
     }
     @Published var searchQuery: String = "" {
+        didSet {
+            if searchQuery.isEmpty {
+                // Clearing restores the full outline immediately; typing
+                // debounces below so fast input doesn't re-filter per keystroke.
+                searchTask?.cancel()
+                appliedQuery = ""
+            } else {
+                debounceSearch()
+            }
+        }
+    }
+    /// Debounced mirror of searchQuery; the outline filters on this.
+    @Published private(set) var appliedQuery: String = "" {
         didSet { recomputeVisibleRows() }
     }
+    private var searchTask: Task<Void, Never>?
     @Published var editingId: String? = nil
     @Published var draft: NestedDraft? = nil
     @Published var showDeleteConfirm = false
@@ -262,6 +276,15 @@ final class NestedEditorState: ObservableObject {
         return nil
     }
 
+    private func debounceSearch() {
+        searchTask?.cancel()
+        searchTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 150_000_000)
+            guard !Task.isCancelled, let self else { return }
+            self.appliedQuery = self.searchQuery
+        }
+    }
+
     private func recomputeVisibleRows() {
         guard let tree else {
             visibleRows = []
@@ -275,8 +298,8 @@ final class NestedEditorState: ObservableObject {
         }
         // Reuse the shared outline projection (text query + Working filter:
         // priority / due date / countdown metric + ancestor context) instead
-        // of reimplementing it.
-        let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        // of reimplementing it. Runs on the debounced query (see searchQuery).
+        let query = appliedQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         let roots: [NestedItemNode] = (displayType == .working || !query.isEmpty)
             ? NestedListKt.filterOutlineRoots(roots: zoomRoots, query: query, workingOnly: displayType == .working)
             : zoomRoots
