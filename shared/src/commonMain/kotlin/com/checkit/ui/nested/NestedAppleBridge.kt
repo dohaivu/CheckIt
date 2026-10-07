@@ -8,6 +8,8 @@ import com.checkit.domain.NestedDocumentTree
 import com.checkit.domain.NestedItemNode
 import com.checkit.domain.NestedListItem
 import com.checkit.domain.NestedSortOrder
+import com.checkit.domain.MoveDestinations
+import com.checkit.domain.moveDestinations
 import com.checkit.domain.NestedMetricSummary
 import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.computeNestedInsertPosition
@@ -356,6 +358,20 @@ class NestedAppleHelper(
     fun sortChildren(documentId: String, parentId: String, orderName: String) {
         val order = runCatching { NestedSortOrder.valueOf(orderName) }.getOrNull() ?: return
         applyMove(documentId) { items -> moveItems.sortChildren(items, parentId, order) }
+    }
+
+    fun moveDestinationGroups(documentId: String, itemId: String): MoveDestinations {
+        val items = latestTrees[documentId]?.flatItems.orEmpty()
+        return moveDestinations(items, itemId)
+    }
+
+    /** Moves [itemId] under [destinationId], expanding it when collapsed. */
+    fun moveUnder(documentId: String, itemId: String, destinationId: String) {
+        val expand = latestTrees[documentId]?.nodeById?.get(destinationId)?.item?.collapsed == true
+        applyMove(documentId) { items -> moveItems.moveUnder(items, itemId, destinationId) }
+        if (expand) {
+            scope.launch { runCatching { toggleCollapsedUseCase(destinationId) } }
+        }
     }
 
     fun deleteItemList(itemIds: List<String>) {

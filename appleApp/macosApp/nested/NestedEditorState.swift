@@ -462,6 +462,21 @@ final class NestedEditorState: ObservableObject {
         helper.sortChildren(documentId: selectedDocId, parentId: id, orderName: order)
     }
 
+    func moveDestinationsForSelected() -> MoveDestinations? {
+        guard let id = selectedId else { return nil }
+        return moveDestinations(for: id)
+    }
+
+    func moveDestinations(for id: String) -> MoveDestinations? {
+        guard !selectedDocId.isEmpty else { return nil }
+        return helper.moveDestinationGroups(documentId: selectedDocId, itemId: id)
+    }
+
+    func moveSelectedUnder(destinationId: String) {
+        guard let id = selectedId, !selectedDocId.isEmpty else { return }
+        helper.moveUnder(documentId: selectedDocId, itemId: id, destinationId: destinationId)
+    }
+
     func toggleCollapse(id: String) { helper.toggleCollapsed(itemId: id) }
 
     /// Scope roots for expand-all / collapse-all: selection (when it has

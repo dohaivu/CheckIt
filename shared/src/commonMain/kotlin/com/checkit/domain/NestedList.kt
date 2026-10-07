@@ -278,6 +278,38 @@ enum class NestedSortOrder {
     PriorityDesc,
 }
 
+/** Candidate parents for "move under": siblings and parent-siblings, in display order. */
+data class MoveDestinations(
+    val siblings: List<NestedListItem>,
+    val parentSiblings: List<NestedListItem>
+) {
+    val isEmpty: Boolean get() = siblings.isEmpty() && parentSiblings.isEmpty()
+}
+
+/**
+ * Lists where [itemId] may move under: its siblings (excluding itself) and
+ * its parent's siblings (excluding its parent). Roots have no parent-siblings.
+ * Siblings and uncles can never sit inside the moved subtree, so the set is
+ * inherently cycle-safe. Pure for UI reuse on both platforms.
+ */
+fun moveDestinations(items: List<NestedListItem>, itemId: String): MoveDestinations {
+    val item = items.firstOrNull { it.id == itemId }
+        ?: return MoveDestinations(emptyList(), emptyList())
+    val inGroupOrder = compareBy<NestedListItem> { it.position }.thenBy { it.id }
+    val siblings = items
+        .filter { it.parentId == item.parentId && it.id != itemId }
+        .sortedWith(inGroupOrder)
+    val parent = items.firstOrNull { it.id == item.parentId }
+    val parentSiblings = if (parent == null) {
+        emptyList()
+    } else {
+        items
+            .filter { it.parentId == parent.parentId && it.id != parent.id }
+            .sortedWith(inGroupOrder)
+    }
+    return MoveDestinations(siblings, parentSiblings)
+}
+
 /**
  * Builds the item tree for a document. Groups by parent, sorts siblings by
  * (position, id), recurses. Roots are items whose [NestedListItem.parentId] is

@@ -29,6 +29,9 @@ struct NestedListsWindowView: View {
     @State private var showRename = false
     @State private var renameTitle = ""
     @State private var deleteDoc: NestedDocument? = nil
+
+    @State private var showMoveSheet = false
+    @State private var moveDestinationId: String? = nil
     @State private var draftText = ""
 
     var body: some View {
@@ -444,6 +447,19 @@ struct NestedListsWindowView: View {
                 .accessibilityLabel("Sort children")
                 .help("Sort children of selected item")
                 .disabled(!(node?.hasChildren ?? false))
+                barSeparator
+                Button {
+                    moveDestinationId = defaultMoveDestinationId()
+                    showMoveSheet = true
+                } label: {
+                    Image(systemName: "tray.and.arrow.down")
+                        .imageScale(.medium)
+                        .frame(width: 28, height: 28)
+                }
+                .buttonStyle(.borderless)
+                .accessibilityLabel("Move to")
+                .help("Move selected item under a sibling or uncle")
+                .disabled(!hasMoveDestinations)
             }
             .frame(maxWidth: .infinity, alignment: .center)
             .padding(.horizontal, 10)
@@ -564,6 +580,13 @@ struct NestedListsWindowView: View {
                                 state.startAddSibling(of: row.id)
                             } label: {
                                 Label("Add Sibling Below", systemImage: "text.badge.plus")
+                            }
+                            Button {
+                                state.selectedId = row.id
+                                moveDestinationId = defaultMoveDestinationId(for: row.id)
+                                showMoveSheet = true
+                            } label: {
+                                Label("Move to…", systemImage: "tray.and.arrow.down")
                             }
                             Divider()
                             if row.node.hasChildren {
@@ -710,6 +733,83 @@ struct NestedListsWindowView: View {
             .alert("Delete item?", isPresented: $state.showDeleteConfirm) {
                 Button("Delete", role: .destructive) { state.confirmDeleteSelected() }
                 Button("Cancel", role: .cancel) {}
+            }
+            .sheet(isPresented: $showMoveSheet) {
+                moveToSheet
+            }
+        }
+    }
+
+    private var hasMoveDestinations: Bool {
+        guard let groups = state.moveDestinationsForSelected() else { return false }
+        return !groups.isEmpty
+    }
+
+    private func defaultMoveDestinationId(for id: String? = nil) -> String? {
+        let target = id ?? state.selectedId
+        guard let target, let groups = state.moveDestinations(for: target) else { return nil }
+        return groups.siblings.first?.id ?? groups.parentSiblings.first?.id
+    }
+
+    private var moveToSheet: some View {
+        let groups = state.moveDestinationsForSelected()
+        let title = state.selectedId.flatMap { state.indexById[$0]?.item.text } ?? ""
+        return VStack(alignment: .leading, spacing: 12) {
+            Text("Move to").font(.headline)
+            Text(title.isEmpty ? "Untitled item" : title)
+                .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 2) {
+                    moveDestinationGroup(title: "Siblings", items: groups?.siblings ?? [])
+                    moveDestinationGroup(title: "Parent's siblings", items: groups?.parentSiblings ?? [])
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(maxHeight: 320)
+            HStack {
+                Spacer()
+                Button("Cancel") { showMoveSheet = false }.keyboardShortcut(.cancelAction)
+                Button("Move") {
+                    if let dest = moveDestinationId { state.moveSelectedUnder(destinationId: dest) }
+                    showMoveSheet = false
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(moveDestinationId == nil)
+            }
+        }
+        .padding()
+        .frame(width: 320)
+    }
+
+    @ViewBuilder
+    private func moveDestinationGroup(title: String, items: [NestedListItem]) -> some View {
+        if !items.isEmpty {
+            Text(title.uppercased())
+                .font(.caption).bold()
+                .foregroundStyle(Color.accentColor)
+                .padding(.top, 6)
+            ForEach(items, id: \.id) { dest in
+                let childCount = state.indexById[dest.id]?.children.count ?? 0
+                Button {
+                    moveDestinationId = dest.id
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: moveDestinationId == dest.id ? "largecircle.fill.circle" : "circle")
+                            .foregroundStyle(moveDestinationId == dest.id ? Color.accentColor : Color.secondary)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(dest.text.isEmpty ? "Untitled item" : dest.text)
+                                .foregroundStyle(.primary)
+                                .lineLimit(1)
+                            Text(childCount > 0 ? "\(childCount) children" : "No children")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                    }
+                    .padding(.horizontal, 4).padding(.vertical, 6)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .focusable(false)
             }
         }
     }

@@ -57,6 +57,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.DriveFileMove
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.FormatColorFill
@@ -159,6 +160,7 @@ import checkit.shared.generated.resources.nested_zoom_out
 import com.checkit.domain.FocusPeriod
 import com.checkit.domain.MetricItem
 import com.checkit.domain.MetricRollupPolicy
+import com.checkit.domain.MoveDestinations
 import com.checkit.domain.NestedColorToken
 import com.checkit.domain.NestedItemNode
 import com.checkit.domain.NestedListItem
@@ -168,6 +170,7 @@ import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.TagItem
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.filterNestedTree
+import com.checkit.domain.moveDestinations
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.CompactFlatTextField
 import com.checkit.ui.components.DateRangePill
@@ -208,6 +211,7 @@ internal fun NestedListScreen(
 ) {
     var detailsItemId by remember { mutableStateOf<String?>(null) }
     var showSortDialog by remember { mutableStateOf(false) }
+    var showMoveDialog by remember { mutableStateOf(false) }
     val tree = state.tree
     val focusedNode = state.focusedItem
     val unfilteredRoots = remember(focusedNode, tree.rootNodes) {
@@ -297,6 +301,7 @@ internal fun NestedListScreen(
                     onManageDetails = { state.selectedItemId?.let { detailsItemId = it } },
                     onEnterSelection = viewModel::enterSelectionMode,
                     onSortChildren = { showSortDialog = true },
+                    onMoveTo = { showMoveDialog = true },
                     onAddToDailyPlan = {
                         state.selectedItemId?.let { id ->
                             state.tree.nodeById[id]?.item?.let { item ->
@@ -639,6 +644,24 @@ internal fun NestedListScreen(
         }
     }
 
+    if (showMoveDialog) {
+        val selectedId = state.selectedItemId
+        val node = selectedId?.let { state.tree.nodeById[it] }
+        if (selectedId != null && node != null) {
+            val destinations = moveDestinations(state.tree.flatItems, selectedId)
+            MoveToDialog(
+                itemText = node.item.text.ifBlank { "Untitled item" },
+                destinations = destinations,
+                childCounts = state.tree.nodeById.mapValues { it.value.children.size },
+                onDismiss = { showMoveDialog = false },
+                onApply = { destinationId ->
+                    viewModel.moveUnderSelected(destinationId)
+                    showMoveDialog = false
+                }
+            )
+        }
+    }
+
     if (showSortDialog) {
         state.selectedItemId?.let { state.tree.nodeById[it] }?.let { node ->
             SortChildrenDialog(
@@ -649,6 +672,112 @@ internal fun NestedListScreen(
                     showSortDialog = false
                 }
             )
+        }
+    }
+}
+
+@Composable
+private fun MoveToDialog(
+    itemText: String,
+    destinations: MoveDestinations,
+    childCounts: Map<String, Int>,
+    onDismiss: () -> Unit,
+    onApply: (String) -> Unit
+) {
+    var selectedId by remember(destinations) {
+        mutableStateOf(
+            destinations.siblings.firstOrNull()?.id
+                ?: destinations.parentSiblings.firstOrNull()?.id
+        )
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Move to") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = itemText,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                MoveDestinationGroup(
+                    title = "Siblings",
+                    items = destinations.siblings,
+                    childCounts = childCounts,
+                    selectedId = selectedId,
+                    onSelect = { selectedId = it }
+                )
+                MoveDestinationGroup(
+                    title = "Parent's siblings",
+                    items = destinations.parentSiblings,
+                    childCounts = childCounts,
+                    selectedId = selectedId,
+                    onSelect = { selectedId = it }
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { selectedId?.let(onApply) },
+                enabled = selectedId != null
+            ) {
+                Text("Move")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(Res.string.cancel))
+            }
+        }
+    )
+}
+
+@Composable
+private fun MoveDestinationGroup(
+    title: String,
+    items: List<NestedListItem>,
+    childCounts: Map<String, Int>,
+    selectedId: String?,
+    onSelect: (String) -> Unit
+) {
+    if (items.isEmpty()) return
+    Text(
+        text = title.uppercase(),
+        style = MaterialTheme.typography.labelSmall,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(top = 6.dp)
+    )
+    items.forEach { item ->
+        val childCount = childCounts[item.id] ?: 0
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .clickable { onSelect(item.id) }
+                .padding(horizontal = 4.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            RadioButton(
+                selected = selectedId == item.id,
+                onClick = { onSelect(item.id) }
+            )
+            Spacer(Modifier.width(8.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = item.text.ifBlank { "Untitled item" },
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = if (childCount > 0) "$childCount children" else "No children",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
@@ -1846,12 +1975,16 @@ private fun EditorToolbar(
     onAddToDailyPlan: () -> Unit,
     onCopyToTask: () -> Unit,
     onEnterSelection: () -> Unit,
-    onSortChildren: () -> Unit
+    onSortChildren: () -> Unit,
+    onMoveTo: () -> Unit
 ) {
     val hasSelection = state.selectedItemId != null
     val selectedNode = state.selectedItemId?.let { id -> state.tree.nodeById[id] }
     val canZoomIn = hasSelection && (selectedNode?.hasChildren == true)
     val canSortChildren = selectedNode?.hasChildren == true
+    val canMoveTo = state.selectedItemId?.let {
+        !moveDestinations(state.tree.flatItems, it).isEmpty
+    } == true
     val canZoomOut = state.zoomPath.isNotEmpty()
     val canAddSibling = hasSelection && (selectedNode?.item?.parentId != null)
     val hasCollapsible = state.tree.nodeById.values.any { it.hasChildren }
@@ -1931,6 +2064,9 @@ private fun EditorToolbar(
                     }
                     ToolbarMenuItem("Sort children", Icons.Default.SortByAlpha, canSortChildren) {
                         showMore = false; onSortChildren()
+                    }
+                    ToolbarMenuItem("Move to…", Icons.Default.DriveFileMove, canMoveTo) {
+                        showMore = false; onMoveTo()
                     }
                 }
             }
