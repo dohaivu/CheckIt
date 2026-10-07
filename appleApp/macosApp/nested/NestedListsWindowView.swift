@@ -377,11 +377,11 @@ struct NestedListsWindowView: View {
                     state.indentSelected()
                 }
                 .disabled(sel == nil)
-                editorBtn("Up", system: "chevron.up", help: "Move up (Cmd+Up)") {
+                editorBtn("Up", system: "chevron.up", help: "Move up (Cmd+Up)", shortcut: "⌘↑") {
                     state.moveSelectedUp()
                 }
                 .disabled(sel == nil)
-                editorBtn("Down", system: "chevron.down", help: "Move down (Cmd+Down)") {
+                editorBtn("Down", system: "chevron.down", help: "Move down (Cmd+Down)", shortcut: "⌘↓") {
                     state.moveSelectedDown()
                 }
                 .disabled(sel == nil)

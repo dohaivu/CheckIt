@@ -375,27 +375,35 @@ final class NestedEditorState: ObservableObject {
     }
 
     func startAddChild(of id: String) {
-        guard let node = indexById[id] else { return }
-        editingId = nil
-        // Anchor after the subtree's last visible descendant (ViewModel parity).
-        var anchor = node
-        while let last = anchor.children.last, !anchor.item.collapsed {
-            anchor = last
+        // Key-press/button handlers can run inside SwiftUI's view-update
+        // cycle; publishing draft/editingId synchronously warns ("within
+        // view updates"), so hop a tick like the navigation methods do.
+        Task { @MainActor [weak self] in
+            guard let self, let node = self.indexById[id] else { return }
+            self.editingId = nil
+            // Anchor after the subtree's last visible descendant (ViewModel parity).
+            var anchor = node
+            while let last = anchor.children.last, !anchor.item.collapsed {
+                anchor = last
+            }
+            let depth = (self.visibleRows.first(where: { $0.id == id })?.depth ?? 0) + 1
+            self.draft = NestedDraft(anchorId: anchor.item.id, parentId: id, depth: depth, text: "")
         }
-        let depth = (visibleRows.first(where: { $0.id == id })?.depth ?? 0) + 1
-        draft = NestedDraft(anchorId: anchor.item.id, parentId: id, depth: depth, text: "")
     }
 
     func startAddSibling(of id: String) {
-        guard let node = indexById[id] else { return }
-        editingId = nil
-        let depth = visibleRows.first(where: { $0.id == id })?.depth ?? 0
-        draft = NestedDraft(
-            anchorId: id,
-            parentId: node.item.parentId ?? "",
-            depth: depth,
-            text: ""
-        )
+        // Same view-update deferral as startAddChild above.
+        Task { @MainActor [weak self] in
+            guard let self, let node = self.indexById[id] else { return }
+            self.editingId = nil
+            let depth = self.visibleRows.first(where: { $0.id == id })?.depth ?? 0
+            self.draft = NestedDraft(
+                anchorId: id,
+                parentId: node.item.parentId ?? "",
+                depth: depth,
+                text: ""
+            )
+        }
     }
 
     func commitDraft(thenContinue: Bool) {
