@@ -353,9 +353,13 @@ final class NestedEditorState: ObservableObject {
     }
 
     func startEdit(id: String) {
-        selectedId = id
-        editingId = id
-        draft = nil
+        // Same view-update deferral as the draft starters: editingId and
+        // friends must not publish synchronously from event handlers.
+        Task { @MainActor [weak self] in
+            self?.selectedId = id
+            self?.editingId = id
+            self?.draft = nil
+        }
     }
 
     func commitEdit(id: String, text: String) {

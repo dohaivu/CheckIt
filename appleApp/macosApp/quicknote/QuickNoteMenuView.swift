@@ -749,7 +749,9 @@ struct QuickNoteMenuView: View {
             // Slow tick while open so relative times stay fresh; stopped on close.
             tickTimer?.invalidate()
             tickTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { _ in
-                state.tick()
+                Task { @MainActor in
+                      state.tick()
+                  }
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .quickNoteMenuClosed)) { _ in
