@@ -386,11 +386,11 @@ struct NestedListsWindowView: View {
                 }
                 .disabled(sel == nil)
                 barSeparator
-                editorBtn("Child", system: "plus", help: "Add child (Cmd+Return)") {
+                editorBtn("Child", system: "plus", help: "Add child (Cmd+Return)", shortcut: "⌘↵") {
                     if let id = sel { state.startAddChild(of: id) }
                 }
                 .disabled(sel == nil)
-                editorBtn("Sibling", system: "text.badge.plus", help: "Add sibling below (Shift+Return)") {
+                editorBtn("Sibling", system: "text.badge.plus", help: "Add sibling below (Shift+Return)", shortcut: "⇧↵") {
                     if let id = sel { state.startAddSibling(of: id) }
                 }
                 .disabled(sel == nil)
@@ -454,12 +454,20 @@ struct NestedListsWindowView: View {
         _ title: String,
         system: String,
         help: String,
+        shortcut: String? = nil,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            Image(systemName: system)
-                .imageScale(.medium)
-                .frame(width: 28, height: 28)
+            HStack(spacing: 3) {
+                Image(systemName: system)
+                    .imageScale(.medium)
+                if let shortcut {
+                    Text(shortcut)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .frame(minWidth: 28, minHeight: 28)
         }
         // Match macOS toolbar conventions: template icons, a predictable
         // hit target, and text exposed through help and accessibility rather
@@ -759,7 +767,7 @@ struct NestedListsWindowView: View {
                         if state.draft != nil { state.draft?.text = t }
                     }
                 }
-                .onSubmit { state.commitDraft(thenContinue: true) }
+                .onSubmit { state.commitDraft(thenContinue: false) }
                 .onKeyPress(.escape) {
                     state.cancelDraft()
                     return .handled
