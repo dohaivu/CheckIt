@@ -135,7 +135,6 @@ kotlin {
         commonTest.dependencies {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinx.coroutines.test)
-            implementation(libs.turbine)
             implementation(libs.koin.test)
             implementation(libs.compose.ui.test)
         }
