@@ -200,7 +200,7 @@ fun AppOutlinedTextField(
 
 class MarkdownVisualTransformation : VisualTransformation {
     private val boldRegex = Regex("\\*\\*(.*?)\\*\\*")
-    private val italicRegex = Regex("\\*(.*?)\\*")
+    private val italicRegex = Regex("(?:^|\\W)_([^_\\n]+?)_(?=$|\\W)")
     private val strikethroughRegex = Regex("~~(.*?)~~")
     private val highlightPattern = Regex("==(.+?)==")
     // Matches any digit followed by a period and a space (e.g., "1. ", "12. ")
@@ -303,7 +303,7 @@ class MarkdownVisualTransformation : VisualTransformation {
                 )
             }
 
-            // 4. Format Inline Elements: Italic (*text*)
+            // 4. Format Inline Elements: Italic (_text_)
             italicRegex.findAll(rawText).forEach { matchResult ->
                 val range = matchResult.range
                 addStyle(

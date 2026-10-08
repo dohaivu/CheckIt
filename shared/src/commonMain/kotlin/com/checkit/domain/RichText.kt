@@ -22,9 +22,16 @@ data class RichText(
 )
 
 /**
- * Parses inline markdown spans (`**bold**`, `*italic*`, `~~strike~~`,
+ * Parses inline markdown spans (`**bold**`, `_italic_`, `~~strike~~`,
  * `==highlight==`), stripping markers. Unmatched markers stay literal.
  * Nesting recurses (e.g. `**==bold highlight==**`).
+ *
+ * Italic uses `_` (not `*`) so `**bold**` and `*italic*` never collide the
+ * way `***both***` does — and because `NSRegularExpression` (which backs
+ * Kotlin Regex on Apple targets) has no lookbehind, the ambiguity can't be
+ * fixed with lookarounds either. The opening `_` must start the string or
+ * follow a non-word char, and the closing `_` must end the string or precede
+ * a non-word char, so `snake_case` stays literal.
  *
  * Pure and platform-neutral: Compose builds an AnnotatedString from this,
  * SwiftUI builds an AttributedString. Offsets are UTF-16 code units, so
@@ -33,15 +40,13 @@ data class RichText(
  */
 fun parseRichText(input: String): RichText {
     val spans = mutableListOf<RichSpan>()
-    // Bold (**) and strikethrough (~~) first, then italic (*), then highlight (==).
-    val combinedRegex = Regex("(\\*\\*(.*?)\\*\\*)|(~~(.*?)~~)|(\\*(.*?)\\*)|(==(.+?)==)")
+    // Bold (**) and strikethrough (~~) first, then italic (_), then highlight (==).
+    val combinedRegex = Regex("(\\*\\*(.*?)\\*\\*)|(~~(.*?)~~)|((?:^|\\W)_([^_\\n]+?)_(?=$|\\W))|(==(.+?)==)")
 
     val resultText = StringBuilder()
     var lastIndex = 0
 
     combinedRegex.findAll(input).forEach { match ->
-        resultText.append(input.substring(lastIndex, match.range.first))
-
         // groupValues[1/2] bold, [3/4] strikethrough, [5/6] italic, [7/8] highlight.
         val kind = when {
             match.groupValues[1].isNotEmpty() -> RichSpanKind.Bold
@@ -49,6 +54,14 @@ fun parseRichText(input: String): RichText {
             match.groupValues[5].isNotEmpty() -> RichSpanKind.Italic
             else -> RichSpanKind.Highlight
         }
+        // The italic alternative consumes one leading boundary char (a
+        // non-word char matched by (?:^|\W)); re-emit it literally. At string
+        // start there is no boundary char: the match then starts with '_'
+        // itself ('_' is a word char, so \W can never consume it).
+        val leadLen =
+            if (kind == RichSpanKind.Italic && input[match.range.first] != '_') 1 else 0
+        resultText.append(input.substring(lastIndex, match.range.first + leadLen))
+
         val innerTextRaw = when (kind) {
             RichSpanKind.Bold -> match.groupValues[2]
             RichSpanKind.Strikethrough -> match.groupValues[4]

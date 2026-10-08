@@ -496,7 +496,7 @@ fun applyToolbarAction(
 
     return when (action) {
         ToolbarAction.Bold -> wrapSelection(safeText, selStart, selEnd, "**", "**", "text")
-        ToolbarAction.Italic -> wrapSelection(safeText, selStart, selEnd, "*", "*", "text")
+        ToolbarAction.Italic -> wrapSelection(safeText, selStart, selEnd, "_", "_", "text")
         ToolbarAction.Highlight -> wrapSelection(safeText, selStart, selEnd, "==", "==", "text")
         ToolbarAction.Strikethrough -> wrapSelection(safeText, selStart, selEnd, "~~", "~~", "text")
         ToolbarAction.Heading -> toggleLinePrefix(safeText, selStart, selEnd, "## ")

@@ -34,7 +34,7 @@ class MarkdownParsingTest {
 
     @Test
     fun parseMarkdownToAnnotatedString_parsesBoldAndItalicAndStrikethrough() {
-        val input = "**Bold**, *italic*, and ~~strikethrough~~"
+        val input = "**Bold**, _italic_, and ~~strikethrough~~"
         val result = parseMarkdownToAnnotatedString(input)
 
         assertEquals("Bold, italic, and strikethrough", result.text)
@@ -165,6 +165,75 @@ class MarkdownParsingTest {
         assertEquals(8, highlightSpan.start)
         assertEquals(21, highlightSpan.end) // Includes raw "==highlight=="
         assertEquals(FontWeight.Bold, highlightSpan.item.fontWeight)
+    }
+
+    @Test
+    fun parseMarkdownToAnnotatedString_parsesUnderscoreItalic() {
+        val input = "This is _italic_ text"
+        val result = parseMarkdownToAnnotatedString(input)
+
+        assertEquals("This is italic text", result.text)
+
+        val italicSpan = result.spanStyles.single()
+        assertEquals(FontStyle.Italic, italicSpan.item.fontStyle)
+        assertEquals(8, italicSpan.start)
+        assertEquals(14, italicSpan.end)
+    }
+
+    @Test
+    fun parseMarkdownToAnnotatedString_parsesNestedBoldUnderscoreItalic() {
+        val input = "**_both_**"
+        val result = parseMarkdownToAnnotatedString(input)
+
+        assertEquals("both", result.text)
+        assertTrue(result.spanStyles.any { it.item.fontWeight == FontWeight.Bold })
+        assertTrue(result.spanStyles.any { it.item.fontStyle == FontStyle.Italic })
+    }
+
+    @Test
+    fun parseMarkdownToAnnotatedString_parsesNestedUnderscoreBold() {
+        val input = "_**both**_"
+        val result = parseMarkdownToAnnotatedString(input)
+
+        assertEquals("both", result.text)
+        assertTrue(result.spanStyles.any { it.item.fontWeight == FontWeight.Bold })
+        assertTrue(result.spanStyles.any { it.item.fontStyle == FontStyle.Italic })
+    }
+
+    @Test
+    fun parseMarkdownToAnnotatedString_leavesSnakeCaseLiteral() {
+        val input = "my_var_name"
+        val result = parseMarkdownToAnnotatedString(input)
+
+        assertEquals("my_var_name", result.text)
+        assertTrue(result.spanStyles.isEmpty())
+    }
+
+    @Test
+    fun parseMarkdownToAnnotatedString_italicRespectsBoundaries() {
+        val input = "(see _this_)"
+        val result = parseMarkdownToAnnotatedString(input)
+
+        assertEquals("(see this)", result.text)
+
+        val italicSpan = result.spanStyles.single()
+        assertEquals(FontStyle.Italic, italicSpan.item.fontStyle)
+        assertEquals(5, italicSpan.start)
+        assertEquals(9, italicSpan.end)
+    }
+
+    @Test
+    fun markdownVisualTransformation_appliesUnderscoreItalicStyle() {
+        val transformation = MarkdownVisualTransformation()
+        val input = AnnotatedString("This is _italic_ text")
+        val transformed = transformation.filter(input)
+
+        assertEquals("This is _italic_ text", transformed.text.text)
+
+        val italicSpan = transformed.text.spanStyles.firstOrNull { it.item.fontStyle == FontStyle.Italic }
+        assertTrue(italicSpan != null, "Expected an italic span style")
+        assertEquals(7, italicSpan.start)
+        assertEquals(16, italicSpan.end) // Includes leading boundary plus raw "_italic_"
     }
 
     @Test
