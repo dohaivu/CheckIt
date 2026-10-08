@@ -507,7 +507,7 @@ internal fun NestedListScreen(
                                             )
                                         }
                                 ) {
-                                    NestedTree(
+                                    NestedItemRow(
                                         node = row.node,
                                         depth = row.depth,
                                         isVisible = row.isVisible,
@@ -2173,7 +2173,7 @@ private fun EmptyNestedList(onAddItem: () -> Unit) {
 }
 
 @Composable
-private fun NestedTree(
+private fun NestedItemRow(
     node: NestedItemNode,
     depth: Int,
     isVisible: Boolean,
