@@ -126,6 +126,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -175,6 +176,7 @@ import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.CompactFlatTextField
 import com.checkit.ui.components.DateRangePill
 import com.checkit.ui.components.FocusPeriodHeader
+import com.checkit.ui.components.MarkdownTextField
 import com.checkit.ui.components.MetricsSection
 import com.checkit.ui.components.MetricChip
 import com.checkit.ui.components.PeriodPicker
@@ -606,15 +608,36 @@ internal fun NestedListScreen(
                 properties = DialogProperties(usePlatformDefaultWidth = false),
                 title = { Text(stringResource(Res.string.nested_edit_note)) },
                 text = {
-                    OutlinedTextField(
-                        value = note,
-                        onValueChange = { note = it.take(2_000) },
-                        placeholder = { Text("Add label or details") },
-                        minLines = 4,
-                        maxLines = 8,
-                        supportingText = { Text("${note.length}/2,000", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.End) },
+                    Column(
                         modifier = Modifier.fillMaxWidth()
-                    )
+                    ) {
+                        MarkdownTextField(
+                            value = note,
+                            onValueChange = { note = it.take(2_000) },
+                            placeholder = "Add label or details",
+                            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                                color = MaterialTheme.colorScheme.onSurface
+                            ),
+                            minLines = 4,
+                            maxLines = 8,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                                .border(
+                                    width = 1.dp,
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                                .padding(10.dp),
+                        )
+                        Text(
+                            "${note.length}/2,000",
+                            modifier = Modifier.fillMaxWidth(),
+                            style = MaterialTheme.typography.bodySmall,
+                            textAlign = TextAlign.End
+                        )
+                    }
                 },
                 confirmButton = {
                     TextButton(onClick = { viewModel.saveItemNote(overlay.itemId, note) }) {

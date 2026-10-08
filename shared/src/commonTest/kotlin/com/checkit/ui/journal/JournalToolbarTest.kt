@@ -32,6 +32,22 @@ class JournalToolbarTest {
     }
 
     @Test
+    fun highlightWrapsSelection() {
+        val edit = applyToolbarAction("hello world", 6, 11, ToolbarAction.Highlight)
+        assertEquals("hello ==world==", edit.text)
+        assertEquals(8, edit.selectionStart)
+        assertEquals(13, edit.selectionEnd)
+    }
+
+    @Test
+    fun highlightInsertsPlaceholderAtCollapsedCursor() {
+        val edit = applyToolbarAction("hello", 5, 5, ToolbarAction.Highlight)
+        assertEquals("hello==text==", edit.text)
+        assertEquals(7, edit.selectionStart)
+        assertEquals(11, edit.selectionEnd)
+    }
+
+    @Test
     fun strikethroughWrapsSelection() {
         val edit = applyToolbarAction("hello world", 6, 11, ToolbarAction.Strikethrough)
         assertEquals("hello ~~world~~", edit.text)

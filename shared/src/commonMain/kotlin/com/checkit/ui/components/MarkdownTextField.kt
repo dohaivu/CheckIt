@@ -282,6 +282,7 @@ fun MarkdownToolbar(
         listOf(
             "B" to ToolbarAction.Bold,
             "I" to ToolbarAction.Italic,
+            "==" to ToolbarAction.Highlight,
             "~~" to ToolbarAction.Strikethrough,
             "H" to ToolbarAction.Heading,
             "• " to ToolbarAction.Bullet,
@@ -462,6 +463,7 @@ fun MarkdownTextField(
 enum class ToolbarAction {
     Bold,
     Italic,
+    Highlight,
     Strikethrough,
     Heading,
     Bullet,
@@ -495,6 +497,7 @@ fun applyToolbarAction(
     return when (action) {
         ToolbarAction.Bold -> wrapSelection(safeText, selStart, selEnd, "**", "**", "text")
         ToolbarAction.Italic -> wrapSelection(safeText, selStart, selEnd, "*", "*", "text")
+        ToolbarAction.Highlight -> wrapSelection(safeText, selStart, selEnd, "==", "==", "text")
         ToolbarAction.Strikethrough -> wrapSelection(safeText, selStart, selEnd, "~~", "~~", "text")
         ToolbarAction.Heading -> toggleLinePrefix(safeText, selStart, selEnd, "## ")
         ToolbarAction.Bullet -> toggleLinePrefix(safeText, selStart, selEnd, "- ")

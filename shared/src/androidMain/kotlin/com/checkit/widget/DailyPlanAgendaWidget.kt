@@ -52,6 +52,7 @@ import com.checkit.domain.NoteItem
 import com.checkit.domain.QuickNote
 import com.checkit.domain.Routine
 import com.checkit.domain.isRoutineScheduled
+import com.checkit.domain.parseRichText
 import com.checkit.domain.resolveRoutineTodayChecks
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
@@ -340,7 +341,7 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = note.content,
+                text = parseRichText(note.content).text,
                 modifier = GlanceModifier.defaultWeight(),
                 style = TextStyle(
                     fontSize = 12.sp,
