@@ -170,7 +170,7 @@ struct NestedRowView: View {
                     // grow a few points while editing. The overlay child is
                     // layout-neutral, so the field floats in the Text frame
                     // (1-2pt overflow is absorbed by the row padding below).
-                    Text(item.text.isEmpty ? "Untitled item" : item.text)
+                    Text(item.text.isEmpty ? AttributedString("Untitled item") : basicMarkdown(item.text))
                         .font(nestedRowFont(item.textStyle.name))
                         .foregroundStyle(nestedTextColor)
                         .strikethrough(item.checked)
@@ -289,7 +289,7 @@ struct NestedRowView: View {
             Circle()
                 .fill(nestedDotForDepth(row.depth))
                 .frame(width: 7, height: 7)
-            Text(item.text.isEmpty ? "Untitled item" : item.text)
+            Text(item.text.isEmpty ? AttributedString("Untitled item") : basicMarkdown(item.text))
                 .font(nestedRowFont(item.textStyle.name))
                 .foregroundStyle(nestedTextColor)
                 .lineLimit(1)
@@ -389,7 +389,7 @@ struct NestedRowView: View {
                     }
                 }
                 if let n = note, !n.isEmpty {
-                    Text(n)
+                    Text(basicMarkdown(n))
                         .font(.callout).foregroundStyle(.secondary)
                         .lineLimit(2)
                 }

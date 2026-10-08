@@ -1,5 +1,6 @@
 package com.checkit.ui.components
 
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -103,6 +104,67 @@ class MarkdownParsingTest {
         assertTrue(barSpan != null, "Expected bold style for quote prefix bar")
         assertEquals(0, barSpan.start)
         assertEquals(2, barSpan.end)
+    }
+
+    @Test
+    fun parseMarkdownToAnnotatedString_parsesHighlight() {
+        val input = "==If== it's 9am, ==then== I will read book"
+        val result = parseMarkdownToAnnotatedString(input)
+
+        assertEquals("If it's 9am, then I will read book", result.text)
+
+        val highlights = result.spanStyles.filter { it.item.color == MarkdownHighlightColor }
+        assertEquals(2, highlights.size)
+        assertEquals(0, highlights[0].start)
+        assertEquals(2, highlights[0].end)
+        assertEquals(FontWeight.Bold, highlights[0].item.fontWeight)
+        assertEquals(13, highlights[1].start)
+        assertEquals(17, highlights[1].end)
+    }
+
+    @Test
+    fun parseMarkdownToAnnotatedString_parsesNestedBoldHighlight() {
+        val input = "**==both==**"
+        val result = parseMarkdownToAnnotatedString(input)
+
+        assertEquals("both", result.text)
+
+        assertTrue(result.spanStyles.any { it.item.color == MarkdownHighlightColor })
+        assertTrue(result.spanStyles.any { it.item.fontWeight == FontWeight.Bold && it.item.color == Color.Unspecified })
+    }
+
+    @Test
+    fun parseMarkdownToAnnotatedString_leavesUnclosedHighlightLiteral() {
+        val input = "==oops"
+        val result = parseMarkdownToAnnotatedString(input)
+
+        assertEquals("==oops", result.text)
+        assertTrue(result.spanStyles.none { it.item.color == MarkdownHighlightColor })
+    }
+
+    @Test
+    fun parseMarkdownToAnnotatedString_acceptsCustomHighlightColor() {
+        val input = "==hi=="
+        val custom = Color.Red
+        val result = parseMarkdownToAnnotatedString(input, highlightColor = custom)
+
+        assertEquals("hi", result.text)
+        assertEquals(custom, result.spanStyles.single().item.color)
+    }
+
+    @Test
+    fun markdownVisualTransformation_appliesHighlightStyle() {
+        val transformation = MarkdownVisualTransformation()
+        val input = AnnotatedString("This is ==highlight== text")
+        val transformed = transformation.filter(input)
+
+        assertEquals("This is ==highlight== text", transformed.text.text)
+
+        val highlightSpan = transformed.text.spanStyles.firstOrNull { it.item.color == MarkdownHighlightColor }
+        assertTrue(highlightSpan != null, "Expected a highlight span style")
+        assertEquals(8, highlightSpan.start)
+        assertEquals(21, highlightSpan.end) // Includes raw "==highlight=="
+        assertEquals(FontWeight.Bold, highlightSpan.item.fontWeight)
     }
 
     @Test

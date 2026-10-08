@@ -180,6 +180,7 @@ import com.checkit.ui.components.MetricChip
 import com.checkit.ui.components.PeriodPicker
 import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TagPill
+import com.checkit.ui.components.parseMarkdownInline
 import com.checkit.ui.isValidForSave
 import com.checkit.ui.noRippleClickable
 import com.checkit.ui.tasks.views.ViewOptionChip
@@ -1249,7 +1250,9 @@ private fun NestedItemMetadataPreview(
 
         if (hasNote) {
             Text(
-                text = item.note.orEmpty(),
+                text = remember(item.note) {
+                    parseMarkdownInline(item.note.orEmpty())
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.78f),
                 maxLines = 2,
@@ -2384,8 +2387,13 @@ private fun NestedItemRow(
                                         .focusRequester(focusRequester)
                                 )
                             } else {
+                                // Inline-only markdown (==highlight==, **bold**, …): line-based
+                                // constructs are never parsed, so a row starting with
+                                // `#tag` keeps its row style. Markers stay raw while editing.
                                 Text(
-                                    text = item.text,
+                                    text = remember(item.text) {
+                                        parseMarkdownInline(item.text)
+                                    },
                                     style = nestedTextStyle(item.textStyle),
                                     textDecoration = if (item.checked) TextDecoration.LineThrough else TextDecoration.None,
                                     color = when {

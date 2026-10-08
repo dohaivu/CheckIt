@@ -35,6 +35,8 @@ import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.stringResource
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.clear_text
+import com.checkit.domain.RichSpanKind
+import com.checkit.domain.parseRichText
 import com.checkit.ui.tasks.views.ContentContainerAlpha
 import androidx.compose.ui.unit.sp
 
@@ -200,6 +202,7 @@ class MarkdownVisualTransformation : VisualTransformation {
     private val boldRegex = Regex("\\*\\*(.*?)\\*\\*")
     private val italicRegex = Regex("\\*(.*?)\\*")
     private val strikethroughRegex = Regex("~~(.*?)~~")
+    private val highlightPattern = Regex("==(.+?)==")
     // Matches any digit followed by a period and a space (e.g., "1. ", "12. ")
     private val numberedListRegex = Regex("^\\d+\\.\\s")
 
@@ -319,13 +322,29 @@ class MarkdownVisualTransformation : VisualTransformation {
                     end = range.last + 1
                 )
             }
+
+            // 6. Format Inline Elements: Highlight (==text==, markers included like the rest)
+            highlightPattern.findAll(rawText).forEach { matchResult ->
+                val range = matchResult.range
+                addStyle(
+                    style = SpanStyle(
+                        fontWeight = FontWeight.Bold,
+                        color = MarkdownHighlightColor
+                    ),
+                    start = range.first,
+                    end = range.last + 1
+                )
+            }
         }
 
         return TransformedText(transformed, OffsetMapping.Identity)
     }
 }
 
-fun parseMarkdownToAnnotatedString(markdown: String?): AnnotatedString {
+fun parseMarkdownToAnnotatedString(
+    markdown: String?,
+    highlightColor: Color = MarkdownHighlightColor
+): AnnotatedString {
     if (markdown.isNullOrEmpty()) return AnnotatedString("")
     return buildAnnotatedString {
         val lines = markdown.split('\n')
@@ -373,7 +392,7 @@ fun parseMarkdownToAnnotatedString(markdown: String?): AnnotatedString {
             val lineStartIndex = this.length
 
             // 2. Clear markdown inline symbols and calculate exact styling positions
-            val (finalLineText, stylesToApply) = processInlineStyles(cleanLine)
+            val (finalLineText, stylesToApply) = processInlineStyles(cleanLine, highlightColor)
 
             // Append only the clean text without structural markers
             append(finalLineText)
@@ -413,64 +432,53 @@ fun parseMarkdownToAnnotatedString(markdown: String?): AnnotatedString {
     }
 }
 
+// Default marker color for ==highlight== when callers don't pass a theme color.
+// Deep orange reads on both light and dark surfaces.
+internal val MarkdownHighlightColor: Color = Color(0xFFE65100)
+
 // A simple helper data class to store layout positions
 private data class StyleMarker(val style: SpanStyle, val start: Int, val end: Int)
 
-private fun processInlineStyles(inputLine: String): Pair<String, List<StyleMarker>> {
-    val styles = mutableListOf<StyleMarker>()
-    // Use a combined regex to find all bold, strikethrough, and italic markers in order.
-    // Bold (**...**) and strikethrough (~~...~~) are matched first, then italic (*...*).
-    val combinedRegex = Regex("(\\*\\*(.*?)\\*\\*)|(~~(.*?)~~)|(\\*(.*?)\\*)")
+private fun RichSpanKind.toSpanStyle(highlightColor: Color): SpanStyle = when (this) {
+    RichSpanKind.Bold -> SpanStyle(fontWeight = FontWeight.Bold)
+    RichSpanKind.Italic -> SpanStyle(fontStyle = FontStyle.Italic)
+    RichSpanKind.Strikethrough -> SpanStyle(textDecoration = TextDecoration.LineThrough)
+    RichSpanKind.Highlight -> SpanStyle(fontWeight = FontWeight.Bold, color = highlightColor)
+}
 
-    val resultText = StringBuilder()
-    var lastIndex = 0
-
-    combinedRegex.findAll(inputLine).forEach { match ->
-        // Append plain text before the match
-        resultText.append(inputLine.substring(lastIndex, match.range.first))
-
-        // groupValues[1] is the full bold match, groupValues[2] is the bold inner text
-        // groupValues[3] is the full strikethrough match, groupValues[4] is the strikethrough inner text
-        // groupValues[5] is the full italic match, groupValues[6] is the italic inner text
-        val isBold = match.groupValues[1].isNotEmpty()
-        val isStrikethrough = match.groupValues[3].isNotEmpty()
-        val innerTextRaw = when {
-            isBold -> match.groupValues[2]
-            isStrikethrough -> match.groupValues[4]
-            else -> match.groupValues[6]
-        }
-
-        val start = resultText.length
-        // Recursive call to handle nested styles (e.g., ***bold italic***, ~~**bold strikethrough**~~)
-        val (innerTextClean, innerStyles) = processInlineStyles(innerTextRaw)
-
-        resultText.append(innerTextClean)
-        val end = resultText.length
-
-        // Add the outer style
-        val style = when {
-            isBold -> SpanStyle(fontWeight = FontWeight.Bold)
-            isStrikethrough -> SpanStyle(textDecoration = TextDecoration.LineThrough)
-            else -> SpanStyle(fontStyle = FontStyle.Italic)
-        }
-        styles.add(
-            StyleMarker(
-                style = style,
-                start = start,
-                end = end
-            )
+private fun processInlineStyles(
+    inputLine: String,
+    highlightColor: Color = MarkdownHighlightColor
+): Pair<String, List<StyleMarker>> {
+    val parsed = parseRichText(inputLine)
+    return parsed.text to parsed.spans.map { span ->
+        StyleMarker(
+            style = span.kind.toSpanStyle(highlightColor),
+            start = span.start,
+            end = span.end
         )
-
-        // Add inner styles with adjusted offsets
-        innerStyles.forEach { inner ->
-            styles.add(inner.copy(start = start + inner.start, end = start + inner.end))
-        }
-
-        lastIndex = match.range.last + 1
     }
+}
 
-    // Append remaining text after the last match
-    resultText.append(inputLine.substring(lastIndex))
-
-    return Pair(resultText.toString(), styles)
+/**
+ * Inline-only markdown for single-line rows: strips markers and returns a
+ * styled AnnotatedString. Unlike [parseMarkdownToAnnotatedString], line-based
+ * constructs (`# ` headers, `> ` quotes, list bullets) are left untouched so a
+ * row starting with `#tag` never blows up into a header.
+ */
+fun parseMarkdownInline(
+    text: String,
+    highlightColor: Color = MarkdownHighlightColor
+): AnnotatedString {
+    val parsed = parseRichText(text)
+    return AnnotatedString(
+        text = parsed.text,
+        spanStyles = parsed.spans.map { span ->
+            AnnotatedString.Range(
+                span.kind.toSpanStyle(highlightColor),
+                span.start,
+                span.end
+            )
+        }
+    )
 }

@@ -354,7 +354,7 @@ struct QuickNoteRow: View {
     var body: some View {
         HStack(alignment: expanded ? .top : .center, spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(note.content)
+                Text(basicMarkdown(note.content))
                     .lineLimit(expanded ? nil : 3)
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
