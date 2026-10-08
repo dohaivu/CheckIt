@@ -114,7 +114,7 @@ struct NestedRowView: View {
             // Collapse toggle: chevron wrapped in an outside circle (parents)
             // or a small filled dot (leaves), matching the attachment where
             // a collapsed parent shows a dot inside an outer ring.
-            // 2pt top offset puts the 16pt ring/dot on the text's visual
+            // 2pt top offset puts the 13pt ring on the text's visual
             // center (content starts 5pt down), whatever the row height.
             Button {
                 state.toggleCollapse(id: item.id)
@@ -124,7 +124,7 @@ struct NestedRowView: View {
                         ZStack {
                             Circle()
                                 .stroke(nestedDotForDepth(row.depth), lineWidth: 1.5)
-                                .frame(width: 16, height: 16)
+                                .frame(width: 13, height: 13)
                             Image(systemName: item.collapsed ? "chevron.right" : "chevron.down")
                                 .font(.system(size: 8, weight: .semibold))
                                 .foregroundStyle(nestedDotForDepth(row.depth))
@@ -245,14 +245,14 @@ struct NestedRowView: View {
         }
         .background(alignment: .topLeading) {
             // Guide continuation from the toggle down through the children.
-            // Same 16pt grid x as the guides. The toggle is a 16pt circle
-            // in a 24pt slot with 2pt top padding, so its bottom edge sits
-            // at 22pt — start the line there so it touches the ring.
+            // Same 16pt grid x as the guides. The toggle is a 13pt circle
+            // in a 16pt slot with 2pt top padding, so its bottom edge sits
+            // at 20pt — start the line there so it touches the ring.
             if row.node.hasChildren && !item.collapsed {
                 Rectangle()
                     .fill(nestedGuideColor(row.depth))
                     .frame(width: 1)
-                    .padding(.top, 22)
+                    .padding(.top, 20)
                     .padding(.leading, CGFloat(row.depth * 16) + 10)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
