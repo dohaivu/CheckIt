@@ -27,6 +27,7 @@ import androidx.glance.layout.Box
 import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxWidth
+import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.layout.size
 import androidx.glance.layout.width
@@ -71,7 +72,7 @@ class QuickNoteSingleWidget : GlanceAppWidget(), KoinComponent {
                 Row(
                     modifier = GlanceModifier
                         .fillMaxWidth()
-                        .wrapContentHeight()
+                        .height(80.dp)
                         .cornerRadius(80.dp)
                         .background(translucentBackground)
                         .padding(horizontal = 12.dp, vertical = 12.dp)
