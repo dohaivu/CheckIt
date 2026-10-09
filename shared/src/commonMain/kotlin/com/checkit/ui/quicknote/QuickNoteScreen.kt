@@ -1017,7 +1017,9 @@ private fun DeletedRow(
             ) {
                 SelectionContainer(modifier = Modifier.weight(1f)) {
                     Text(
-                        note.content,
+                        text = remember(note.content) {
+                            parseMarkdownInline(note.content)
+                        },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

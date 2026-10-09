@@ -508,7 +508,7 @@ struct QuickNoteDeletedRow: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 8) {
-            Text(note.content)
+            Text(basicMarkdown(note.content))
                 .lineLimit(3)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
