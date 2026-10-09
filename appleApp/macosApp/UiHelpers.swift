@@ -33,6 +33,9 @@ func basicMarkdown(_ raw: String, highlight: Color = Color.orange) -> Attributed
         case .highlight:
             out[range].inlinePresentationIntent = .stronglyEmphasized
             out[range].foregroundColor = highlight
+        case .code:
+            out[range].inlinePresentationIntent = .code
+            out[range].backgroundColor = Color.gray.opacity(0.15)
         default:
             break
         }
@@ -61,6 +64,9 @@ func basicMarkdownNS(_ raw: String, highlight: NSColor = .orange) -> NSAttribute
         case .highlight:
             out.applyFontTraits(.boldFontMask, range: range)
             out.addAttribute(.foregroundColor, value: highlight, range: range)
+        case .code:
+            out.addAttribute(.font, value: NSFont.monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .regular), range: range)
+            out.addAttribute(.backgroundColor, value: NSColor.gray.withAlphaComponent(0.15), range: range)
         default:
             break
         }
