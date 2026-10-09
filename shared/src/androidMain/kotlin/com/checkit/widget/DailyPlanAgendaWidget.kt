@@ -724,9 +724,9 @@ private sealed class GlanceAgendaItem {
         override val noteId: String? = null
     }
 }
-
+// open daily plan only
 private fun DayViewProjection.toWidgetItems(timed: Boolean, today: LocalDate): List<GlanceAgendaItem> {
-    val widgetItems = items.map { GlanceAgendaItem.DailyPlan(it, today) } + notes.map { GlanceAgendaItem.Note(it) }
+    val widgetItems = items.filter { it.status != DailyPlanItemStatus.Done  } .map { GlanceAgendaItem.DailyPlan(it, today) } + notes.map { GlanceAgendaItem.Note(it) }
     
     return widgetItems
         .asSequence()
