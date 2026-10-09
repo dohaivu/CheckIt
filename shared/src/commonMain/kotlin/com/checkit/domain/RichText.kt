@@ -6,6 +6,7 @@ enum class RichSpanKind {
     Italic,
     Strikethrough,
     Highlight,
+    Code,
 }
 
 /** One styled run. Offsets are UTF-16 code units into [RichText.text]. */
@@ -23,7 +24,7 @@ data class RichText(
 
 /**
  * Parses inline markdown spans (`**bold**`, `_italic_`, `~~strike~~`,
- * `==highlight==`), stripping markers. Unmatched markers stay literal.
+ * `==highlight==`, `` `code` ``), stripping markers. Unmatched markers stay literal.
  * Nesting recurses (e.g. `**==bold highlight==**`).
  *
  * Italic uses `_` (not `*`) so `**bold**` and `*italic*` never collide the
@@ -40,19 +41,20 @@ data class RichText(
  */
 fun parseRichText(input: String): RichText {
     val spans = mutableListOf<RichSpan>()
-    // Bold (**) and strikethrough (~~) first, then italic (_), then highlight (==).
-    val combinedRegex = Regex("(\\*\\*(.*?)\\*\\*)|(~~(.*?)~~)|((?:^|\\W)_([^_\\n]+?)_(?=$|\\W))|(==(.+?)==)")
+    // Bold (**), strikethrough (~~), italic (_), highlight (==), and inline code (`).
+    val combinedRegex = Regex("(\\*\\*(.*?)\\*\\*)|(~~(.*?)~~)|((?:^|\\W)_([^_\\n]+?)_(?=$|\\W))|(==(.+?)==)|(`([^`\\n]+?)`)")
 
     val resultText = StringBuilder()
     var lastIndex = 0
 
     combinedRegex.findAll(input).forEach { match ->
-        // groupValues[1/2] bold, [3/4] strikethrough, [5/6] italic, [7/8] highlight.
+        // groupValues[1/2] bold, [3/4] strikethrough, [5/6] italic, [7/8] highlight, [9/10] code.
         val kind = when {
             match.groupValues[1].isNotEmpty() -> RichSpanKind.Bold
             match.groupValues[3].isNotEmpty() -> RichSpanKind.Strikethrough
             match.groupValues[5].isNotEmpty() -> RichSpanKind.Italic
-            else -> RichSpanKind.Highlight
+            match.groupValues[7].isNotEmpty() -> RichSpanKind.Highlight
+            else -> RichSpanKind.Code
         }
         // The italic alternative consumes one leading boundary char (a
         // non-word char matched by (?:^|\W)); re-emit it literally. At string
@@ -67,6 +69,7 @@ fun parseRichText(input: String): RichText {
             RichSpanKind.Strikethrough -> match.groupValues[4]
             RichSpanKind.Italic -> match.groupValues[6]
             RichSpanKind.Highlight -> match.groupValues[8]
+            RichSpanKind.Code -> match.groupValues[10]
         }
 
         val start = resultText.length

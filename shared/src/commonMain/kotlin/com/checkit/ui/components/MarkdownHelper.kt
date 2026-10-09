@@ -30,6 +30,7 @@ class MarkdownVisualTransformation : VisualTransformation {
     private val italicRegex = Regex("(?:^|\\W)_([^_\\n]+?)_(?=$|\\W)")
     private val strikethroughRegex = Regex("~~(.*?)~~")
     private val highlightPattern = Regex("==(.+?)==")
+    private val codePattern = Regex("`([^`\\n]+?)`")
     // Matches any digit followed by a period and a space (e.g., "1. ", "12. ")
     private val numberedListRegex = Regex("^\\d+\\.\\s")
 
@@ -162,6 +163,19 @@ class MarkdownVisualTransformation : VisualTransformation {
                     end = range.last + 1
                 )
             }
+
+            // 7. Format Inline Elements: Code (`text`)
+            codePattern.findAll(rawText).forEach { matchResult ->
+                val range = matchResult.range
+                addStyle(
+                    style = SpanStyle(
+                        fontFamily = FontFamily.Monospace,
+                        background = MarkdownCodeBackgroundColor
+                    ),
+                    start = range.first,
+                    end = range.last + 1
+                )
+            }
         }
 
         return TransformedText(transformed, OffsetMapping.Identity)
@@ -262,6 +276,7 @@ fun parseMarkdownToAnnotatedString(
 // Default marker color for ==highlight== when callers don't pass a theme color.
 // Deep orange reads on both light and dark surfaces.
 internal val MarkdownHighlightColor: Color = Color(0xFFE65100)
+internal val MarkdownCodeBackgroundColor: Color = Color(0x20808080)
 
 // A simple helper data class to store layout positions
 private data class StyleMarker(val style: SpanStyle, val start: Int, val end: Int)
@@ -271,6 +286,7 @@ private fun RichSpanKind.toSpanStyle(highlightColor: Color): SpanStyle = when (t
     RichSpanKind.Italic -> SpanStyle(fontStyle = FontStyle.Italic)
     RichSpanKind.Strikethrough -> SpanStyle(textDecoration = TextDecoration.LineThrough)
     RichSpanKind.Highlight -> SpanStyle(fontWeight = FontWeight.Bold, color = highlightColor)
+    RichSpanKind.Code -> SpanStyle(fontFamily = FontFamily.Monospace, background = MarkdownCodeBackgroundColor)
 }
 
 private fun processInlineStyles(

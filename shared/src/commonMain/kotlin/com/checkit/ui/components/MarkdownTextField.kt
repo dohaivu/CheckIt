@@ -137,6 +137,14 @@ val markdownAppenderCommands = listOf(
         }
     ),
     AppenderCommandItem(
+        name = "code",
+        label = "Code",
+        description = "Insert inline code `code`",
+        action = { text, slashIndex, cursorIndex ->
+            applySlashReplacement(text, slashIndex, cursorIndex, "`code`")
+        }
+    ),
+    AppenderCommandItem(
         name = "bullet",
         label = "Bullet List",
         description = "Insert bullet list - ",
@@ -282,6 +290,7 @@ fun MarkdownToolbar(
         listOf(
             "B" to ToolbarAction.Bold,
             "I" to ToolbarAction.Italic,
+            "` `" to ToolbarAction.Code,
             "==" to ToolbarAction.Highlight,
             "~~" to ToolbarAction.Strikethrough,
             "H" to ToolbarAction.Heading,
@@ -463,6 +472,7 @@ fun MarkdownTextField(
 enum class ToolbarAction {
     Bold,
     Italic,
+    Code,
     Highlight,
     Strikethrough,
     Heading,
@@ -497,6 +507,7 @@ fun applyToolbarAction(
     return when (action) {
         ToolbarAction.Bold -> wrapSelection(safeText, selStart, selEnd, "**", "**", "text")
         ToolbarAction.Italic -> wrapSelection(safeText, selStart, selEnd, "_", "_", "text")
+        ToolbarAction.Code -> wrapSelection(safeText, selStart, selEnd, "`", "`", "code")
         ToolbarAction.Highlight -> wrapSelection(safeText, selStart, selEnd, "==", "==", "text")
         ToolbarAction.Strikethrough -> wrapSelection(safeText, selStart, selEnd, "~~", "~~", "text")
         ToolbarAction.Heading -> toggleLinePrefix(safeText, selStart, selEnd, "## ")

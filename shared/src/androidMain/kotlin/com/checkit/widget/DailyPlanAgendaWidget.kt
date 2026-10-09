@@ -54,7 +54,6 @@ import com.checkit.domain.Routine
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.isRoutineScheduled
-import com.checkit.domain.parseRichText
 import com.checkit.domain.resolveRoutineTodayChecks
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveNotesForDateUseCase
@@ -340,8 +339,8 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
                 .clickable(actionStartActivity<MainActivity>()),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = parseRichText(note.content).text,
+            GlanceMarkdownText(
+                text = note.content.ifBlank { "Empty note" },
                 modifier = GlanceModifier.defaultWeight(),
                 style = TextStyle(
                     fontSize = 12.sp,
