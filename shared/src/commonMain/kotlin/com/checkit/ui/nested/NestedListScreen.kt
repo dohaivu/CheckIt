@@ -43,12 +43,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.DriveFileMove
 import androidx.compose.material.icons.automirrored.filled.NoteAdd
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.Add
@@ -57,7 +57,6 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Done
-import androidx.compose.material.icons.filled.DriveFileMove
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.FormatColorFill
@@ -123,7 +122,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -2092,7 +2090,7 @@ private fun EditorToolbar(
                     ToolbarMenuItem("Sort children", Icons.Default.SortByAlpha, canSortChildren) {
                         showMore = false; onSortChildren()
                     }
-                    ToolbarMenuItem("Move to…", Icons.Default.DriveFileMove, canMoveTo) {
+                    ToolbarMenuItem("Move to…", Icons.AutoMirrored.Filled.DriveFileMove, canMoveTo) {
                         showMore = false; onMoveTo()
                     }
                 }
@@ -2391,7 +2389,6 @@ private fun NestedItemRow(
                                     text = item.text
                                     focusRequester.requestFocus()
                                 }
-                                val focusManager = LocalFocusManager.current
                                 BasicTextField(
                                     value = text,
                                     onValueChange = { text = it },
@@ -2402,16 +2399,14 @@ private fun NestedItemRow(
                                         )
                                     ),
                                     cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                                    keyboardActions = KeyboardActions(onDone = {
-                                        // Single save path is focus loss below;
-                                        // Done just resigns so it saves once.
-                                        focusManager.clearFocus()
-                                    }),
+                                    // Default Enter inserts a newline (Shift+Return
+                                    // equivalent); commit happens on focus loss,
+                                    // tap-away, or hardware Back.
+                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Default),
                                     modifier = Modifier.fillMaxWidth()
                                         .focusRequester(focusRequester)
                                         .onFocusChanged { focusState ->
-                                            // Tap-away / toolbar / Done commits;
+                                            // Tap-away / toolbar / Back commits;
                                             // explicit saves already cleared
                                             // editing, so this skips then.
                                             if (!focusState.isFocused && isEditing && text != item.text) {
@@ -2820,7 +2815,6 @@ private fun NewItemRow(
                 .padding(start = (depth * 16).dp),
             verticalAlignment = Alignment.Top
         ) {
-            val focusManager = LocalFocusManager.current
             val focusRequester = remember { FocusRequester() }
             LaunchedEffect(Unit) {
                 focusRequester.requestFocus()
@@ -2844,15 +2838,19 @@ private fun NewItemRow(
                     singleLine = false,
                     textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
                     cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(onDone = {
-                        focusManager.clearFocus()
-                        onCommit()
-                    }),
+                    // Default Enter inserts a newline; commit via the
+                    // check button (tap-away cancels drafts).
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Default),
                     modifier = Modifier
                         .fillMaxWidth()
                         .focusRequester(focusRequester)
                 )
+            }
+            IconButton(
+                onClick = onCommit,
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(Icons.Default.Done, contentDescription = "Save")
             }
             IconButton(
                 onClick = onCancel,
