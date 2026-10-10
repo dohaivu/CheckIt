@@ -3,7 +3,6 @@ package com.checkit.widget
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -25,6 +24,8 @@ import androidx.glance.unit.ColorProvider as UnitColorProvider
 import com.checkit.domain.RichSpan
 import com.checkit.domain.RichSpanKind
 import com.checkit.domain.parseRichText
+import com.checkit.ui.components.MarkdownHighlightColor
+import com.checkit.ui.theme.parseHexColorOrNull
 
 /** One drawable run of cleaned text plus the styles needed to paint it. */
 data class WidgetTextSegment(
@@ -33,6 +34,8 @@ data class WidgetTextSegment(
     val italic: Boolean = false,
     val strikeThrough: Boolean = false,
     val highlight: Boolean = false,
+    /** Hex for `=={cN}==` runs; null means the default highlight color. */
+    val highlightHex: String? = null,
     val code: Boolean = false,
 ) {
     /** True when the run needs no overrides and can reuse the base style. */
@@ -45,6 +48,7 @@ data class WidgetTextSegment(
             italic == other.italic &&
             strikeThrough == other.strikeThrough &&
             highlight == other.highlight &&
+            highlightHex == other.highlightHex &&
             code == other.code
 }
 
@@ -151,6 +155,7 @@ private fun styledRun(
         italic = italic,
         strikeThrough = strikeThrough,
         highlight = highlight,
+        highlightHex = spans.firstOrNull { it.kind == RichSpanKind.Highlight && it.start <= from && it.end >= to }?.colorHex,
         code = code
     )
 }
@@ -259,36 +264,22 @@ private fun isHorizontalRule(text: String): Boolean {
 }
 
 /**
- * Day/night color for `==highlighted==` runs, bright enough to stay readable
- * on a dark widget surface.
- */
-val WidgetMarkdownHighlightColor: UnitColorProvider = ColorProvider(
-    day = Color(0xFF8C4A00),
-    night = Color(0xFFFFB26B)
-)
-
-/**
- * Markdown-aware replacement for Glance `Text` in widgets.
+ * Markdown-aware replacement for Glance `Text` in widgets. Renders inline
+ * markdown (including `=={cN}==` per-token colors) and block constructs
+ * across single- and multi-line views; single-line content renders one
+ * `Text` node directly to avoid extra RemoteViews containers.
  *
- * Renders inline markdown (`**bold**`, `_italic_`, `~~strikethrough~~`, `==highlight==`, `` `code` ``)
- * as well as block constructs (headers, bullet & numbered lists, checkboxes, blockquotes, rules)
- * across single- and multi-line widget views.
- *
- * Optimization: If the input consists of a single line with plain/styled content, it renders a single
- * Glance [Text] node directly to avoid unnecessary container views in RemoteViews.
- *
- * @param text raw markdown string to display.
- * @param modifier usually a GlanceModifier carrying size, padding, weight and click action.
- * @param style base style; font size, color, and alignment come from here.
- * @param highlightColor color used for `==highlight==` runs.
- * @param maxLines maximum visible lines to display.
+ * @param highlightColor default for `==highlight==` runs without a token.
  */
 @Composable
 fun GlanceMarkdownText(
     text: String,
     modifier: GlanceModifier = GlanceModifier,
     style: TextStyle = TextStyle(),
-    highlightColor: UnitColorProvider = WidgetMarkdownHighlightColor,
+    highlightColor: UnitColorProvider = ColorProvider(
+        day = MarkdownHighlightColor,
+        night = MarkdownHighlightColor
+    ),
     maxLines: Int = Int.MAX_VALUE
 ) {
     if (text.isEmpty()) {
@@ -443,7 +434,10 @@ private fun WidgetTextSegment.toGlanceTextStyle(
         result = result.copy(textDecoration = TextDecoration.LineThrough)
     }
     if (highlight) {
-        result = result.copy(color = highlightColor, fontWeight = FontWeight.Bold)
+        val color = highlightHex?.parseHexColorOrNull()?.let {
+            ColorProvider(day = it, night = it)
+        } ?: highlightColor
+        result = result.copy(color = color, fontWeight = FontWeight.Bold)
     }
     if (code) {
         result = result.copy(fontFamily = FontFamily.Monospace)
