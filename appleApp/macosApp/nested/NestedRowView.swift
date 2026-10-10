@@ -217,20 +217,18 @@ struct NestedRowView: View {
                                 state.startEdit(id: item.id, text: editText)
                                 return .handled
                             }
-                            .onKeyPress(keys: [.upArrow, .downArrow]) { press in
-                                // Multiline: drive the cursor explicitly for the
-                                // same reason as Shift+Return above. Cmd+arrows
-                                // keep their move-item meaning.
-                                if press.modifiers.contains(.command) {
+                            .onKeyPress(keys: [.leftArrow, .rightArrow, .upArrow, .downArrow]) { press in
+                                // Bare Cmd+Up/Down keeps its move-item meaning,
+                                // committing first. Everything else is cursor or
+                                // selection movement in the field.
+                                if press.modifiers.contains(.command), !press.modifiers.contains(.shift),
+                                   press.key == .upArrow || press.key == .downArrow {
                                     fieldFocused = false
                                     state.commitEdit(id: item.id, text: editText)
                                     if press.key == .upArrow { state.moveSelectedUp() } else { state.moveSelectedDown() }
                                     return .handled
                                 }
-                                if let editor = nestedFieldEditor() {
-                                    editor.doCommand(by: press.key == .upArrow ? #selector(NSResponder.moveUp(_:)) : #selector(NSResponder.moveDown(_:)))
-                                }
-                                return .handled
+                                return nestedArrowKeys(press)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .writingToolsBehavior(.complete)

@@ -21,6 +21,53 @@ func nestedFieldEditor() -> NSTextView? {
     return window.fieldEditor(false, for: nil) as? NSTextView
 }
 
+/// Drives arrow keys in the outline fields explicitly: matched keys that
+/// return `.ignored` never reach the field editor, so without this the keys
+/// would bubble to the outline handler and act on the selection mid-typing.
+/// Mirrors NSText granularity (char / word / line, document extent with Cmd),
+/// with Shift extending the selection. Bare Cmd is the caller's (outline
+/// commands like move-item), so callers pre-handle that arm. Shared by the
+/// row edit and draft fields.
+func nestedArrowKeys(_ press: KeyPress) -> KeyPress.Result {
+    guard let editor = nestedFieldEditor() else { return .handled }
+    let shift = press.modifiers.contains(.shift)
+    let cmd = press.modifiers.contains(.command)
+    let opt = press.modifiers.contains(.option)
+    let selector: Selector
+    switch press.key {
+    case .leftArrow, .rightArrow:
+        let left = press.key == .leftArrow
+        if cmd {
+            selector = left
+                ? (shift ? #selector(NSResponder.moveToBeginningOfLineAndModifySelection(_:)) : #selector(NSResponder.moveToBeginningOfLine(_:)))
+                : (shift ? #selector(NSResponder.moveToEndOfLineAndModifySelection(_:)) : #selector(NSResponder.moveToEndOfLine(_:)))
+        } else if opt {
+            selector = left
+                ? (shift ? #selector(NSResponder.moveWordLeftAndModifySelection(_:)) : #selector(NSResponder.moveWordLeft(_:)))
+                : (shift ? #selector(NSResponder.moveWordRightAndModifySelection(_:)) : #selector(NSResponder.moveWordRight(_:)))
+        } else {
+            selector = left
+                ? (shift ? #selector(NSResponder.moveLeftAndModifySelection(_:)) : #selector(NSResponder.moveLeft(_:)))
+                : (shift ? #selector(NSResponder.moveRightAndModifySelection(_:)) : #selector(NSResponder.moveRight(_:)))
+        }
+    case .upArrow, .downArrow:
+        let up = press.key == .upArrow
+        if cmd {
+            selector = up
+                ? (shift ? #selector(NSResponder.moveToBeginningOfDocumentAndModifySelection(_:)) : #selector(NSResponder.moveToBeginningOfDocument(_:)))
+                : (shift ? #selector(NSResponder.moveToEndOfDocumentAndModifySelection(_:)) : #selector(NSResponder.moveToEndOfDocument(_:)))
+        } else {
+            selector = up
+                ? (shift ? #selector(NSResponder.moveUpAndModifySelection(_:)) : #selector(NSResponder.moveUp(_:)))
+                : (shift ? #selector(NSResponder.moveDownAndModifySelection(_:)) : #selector(NSResponder.moveDown(_:)))
+        }
+    default:
+        return .handled
+    }
+    editor.doCommand(by: selector)
+    return .handled
+}
+
 /// Builds display text from the shared markdown spans (bold/italic/strike/
 /// highlight/code). Presentation intents keep the caller's base font; only
 /// highlight carries an explicit color (bold + accent, or the span's `{cN}`

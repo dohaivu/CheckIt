@@ -835,11 +835,14 @@ struct NestedListsWindowView: View {
     /// the type-checker's limits. Shift+Ctrl+Left/Right = collapse/expand all
     /// under the selection (else current view);
     private func handleOutlineArrowKey(_ press: KeyPress) -> KeyPress.Result {
+        // Fields own their arrows (explicit cursor driving); without this
+        // the outline would collapse/outdent mid-typing.
+        guard state.editingId == nil, state.draft == nil else { return .ignored }
         if press.modifiers.contains(.control) {
             if press.key == .leftArrow { state.collapseAll() } else { state.expandAll() }
             return .handled
         }
-        guard state.editingId == nil, let id = state.selectedId,
+        guard let id = state.selectedId,
               let node = state.indexById[id]
         else { return .ignored }
         let collapsed = node.item.collapsed
@@ -911,11 +914,11 @@ struct NestedListsWindowView: View {
                     }
                     return .handled
                 }
-                .onKeyPress(keys: [.upArrow, .downArrow]) { press in
-                    // Multiline: drive the cursor explicitly — returning
-                    // `.ignored` does not reliably re-deliver (see row edit).
-                    // Cmd+arrows keep their outline meaning.
-                    if press.modifiers.contains(.command) {
+                .onKeyPress(keys: [.leftArrow, .rightArrow, .upArrow, .downArrow]) { press in
+                    // Bare Cmd+Up/Down keeps its outline meaning below.
+                    // Everything else is cursor or selection movement.
+                    if press.modifiers.contains(.command), !press.modifiers.contains(.shift),
+                       press.key == .upArrow || press.key == .downArrow {
                         let hasText = !draftText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                         if hasText {
                             state.commitDraft(thenContinue: false)
@@ -925,10 +928,7 @@ struct NestedListsWindowView: View {
                         }
                         return .handled
                     }
-                    if let editor = nestedFieldEditor() {
-                        editor.doCommand(by: press.key == .upArrow ? #selector(NSResponder.moveUp(_:)) : #selector(NSResponder.moveDown(_:)))
-                    }
-                    return .handled
+                    return nestedArrowKeys(press)
                 }
             Button {
                 state.cancelDraft()
