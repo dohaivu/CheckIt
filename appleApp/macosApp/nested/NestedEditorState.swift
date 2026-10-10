@@ -352,20 +352,45 @@ final class NestedEditorState: ObservableObject {
         editingId = nil
     }
 
-    func startEdit(id: String) {
+    func startEdit(id: String, text: String? = nil) {
         // Same view-update deferral as the draft starters: editingId and
         // friends must not publish synchronously from event handlers.
         Task { @MainActor [weak self] in
-            self?.selectedId = id
-            self?.editingId = id
-            self?.draft = nil
+            guard let self else { return }
+            self.selectedId = id
+            self.editingId = id
+            self.draft = nil
+            // Prefer the caller's text: the tree can lag a just-saved edit.
+            self.editingText = text ?? self.indexById[id]?.item.text ?? ""
         }
     }
 
     func commitEdit(id: String, text: String) {
         Task { @MainActor [weak self] in
             self?.editingId = nil
+            self?.editingText = ""
         }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        helper.saveItemText(itemId: id, text: trimmed)
+    }
+
+    /// In-progress edit text, mirrored synchronously from the field (plain
+    /// var: no publish, no re-render, no view-update warning).
+    var editingText: String = ""
+
+    /**
+     * Synchronous commit from trusted contexts (tap gestures): gesture
+     * actions run outside view updates, so direct writes are safe — unlike
+     * focus-loss observers, which must hop a tick. Uses the mirrored
+     * [editingText] because the field's local copy is unreachable there.
+     * Same save semantics as [commitEdit].
+     */
+    func commitEditing() {
+        guard let id = editingId else { return }
+        let text = editingText
+        editingId = nil
+        editingText = ""
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         helper.saveItemText(itemId: id, text: trimmed)
@@ -374,6 +399,7 @@ final class NestedEditorState: ObservableObject {
     func cancelEdit() {
         Task { @MainActor [weak self] in
             self?.editingId = nil
+            self?.editingText = ""
         }
     }
 

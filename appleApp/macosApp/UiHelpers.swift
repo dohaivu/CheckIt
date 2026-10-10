@@ -7,6 +7,20 @@ import SwiftUI
 import AppKit
 import Shared
 
+/// The focused field editor, if any. Used to drive cursor/text operations
+/// explicitly (insert newline, move cursor): returning `.ignored` from
+/// `.onKeyPress` does not reliably re-deliver the event for insertion, so
+/// handlers that need text effects must perform them directly. Prefers the
+/// window's first responder (which is the editor while editing) because
+/// `fieldEditor(_:for:)` won't resolve with a nil object.
+func nestedFieldEditor() -> NSTextView? {
+    guard let window = NSApp.keyWindow else { return nil }
+    if let editor = window.firstResponder as? NSTextView {
+        return editor
+    }
+    return window.fieldEditor(false, for: nil) as? NSTextView
+}
+
 /// Builds display text from the shared markdown spans (bold/italic/strike/
 /// highlight/code). Presentation intents keep the caller's base font; only
 /// highlight carries an explicit color (bold + accent, or the span's `{cN}`

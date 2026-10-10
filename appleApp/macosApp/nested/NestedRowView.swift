@@ -163,81 +163,86 @@ struct NestedRowView: View {
                             .padding(.top, 1)
                             .help("Priority: \(item.priority.name)")
                     }
-                    // Overlay (not ZStack/branch swap): the Text always defines
-                    // the row height, so entering edit mode never pushes
-                    // layout down. An NSTextField carries extra vertical
-                    // insets vs Text at the same font, which made the row
-                    // grow a few points while editing. The overlay child is
-                    // layout-neutral, so the field floats in the Text frame
-                    // (1-2pt overflow is absorbed by the row padding below).
-                    Text(item.text.isEmpty ? AttributedString("Untitled item") : basicMarkdown(item.text))
-                        .font(nestedRowFont(item.textStyle.name))
-                        .foregroundStyle(nestedTextColor)
-                        .strikethrough(item.checked)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .contentShape(Rectangle())
-                        .opacity(isEditing ? 0 : 1)
-                        .onTapGesture(count: 2) { state.startEdit(id: item.id) }
-                        .overlay {
-                            if isEditing {
-                                TextField("", text: $editText)
-                                    .textFieldStyle(.plain)
-                                    .font(nestedRowFont(item.textStyle.name))
-                                    .focused($fieldFocused)
-                                    .onAppear {
-                                        editText = item.text
-                                        fieldFocused = true
-                                    }
-                                    .onSubmit {
-                                        fieldFocused = false
-                                        state.commitEdit(id: item.id, text: editText)
-                                    }
-                                    .onKeyPress(keys: [.return]) { press in
-                                        // While editing, Shift/Cmd+Return must not
-                                        // open a new-item draft: swallow them and
-                                        // stay in the field. Plain Return commits
-                                        // via onSubmit.
-                                        if press.modifiers.contains(.shift) || press.modifiers.contains(.command) {
-                                            return .handled
-                                        }
-                                        return .ignored
-                                    }
-                                    .onKeyPress(.escape) {
-                                        fieldFocused = false
-                                        state.cancelEdit()
-                                        return .handled
-                                    }
-                                    .onKeyPress(keys: [.tab]) { press in
-                                        fieldFocused = false
-                                        state.commitEdit(id: item.id, text: editText)
-                                        if press.modifiers.contains(.shift) {
-                                            state.outdentSelected()
-                                        } else {
-                                            state.indentSelected()
-                                        }
-                                        state.startEdit(id: item.id)
-                                        return .handled
-                                    }
-                                    .onKeyPress(keys: [.upArrow, .downArrow]) { press in
-                                        // Same trap as the draft field: NSText eats
-                                        // arrows, so the outline-level handler never
-                                        // fires while editing. Plain arrows are a
-                                        // silent no-op: the edit stays open and the
-                                        // cursor holds (single line has nowhere to
-                                        // move). Cmd+arrows keep their move-item
-                                        // meaning, committing first.
-                                        if press.modifiers.contains(.command) {
-                                            fieldFocused = false
-                                            state.commitEdit(id: item.id, text: editText)
-                                            if press.key == .upArrow { state.moveSelectedUp() } else { state.moveSelectedDown() }
-                                        }
-                                        return .handled
-                                    }
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .writingToolsBehavior(.complete)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                    // Direct field (not overlay): multiline growth needs a
+                    // layout-defining field; the few-pt inset delta while
+                    // editing is accepted. Edit stays raw; display parses.
+                    if isEditing {
+                        TextField("", text: $editText, axis: .vertical)
+                            .textFieldStyle(.plain)
+                            .font(nestedRowFont(item.textStyle.name))
+                            .focused($fieldFocused)
+                            .onAppear {
+                                editText = item.text
+                                fieldFocused = true
                             }
-                        }
+                            .onChange(of: editText) { state.editingText = $1 }
+                            .onChange(of: fieldFocused) { _, focused in
+                                // Focus loss (tap-away, toolbar, sheet) commits;
+                                // explicit paths already cleared editingId, so
+                                // this skips then. Must hop a tick: observers
+                                // run inside view updates.
+                                if !focused {
+                                    Task { @MainActor in state.commitEditing() }
+                                }
+                            }
+                            .onKeyPress(keys: [.return]) { press in
+                                // Plain Return commits (never newline).
+                                // Shift+Return inserts via the field editor
+                                // directly: returning `.ignored` does not
+                                // reliably re-deliver for insertion.
+                                // Cmd+Return commits without opening a draft.
+                                if press.modifiers.contains(.shift) {
+                                    if let editor = nestedFieldEditor() {
+                                        editor.insertText("\n", replacementRange: editor.selectedRange())
+                                    }
+                                    return .handled
+                                }
+                                state.commitEdit(id: item.id, text: editText)
+                                fieldFocused = false
+                                return .handled
+                            }
+                            .onKeyPress(.escape) {
+                                fieldFocused = false
+                                state.cancelEdit()
+                                return .handled
+                            }
+                            .onKeyPress(keys: [.tab]) { press in
+                                fieldFocused = false
+                                state.commitEdit(id: item.id, text: editText)
+                                if press.modifiers.contains(.shift) {
+                                    state.outdentSelected()
+                                } else {
+                                    state.indentSelected()
+                                }
+                                state.startEdit(id: item.id, text: editText)
+                                return .handled
+                            }
+                            .onKeyPress(keys: [.upArrow, .downArrow]) { press in
+                                // Multiline: drive the cursor explicitly for the
+                                // same reason as Shift+Return above. Cmd+arrows
+                                // keep their move-item meaning.
+                                if press.modifiers.contains(.command) {
+                                    fieldFocused = false
+                                    state.commitEdit(id: item.id, text: editText)
+                                    if press.key == .upArrow { state.moveSelectedUp() } else { state.moveSelectedDown() }
+                                    return .handled
+                                }
+                                if let editor = nestedFieldEditor() {
+                                    editor.doCommand(by: press.key == .upArrow ? #selector(NSResponder.moveUp(_:)) : #selector(NSResponder.moveDown(_:)))
+                                }
+                                return .handled
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .writingToolsBehavior(.complete)
+                    } else {
+                        Text(item.text.isEmpty ? AttributedString("Untitled item") : basicMarkdown(item.text))
+                            .font(nestedRowFont(item.textStyle.name))
+                            .foregroundStyle(nestedTextColor)
+                            .strikethrough(item.checked)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
+                            .onTapGesture(count: 2) { state.startEdit(id: item.id) }
+                    }
                 }
                 metadata
             }

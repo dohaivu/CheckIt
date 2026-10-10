@@ -111,6 +111,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -2394,7 +2395,7 @@ private fun NestedItemRow(
                                 BasicTextField(
                                     value = text,
                                     onValueChange = { text = it },
-                                    singleLine = true,
+                                    singleLine = false,
                                     textStyle = nestedTextStyle(item.textStyle).copy(
                                         color = nestedTextColor(
                                             item.textColor
@@ -2403,11 +2404,20 @@ private fun NestedItemRow(
                                     cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                                     keyboardActions = KeyboardActions(onDone = {
+                                        // Single save path is focus loss below;
+                                        // Done just resigns so it saves once.
                                         focusManager.clearFocus()
-                                        viewModel.saveItemText(item.id, text)
                                     }),
                                     modifier = Modifier.fillMaxWidth()
                                         .focusRequester(focusRequester)
+                                        .onFocusChanged { focusState ->
+                                            // Tap-away / toolbar / Done commits;
+                                            // explicit saves already cleared
+                                            // editing, so this skips then.
+                                            if (!focusState.isFocused && isEditing && text != item.text) {
+                                                viewModel.saveItemText(item.id, text)
+                                            }
+                                        }
                                 )
                             } else {
                                 // Inline-only markdown (==highlight==, **bold**, …): line-based
@@ -2822,7 +2832,7 @@ private fun NewItemRow(
                 modifier = Modifier
                     .weight(1f)
                     .offset(x = (-8).dp)
-                    .height(36.dp)
+                    .heightIn(min = 36.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant)
                     .padding(horizontal = 12.dp),
@@ -2831,7 +2841,7 @@ private fun NewItemRow(
                 BasicTextField(
                     value = text,
                     onValueChange = onTextChange,
-                    singleLine = true,
+                    singleLine = false,
                     textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
                     cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),

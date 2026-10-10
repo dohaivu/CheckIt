@@ -562,6 +562,11 @@ struct NestedListsWindowView: View {
                         .id(row.id)
                         .contentShape(Rectangle())
                         .onTapGesture {
+                            // Commit any open edit first (tap-away saves);
+                            // select() alone would strand it unsaved.
+                            if state.editingId != nil && state.editingId != row.id {
+                                state.commitEditing()
+                            }
                             state.select(id: row.id)
                             focusedRow = row.id
                         }
@@ -621,6 +626,11 @@ struct NestedListsWindowView: View {
                             }
                             Divider()
                             Button(role: .destructive) {
+                                // Commit any open edit first (see row tap);
+                                // select() alone would strand it unsaved.
+                                if state.editingId != nil && state.editingId != row.id {
+                                    state.commitEditing()
+                                }
                                 state.select(id: row.id)
                                 state.showDeleteConfirm = true
                             } label: {
@@ -862,7 +872,7 @@ struct NestedListsWindowView: View {
                 .frame(width: 7, height: 7)
                 .frame(width: 16, height: 24)
                 .padding(.leading, 3)
-            TextField("New item…", text: $draftText)
+            TextField("New item…", text: $draftText, axis: .vertical)
                 .textFieldStyle(.roundedBorder)
                 .focused($draftFocused)
                 .onChange(of: draftText) { _, t in
@@ -872,7 +882,21 @@ struct NestedListsWindowView: View {
                         if state.draft != nil { state.draft?.text = t }
                     }
                 }
-                .onSubmit { state.commitDraft(thenContinue: false) }
+                .onKeyPress(keys: [.return]) { press in
+                    // Plain Return commits (never newline); Shift+Return
+                    // inserts via the field editor directly (returning
+                    // `.ignored` does not reliably re-deliver). Single
+                    // commit path (no onSubmit), and commitDraft consumes
+                    // the draft, so no double-fire.
+                    if press.modifiers.contains(.shift) {
+                        if let editor = nestedFieldEditor() {
+                            editor.insertText("\n", replacementRange: editor.selectedRange())
+                        }
+                        return .handled
+                    }
+                    state.commitDraft(thenContinue: false)
+                    return .handled
+                }
                 .onKeyPress(.escape) {
                     state.cancelDraft()
                     return .handled
@@ -888,19 +912,12 @@ struct NestedListsWindowView: View {
                     return .handled
                 }
                 .onKeyPress(keys: [.upArrow, .downArrow]) { press in
-                    // Parent outline Up/Down never fires while this field
-                    // holds focus (NSText consumes arrows), so handle it
-                    // here. Non-empty text is committed first (without
-                    // opening a follow-up draft, to avoid racing the async
-                    // save callback against the move); an empty draft is
-                    // just dismissed so one press restores navigation.
-                    // This is the "Enter then Up/Down does nothing" fix:
-                    // after Return the follow-up draft is empty, so this
-                    // path cancels it and moves the selection.
+                    // Multiline: drive the cursor explicitly — returning
+                    // `.ignored` does not reliably re-deliver (see row edit).
+                    // Cmd+arrows keep their outline meaning.
                     if press.modifiers.contains(.command) {
                         let hasText = !draftText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                         if hasText {
-                            state.draft?.text = draftText
                             state.commitDraft(thenContinue: false)
                         } else {
                             state.cancelDraft()
@@ -908,13 +925,8 @@ struct NestedListsWindowView: View {
                         }
                         return .handled
                     }
-                    let hasText = !draftText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                    if hasText {
-                        state.draft?.text = draftText
-                        state.commitDraft(thenContinue: false)
-                    } else {
-                        state.cancelDraft()
-                        state.moveSelection(by: press.key == .upArrow ? -1 : 1)
+                    if let editor = nestedFieldEditor() {
+                        editor.doCommand(by: press.key == .upArrow ? #selector(NSResponder.moveUp(_:)) : #selector(NSResponder.moveDown(_:)))
                     }
                     return .handled
                 }
