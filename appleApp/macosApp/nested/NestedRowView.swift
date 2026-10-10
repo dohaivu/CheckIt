@@ -193,11 +193,14 @@ struct NestedRowView: View {
                                         state.commitEdit(id: item.id, text: editText)
                                     }
                                     .onKeyPress(keys: [.return]) { press in
-                                        guard press.modifiers.contains(.shift) else { return .ignored }
-                                        fieldFocused = false
-                                        state.commitEdit(id: item.id, text: editText)
-                                        state.startAddSibling(of: item.id)
-                                        return .handled
+                                        // While editing, Shift/Cmd+Return must not
+                                        // open a new-item draft: swallow them and
+                                        // stay in the field. Plain Return commits
+                                        // via onSubmit.
+                                        if press.modifiers.contains(.shift) || press.modifiers.contains(.command) {
+                                            return .handled
+                                        }
+                                        return .ignored
                                     }
                                     .onKeyPress(.escape) {
                                         fieldFocused = false

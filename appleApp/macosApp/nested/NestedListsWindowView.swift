@@ -695,7 +695,9 @@ struct NestedListsWindowView: View {
             // navigation can swallow Shift+Tab before SwiftUI sees it.
             .onKeyPress(keys: [.return]) { press in
                 if press.modifiers.contains(.command) {
-                    guard let id = state.selectedId else { return .ignored }
+                    guard state.editingId == nil, state.draft == nil,
+                          let id = state.selectedId
+                    else { return .ignored }
                     state.startAddChild(of: id)
                     return .handled
                 }

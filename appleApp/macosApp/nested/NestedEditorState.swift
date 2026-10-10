@@ -363,13 +363,19 @@ final class NestedEditorState: ObservableObject {
     }
 
     func commitEdit(id: String, text: String) {
-        editingId = nil
+        Task { @MainActor [weak self] in
+            self?.editingId = nil
+        }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         helper.saveItemText(itemId: id, text: trimmed)
     }
 
-    func cancelEdit() { editingId = nil }
+    func cancelEdit() {
+        Task { @MainActor [weak self] in
+            self?.editingId = nil
+        }
+    }
 
     // MARK: - Draft (add)
 
