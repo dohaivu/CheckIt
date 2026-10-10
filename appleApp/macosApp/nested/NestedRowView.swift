@@ -218,19 +218,20 @@ struct NestedRowView: View {
                                     .onKeyPress(keys: [.upArrow, .downArrow]) { press in
                                         // Same trap as the draft field: NSText eats
                                         // arrows, so the outline-level handler never
-                                        // fires while editing. Commit (sync for
-                                        // selection) then move, so navigation keeps
-                                        // working after Return commits an edit.
-                                        fieldFocused = false
-                                        state.commitEdit(id: item.id, text: editText)
+                                        // fires while editing. Plain arrows are a
+                                        // silent no-op: the edit stays open and the
+                                        // cursor holds (single line has nowhere to
+                                        // move). Cmd+arrows keep their move-item
+                                        // meaning, committing first.
                                         if press.modifiers.contains(.command) {
+                                            fieldFocused = false
+                                            state.commitEdit(id: item.id, text: editText)
                                             if press.key == .upArrow { state.moveSelectedUp() } else { state.moveSelectedDown() }
-                                        } else {
-                                            state.moveSelection(by: press.key == .upArrow ? -1 : 1)
                                         }
                                         return .handled
                                     }
                                     .frame(maxWidth: .infinity, alignment: .leading)
+                                    .writingToolsBehavior(.complete)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             }
                         }

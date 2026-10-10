@@ -680,6 +680,9 @@ struct NestedListsWindowView: View {
                 }
             }
             .onKeyPress(keys: [.upArrow, .downArrow]) { press in
+                // The edit/draft/search fields own their arrows (commit-and-stay);
+                // without this guard the outline would also move selection.
+                guard state.editingId == nil, state.draft == nil else { return .ignored }
                 if press.modifiers.contains(.command) {
                     if press.key == .upArrow { state.moveSelectedUp() } else { state.moveSelectedDown() }
                 } else {
