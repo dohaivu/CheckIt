@@ -14,8 +14,11 @@ import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.sp
+import com.checkit.domain.RichSpan
 import com.checkit.domain.RichSpanKind
+import com.checkit.domain.highlightHexForToken
 import com.checkit.domain.parseRichText
+import com.checkit.ui.theme.parseHexColorOrNull
 
 @Composable
 fun String?.asMarkdownAnnotatedString(): AnnotatedString {
@@ -29,7 +32,7 @@ class MarkdownVisualTransformation : VisualTransformation {
     private val boldRegex = Regex("\\*\\*(.*?)\\*\\*")
     private val italicRegex = Regex("(?:^|\\W)_([^_\\n]+?)_(?=$|\\W)")
     private val strikethroughRegex = Regex("~~(.*?)~~")
-    private val highlightPattern = Regex("==(.+?)==")
+    private val highlightPattern = Regex("==(\\{c\\d+\\})?(.+?)==")
     private val codePattern = Regex("`([^`\\n]+?)`")
     // Matches any digit followed by a period and a space (e.g., "1. ", "12. ")
     private val numberedListRegex = Regex("^\\d+\\.\\s")
@@ -151,13 +154,20 @@ class MarkdownVisualTransformation : VisualTransformation {
                 )
             }
 
-            // 6. Format Inline Elements: Highlight (==text==, markers included like the rest)
+            // 6. Format Inline Elements: Highlight (==text== / =={cN}text==,
+            // markers included like the rest). Unknown tokens stay unstyled.
             highlightPattern.findAll(rawText).forEach { matchResult ->
                 val range = matchResult.range
+                val token = matchResult.groupValues[1]
+                val color = if (token.isEmpty()) {
+                    MarkdownHighlightColor
+                } else {
+                    highlightHexForToken(token)?.parseHexColorOrNull() ?: return@forEach
+                }
                 addStyle(
                     style = SpanStyle(
                         fontWeight = FontWeight.Bold,
-                        color = MarkdownHighlightColor
+                        color = color
                     ),
                     start = range.first,
                     end = range.last + 1
@@ -281,12 +291,15 @@ internal val MarkdownCodeBackgroundColor: Color = Color(0x20808080)
 // A simple helper data class to store layout positions
 private data class StyleMarker(val style: SpanStyle, val start: Int, val end: Int)
 
-private fun RichSpanKind.toSpanStyle(highlightColor: Color): SpanStyle = when (this) {
-    RichSpanKind.Bold -> SpanStyle(fontWeight = FontWeight.Bold)
-    RichSpanKind.Italic -> SpanStyle(fontStyle = FontStyle.Italic)
-    RichSpanKind.Strikethrough -> SpanStyle(textDecoration = TextDecoration.LineThrough)
-    RichSpanKind.Highlight -> SpanStyle(fontWeight = FontWeight.Bold, color = highlightColor)
-    RichSpanKind.Code -> SpanStyle(fontFamily = FontFamily.Monospace, background = MarkdownCodeBackgroundColor)
+private fun RichSpan.toSpanStyle(defaultHighlight: Color): SpanStyle {
+    val highlight = colorHex?.parseHexColorOrNull() ?: defaultHighlight
+    return when (kind) {
+        RichSpanKind.Bold -> SpanStyle(fontWeight = FontWeight.Bold)
+        RichSpanKind.Italic -> SpanStyle(fontStyle = FontStyle.Italic)
+        RichSpanKind.Strikethrough -> SpanStyle(textDecoration = TextDecoration.LineThrough)
+        RichSpanKind.Highlight -> SpanStyle(fontWeight = FontWeight.Bold, color = highlight)
+        RichSpanKind.Code -> SpanStyle(fontFamily = FontFamily.Monospace, background = MarkdownCodeBackgroundColor)
+    }
 }
 
 private fun processInlineStyles(
@@ -296,7 +309,7 @@ private fun processInlineStyles(
     val parsed = parseRichText(inputLine)
     return parsed.text to parsed.spans.map { span ->
         StyleMarker(
-            style = span.kind.toSpanStyle(highlightColor),
+            style = span.toSpanStyle(highlightColor),
             start = span.start,
             end = span.end
         )
@@ -318,7 +331,7 @@ fun parseMarkdownInline(
         text = parsed.text,
         spanStyles = parsed.spans.map { span ->
             AnnotatedString.Range(
-                span.kind.toSpanStyle(highlightColor),
+                span.toSpanStyle(highlightColor),
                 span.start,
                 span.end
             )

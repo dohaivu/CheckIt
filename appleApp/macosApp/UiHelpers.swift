@@ -8,10 +8,11 @@ import AppKit
 import Shared
 
 /// Builds display text from the shared markdown spans (bold/italic/strike/
-/// highlight). Presentation intents keep the caller's base font; only
-/// highlight carries an explicit color (bold + accent). Shared offsets are
-/// UTF-16 code units, so ranges convert via `String.Index(utf16Offset:in:)` —
-/// never integer subscripting, which breaks on emoji.
+/// highlight/code). Presentation intents keep the caller's base font; only
+/// highlight carries an explicit color (bold + accent, or the span's `{cN}`
+/// palette color). Shared offsets are UTF-16 code units, so ranges convert
+/// via `String.Index(utf16Offset:in:)` — never integer subscripting, which
+/// breaks on emoji.
 func basicMarkdown(_ raw: String, highlight: Color = Color.orange) -> AttributedString {
     let parsed = RichTextKt.parseRichText(input: raw)
     let clean = parsed.text
@@ -32,7 +33,7 @@ func basicMarkdown(_ raw: String, highlight: Color = Color.orange) -> Attributed
             out[range].strikethroughStyle = .single
         case .highlight:
             out[range].inlinePresentationIntent = .stronglyEmphasized
-            out[range].foregroundColor = highlight
+            out[range].foregroundColor = highlightColor(hex: span.colorHex, default: highlight)
         case .code:
             out[range].inlinePresentationIntent = .code
             out[range].backgroundColor = Color.gray.opacity(0.15)
@@ -41,6 +42,14 @@ func basicMarkdown(_ raw: String, highlight: Color = Color.orange) -> Attributed
         }
     }
     return out
+}
+
+/// Resolves a shared `{cN}` hex (or nil) to a display color.
+private func highlightColor(hex: String?, default highlight: Color) -> Color {
+    if let hex, let color = Color(nestedHex: hex) {
+        return color
+    }
+    return highlight
 }
 
 /// AppKit twin of [basicMarkdown] for `NSStatusBarButton.attributedTitle`
@@ -63,7 +72,7 @@ func basicMarkdownNS(_ raw: String, highlight: NSColor = .orange) -> NSAttribute
             out.addAttribute(.strikethroughStyle, value: NSUnderlineStyle.single.rawValue, range: range)
         case .highlight:
             out.applyFontTraits(.boldFontMask, range: range)
-            out.addAttribute(.foregroundColor, value: highlight, range: range)
+            out.addAttribute(.foregroundColor, value: highlightColorNS(hex: span.colorHex, default: highlight), range: range)
         case .code:
             out.addAttribute(.font, value: NSFont.monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .regular), range: range)
             out.addAttribute(.backgroundColor, value: NSColor.gray.withAlphaComponent(0.15), range: range)
@@ -72,4 +81,26 @@ func basicMarkdownNS(_ raw: String, highlight: NSColor = .orange) -> NSAttribute
         }
     }
     return out
+}
+
+/// Resolves a shared `{cN}` hex (or nil) to an `NSColor`.
+private func highlightColorNS(hex: String?, default highlight: NSColor) -> NSColor {
+    if let hex, let color = NSColor(nestedHex: hex) {
+        return color
+    }
+    return highlight
+}
+
+private extension NSColor {
+    convenience init?(nestedHex hex: String) {
+        var s = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+        if s.hasPrefix("#") { s.removeFirst() }
+        guard s.count == 6, let v = UInt32(s, radix: 16) else { return nil }
+        self.init(
+            red: CGFloat((v >> 16) & 0xFF) / 255.0,
+            green: CGFloat((v >> 8) & 0xFF) / 255.0,
+            blue: CGFloat(v & 0xFF) / 255.0,
+            alpha: 1.0
+        )
+    }
 }

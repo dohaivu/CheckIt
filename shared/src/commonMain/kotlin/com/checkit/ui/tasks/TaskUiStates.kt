@@ -194,7 +194,7 @@ data class TagEditorState(
     val mode: EditorMode,
     val tagId: String? = null,
     val name: String = "",
-    val color: String = AppIconColorDefaults.ListColors.first()
+    val color: String = AppIconColorDefaults.CommonColors.first()
 )
 
 enum class RepeatPreset(

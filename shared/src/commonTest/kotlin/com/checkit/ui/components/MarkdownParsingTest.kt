@@ -143,6 +143,73 @@ class MarkdownParsingTest {
     }
 
     @Test
+    fun parseMarkdownToAnnotatedString_parsesColoredHighlight() {
+        val input = "=={c1}hi=="
+        val result = parseMarkdownToAnnotatedString(input)
+
+        assertEquals("hi", result.text)
+
+        val span = result.spanStyles.single()
+        assertEquals(0, span.start)
+        assertEquals(2, span.end)
+        assertEquals(FontWeight.Bold, span.item.fontWeight)
+        assertEquals(Color(0xFF2563EB), span.item.color)
+    }
+
+    @Test
+    fun parseMarkdownToAnnotatedString_leavesUnknownColorTokenLiteral() {
+        val input = "=={c99}hi=="
+        val result = parseMarkdownToAnnotatedString(input)
+
+        assertEquals("=={c99}hi==", result.text)
+        assertTrue(result.spanStyles.isEmpty())
+    }
+
+    @Test
+    fun parseMarkdownToAnnotatedString_degradesMalformedTokenToDefaultHighlight() {
+        val upper = parseMarkdownToAnnotatedString("=={C1}hi==")
+        assertEquals("{C1}hi", upper.text)
+        assertEquals(MarkdownHighlightColor, upper.spanStyles.single().item.color)
+
+        val nonDigit = parseMarkdownToAnnotatedString("=={cx}hi==")
+        assertEquals("{cx}hi", nonDigit.text)
+        assertEquals(MarkdownHighlightColor, nonDigit.spanStyles.single().item.color)
+    }
+
+    @Test
+    fun parseMarkdownToAnnotatedString_parsesNestedColoredHighlight() {
+        val input = "**=={c5}both==**"
+        val result = parseMarkdownToAnnotatedString(input)
+
+        assertEquals("both", result.text)
+        assertTrue(result.spanStyles.any { it.item.color == Color(0xFFDC2626) })
+    }
+
+    @Test
+    fun markdownVisualTransformation_appliesColoredHighlightStyle() {
+        val transformation = MarkdownVisualTransformation()
+        val input = AnnotatedString("Go =={c5}now==")
+        val transformed = transformation.filter(input)
+
+        assertEquals("Go =={c5}now==", transformed.text.text)
+
+        val highlightSpan = transformed.text.spanStyles.firstOrNull { it.item.color == Color(0xFFDC2626) }
+        assertTrue(highlightSpan != null, "Expected a colored highlight span style")
+        assertEquals(3, highlightSpan.start)
+        assertEquals(14, highlightSpan.end) // Includes raw "=={c5}now=="
+    }
+
+    @Test
+    fun markdownVisualTransformation_leavesUnknownColorTokenUnstyled() {
+        val transformation = MarkdownVisualTransformation()
+        val input = AnnotatedString("=={c99}hi==")
+        val transformed = transformation.filter(input)
+
+        assertEquals("=={c99}hi==", transformed.text.text)
+        assertTrue(transformed.text.spanStyles.isEmpty())
+    }
+
+    @Test
     fun parseMarkdownToAnnotatedString_acceptsCustomHighlightColor() {
         val input = "==hi=="
         val custom = Color.Red

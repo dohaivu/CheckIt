@@ -803,7 +803,7 @@ private fun RoutineEditorSheet(
                         }
                         if (colorExpanded) {
                             ColorPicker(
-                                colors = AppIconColorDefaults.ListColors,
+                                colors = AppIconColorDefaults.CommonColors,
                                 selected = color,
                                 onSelect = { color = it }
                             )

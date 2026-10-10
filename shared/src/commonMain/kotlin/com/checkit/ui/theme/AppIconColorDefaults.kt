@@ -89,21 +89,12 @@ object AppIconColorDefaults {
     val FallbackColor: Color = Color(0xFF64748B)
     val DailyPlanCardColor = FallbackColor
 
-    val ListColors: List<String> = listOf(
-        "#2563EB", // Blue
-        "#7C3AED", // Violet
-        "#C026D3", // Fuchsia
-        "#DB2777", // Pink
-        "#DC2626", // Red
-        "#EA580C", // Orange
-        "#CA8A04", // Amber
-        "#65A30D", // Lime
-        "#16A34A", // Green
-        "#0D9488", // Teal
-        "#0891B2", // Cyan
-        "#7C2D12", // Brown
-        "#64748B" // Slate
-    )
+    /**
+     * Shared color palette (pickers and `=={cN}==` highlight tokens).
+     * Single-sourced from [com.checkit.domain.HighlightPalette]: append-only,
+     * indices are user-visible as `c1`..`c13`.
+     */
+    val CommonColors: List<String> = com.checkit.domain.HighlightPalette
 
     val ListIcons: List<String> = listOf(
         "Inbox",

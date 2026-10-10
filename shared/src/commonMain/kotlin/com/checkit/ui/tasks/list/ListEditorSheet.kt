@@ -117,7 +117,7 @@ internal fun ListEditorSheet(
             item {
                 SectionLabel("Color")
                 ColorPicker(
-                    colors = AppIconColorDefaults.ListColors,
+                    colors = AppIconColorDefaults.CommonColors,
                     selected = editor.color,
                     onSelect = onColorChange
                 )

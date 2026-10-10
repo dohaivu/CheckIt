@@ -23,7 +23,7 @@ data class ListSectionEditorState(
     val sectionId: String? = null,
     val listId: String,
     val title: String = "",
-    val color: String = AppIconColorDefaults.ListColors.first(),
+    val color: String = AppIconColorDefaults.CommonColors.first(),
     val sortOrder: Int = 0
 )
 
