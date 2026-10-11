@@ -788,7 +788,7 @@ private val DropTaskRemindersMigration4To5 = object : Migration(4, 5) {
     }
 }
 
-internal val RepeatRuleMigration5To6 = object : Migration(5, 6) {
+private val RepeatRuleMigration5To6 = object : Migration(5, 6) {
     override suspend fun migrate(connection: SQLiteConnection) {
         connection.execSQL("ALTER TABLE tasks DROP COLUMN repeatRRule")
         connection.execSQL("ALTER TABLE tasks ADD COLUMN repeatRuleJson TEXT")

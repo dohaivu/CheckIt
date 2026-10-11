@@ -6,9 +6,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -69,13 +69,17 @@ internal fun WeekdayPicker(
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally)
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             DayOfWeek.entries.forEach { day ->
                 val isSelected = day in selected
                 Box(
+                    // Weighted so the row always fits its container: seven fixed
+                    // 34.dp circles plus spacing need 262.dp, which overflows the
+                    // 236.dp the RepeatPicker popup leaves and clips the last day.
                     modifier = Modifier
-                        .size(34.dp)
+                        .weight(1f)
+                        .aspectRatio(1f)
                         .clip(CircleShape)
                         .background(
                             if (isSelected) {
@@ -93,6 +97,7 @@ internal fun WeekdayPicker(
                 ) {
                     Text(
                         text = day.shortLabel(),
+                        maxLines = 1,
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.SemiBold,
                         color = if (isSelected) {

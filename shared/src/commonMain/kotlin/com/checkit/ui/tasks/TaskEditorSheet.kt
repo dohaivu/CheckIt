@@ -471,6 +471,7 @@ private fun TaskFormContent(
                     selected = form.repeatRule,
                     onRepeatChange = onRepeatChange,
                     anchorDayOfMonth = form.doDate?.dayOfMonth,
+                    anchorWeekday = form.doDate?.dayOfWeek,
                     enabled = enabled
                 )
             }

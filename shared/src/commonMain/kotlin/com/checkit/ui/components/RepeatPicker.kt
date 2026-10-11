@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import com.checkit.domain.RepeatFrequency
 import com.checkit.domain.RepeatRule
 import com.checkit.domain.label
+import kotlinx.datetime.DayOfWeek
 
 /**
  * Unified repeat picker shared by tasks and routines: the familiar
@@ -33,7 +34,8 @@ import com.checkit.domain.label
  * expanding in place when Weekly is selected.
  *
  * [anchorDayOfMonth] seeds the day a new Monthly rule fires on (the task's due
- * date, when it has one); it is ignored for every other frequency.
+ * date, when it has one). [anchorWeekday] seeds the day a new Weekly rule fires
+ * on; both are ignored once the rule already exists.
  */
 @Composable
 fun RepeatPicker(
@@ -41,9 +43,17 @@ fun RepeatPicker(
     onRepeatChange: (RepeatRule) -> Unit,
     modifier: Modifier = Modifier,
     anchorDayOfMonth: Int? = null,
+    anchorWeekday: DayOfWeek? = null,
     enabled: Boolean = true
 ) {
     var expanded by remember { mutableStateOf(false) }
+    // The grid stays open while the user is picking days, even if they clear them
+    // all (an empty weekday set is "off", so the rule alone can't remember that).
+    var browsingWeekly by remember { mutableStateOf(false) }
+
+    val isWeekly = selected.frequency == RepeatFrequency.Weekly ||
+        (browsingWeekly && selected.frequency == RepeatFrequency.None)
+    val weeklyDays = selected.weekdays
 
     AppleStylePopup(
         isExpanded = expanded,
@@ -68,30 +78,40 @@ fun RepeatPicker(
     ) {
         Column(
             modifier = Modifier
-                .width(260.dp)
+                .width(280.dp)
                 .padding(vertical = 0.dp)
         ) {
             RepeatOptionRow(
                 label = "Does not repeat",
                 selected = selected.frequency == RepeatFrequency.None,
-                onClick = { onRepeatChange(RepeatRule.None) }
+                onClick = {
+                    browsingWeekly = false
+                    onRepeatChange(RepeatRule.None)
+                }
             )
             RepeatDivider()
             RepeatOptionRow(
                 label = "Everyday",
                 selected = selected.frequency == RepeatFrequency.Daily,
-                onClick = { onRepeatChange(RepeatRule.daily()) }
+                onClick = {
+                    browsingWeekly = false
+                    onRepeatChange(RepeatRule.daily())
+                }
             )
             RepeatDivider()
             RepeatOptionRow(
                 label = "Weekly",
-                selected = selected.frequency == RepeatFrequency.Weekly,
-                onClick = { onRepeatChange(RepeatRule.weekly(selected.weekdays)) }
+                selected = isWeekly,
+                onClick = {
+                    browsingWeekly = true
+                    val seeded = weeklyDays.ifEmpty { setOf(anchorWeekday ?: DayOfWeek.MONDAY) }
+                    onRepeatChange(RepeatRule.weekly(seeded))
+                }
             )
-            if (selected.frequency == RepeatFrequency.Weekly) {
+            if (isWeekly) {
                 RepeatDivider()
                 WeekdayPicker(
-                    selected = selected.weekdays,
+                    selected = weeklyDays,
                     onChange = { onRepeatChange(RepeatRule.weekly(it)) },
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                     showPausedHint = false
@@ -102,6 +122,7 @@ fun RepeatPicker(
                 label = "Monthly",
                 selected = selected.frequency == RepeatFrequency.Monthly,
                 onClick = {
+                    browsingWeekly = false
                     onRepeatChange(RepeatRule.monthly(anchorDayOfMonth ?: selected.dayOfMonth ?: 1))
                 }
             )
