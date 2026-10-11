@@ -400,8 +400,6 @@ struct NestedFormattingBar: View {
     @ObservedObject var state: NestedEditorState
     let item: NestedListItem
 
-    @State private var showNote = false
-    @State private var showDetails = false
     @State private var showDates = false
     @State private var startDate = Date()
     @State private var endDate = Date()
@@ -563,9 +561,9 @@ struct NestedFormattingBar: View {
             barBtn(
                 "note.text",
                 tint: (item.note?.isEmpty ?? true) ? .secondary : Color.accentColor,
-                help: "Edit note"
+                help: "Edit note (N)"
             ) {
-                showNote = true
+                state.showNoteSheet = true
             }
             // Check
             barBtn(
@@ -576,15 +574,15 @@ struct NestedFormattingBar: View {
                 state.setCheckedExact(id: item.id, checked: !item.checked)
             }
             // Details
-            barBtn("info.circle", help: "Item details") {
-                showDetails = true
+            barBtn("info.circle", help: "Item details (D)") {
+                state.showDetailsSheet = true
             }
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .background(Color(nsColor: .windowBackgroundColor))
-        .sheet(isPresented: $showNote) { NestedNoteSheet(state: state, item: item) }
-        .sheet(isPresented: $showDetails) { NestedDetailsSheet(state: state, item: item) }
+        .sheet(isPresented: $state.showNoteSheet) { NestedNoteSheet(state: state, item: item) }
+        .sheet(isPresented: $state.showDetailsSheet) { NestedDetailsSheet(state: state, item: item) }
     }
 }
 

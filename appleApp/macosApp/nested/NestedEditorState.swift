@@ -105,6 +105,8 @@ final class NestedEditorState: ObservableObject {
     @Published var editingId: String? = nil
     @Published var draft: NestedDraft? = nil
     @Published var showDeleteConfirm = false
+    @Published var showNoteSheet = false
+    @Published var showDetailsSheet = false
     @Published var lastError: String? = nil
     @Published var draggedId: String? = nil
     @Published var dropTarget: NestedDropTarget? = nil

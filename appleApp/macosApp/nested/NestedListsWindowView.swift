@@ -740,6 +740,16 @@ struct NestedListsWindowView: View {
                 }
                 return .ignored
             }
+            .onKeyPress(keys: [KeyEquivalent("n"), KeyEquivalent("N")]) { _ in
+                guard state.editingId == nil, state.draft == nil, state.selectedId != nil else { return .ignored }
+                state.showNoteSheet = true
+                return .handled
+            }
+            .onKeyPress(keys: [KeyEquivalent("d"), KeyEquivalent("D")]) { _ in
+                guard state.editingId == nil, state.draft == nil, state.selectedId != nil else { return .ignored }
+                state.showDetailsSheet = true
+                return .handled
+            }
             .onKeyPress(.escape) {
                 if state.editingId != nil { state.cancelEdit(); return .handled }
                 if state.draft != nil { state.cancelDraft(); return .handled }
