@@ -2342,11 +2342,13 @@ private fun NestedItemRow(
                             .clip(RoundedCornerShape(8.dp))
                             .background(
                                 when {
-                                    isSelected -> MaterialTheme.colorScheme.secondaryContainer.copy(
+                                    isEditing -> MaterialTheme.colorScheme.primaryContainer.copy(
                                         alpha = 0.5f
                                     )
 
-                                    isEditing -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                    isSelected -> MaterialTheme.colorScheme.secondaryContainer.copy(
+                                        alpha = 0.5f
+                                    )
                                     item.backgroundColor != NestedColorToken.Default -> nestedColor(
                                         item.backgroundColor
                                     ).copy(alpha = 0.18f)

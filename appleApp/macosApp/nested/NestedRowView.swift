@@ -59,6 +59,8 @@ let nestedDepthSolids: [Color] = [
 let nestedDotColor = nestedDepthSolids[0]
 let nestedCanvasColor = Color(red: 0xF7 / 255.0, green: 0xF3 / 255.0, blue: 0xEA / 255.0)
 let nestedSelectedColor = Color(red: 0xF9 / 255.0, green: 0xEC / 255.0, blue: 0xC8 / 255.0)
+/// Editing tint: cool accent wash, distinct from the warm selection cream.
+let nestedEditingColor = Color.accentColor.opacity(0.18)
 let nestedInkColor = Color(red: 0x2E / 255.0, green: 0x2A / 255.0, blue: 0x26 / 255.0)
 
 func nestedGuideColor(_ level: Int) -> Color {
@@ -321,7 +323,7 @@ struct NestedRowView: View {
     private var isSelected: Bool { state.selectedId == item.id }
 
     private var rowBackground: Color {
-        if isEditing { return nestedSelectedColor }
+        if isEditing { return nestedEditingColor }
         if isSelected { return nestedSelectedColor }
         if item.backgroundColor.name != "Default" {
             return nestedTokenColor(item.backgroundColor.name).opacity(0.20)
