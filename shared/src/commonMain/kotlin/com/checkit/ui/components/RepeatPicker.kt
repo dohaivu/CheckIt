@@ -151,7 +151,7 @@ private fun RepeatOptionRow(
         )
         Text(
             text = label,
-            style = MaterialTheme.typography.bodyLarge,
+            style = MaterialTheme.typography.labelMedium,
             modifier = Modifier.weight(1f),
             color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
         )

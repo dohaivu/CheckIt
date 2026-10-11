@@ -50,6 +50,7 @@ import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.ListItem
 import com.checkit.domain.MetricItem
 import com.checkit.domain.RepeatRule
+import com.checkit.domain.label
 import com.checkit.domain.TagItem
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
@@ -352,6 +353,14 @@ private fun TaskFormContent(
         TaskType.Task -> "What would you like to do?"
         TaskType.Habit -> "What habit do you want to build?"
     }
+    // Habits default to every day; the RepeatPicker below narrows it, so keep the
+    // summary in sync with whatever rule is chosen there.
+    val habitSubtitle =
+        if (form.repeatRule.isActive) {
+            "${form.repeatRule.label()} · auto-added to My Day"
+        } else {
+            "Every day · auto-added to My Day"
+        }
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         LabelTextField(
@@ -374,7 +383,7 @@ private fun TaskFormContent(
                     color = form.priority.priorityColor()
                 )
                 Text(
-                    text = "Every day · auto-added to My Day",
+                    text = habitSubtitle,
                     modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -466,15 +475,13 @@ private fun TaskFormContent(
                     enabled = enabled
                 )
             }
-            if (!isHabit) {
-                RepeatPicker(
-                    selected = form.repeatRule,
-                    onRepeatChange = onRepeatChange,
-                    anchorDayOfMonth = form.doDate?.dayOfMonth,
-                    anchorWeekday = form.doDate?.dayOfWeek,
-                    enabled = enabled
-                )
-            }
+            RepeatPicker(
+                selected = form.repeatRule,
+                onRepeatChange = onRepeatChange,
+                anchorDayOfMonth = form.doDate?.dayOfMonth,
+                anchorWeekday = form.doDate?.dayOfWeek,
+                enabled = enabled
+            )
             TagPicker(
                 availableTags = availableTags,
                 selectedTagIds = form.selectedTagIds,

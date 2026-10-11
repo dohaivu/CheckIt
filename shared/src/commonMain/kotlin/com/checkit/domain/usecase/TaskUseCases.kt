@@ -144,9 +144,13 @@ class AutoAddTodayTasksToMyDayUseCase(
 
 private fun TaskItem.qualifiesForAddToMyDay(today: LocalDate): Boolean =
     when (type) {
-        TaskType.Habit -> completedDate == null
         TaskType.Task -> doDate == today || repeatRule.isScheduled(today)
+        TaskType.Habit -> completedDate == null && qualifiesByRepeatRule(today)
     }
+
+/** True when the item repeats today, or carries no repeat rule at all. */
+private fun TaskItem.qualifiesByRepeatRule(today: LocalDate): Boolean =
+    !repeatRule.isActive || repeatRule.isScheduled(today)
 
 class ObserveTagUsageCountsUseCase(
     private val repository: CheckItRepository

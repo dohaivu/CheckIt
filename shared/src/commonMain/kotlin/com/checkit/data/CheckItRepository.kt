@@ -635,7 +635,9 @@ class RoomCheckItRepository(
                 doDateEpochDays = if (isTask) input.doDate?.toEpochDays()?.toInt() else null,
                 startTimeMinutes = if (isTask) input.startTimeMinutes else null,
                 endTimeMinutes = if (isTask) input.endTimeMinutes else null,
-                repeatRuleJson = if (isTask) RepeatRule.encode(input.repeatRule) else null,
+                // Habits repeat too (AutoAddTodayTasksToMyDayUseCase gates on it),
+                // so the rule is stored for every type.
+                repeatRuleJson = RepeatRule.encode(input.repeatRule),
                 label = input.label,
                 metricsJson = Json.encodeToString(input.metrics.map { it.normalized() }),
                 createdAtMillis = now,
@@ -670,7 +672,7 @@ class RoomCheckItRepository(
             doDateEpochDays = if (isTask) input.doDate?.toEpochDays()?.toInt() else null,
             startTimeMinutes = if (isTask) input.startTimeMinutes else null,
             endTimeMinutes = if (isTask) input.endTimeMinutes else null,
-            repeatRuleJson = if (isTask) RepeatRule.encode(input.repeatRule) else null,
+            repeatRuleJson = RepeatRule.encode(input.repeatRule),
             label = input.label,
             metricsJson = Json.encodeToString(input.metrics.map { it.normalized() }),
             updatedAtMillis = Clock.System.now().toEpochMilliseconds()

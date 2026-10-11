@@ -16,6 +16,7 @@ import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
+import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -133,6 +134,105 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
 
         assertEquals(1, addedCount)
         assertEquals(listOf("1"), repository.addedDailyPlanTasks.map { it.second.id })
+    }
+
+    @Test
+    fun habitWithoutRuleKeepsAddingEveryDay() = runTest {
+        val today = today()
+        val repository = FakeCheckItRepository(
+            initialBoard = TaskBoard(
+                tasks = listOf(
+                    // No rule means the historical every-day behaviour.
+                    task(id = "1", doDate = null, type = TaskType.Habit, repeatRule = RepeatRule.None)
+                )
+            )
+        )
+        val useCase = AutoAddTodayTasksToMyDayUseCase(
+            repository,
+            DeleteDailyPlanItemUseCase(repository),
+            SmartScheduleDailyPlanUseCase(repository)
+        )
+
+        assertEquals(1, useCase())
+        assertEquals(listOf("1"), repository.addedDailyPlanTasks.map { it.second.id })
+    }
+
+    @Test
+    fun habitWithRuleIsAddedOnScheduledWeekday() = runTest {
+        val today = today()
+        val repository = FakeCheckItRepository(
+            initialBoard = TaskBoard(
+                tasks = listOf(
+                    task(
+                        id = "1",
+                        doDate = null,
+                        type = TaskType.Habit,
+                        repeatRule = RepeatRule.weekly(setOf(today.dayOfWeek))
+                    )
+                )
+            )
+        )
+        val useCase = AutoAddTodayTasksToMyDayUseCase(
+            repository,
+            DeleteDailyPlanItemUseCase(repository),
+            SmartScheduleDailyPlanUseCase(repository)
+        )
+
+        assertEquals(1, useCase())
+        assertEquals(listOf("1"), repository.addedDailyPlanTasks.map { it.second.id })
+    }
+
+    @Test
+    fun habitWithRuleIsSkippedOnUnscheduledWeekday() = runTest {
+        val today = today()
+        val tomorrow = today.plus(1, DateTimeUnit.DAY)
+        val repository = FakeCheckItRepository(
+            initialBoard = TaskBoard(
+                tasks = listOf(
+                    task(
+                        id = "1",
+                        doDate = null,
+                        type = TaskType.Habit,
+                        // Scheduled, but not today.
+                        repeatRule = RepeatRule.weekly(setOf(tomorrow.dayOfWeek))
+                    )
+                )
+            )
+        )
+        val useCase = AutoAddTodayTasksToMyDayUseCase(
+            repository,
+            DeleteDailyPlanItemUseCase(repository),
+            SmartScheduleDailyPlanUseCase(repository)
+        )
+
+        assertEquals(0, useCase())
+        assertEquals(emptyList(), repository.addedDailyPlanTasks)
+    }
+
+    @Test
+    fun habitWithRuleIsStillSkippedWhenCompleted() = runTest {
+        val today = today()
+        val yesterday = today.minus(1, DateTimeUnit.DAY)
+        val repository = FakeCheckItRepository(
+            initialBoard = TaskBoard(
+                tasks = listOf(
+                    task(
+                        id = "1",
+                        doDate = null,
+                        type = TaskType.Habit,
+                        completedDate = yesterday,
+                        repeatRule = RepeatRule.daily()
+                    )
+                )
+            )
+        )
+        val useCase = AutoAddTodayTasksToMyDayUseCase(
+            repository,
+            DeleteDailyPlanItemUseCase(repository),
+            SmartScheduleDailyPlanUseCase(repository)
+        )
+
+        assertEquals(0, useCase())
     }
 
     @Test
