@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -68,17 +69,18 @@ internal fun WeekdayPicker(
             )
         }
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+            modifier = Modifier
+                .align(Alignment.CenterHorizontally)
+                .fillMaxWidth()
+                .widthIn(max = MaxDaysRowWidth),
+            horizontalArrangement = Arrangement.spacedBy(DayCircleSpacing)
         ) {
             DayOfWeek.entries.forEach { day ->
                 val isSelected = day in selected
                 Box(
-                    // Weighted so the row always fits its container: seven fixed
-                    // 34.dp circles plus spacing need 262.dp, which overflows the
-                    // 236.dp the RepeatPicker popup leaves and clips the last day.
                     modifier = Modifier
                         .weight(1f)
+                        .widthIn(max = DayCircleSize)
                         .aspectRatio(1f)
                         .clip(CircleShape)
                         .background(
@@ -152,3 +154,12 @@ private fun WeekdayPresetChip(
         )
     }
 }
+
+/** Diameter of a single day circle at the widest the row is allowed to be. */
+private val DayCircleSize = 34.dp
+
+/** Gap between adjacent day circles. */
+private val DayCircleSpacing = 4.dp
+
+/** Widest the day row may get: seven circles at [DayCircleSize] plus their gaps. */
+private val MaxDaysRowWidth = DayCircleSize * 7 + DayCircleSpacing * 6

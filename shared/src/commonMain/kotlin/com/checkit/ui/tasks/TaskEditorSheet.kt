@@ -88,7 +88,8 @@ internal fun TaskEditorSheet(
 ) {
     AppEditorBottomSheet(
         onDismiss = actions.common.onDismiss,
-        modifier = Modifier.fillMaxHeight(0.9f)
+        modifier = Modifier.fillMaxHeight(0.9f),
+        sheetGesturesEnabled = false
     ) {
         TrashedStatusSection(
             isTrashed = editor.isTrashed(),
@@ -475,18 +476,18 @@ private fun TaskFormContent(
                     enabled = enabled
                 )
             }
-            RepeatPicker(
-                selected = form.repeatRule,
-                onRepeatChange = onRepeatChange,
-                anchorDayOfMonth = form.doDate?.dayOfMonth,
-                anchorWeekday = form.doDate?.dayOfWeek,
-                enabled = enabled
-            )
             TagPicker(
                 availableTags = availableTags,
                 selectedTagIds = form.selectedTagIds,
                 onTagToggle = onTagToggle,
                 onNewTagClick = onNewTagClick,
+                enabled = enabled
+            )
+            RepeatPicker(
+                selected = form.repeatRule,
+                onRepeatChange = onRepeatChange,
+                anchorDayOfMonth = form.doDate?.dayOfMonth,
+                anchorWeekday = form.doDate?.dayOfWeek,
                 enabled = enabled
             )
         }
