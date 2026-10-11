@@ -59,6 +59,8 @@ let nestedDepthSolids: [Color] = [
 let nestedDotColor = nestedDepthSolids[0]
 let nestedCanvasColor = Color(red: 0xF7 / 255.0, green: 0xF3 / 255.0, blue: 0xEA / 255.0)
 let nestedSelectedColor = Color(red: 0xF9 / 255.0, green: 0xEC / 255.0, blue: 0xC8 / 255.0)
+/// Editing tint: cool accent wash, distinct from the warm selection cream.
+let nestedEditingColor = Color.accentColor.opacity(0.18)
 let nestedInkColor = Color(red: 0x2E / 255.0, green: 0x2A / 255.0, blue: 0x26 / 255.0)
 
 func nestedGuideColor(_ level: Int) -> Color {
@@ -114,7 +116,7 @@ struct NestedRowView: View {
             // Collapse toggle: chevron wrapped in an outside circle (parents)
             // or a small filled dot (leaves), matching the attachment where
             // a collapsed parent shows a dot inside an outer ring.
-            // 2pt top offset puts the 16pt ring/dot on the text's visual
+            // 2pt top offset puts the 13pt ring on the text's visual
             // center (content starts 5pt down), whatever the row height.
             Button {
                 state.toggleCollapse(id: item.id)
@@ -124,7 +126,7 @@ struct NestedRowView: View {
                         ZStack {
                             Circle()
                                 .stroke(nestedDotForDepth(row.depth), lineWidth: 1.5)
-                                .frame(width: 16, height: 16)
+                                .frame(width: 13, height: 13)
                             Image(systemName: item.collapsed ? "chevron.right" : "chevron.down")
                                 .font(.system(size: 8, weight: .semibold))
                                 .foregroundStyle(nestedDotForDepth(row.depth))
@@ -163,77 +165,84 @@ struct NestedRowView: View {
                             .padding(.top, 1)
                             .help("Priority: \(item.priority.name)")
                     }
-                    // Overlay (not ZStack/branch swap): the Text always defines
-                    // the row height, so entering edit mode never pushes
-                    // layout down. An NSTextField carries extra vertical
-                    // insets vs Text at the same font, which made the row
-                    // grow a few points while editing. The overlay child is
-                    // layout-neutral, so the field floats in the Text frame
-                    // (1-2pt overflow is absorbed by the row padding below).
-                    Text(item.text.isEmpty ? "Untitled item" : item.text)
-                        .font(nestedRowFont(item.textStyle.name))
-                        .foregroundStyle(nestedTextColor)
-                        .strikethrough(item.checked)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .contentShape(Rectangle())
-                        .opacity(isEditing ? 0 : 1)
-                        .onTapGesture(count: 2) { state.startEdit(id: item.id) }
-                        .overlay {
-                            if isEditing {
-                                TextField("", text: $editText)
-                                    .textFieldStyle(.plain)
-                                    .font(nestedRowFont(item.textStyle.name))
-                                    .focused($fieldFocused)
-                                    .onAppear {
-                                        editText = item.text
-                                        fieldFocused = true
-                                    }
-                                    .onSubmit {
-                                        fieldFocused = false
-                                        state.commitEdit(id: item.id, text: editText)
-                                    }
-                                    .onKeyPress(keys: [.return]) { press in
-                                        guard press.modifiers.contains(.shift) else { return .ignored }
-                                        fieldFocused = false
-                                        state.commitEdit(id: item.id, text: editText)
-                                        state.startAddSibling(of: item.id)
-                                        return .handled
-                                    }
-                                    .onKeyPress(.escape) {
-                                        fieldFocused = false
-                                        state.cancelEdit()
-                                        return .handled
-                                    }
-                                    .onKeyPress(keys: [.tab]) { press in
-                                        fieldFocused = false
-                                        state.commitEdit(id: item.id, text: editText)
-                                        if press.modifiers.contains(.shift) {
-                                            state.outdentSelected()
-                                        } else {
-                                            state.indentSelected()
-                                        }
-                                        state.startEdit(id: item.id)
-                                        return .handled
-                                    }
-                                    .onKeyPress(keys: [.upArrow, .downArrow]) { press in
-                                        // Same trap as the draft field: NSText eats
-                                        // arrows, so the outline-level handler never
-                                        // fires while editing. Commit (sync for
-                                        // selection) then move, so navigation keeps
-                                        // working after Return commits an edit.
-                                        fieldFocused = false
-                                        state.commitEdit(id: item.id, text: editText)
-                                        if press.modifiers.contains(.command) {
-                                            if press.key == .upArrow { state.moveSelectedUp() } else { state.moveSelectedDown() }
-                                        } else {
-                                            state.moveSelection(by: press.key == .upArrow ? -1 : 1)
-                                        }
-                                        return .handled
-                                    }
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                    // Direct field (not overlay): multiline growth needs a
+                    // layout-defining field; the few-pt inset delta while
+                    // editing is accepted. Edit stays raw; display parses.
+                    if isEditing {
+                        TextField("", text: $editText, axis: .vertical)
+                            .textFieldStyle(.plain)
+                            .font(nestedRowFont(item.textStyle.name))
+                            .focused($fieldFocused)
+                            .onAppear {
+                                editText = item.text
+                                fieldFocused = true
                             }
-                        }
+                            .onChange(of: editText) { state.editingText = $1 }
+                            .onChange(of: fieldFocused) { _, focused in
+                                // Focus loss (tap-away, toolbar, sheet) commits;
+                                // explicit paths already cleared editingId, so
+                                // this skips then. Must hop a tick: observers
+                                // run inside view updates.
+                                if !focused {
+                                    Task { @MainActor in state.commitEditing() }
+                                }
+                            }
+                            .onKeyPress(keys: [.return]) { press in
+                                // Plain Return commits (never newline).
+                                // Shift+Return inserts via the field editor
+                                // directly: returning `.ignored` does not
+                                // reliably re-deliver for insertion.
+                                // Cmd+Return commits without opening a draft.
+                                if press.modifiers.contains(.shift) {
+                                    if let editor = nestedFieldEditor() {
+                                        editor.insertText("\n", replacementRange: editor.selectedRange())
+                                    }
+                                    return .handled
+                                }
+                                state.commitEdit(id: item.id, text: editText)
+                                fieldFocused = false
+                                return .handled
+                            }
+                            .onKeyPress(.escape) {
+                                fieldFocused = false
+                                state.cancelEdit()
+                                return .handled
+                            }
+                            .onKeyPress(keys: [.tab]) { press in
+                                fieldFocused = false
+                                state.commitEdit(id: item.id, text: editText)
+                                if press.modifiers.contains(.shift) {
+                                    state.outdentSelected()
+                                } else {
+                                    state.indentSelected()
+                                }
+                                state.startEdit(id: item.id, text: editText)
+                                return .handled
+                            }
+                            .onKeyPress(keys: [.leftArrow, .rightArrow, .upArrow, .downArrow]) { press in
+                                // Bare Cmd+Up/Down keeps its move-item meaning,
+                                // committing first. Everything else is cursor or
+                                // selection movement in the field.
+                                if press.modifiers.contains(.command), !press.modifiers.contains(.shift),
+                                   press.key == .upArrow || press.key == .downArrow {
+                                    fieldFocused = false
+                                    state.commitEdit(id: item.id, text: editText)
+                                    if press.key == .upArrow { state.moveSelectedUp() } else { state.moveSelectedDown() }
+                                    return .handled
+                                }
+                                return nestedArrowKeys(press)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .writingToolsBehavior(.complete)
+                    } else {
+                        Text(item.text.isEmpty ? AttributedString("Untitled item") : basicMarkdown(item.text))
+                            .font(nestedRowFont(item.textStyle.name))
+                            .foregroundStyle(nestedTextColor)
+                            .strikethrough(item.checked)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
+                            .onTapGesture(count: 2) { state.startEdit(id: item.id) }
+                    }
                 }
                 metadata
             }
@@ -245,14 +254,14 @@ struct NestedRowView: View {
         }
         .background(alignment: .topLeading) {
             // Guide continuation from the toggle down through the children.
-            // Same 16pt grid x as the guides. The toggle is a 16pt circle
-            // in a 24pt slot with 2pt top padding, so its bottom edge sits
-            // at 22pt — start the line there so it touches the ring.
+            // Same 16pt grid x as the guides. The toggle is a 13pt circle
+            // in a 16pt slot with 2pt top padding, so its bottom edge sits
+            // at 20pt — start the line there so it touches the ring.
             if row.node.hasChildren && !item.collapsed {
                 Rectangle()
                     .fill(nestedGuideColor(row.depth))
                     .frame(width: 1)
-                    .padding(.top, 22)
+                    .padding(.top, 20)
                     .padding(.leading, CGFloat(row.depth * 16) + 10)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
@@ -289,7 +298,7 @@ struct NestedRowView: View {
             Circle()
                 .fill(nestedDotForDepth(row.depth))
                 .frame(width: 7, height: 7)
-            Text(item.text.isEmpty ? "Untitled item" : item.text)
+            Text(item.text.isEmpty ? AttributedString("Untitled item") : basicMarkdown(item.text))
                 .font(nestedRowFont(item.textStyle.name))
                 .foregroundStyle(nestedTextColor)
                 .lineLimit(1)
@@ -314,7 +323,7 @@ struct NestedRowView: View {
     private var isSelected: Bool { state.selectedId == item.id }
 
     private var rowBackground: Color {
-        if isEditing { return nestedSelectedColor }
+        if isEditing { return nestedEditingColor }
         if isSelected { return nestedSelectedColor }
         if item.backgroundColor.name != "Default" {
             return nestedTokenColor(item.backgroundColor.name).opacity(0.20)
@@ -389,7 +398,7 @@ struct NestedRowView: View {
                     }
                 }
                 if let n = note, !n.isEmpty {
-                    Text(n)
+                    Text(basicMarkdown(n))
                         .font(.callout).foregroundStyle(.secondary)
                         .lineLimit(2)
                 }

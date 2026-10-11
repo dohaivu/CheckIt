@@ -26,9 +26,25 @@ class JournalToolbarTest {
     @Test
     fun italicWrapsSelection() {
         val edit = applyToolbarAction("hello world", 6, 11, ToolbarAction.Italic)
-        assertEquals("hello *world*", edit.text)
+        assertEquals("hello _world_", edit.text)
         assertEquals(7, edit.selectionStart)
         assertEquals(12, edit.selectionEnd)
+    }
+
+    @Test
+    fun highlightWrapsSelection() {
+        val edit = applyToolbarAction("hello world", 6, 11, ToolbarAction.Highlight)
+        assertEquals("hello ==world==", edit.text)
+        assertEquals(8, edit.selectionStart)
+        assertEquals(13, edit.selectionEnd)
+    }
+
+    @Test
+    fun highlightInsertsPlaceholderAtCollapsedCursor() {
+        val edit = applyToolbarAction("hello", 5, 5, ToolbarAction.Highlight)
+        assertEquals("hello==text==", edit.text)
+        assertEquals(7, edit.selectionStart)
+        assertEquals(11, edit.selectionEnd)
     }
 
     @Test

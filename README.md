@@ -89,6 +89,9 @@ The app is designed around blending the calendar aspect with the completion aspe
 
 # macosApp build
 xcodebuild -project appleApp/appleApp.xcodeproj -scheme macosApp -configuration Debug build
+
+xcodebuild -project appleApp/appleApp.xcodeproj -scheme macosApp -configuration Release archive -archivePath build/macosApp.xcarchive
+open build/macosApp.xcarchive/Products/Applications/
 ```
 
 ## GitHub Release APK

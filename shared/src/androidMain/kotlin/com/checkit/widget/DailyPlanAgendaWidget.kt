@@ -51,23 +51,23 @@ import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.NoteItem
 import com.checkit.domain.QuickNote
 import com.checkit.domain.Routine
-import com.checkit.domain.isRoutineScheduled
-import com.checkit.domain.resolveRoutineTodayChecks
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
+import com.checkit.domain.isRoutineScheduled
+import com.checkit.domain.resolveRoutineTodayChecks
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveNotesForDateUseCase
 import com.checkit.domain.usecase.ObserveQuickNotesForWidgetUseCase
 import com.checkit.domain.usecase.ObserveRoutineTodayUseCase
 import com.checkit.domain.usecase.ObserveRoutinesUseCase
 import com.checkit.shared.R
+import com.checkit.ui.cardColor
+import com.checkit.ui.isOverdue
 import com.checkit.ui.myday.DayViewProjection
 import com.checkit.ui.myday.doneWorkMinutes
 import com.checkit.ui.myday.toDayViewProjection
-import com.checkit.ui.cardColor
-import com.checkit.ui.isOverdue
-import com.checkit.ui.toClockLabel
 import com.checkit.ui.theme.toColor
+import com.checkit.ui.toClockLabel
 import com.checkit.ui.toDurationLabel
 import com.checkit.ui.today
 import kotlinx.coroutines.flow.first
@@ -77,6 +77,24 @@ import kotlinx.datetime.toLocalDateTime
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import androidx.glance.color.ColorProvider as DayNightColorProvider
+
+/**
+ * Agenda selection used by widgets: the agenda lists only items that are still open,
+ * while the counters cover every planned item, including the ones already done.
+ */
+data class WidgetAgendaSelection<T>(
+    val openItems: List<T>,
+    val totalCount: Int,
+    val doneCount: Int,
+)
+
+fun <T> List<T>.toWidgetAgendaSelection(isDone: (T) -> Boolean): WidgetAgendaSelection<T> =
+    WidgetAgendaSelection(
+        openItems = filterNot(isDone),
+        totalCount = size,
+        doneCount = count(isDone),
+    )
+
 
 class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
 
@@ -116,17 +134,25 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
                 projection.toWidgetItems(timed = true, today = today)
             }
 
-            val totalCount = remember(allDayItems, timedItems) { allDayItems.size + timedItems.size }
-            val doneCount = remember(allDayItems, timedItems) {
-                allDayItems.count { it.completed } + timedItems.count { it.completed }
+            // The agenda lists open items only, while the counters cover every planned item.
+            val allDayAgenda = remember(allDayItems) {
+                allDayItems.toWidgetAgendaSelection { it.completed }
             }
+            val timedAgenda = remember(timedItems) {
+                timedItems.toWidgetAgendaSelection { it.completed }
+            }
+
+            val totalCount = allDayAgenda.totalCount + timedAgenda.totalCount
+            val doneCount = allDayAgenda.doneCount + timedAgenda.doneCount
 
             // Find the index of the first item that starts AFTER now
-            val nextTimedItemIndex = remember(timedItems, nowMinutes) {
-                timedItems.indexOfFirst { (it.startTimeMinutes ?: -1) > nowMinutes }
+            val nextTimedItemIndex = remember(timedAgenda, nowMinutes) {
+                timedAgenda.openItems.indexOfFirst { (it.startTimeMinutes ?: -1) > nowMinutes }
             }
 
-            val hasAllDay = allDayItems.isNotEmpty()
+            val openAllDayItems = allDayAgenda.openItems
+            val openTimedItems = timedAgenda.openItems
+            val hasAllDay = openAllDayItems.isNotEmpty()
 
             GlanceTheme {
                 Column(
@@ -247,13 +273,14 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
 
                     GlanceRoutineSection(routines, routineChecks)
 
-                    if (!hasAllDay && timedItems.isEmpty()) {
+                    if (!hasAllDay && openTimedItems.isEmpty()) {
                         Box(
                             modifier = GlanceModifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "Nothing planned for today",
+                                text = if (totalCount > 0) "All done for today"
+                                else "Nothing planned for today",
                                 style = TextStyle(
                                     color = GlanceTheme.colors.onSurfaceVariant,
                                     fontSize = 13.sp
@@ -264,7 +291,7 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
                         LazyColumn(modifier = GlanceModifier.fillMaxSize()) {
                             if (hasAllDay) {
                                 item {
-                                    val hasTimed = timedItems.isNotEmpty()
+                                    val hasTimed = openTimedItems.isNotEmpty()
                                     GlanceAgendaAxisRow(
                                         label = "All Day",
                                         isFirst = true,
@@ -272,9 +299,9 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
                                         isHighlighted = false
                                     ) {
                                         Column {
-                                            allDayItems.forEachIndexed { index, item ->
+                                            openAllDayItems.forEachIndexed { index, item ->
                                                 GlanceAgendaCard(item = item, allDay = true)
-                                                if (index < allDayItems.lastIndex) {
+                                                if (index < openAllDayItems.lastIndex) {
                                                     Spacer(GlanceModifier.height(6.dp))
                                                 }
                                             }
@@ -282,12 +309,12 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
                                     }
                                 }
                             }
-                            itemsIndexed(timedItems) { index, item ->
+                            itemsIndexed(openTimedItems) { index, item ->
                                 val label = item.startTimeMinutes?.toClockLabel() ?: ""
                                 GlanceAgendaAxisRow(
                                     label = label,
                                     isFirst = index == 0 && !hasAllDay,
-                                    isLast = index == timedItems.lastIndex,
+                                    isLast = index == openTimedItems.lastIndex,
                                     isHighlighted = index == nextTimedItemIndex
                                 ) {
                                     GlanceAgendaCard(item = item, allDay = false)
@@ -339,8 +366,8 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
                 .clickable(actionStartActivity<MainActivity>()),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = note.content,
+            GlanceMarkdownText(
+                text = note.content.ifBlank { "Empty note" },
                 modifier = GlanceModifier.defaultWeight(),
                 style = TextStyle(
                     fontSize = 12.sp,

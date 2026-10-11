@@ -86,8 +86,22 @@ final class NestedEditorState: ObservableObject {
         }
     }
     @Published var searchQuery: String = "" {
+        didSet {
+            if searchQuery.isEmpty {
+                // Clearing restores the full outline immediately; typing
+                // debounces below so fast input doesn't re-filter per keystroke.
+                searchTask?.cancel()
+                appliedQuery = ""
+            } else {
+                debounceSearch()
+            }
+        }
+    }
+    /// Debounced mirror of searchQuery; the outline filters on this.
+    @Published private(set) var appliedQuery: String = "" {
         didSet { recomputeVisibleRows() }
     }
+    private var searchTask: Task<Void, Never>?
     @Published var editingId: String? = nil
     @Published var draft: NestedDraft? = nil
     @Published var showDeleteConfirm = false
@@ -262,6 +276,15 @@ final class NestedEditorState: ObservableObject {
         return nil
     }
 
+    private func debounceSearch() {
+        searchTask?.cancel()
+        searchTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 150_000_000)
+            guard !Task.isCancelled, let self else { return }
+            self.appliedQuery = self.searchQuery
+        }
+    }
+
     private func recomputeVisibleRows() {
         guard let tree else {
             visibleRows = []
@@ -275,8 +298,8 @@ final class NestedEditorState: ObservableObject {
         }
         // Reuse the shared outline projection (text query + Working filter:
         // priority / due date / countdown metric + ancestor context) instead
-        // of reimplementing it.
-        let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        // of reimplementing it. Runs on the debounced query (see searchQuery).
+        let query = appliedQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         let roots: [NestedItemNode] = (displayType == .working || !query.isEmpty)
             ? NestedListKt.filterOutlineRoots(roots: zoomRoots, query: query, workingOnly: displayType == .working)
             : zoomRoots
@@ -329,20 +352,56 @@ final class NestedEditorState: ObservableObject {
         editingId = nil
     }
 
-    func startEdit(id: String) {
-        selectedId = id
-        editingId = id
-        draft = nil
+    func startEdit(id: String, text: String? = nil) {
+        // Same view-update deferral as the draft starters: editingId and
+        // friends must not publish synchronously from event handlers.
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            self.selectedId = id
+            self.editingId = id
+            self.draft = nil
+            // Prefer the caller's text: the tree can lag a just-saved edit.
+            self.editingText = text ?? self.indexById[id]?.item.text ?? ""
+        }
     }
 
     func commitEdit(id: String, text: String) {
-        editingId = nil
+        Task { @MainActor [weak self] in
+            self?.editingId = nil
+            self?.editingText = ""
+        }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         helper.saveItemText(itemId: id, text: trimmed)
     }
 
-    func cancelEdit() { editingId = nil }
+    /// In-progress edit text, mirrored synchronously from the field (plain
+    /// var: no publish, no re-render, no view-update warning).
+    var editingText: String = ""
+
+    /**
+     * Synchronous commit from trusted contexts (tap gestures): gesture
+     * actions run outside view updates, so direct writes are safe — unlike
+     * focus-loss observers, which must hop a tick. Uses the mirrored
+     * [editingText] because the field's local copy is unreachable there.
+     * Same save semantics as [commitEdit].
+     */
+    func commitEditing() {
+        guard let id = editingId else { return }
+        let text = editingText
+        editingId = nil
+        editingText = ""
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        helper.saveItemText(itemId: id, text: trimmed)
+    }
+
+    func cancelEdit() {
+        Task { @MainActor [weak self] in
+            self?.editingId = nil
+            self?.editingText = ""
+        }
+    }
 
     // MARK: - Draft (add)
 
@@ -352,27 +411,35 @@ final class NestedEditorState: ObservableObject {
     }
 
     func startAddChild(of id: String) {
-        guard let node = indexById[id] else { return }
-        editingId = nil
-        // Anchor after the subtree's last visible descendant (ViewModel parity).
-        var anchor = node
-        while let last = anchor.children.last, !anchor.item.collapsed {
-            anchor = last
+        // Key-press/button handlers can run inside SwiftUI's view-update
+        // cycle; publishing draft/editingId synchronously warns ("within
+        // view updates"), so hop a tick like the navigation methods do.
+        Task { @MainActor [weak self] in
+            guard let self, let node = self.indexById[id] else { return }
+            self.editingId = nil
+            // Anchor after the subtree's last visible descendant (ViewModel parity).
+            var anchor = node
+            while let last = anchor.children.last, !anchor.item.collapsed {
+                anchor = last
+            }
+            let depth = (self.visibleRows.first(where: { $0.id == id })?.depth ?? 0) + 1
+            self.draft = NestedDraft(anchorId: anchor.item.id, parentId: id, depth: depth, text: "")
         }
-        let depth = (visibleRows.first(where: { $0.id == id })?.depth ?? 0) + 1
-        draft = NestedDraft(anchorId: anchor.item.id, parentId: id, depth: depth, text: "")
     }
 
     func startAddSibling(of id: String) {
-        guard let node = indexById[id] else { return }
-        editingId = nil
-        let depth = visibleRows.first(where: { $0.id == id })?.depth ?? 0
-        draft = NestedDraft(
-            anchorId: id,
-            parentId: node.item.parentId ?? "",
-            depth: depth,
-            text: ""
-        )
+        // Same view-update deferral as startAddChild above.
+        Task { @MainActor [weak self] in
+            guard let self, let node = self.indexById[id] else { return }
+            self.editingId = nil
+            let depth = self.visibleRows.first(where: { $0.id == id })?.depth ?? 0
+            self.draft = NestedDraft(
+                anchorId: id,
+                parentId: node.item.parentId ?? "",
+                depth: depth,
+                text: ""
+            )
+        }
     }
 
     func commitDraft(thenContinue: Bool) {
@@ -429,6 +496,21 @@ final class NestedEditorState: ObservableObject {
     func sortChildrenOfSelected(order: String) {
         guard let id = selectedId, !selectedDocId.isEmpty else { return }
         helper.sortChildren(documentId: selectedDocId, parentId: id, orderName: order)
+    }
+
+    func moveDestinationsForSelected() -> MoveDestinations? {
+        guard let id = selectedId else { return nil }
+        return moveDestinations(for: id)
+    }
+
+    func moveDestinations(for id: String) -> MoveDestinations? {
+        guard !selectedDocId.isEmpty else { return nil }
+        return helper.moveDestinationGroups(documentId: selectedDocId, itemId: id)
+    }
+
+    func moveSelectedUnder(destinationId: String) {
+        guard let id = selectedId, !selectedDocId.isEmpty else { return }
+        helper.moveUnder(documentId: selectedDocId, itemId: id, destinationId: destinationId)
     }
 
     func toggleCollapse(id: String) { helper.toggleCollapsed(itemId: id) }

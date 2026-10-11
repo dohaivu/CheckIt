@@ -110,11 +110,6 @@ dependencies {
     ksp(libs.androidx.appfunctions.compiler)
 
     // Android instrumented UI tests
-//    androidTestImplementation(platform(libs.androidx.compose.bom))
-//    androidTestImplementation(libs.compose.ui.test.junit4)
-//    androidTestImplementation(libs.kotlin.test)
-//    androidTestImplementation(libs.kotlinx.coroutines.test)
-//    androidTestImplementation(libs.androidx.testExt.junit)
     debugImplementation(platform(libs.androidx.compose.bom))
     debugImplementation(libs.compose.ui.test.manifest)
 }

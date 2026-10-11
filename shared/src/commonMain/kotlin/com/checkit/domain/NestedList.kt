@@ -121,9 +121,9 @@ fun calculateNestedMetricSummaries(roots: List<NestedItemNode>): Map<String, Nes
 
 /**
  * Swift-friendly outline projection for the macOS Working/search UI: text
- * [query] plus the Working filter (priority / due date / countdown metric),
- * with the same ancestor-context keep semantics as [filterNestedTree].
- * Lets Apple clients reuse the shared logic without date/tag interop friction.
+ * [query] plus the Working filter, with the same ancestor-context keep
+ * semantics as [filterNestedTree]. Lets Apple clients reuse the shared
+ * logic without date/tag interop friction.
  */
 fun filterOutlineRoots(
     roots: List<NestedItemNode>,
@@ -137,10 +137,11 @@ fun filterOutlineRoots(
  * (inclusive) OR have descendants that do. Supports text [query] and [hideChecked] status.
  *
  * With [workingOnly], the finder-filtered regions are refined to working
- * items (priority, due date, or an enabled date-based metric) in a second
- * pass — same ancestor/descendant keep semantics as the other positive
- * filters. Two passes (instead of one AND pass) so a query-matching parent
- * with working children, or vice versa, isn't pruned to nothing.
+ * items (see [isWorkingItem]) in a second pass — same ancestor/descendant
+ * keep semantics as the other positive filters. Two passes (instead of one
+ * AND pass) so a query-matching parent with working children, or vice
+ * versa, isn't pruned to nothing. Working implies hide-checked: done work
+ * is noise in a needs-attention view (All stays for review).
  */
 fun filterNestedTree(
     roots: List<NestedItemNode>,
@@ -153,9 +154,11 @@ fun filterNestedTree(
 ): List<NestedItemNode> {
     val found = roots.mapNotNull { filterNestedNode(it, start, end, query, hideChecked, selectedTagIds) }
     if (!workingOnly) return found
-    // Refine (see KDoc): checked subtrees were already pruned above.
+    // Refine (see KDoc): checked subtrees were already pruned above when
+    // hideChecked is set; Working additionally implies hide-checked, since
+    // done work is noise in a needs-attention view (All stays for review).
     return found.mapNotNull {
-        filterNestedNode(it, null, null, "", hideChecked = false, workingOnly = true)
+        filterNestedNode(it, null, null, "", hideChecked = true, workingOnly = true)
     }
 }
 
@@ -224,11 +227,58 @@ private fun filterNestedNode(
     }
 }
 
-/** A "working" item carries actionable state: priority, due date, or an enabled date-based metric. */
+/**
+ * Promotes topmost actionable high-priority items to roots for glanceable
+ * widgets: unchecked P1 items with no matched ancestor. Descendants are kept
+ * (any priority) down to [maxDepth] levels below each promoted root;
+ * checked subtrees are pruned entirely and collapse is ignored. Pure.
+ */
+fun focusSubtrees(roots: List<NestedItemNode>, maxDepth: Int = 2): List<NestedItemNode> {
+    val out = mutableListOf<NestedItemNode>()
+    fun collect(node: NestedItemNode, ancestorMatched: Boolean, depthBelow: Int): NestedItemNode? {
+        if (node.item.checked) return null
+        val matches = !ancestorMatched && node.item.priority == TaskPriority.High
+        if (!ancestorMatched && !matches) {
+            node.children.forEach { collect(it, ancestorMatched = false, depthBelow = 0)?.let(out::add) }
+            return null
+        }
+        if (ancestorMatched && depthBelow > maxDepth) return null
+        val nextDepth = if (matches) 1 else depthBelow + 1
+        val keptChildren = node.children.mapNotNull { collect(it, ancestorMatched = true, depthBelow = nextDepth) }
+        return node.copy(children = keptChildren)
+    }
+    roots.forEach { collect(it, ancestorMatched = false, depthBelow = 0)?.let(out::add) }
+    return out
+}
+
+/** One flattened focus row: the item, its depth below the promoted root, and whether it has children. */
+data class FocusRow(
+    val item: NestedListItem,
+    val depth: Int,
+    val hasChildren: Boolean
+)
+
+/** Flattens kept subtrees to rows with depth relative to each root. */
+fun flattenFocusRows(roots: List<NestedItemNode>): List<FocusRow> =
+    buildList {
+        val stack = ArrayDeque<Pair<NestedItemNode, Int>>()
+        roots.asReversed().forEach { stack.addLast(it to 0) }
+        while (stack.isNotEmpty()) {
+            val (node, depth) = stack.removeLast()
+            add(FocusRow(node.item, depth, node.children.isNotEmpty()))
+            node.children.asReversed().forEach { stack.addLast(it to depth + 1) }
+        }
+    }
+
+/** A "working" item carries actionable state: priority, due date, an enabled
+ * date-based metric, an open checkbox, visible progress, or tracked time. */
 fun isWorkingItem(item: NestedListItem): Boolean =
     item.priority != TaskPriority.None ||
             item.startDate != null || item.endDate != null ||
-            item.manualMetrics.any { it.enabled && (it.unit == MetricUnit.Countdown || it.unit == MetricUnit.DueDate) }
+            item.manualMetrics.any { it.enabled && (it.unit == MetricUnit.Countdown || it.unit == MetricUnit.DueDate) } ||
+            (item.checkboxEnabled && !item.checked) ||
+            item.progressPercent != null ||
+            item.actualMinutes > 0
 
 /**
  * Computes the (parentId, position) for inserting a new item, mirroring the
@@ -269,6 +319,38 @@ enum class NestedSortOrder {
     CompletedDesc,
     IncompleteFirst,
     PriorityDesc,
+}
+
+/** Candidate parents for "move under": siblings and parent-siblings, in display order. */
+data class MoveDestinations(
+    val siblings: List<NestedListItem>,
+    val parentSiblings: List<NestedListItem>
+) {
+    val isEmpty: Boolean get() = siblings.isEmpty() && parentSiblings.isEmpty()
+}
+
+/**
+ * Lists where [itemId] may move under: its siblings (excluding itself) and
+ * its parent's siblings (excluding its parent). Roots have no parent-siblings.
+ * Siblings and uncles can never sit inside the moved subtree, so the set is
+ * inherently cycle-safe. Pure for UI reuse on both platforms.
+ */
+fun moveDestinations(items: List<NestedListItem>, itemId: String): MoveDestinations {
+    val item = items.firstOrNull { it.id == itemId }
+        ?: return MoveDestinations(emptyList(), emptyList())
+    val inGroupOrder = compareBy<NestedListItem> { it.position }.thenBy { it.id }
+    val siblings = items
+        .filter { it.parentId == item.parentId && it.id != itemId }
+        .sortedWith(inGroupOrder)
+    val parent = items.firstOrNull { it.id == item.parentId }
+    val parentSiblings = if (parent == null) {
+        emptyList()
+    } else {
+        items
+            .filter { it.parentId == parent.parentId && it.id != parent.id }
+            .sortedWith(inGroupOrder)
+    }
+    return MoveDestinations(siblings, parentSiblings)
 }
 
 /**

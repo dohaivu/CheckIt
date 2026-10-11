@@ -354,7 +354,7 @@ struct QuickNoteRow: View {
     var body: some View {
         HStack(alignment: expanded ? .top : .center, spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(note.content)
+                Text(basicMarkdown(note.content))
                     .lineLimit(expanded ? nil : 3)
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -508,7 +508,7 @@ struct QuickNoteDeletedRow: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 8) {
-            Text(note.content)
+            Text(basicMarkdown(note.content))
                 .lineLimit(3)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -749,7 +749,9 @@ struct QuickNoteMenuView: View {
             // Slow tick while open so relative times stay fresh; stopped on close.
             tickTimer?.invalidate()
             tickTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { _ in
-                state.tick()
+                Task { @MainActor in
+                      state.tick()
+                  }
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .quickNoteMenuClosed)) { _ in

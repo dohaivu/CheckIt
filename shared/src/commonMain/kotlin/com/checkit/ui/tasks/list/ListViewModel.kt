@@ -23,7 +23,7 @@ data class ListEditorState(
     val mode: EditorMode,
     val listId: String? = null,
     val title: String = "",
-    val color: String = AppIconColorDefaults.ListColors.first(),
+    val color: String = AppIconColorDefaults.CommonColors.first(),
     val icon: String = AppIconColorDefaults.ListIcons.first(),
     val isArchived: Boolean = false
 )

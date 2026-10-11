@@ -27,6 +27,7 @@ import androidx.glance.layout.Box
 import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxWidth
+import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.layout.size
 import androidx.glance.layout.width
@@ -35,6 +36,7 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import com.checkit.MainActivity
+import com.checkit.domain.parseRichText
 import com.checkit.domain.usecase.ObserveQuickNotesForWidgetUseCase
 import com.checkit.shared.R
 import org.koin.core.component.KoinComponent
@@ -70,7 +72,7 @@ class QuickNoteSingleWidget : GlanceAppWidget(), KoinComponent {
                 Row(
                     modifier = GlanceModifier
                         .fillMaxWidth()
-                        .wrapContentHeight()
+                        .height(80.dp)
                         .cornerRadius(80.dp)
                         .background(translucentBackground)
                         .padding(horizontal = 12.dp, vertical = 12.dp)
@@ -87,8 +89,10 @@ class QuickNoteSingleWidget : GlanceAppWidget(), KoinComponent {
                     Spacer(modifier = GlanceModifier.width(12.dp))
 
                     if (topNote != null) {
+                        // Glance Text takes plain String only (no spans), so show
+                        // the marker-stripped text via the shared markdown parser.
                         Text(
-                            text = topNote.content.ifBlank { "Empty note" },
+                            text = parseRichText(topNote.content).text.ifBlank { "Empty note" },
                             modifier = GlanceModifier.defaultWeight(),
                             style = TextStyle(
                                 fontWeight = FontWeight.Medium,

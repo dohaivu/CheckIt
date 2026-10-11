@@ -62,6 +62,7 @@ kotlin {
             implementation(libs.googleid)
             implementation(libs.androidx.glance.appwidget)
             implementation(libs.androidx.glance.material3)
+            implementation(libs.androidx.glance)
             implementation(libs.androidx.documentfile)
 
             implementation(project.dependencies.platform(libs.firebase.bom))
@@ -135,7 +136,6 @@ kotlin {
         commonTest.dependencies {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinx.coroutines.test)
-            implementation(libs.turbine)
             implementation(libs.koin.test)
             implementation(libs.compose.ui.test)
         }

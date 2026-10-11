@@ -115,6 +115,7 @@ import com.checkit.domain.QuickNoteType
 import com.checkit.domain.TaskPriority
 import com.checkit.ui.components.AiQuickAddBar
 import com.checkit.ui.components.SectionLabel
+import com.checkit.ui.components.parseMarkdownInline
 import com.checkit.ui.toClockLabel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -852,7 +853,9 @@ private fun NextRow(
 
             SelectionContainer(modifier = Modifier.weight(1f)) {
                 Text(
-                    note.content,
+                    text = remember(note.content) {
+                        parseMarkdownInline(note.content)
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
@@ -1014,7 +1017,9 @@ private fun DeletedRow(
             ) {
                 SelectionContainer(modifier = Modifier.weight(1f)) {
                     Text(
-                        note.content,
+                        text = remember(note.content) {
+                            parseMarkdownInline(note.content)
+                        },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

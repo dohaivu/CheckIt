@@ -113,7 +113,7 @@ internal fun TagEditorSheet(
             }
             item {
                 ColorPicker(
-                    colors = AppIconColorDefaults.ListColors,
+                    colors = AppIconColorDefaults.CommonColors,
                     selected = editor.color,
                     onSelect = onColorChange
                 )

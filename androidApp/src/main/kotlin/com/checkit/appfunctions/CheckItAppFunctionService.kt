@@ -1,7 +1,7 @@
 package com.checkit.appfunctions
 
 import androidx.annotation.RequiresApi
-import androidx.appfunctions.AppFunction
+import androidx.appfunctions.AppFunctionDeclaration
 import androidx.appfunctions.AppFunctionSerializable
 import androidx.appfunctions.AppFunctionService
 import androidx.appfunctions.AppFunctionServiceEntryPoint
@@ -17,11 +17,11 @@ import com.checkit.domain.usecase.ObserveWorkingTasksUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import kotlin.time.Clock
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
 
 /**
  * Entry point for CheckIt AppFunctions.
@@ -29,7 +29,7 @@ import kotlinx.datetime.toLocalDateTime
 @RequiresApi(36)
 @AppFunctionServiceEntryPoint(
     serviceName = "CheckItAppFunctionService",
-    appFunctionXmlFileName = "checkit_app_functions"
+    appFunctionXmlFileName = "checkit_app_functions",
 )
 abstract class BaseCheckItAppFunctionService : AppFunctionService(), KoinComponent {
 
@@ -44,7 +44,7 @@ abstract class BaseCheckItAppFunctionService : AppFunctionService(), KoinCompone
      * @param title The title of the task to be created.
      * @return A success message confirming the task creation.
      */
-    @AppFunction(isDescribedByKDoc = true)
+    @AppFunctionDeclaration(isDescribedByKDoc = true)
     suspend fun createTask(
         title: String
     ): String = withContext(Dispatchers.IO) {
@@ -73,7 +73,7 @@ abstract class BaseCheckItAppFunctionService : AppFunctionService(), KoinCompone
      * @param taskId The unique identifier of the task to complete.
      * @return A success message confirming the task completion.
      */
-    @AppFunction(isDescribedByKDoc = true)
+    @AppFunctionDeclaration(isDescribedByKDoc = true)
     suspend fun markTaskComplete(
         taskId: String
     ): String = withContext(Dispatchers.IO) {
@@ -86,7 +86,7 @@ abstract class BaseCheckItAppFunctionService : AppFunctionService(), KoinCompone
      *
      * @return A list of [TaskBrief] objects for today.
      */
-    @AppFunction(isDescribedByKDoc = true)
+    @AppFunctionDeclaration(isDescribedByKDoc = true)
     suspend fun getTasksForToday(): List<TaskBrief> = withContext(Dispatchers.IO) {
         val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
         observeWorkingTasks(today).first().map { task ->
@@ -104,7 +104,7 @@ abstract class BaseCheckItAppFunctionService : AppFunctionService(), KoinCompone
      * @param content The text content of the journal entry.
      * @return A success message.
      */
-    @AppFunction(isDescribedByKDoc = true)
+    @AppFunctionDeclaration(isDescribedByKDoc = true)
     suspend fun addJournalNote(
         content: String
     ): String = withContext(Dispatchers.IO) {

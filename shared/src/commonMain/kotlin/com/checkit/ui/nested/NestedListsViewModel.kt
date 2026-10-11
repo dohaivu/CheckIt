@@ -14,6 +14,8 @@ import com.checkit.domain.NestedDocumentTree
 import com.checkit.domain.NestedItemNode
 import com.checkit.domain.NestedListItem
 import com.checkit.domain.NestedSortOrder
+import com.checkit.domain.MoveDestinations
+import com.checkit.domain.moveDestinations
 import com.checkit.domain.computeNestedInsertPosition
 
 import com.checkit.domain.NestedTextStyle
@@ -663,6 +665,22 @@ class NestedListsViewModel(
     fun sortChildrenOfSelected(order: NestedSortOrder) {
         val id = getActiveEditor()?.selectedItemId ?: return
         applyMove { items -> moveItemsUseCase.sortChildren(items, id, order) }
+    }
+
+    fun moveDestinationsForSelected(): MoveDestinations {
+        val active = getActiveEditor() ?: return MoveDestinations(emptyList(), emptyList())
+        val id = active.selectedItemId ?: return MoveDestinations(emptyList(), emptyList())
+        return moveDestinations(active.tree.flatItems, id)
+    }
+
+    fun moveUnderSelected(destinationId: String) {
+        val active = getActiveEditor() ?: return
+        val id = active.selectedItemId ?: return
+        val expandDestination = active.tree.nodeById[destinationId]?.item?.collapsed == true
+        applyMove { items -> moveItemsUseCase.moveUnder(items, id, destinationId) }
+        if (expandDestination) {
+            viewModelScope.launch { toggleCollapsedUseCase(destinationId) }
+        }
     }
 
     fun canStartDrag(): Boolean {

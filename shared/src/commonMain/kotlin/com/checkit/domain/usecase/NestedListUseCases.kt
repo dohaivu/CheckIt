@@ -330,6 +330,20 @@ class MoveNestedItemsUseCase(
     }
 
     /**
+     * Moves [itemId] to become the last child of [destinationId]. Empty when
+     * either is unknown, the destination sits in the item's own subtree, or
+     * the item is already its last child.
+     */
+    fun moveUnder(
+        items: List<NestedListItem>,
+        itemId: String,
+        destinationId: String
+    ): List<NestedItemMove> {
+        if (items.none { it.id == destinationId }) return emptyList()
+        return moveToPosition(items, itemId, destinationId, siblingsOf(items, destinationId).size)
+    }
+
+    /**
      * Places [itemId] as child of [newParentId] at [newIndex]. The index refers
      * to the target group *excluding* the dragged item (so same-parent reorders
      * behave like gap-based drops). Returns moves that renormalize both affected

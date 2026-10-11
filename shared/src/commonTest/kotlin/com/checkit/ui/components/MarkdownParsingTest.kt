@@ -1,5 +1,6 @@
 package com.checkit.ui.components
 
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -33,7 +34,7 @@ class MarkdownParsingTest {
 
     @Test
     fun parseMarkdownToAnnotatedString_parsesBoldAndItalicAndStrikethrough() {
-        val input = "**Bold**, *italic*, and ~~strikethrough~~"
+        val input = "**Bold**, _italic_, and ~~strikethrough~~"
         val result = parseMarkdownToAnnotatedString(input)
 
         assertEquals("Bold, italic, and strikethrough", result.text)
@@ -103,6 +104,203 @@ class MarkdownParsingTest {
         assertTrue(barSpan != null, "Expected bold style for quote prefix bar")
         assertEquals(0, barSpan.start)
         assertEquals(2, barSpan.end)
+    }
+
+    @Test
+    fun parseMarkdownToAnnotatedString_parsesHighlight() {
+        val input = "==If== it's 9am, ==then== I will read book"
+        val result = parseMarkdownToAnnotatedString(input)
+
+        assertEquals("If it's 9am, then I will read book", result.text)
+
+        val highlights = result.spanStyles.filter { it.item.color == MarkdownHighlightColor }
+        assertEquals(2, highlights.size)
+        assertEquals(0, highlights[0].start)
+        assertEquals(2, highlights[0].end)
+        assertEquals(FontWeight.Bold, highlights[0].item.fontWeight)
+        assertEquals(13, highlights[1].start)
+        assertEquals(17, highlights[1].end)
+    }
+
+    @Test
+    fun parseMarkdownToAnnotatedString_parsesNestedBoldHighlight() {
+        val input = "**==both==**"
+        val result = parseMarkdownToAnnotatedString(input)
+
+        assertEquals("both", result.text)
+
+        assertTrue(result.spanStyles.any { it.item.color == MarkdownHighlightColor })
+        assertTrue(result.spanStyles.any { it.item.fontWeight == FontWeight.Bold && it.item.color == Color.Unspecified })
+    }
+
+    @Test
+    fun parseMarkdownToAnnotatedString_leavesUnclosedHighlightLiteral() {
+        val input = "==oops"
+        val result = parseMarkdownToAnnotatedString(input)
+
+        assertEquals("==oops", result.text)
+        assertTrue(result.spanStyles.none { it.item.color == MarkdownHighlightColor })
+    }
+
+    @Test
+    fun parseMarkdownToAnnotatedString_parsesColoredHighlight() {
+        val input = "=={c1}hi=="
+        val result = parseMarkdownToAnnotatedString(input)
+
+        assertEquals("hi", result.text)
+
+        val span = result.spanStyles.single()
+        assertEquals(0, span.start)
+        assertEquals(2, span.end)
+        assertEquals(FontWeight.Bold, span.item.fontWeight)
+        assertEquals(Color(0xFF2563EB), span.item.color)
+    }
+
+    @Test
+    fun parseMarkdownToAnnotatedString_leavesUnknownColorTokenLiteral() {
+        val input = "=={c99}hi=="
+        val result = parseMarkdownToAnnotatedString(input)
+
+        assertEquals("=={c99}hi==", result.text)
+        assertTrue(result.spanStyles.isEmpty())
+    }
+
+    @Test
+    fun parseMarkdownToAnnotatedString_degradesMalformedTokenToDefaultHighlight() {
+        val upper = parseMarkdownToAnnotatedString("=={C1}hi==")
+        assertEquals("{C1}hi", upper.text)
+        assertEquals(MarkdownHighlightColor, upper.spanStyles.single().item.color)
+
+        val nonDigit = parseMarkdownToAnnotatedString("=={cx}hi==")
+        assertEquals("{cx}hi", nonDigit.text)
+        assertEquals(MarkdownHighlightColor, nonDigit.spanStyles.single().item.color)
+    }
+
+    @Test
+    fun parseMarkdownToAnnotatedString_parsesNestedColoredHighlight() {
+        val input = "**=={c5}both==**"
+        val result = parseMarkdownToAnnotatedString(input)
+
+        assertEquals("both", result.text)
+        assertTrue(result.spanStyles.any { it.item.color == Color(0xFFDC2626) })
+    }
+
+    @Test
+    fun markdownVisualTransformation_appliesColoredHighlightStyle() {
+        val transformation = MarkdownVisualTransformation()
+        val input = AnnotatedString("Go =={c5}now==")
+        val transformed = transformation.filter(input)
+
+        assertEquals("Go =={c5}now==", transformed.text.text)
+
+        val highlightSpan = transformed.text.spanStyles.firstOrNull { it.item.color == Color(0xFFDC2626) }
+        assertTrue(highlightSpan != null, "Expected a colored highlight span style")
+        assertEquals(3, highlightSpan.start)
+        assertEquals(14, highlightSpan.end) // Includes raw "=={c5}now=="
+    }
+
+    @Test
+    fun markdownVisualTransformation_leavesUnknownColorTokenUnstyled() {
+        val transformation = MarkdownVisualTransformation()
+        val input = AnnotatedString("=={c99}hi==")
+        val transformed = transformation.filter(input)
+
+        assertEquals("=={c99}hi==", transformed.text.text)
+        assertTrue(transformed.text.spanStyles.isEmpty())
+    }
+
+    @Test
+    fun parseMarkdownToAnnotatedString_acceptsCustomHighlightColor() {
+        val input = "==hi=="
+        val custom = Color.Red
+        val result = parseMarkdownToAnnotatedString(input, highlightColor = custom)
+
+        assertEquals("hi", result.text)
+        assertEquals(custom, result.spanStyles.single().item.color)
+    }
+
+    @Test
+    fun markdownVisualTransformation_appliesHighlightStyle() {
+        val transformation = MarkdownVisualTransformation()
+        val input = AnnotatedString("This is ==highlight== text")
+        val transformed = transformation.filter(input)
+
+        assertEquals("This is ==highlight== text", transformed.text.text)
+
+        val highlightSpan = transformed.text.spanStyles.firstOrNull { it.item.color == MarkdownHighlightColor }
+        assertTrue(highlightSpan != null, "Expected a highlight span style")
+        assertEquals(8, highlightSpan.start)
+        assertEquals(21, highlightSpan.end) // Includes raw "==highlight=="
+        assertEquals(FontWeight.Bold, highlightSpan.item.fontWeight)
+    }
+
+    @Test
+    fun parseMarkdownToAnnotatedString_parsesUnderscoreItalic() {
+        val input = "This is _italic_ text"
+        val result = parseMarkdownToAnnotatedString(input)
+
+        assertEquals("This is italic text", result.text)
+
+        val italicSpan = result.spanStyles.single()
+        assertEquals(FontStyle.Italic, italicSpan.item.fontStyle)
+        assertEquals(8, italicSpan.start)
+        assertEquals(14, italicSpan.end)
+    }
+
+    @Test
+    fun parseMarkdownToAnnotatedString_parsesNestedBoldUnderscoreItalic() {
+        val input = "**_both_**"
+        val result = parseMarkdownToAnnotatedString(input)
+
+        assertEquals("both", result.text)
+        assertTrue(result.spanStyles.any { it.item.fontWeight == FontWeight.Bold })
+        assertTrue(result.spanStyles.any { it.item.fontStyle == FontStyle.Italic })
+    }
+
+    @Test
+    fun parseMarkdownToAnnotatedString_parsesNestedUnderscoreBold() {
+        val input = "_**both**_"
+        val result = parseMarkdownToAnnotatedString(input)
+
+        assertEquals("both", result.text)
+        assertTrue(result.spanStyles.any { it.item.fontWeight == FontWeight.Bold })
+        assertTrue(result.spanStyles.any { it.item.fontStyle == FontStyle.Italic })
+    }
+
+    @Test
+    fun parseMarkdownToAnnotatedString_leavesSnakeCaseLiteral() {
+        val input = "my_var_name"
+        val result = parseMarkdownToAnnotatedString(input)
+
+        assertEquals("my_var_name", result.text)
+        assertTrue(result.spanStyles.isEmpty())
+    }
+
+    @Test
+    fun parseMarkdownToAnnotatedString_italicRespectsBoundaries() {
+        val input = "(see _this_)"
+        val result = parseMarkdownToAnnotatedString(input)
+
+        assertEquals("(see this)", result.text)
+
+        val italicSpan = result.spanStyles.single()
+        assertEquals(FontStyle.Italic, italicSpan.item.fontStyle)
+        assertEquals(5, italicSpan.start)
+        assertEquals(9, italicSpan.end)
+    }
+
+    @Test
+    fun markdownVisualTransformation_appliesUnderscoreItalicStyle() {
+        val transformation = MarkdownVisualTransformation()
+        val input = AnnotatedString("This is _italic_ text")
+        val transformed = transformation.filter(input)
+
+        assertEquals("This is _italic_ text", transformed.text.text)
+
+        val italicSpan = transformed.text.spanStyles.firstOrNull { it.item.fontStyle == FontStyle.Italic }
+        assertTrue(italicSpan != null, "Expected an italic span style")
+        assertEquals(7, italicSpan.start)
+        assertEquals(16, italicSpan.end) // Includes leading boundary plus raw "_italic_"
     }
 
     @Test

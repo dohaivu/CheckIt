@@ -107,6 +107,23 @@
                 android:resource="@xml/quick_note_widget_info" />
         </receiver>
 
+        <receiver
+            android:name="com.checkit.widget.NestedFocusWidgetReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/nested_focus_widget_info" />
+        </receiver>
+
+        <activity
+            android:name="com.checkit.widget.NestedFocusWidgetConfigActivity"
+            android:exported="false"
+            android:label="Focus widget"
+            android:theme="@android:style/Theme.Material.Light.NoActionBar" />
+
         <receiver android:name="com.checkit.notifications.SprintActionReceiver" android:exported="false">
             <intent-filter>
                 <action android:name="com.checkit.ACTION_SAVE_WIN" />
