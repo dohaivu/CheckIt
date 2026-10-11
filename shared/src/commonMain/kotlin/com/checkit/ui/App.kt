@@ -467,7 +467,6 @@ fun CheckItApp(
                                     onTimeChange = viewModels.task::updateTaskTime,
                                     onRepeatChange = viewModels.task::updateTaskRepeat,
                                     onPriorityChange = viewModels.task::updateTaskPriority,
-                                    onReminderToggle = viewModels.task::toggleTaskReminder,
                                     onTagToggle = viewModels.task::toggleTaskTag,
                                     onLabelChange = viewModels.task::updateTaskLabel,
                                     onMetricsChange = viewModels.task::updateTaskMetrics

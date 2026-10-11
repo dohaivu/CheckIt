@@ -29,20 +29,6 @@ class CheckItNotificationCenter(
 ) {
     private val notificationManager = NotificationManagerCompat.from(context)
 
-    fun showTaskReminder(taskId: String, taskName: String, label: String) {
-        showReminder(
-            notificationId = NotificationIds.taskReminder(taskId),
-            requestCode = taskId.hashCode(),
-            title = taskName.ifBlank { "Task reminder" },
-            body = label,
-            subText = null,
-            dailyPlanItemId = null,
-            openPlanAssist = false,
-            openDayClose = false,
-            bypassDnd = true
-        )
-    }
-
     fun showPlanReviewReminder(notificationId: Int, title: String, body: String, type: AppReminderType) {
         showReminder(
             notificationId = notificationId,

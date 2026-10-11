@@ -60,7 +60,6 @@ abstract class BaseCheckItAppFunctionService : AppFunctionService(), KoinCompone
                 startTimeMinutes = null,
                 endTimeMinutes = null,
                 repeatRRule = null,
-                reminders = emptyList(),
                 tagIds = emptyList()
             )
         )

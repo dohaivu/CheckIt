@@ -184,7 +184,7 @@ val provideInteractorModule = module {
     single { SprintTransitionUseCase(get(), get(), get()) }
     single { UpsertDailyPlanItemUseCase(get()) }
     single { AddSuggestedTaskToMyDayUseCase(get(), get(), get()) }
-    single { RoomCheckItRepository(get(), get(), get(), get(), get()) as CheckItRepository }
+    single { RoomCheckItRepository(get(), get(), get(), get()) as CheckItRepository }
     single { ObserveTaskBoardUseCase(get()) }
     single { ObserveTagUsageCountsUseCase(get()) }
     single { GetTaskUseCase(get()) }

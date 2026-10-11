@@ -14,8 +14,6 @@ import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskPriority
-import com.checkit.domain.TaskReminderPlanner
-import com.checkit.domain.TaskReminderPreset
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskType
 import com.checkit.domain.usecase.AddNoteUseCase
@@ -472,7 +470,6 @@ class TaskViewModel(
                     endTimeMinutes = task.endTimeMinutes,
                     repeatPreset = RepeatPreset.fromRRule(task.repeatRRule),
                     subtasks = task.subtasks.map { subtask -> subtask.toEditorState() },
-                    reminderOffsets = TaskReminderPlanner.selectedOffsetsFor(task),
                     status = task.status,
                     priority = task.priority,
                     type = task.type,
@@ -534,24 +531,15 @@ class TaskViewModel(
     fun updateTaskName(name: String) = updateTaskForm(saveImmediately = false) { it.copy(name = name, error = null) }
     fun updateTaskListId(listId: String) = updateTaskForm { it.copy(listId = listId) }
     fun updateTaskDescription(description: String) = updateTaskForm(saveImmediately = false) { it.copy(description = description) }
-    fun updateTaskDoDate(doDate: LocalDate?) = updateTaskForm {
-        it.copy(
-            doDate = doDate,
-            reminderOffsets = if (doDate == null) emptySet() else it.reminderOffsets
-        )
-    }
+    fun updateTaskDoDate(doDate: LocalDate?) = updateTaskForm { it.copy(doDate = doDate) }
     fun updateTaskTime(startTimeMinutes: Int?, endTimeMinutes: Int?) = updateTaskForm {
         it.copy(
             startTimeMinutes = startTimeMinutes,
-            endTimeMinutes = if ((startTimeMinutes == null) || ((endTimeMinutes != null) && (startTimeMinutes > endTimeMinutes))) null else endTimeMinutes,
-            reminderOffsets = TaskReminderPreset.normalizeOffsets(startTimeMinutes, it.reminderOffsets)
+            endTimeMinutes = if ((startTimeMinutes == null) || ((endTimeMinutes != null) && (startTimeMinutes > endTimeMinutes))) null else endTimeMinutes
         )
     }
     fun updateTaskRepeat(repeatPreset: RepeatPreset) = updateTaskForm { it.copy(repeatPreset = repeatPreset) }
     fun updateTaskPriority(priority: TaskPriority) = updateTaskForm { it.copy(priority = priority) }
-    fun toggleTaskReminder(offsetMinutes: Int) = updateTaskForm { form ->
-        form.copy(reminderOffsets = form.reminderOffsets.toggle(offsetMinutes))
-    }
     fun addSubTask() = updateTaskForm { form ->
         form.copy(subtasks = form.subtasks + SubTaskEditorState(name = ""))
     }
@@ -772,14 +760,12 @@ class TaskViewModel(
             normalizedStart + MinimumTimelineDurationMinutes,
             MinutesPerDay
         )
-        val reminderOffsets = TaskReminderPlanner.selectedOffsetsFor(task)
         viewModelScope.launch {
             updateTask(
                 task.id,
                 task.toWriteInput(
                     startTimeMinutes = normalizedStart,
-                    endTimeMinutes = normalizedEnd,
-                    reminderOffsets = reminderOffsets
+                    endTimeMinutes = normalizedEnd
                 )
             )
         }
@@ -902,11 +888,6 @@ class TaskViewModel(
                 .map { it.copy(name = it.name.trim()) }
                 .filter { it.name.isNotBlank() }
                 .map { SubTaskWriteInput(name = it.name, isCompleted = it.isCompleted) },
-            reminders = TaskReminderPlanner.buildReminderInputs(
-                doDate = doDate,
-                startTimeMinutes = startTimeMinutes,
-                selectedOffsets = reminderOffsets
-            ),
             tagIds = selectedTagIds.toList(),
             metrics = metrics.filter { it.isValidForSave() }
         )
@@ -914,8 +895,7 @@ class TaskViewModel(
 
     private fun TaskItem.toWriteInput(
         startTimeMinutes: Int?,
-        endTimeMinutes: Int?,
-        reminderOffsets: Set<Int>
+        endTimeMinutes: Int?
     ): TaskWriteInput {
         return TaskWriteInput(
             listId = list?.id,
@@ -929,11 +909,6 @@ class TaskViewModel(
             endTimeMinutes = endTimeMinutes,
             repeatRRule = repeatRRule,
             subtasks = subtasks.map { SubTaskWriteInput(name = it.name, isCompleted = it.isCompleted) },
-            reminders = TaskReminderPlanner.buildReminderInputs(
-                doDate = doDate,
-                startTimeMinutes = startTimeMinutes,
-                selectedOffsets = reminderOffsets
-            ),
             tagIds = tags.map { it.id },
             metrics = metrics.filter { it.isValidForSave() }
         )

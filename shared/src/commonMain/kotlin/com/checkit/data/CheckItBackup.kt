@@ -16,7 +16,6 @@ data class CheckItBackup(
     val tags: List<TagEntity> = emptyList(),
     val tasks: List<TaskEntity> = emptyList(),
     val subTasks: List<SubTaskEntity> = emptyList(),
-    val taskReminders: List<TaskReminderEntity> = emptyList(),
     val taskTags: List<TaskTagEntity> = emptyList(),
     val taskLists: List<TaskListEntity> = emptyList(),
     val notes: List<NoteEntity> = emptyList(),

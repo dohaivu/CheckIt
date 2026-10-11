@@ -36,17 +36,12 @@ import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskFilter
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskPriority
-import com.checkit.domain.TaskReminder
-import com.checkit.domain.TaskReminderWriteInput
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TagItem
 import com.checkit.domain.TaskType
 import com.checkit.domain.hasEndTime
 import com.checkit.notifications.DailyPlanScheduleReminderScheduler
 import com.checkit.notifications.NoOpDailyPlanScheduleReminderScheduler
-import com.checkit.notifications.NoOpTaskReminderNotificationScheduler
-import com.checkit.notifications.ScheduledTaskReminder
-import com.checkit.notifications.TaskReminderNotificationScheduler
 import com.checkit.ui.tasks.views.currentTimeMinutes
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -225,7 +220,6 @@ data class TaskWriteInput(
     val label: String? = null,
     val isPinned: Boolean = false,
     val metrics: List<MetricItem> = emptyList(),
-    val reminders: List<TaskReminderWriteInput>,
     val tagIds: List<String>
 )
 
@@ -271,7 +265,6 @@ data class JournalEntryWriteInput(
 
 class RoomCheckItRepository(
     private val dao: CheckItDao,
-    private val reminderNotificationScheduler: TaskReminderNotificationScheduler = NoOpTaskReminderNotificationScheduler(),
     private val dailyPlanScheduleReminderScheduler: DailyPlanScheduleReminderScheduler =
         NoOpDailyPlanScheduleReminderScheduler(),
     private val quickNoteDao: QuickNoteDao? = null,
@@ -342,11 +335,10 @@ class RoomCheckItRepository(
 
         val joinsFlow = combine(
             dao.observeSubTasks(),
-            dao.observeReminders(),
             dao.observeTaskTags(),
             dao.observeNoteTags()
-        ) { subTasks, reminders, taskTags, noteTags ->
-            TaskBoardJoins(subTasks, reminders, taskTags, noteTags)
+        ) { subTasks, taskTags, noteTags ->
+            TaskBoardJoins(subTasks, taskTags, noteTags)
         }
 
         val metadataFlow = combine(
@@ -376,7 +368,6 @@ class RoomCheckItRepository(
             val taskTagIds = joins.taskTags.groupBy { it.taskId }.mapValues { entry -> entry.value.map { it.tagId } }
             val noteTagIds = joins.noteTags.groupBy { it.noteId }.mapValues { entry -> entry.value.map { it.tagId } }
             val subTasksByTask = joins.subTasks.groupBy { it.taskId }
-            val remindersByTask = joins.reminders.groupBy { it.taskId }
 
             val taskListMap = metadata.taskLists.associateBy { it.taskId }
             val noteListMap = metadata.noteLists.associateBy { it.noteId }
@@ -388,7 +379,6 @@ class RoomCheckItRepository(
                     val listJoin = taskListMap[entity.id]
                     val list = listJoin?.listId?.let { listsById[it] }
                     val subtasks = subTasksByTask[entity.id].orEmpty().map { it.toDomain() }
-                    val reminders = remindersByTask[entity.id].orEmpty().map { it.toDomain() }
                     val itemTags = taskTagIds[entity.id].orEmpty().mapNotNull { tagsById[it] }
                     val listSortOrder = listJoin?.sortOrder ?: 0
                     val isPinned = listJoin?.isPinned ?: false
@@ -412,7 +402,6 @@ class RoomCheckItRepository(
                             trashedAtMillis = entity.trashedAtMillis,
                             resolvedListId = list?.id,
                             resolvedSubtasks = subtasks,
-                            resolvedReminders = reminders,
                             resolvedTags = itemTags,
                             resolvedSortOrder = listSortOrder,
                             resolvedIsPinned = isPinned,
@@ -425,7 +414,6 @@ class RoomCheckItRepository(
                         val newItem = entity.toDomain(
                             list = list,
                             subtasks = subtasks,
-                            reminders = reminders,
                             tags = itemTags,
                             listSortOrder = listSortOrder,
                             isPinned = isPinned,
@@ -666,8 +654,6 @@ class RoomCheckItRepository(
         }
         input.tagIds.forEach { tagId -> addTaskTag(taskId, tagId) }
         dao.replaceTaskSubTasks(taskId, input.subtasks)
-        dao.replaceTaskReminders(taskId, input.reminders)
-        scheduleTaskReminders(taskId, input)
         return taskId
     }
 
@@ -713,15 +699,12 @@ class RoomCheckItRepository(
         dao.deleteTaskTags(taskId)
         input.tagIds.forEach { tagId -> addTaskTag(taskId, tagId) }
         dao.replaceTaskSubTasks(taskId, input.subtasks)
-        dao.replaceTaskReminders(taskId, input.reminders)
-        scheduleTaskReminders(taskId, input)
     }
 
     override suspend fun trashTask(taskId: String) {
         val now = Clock.System.now().toEpochMilliseconds()
         dao.trashTask(taskId, now)
         dao.deletePlannedDailyPlanItemsForTask(taskId, now)
-        reminderNotificationScheduler.cancelTaskReminders(taskId)
         dailyPlanScheduleReminderScheduler.rescheduleNext()
     }
 
@@ -739,7 +722,6 @@ class RoomCheckItRepository(
             completedDateEpochDays = today.toEpochDays().toInt(),
             updatedAtMillis = completedAtMillis
         )
-        reminderNotificationScheduler.cancelTaskReminders(taskId)
     }
 
     override suspend fun updateTaskStatus(taskId: String, status: TaskStatus) {
@@ -984,14 +966,12 @@ class RoomCheckItRepository(
             listEntity.toDomain(sections.map { it.toDomain() })
         }
         val subtasks = dao.subTasksForTask(taskId).map { it.toDomain() }
-        val reminders = dao.remindersForTask(taskId).map { it.toDomain() }
         val tagIds = dao.tagIdsForTask(taskId)
         val tags = if (tagIds.isNotEmpty()) dao.tagsByIds(tagIds).map { it.toDomain() } else emptyList()
 
         return entity.toDomain(
             list = list,
             subtasks = subtasks,
-            reminders = reminders,
             tags = tags,
             listSortOrder = listJoin?.sortOrder ?: 0,
             isPinned = listJoin?.isPinned ?: false,
@@ -1650,7 +1630,6 @@ class RoomCheckItRepository(
             tags = dao.getAllTagsOnce(),
             tasks = dao.getAllTasksOnce(),
             subTasks = dao.getAllSubTasksOnce(),
-            taskReminders = dao.getAllTaskRemindersOnce(),
             taskTags = dao.getAllTaskTagsOnce(),
             taskLists = dao.getAllTaskListsOnce(),
             notes = dao.getAllNotesOnce(),
@@ -1741,24 +1720,6 @@ class RoomCheckItRepository(
             editedAtMillis = Clock.System.now().toEpochMilliseconds()
         )
     }
-
-    private suspend fun scheduleTaskReminders(taskId: String, input: TaskWriteInput) {
-        if (input.status == TaskStatus.Completed) {
-            reminderNotificationScheduler.cancelTaskReminders(taskId)
-            return
-        }
-        reminderNotificationScheduler.scheduleTaskReminders(
-            taskId = taskId,
-            reminders = input.reminders.map { reminder ->
-                ScheduledTaskReminder(
-                    taskId = taskId,
-                    taskName = input.name,
-                    remindAtMillis = reminder.remindAtMillis,
-                    label = reminder.label
-                )
-            }
-        )
-    }
 }
 
 private val backupJson = Json {
@@ -1775,7 +1736,6 @@ private data class TaskBoardRows(
 
 private data class TaskBoardJoins(
     val subTasks: List<SubTaskEntity>,
-    val reminders: List<TaskReminderEntity>,
     val taskTags: List<TaskTagEntity>,
     val noteTags: List<NoteTagEntity>
 )
@@ -1830,7 +1790,6 @@ private fun TaskFilterEntity.toDomain() = TaskFilter(
 private fun TaskEntity.toDomain(
     list: ListItem?,
     subtasks: List<SubTaskItem>,
-    reminders: List<TaskReminder>,
     tags: List<TagItem>,
     listSortOrder: Int,
     isPinned: Boolean,
@@ -1849,7 +1808,6 @@ private fun TaskEntity.toDomain(
     completedDate = completedDateEpochDays?.let { LocalDate.fromEpochDays(it) },
     startTimeMinutes = startTimeMinutes,
     endTimeMinutes = endTimeMinutes,
-    reminders = reminders,
     repeatRRule = repeatRRule,
     label = label,
     sortOrder = listSortOrder,
@@ -1978,13 +1936,6 @@ private fun SubTaskEntity.toDomain() = SubTaskItem(
     name = name,
     isCompleted = isCompleted,
     sortOrder = sortOrder
-)
-
-private fun TaskReminderEntity.toDomain() = TaskReminder(
-    id = id,
-    taskId = taskId,
-    remindAtMillis = remindAtMillis,
-    label = label
 )
 
 private fun NoteEntity.toDomain(

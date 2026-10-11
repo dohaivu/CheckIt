@@ -32,7 +32,6 @@ data class TaskEditorActions(
         val onTimeChange: (Int?, Int?) -> Unit,
         val onRepeatChange: (RepeatPreset) -> Unit,
         val onPriorityChange: (TaskPriority) -> Unit,
-        val onReminderToggle: (Int) -> Unit,
         val onTagToggle: (String) -> Unit,
         val onLabelChange: (String) -> Unit,
         val onMetricsChange: (List<MetricItem>) -> Unit

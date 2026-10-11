@@ -444,27 +444,6 @@ data class JournalEntryTagEntity(
     val tagId: String
 )
 
-@Serializable
-@Entity(
-    tableName = "task_reminders",
-    foreignKeys = [
-        ForeignKey(
-            entity = TaskEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["taskId"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ],
-    indices = [Index("taskId"), Index("remindAtMillis")]
-)
-data class TaskReminderEntity(
-    @PrimaryKey
-    val id: String,
-    val taskId: String,
-    val remindAtMillis: Long,
-    val label: String = ""
-)
-
 /**
  * Local-only UI configuration (seeded defaults); never synced.
  */
@@ -746,7 +725,6 @@ data class RoutineLogEntity(
         DailyPlanItemTagEntity::class,
         JournalEntryEntity::class,
         JournalEntryTagEntity::class,
-        TaskReminderEntity::class,
         TaskFilterEntity::class,
         ListEntity::class,
         ListSectionEntity::class,
@@ -762,7 +740,7 @@ data class RoutineLogEntity(
         RoutineLogEntity::class,
         QuickNoteEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)
@@ -803,13 +781,20 @@ private val NestedCompletedAtMigration3To4 = object : Migration(3, 4) {
     }
 }
 
+/** v4 -> v5: drops the task reminders table; tasks keep their other data. */
+private val DropTaskRemindersMigration4To5 = object : Migration(4, 5) {
+    override suspend fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("DROP TABLE IF EXISTS task_reminders")
+    }
+}
+
 fun buildCheckItDatabase(
     builder: RoomDatabase.Builder<CheckItDatabase>
 ): CheckItDatabase {
     return builder
         .fallbackToDestructiveMigration(false)
         .fallbackToDestructiveMigrationOnDowngrade(false)
-        .addMigrations(RoutineColorMigration1To2, TaskMetricsMigration2To3, NestedCompletedAtMigration3To4)
+        .addMigrations(RoutineColorMigration1To2, TaskMetricsMigration2To3, NestedCompletedAtMigration3To4, DropTaskRemindersMigration4To5)
         .setQueryCoroutineContext(Dispatchers.IO)
         .setDriver(BundledSQLiteDriver())
         .addCallback(object : RoomDatabase.Callback() {
