@@ -788,22 +788,6 @@ private val DropTaskRemindersMigration4To5 = object : Migration(4, 5) {
     }
 }
 
-/**
- * v5 -> v6: unifies recurrence on the shared [RepeatRule] type.
- *
- * The old columns held an iCal RRULE string (tasks) and a JSON array of weekday
- * names (routines). Both are dropped and re-added rather than renamed: a rename
- * keeps the old NOT NULL constraint on `routines.activeWeekdaysJson`, which
- * no nullable default can satisfy, while re-adding declares the column
- * nullable directly.
- *
- * New rows land on the documented defaults: tasks do not repeat
- * ([RepeatRule.None]) and routines repeat on every day, which is the historical
- * default of `routines.activeWeekdaysJson` (see
- * [RoutineEntity.toDomain][RoutineEntity.toDomain]). The task RRULE had no
- * reader before this migration and repeating configuration is a one-click
- * picker, so discarding the old values costs nothing.
- */
 internal val RepeatRuleMigration5To6 = object : Migration(5, 6) {
     override suspend fun migrate(connection: SQLiteConnection) {
         connection.execSQL("ALTER TABLE tasks DROP COLUMN repeatRRule")

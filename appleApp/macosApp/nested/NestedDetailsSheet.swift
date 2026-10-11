@@ -20,7 +20,8 @@ struct NestedNoteSheet: View {
             Text("Note").font(.headline)
             TextEditor(text: $text)
                 .font(.body)
-                .frame(minHeight: 140)
+                .frame(minHeight: 200)
+                .frame(maxHeight: .infinity, alignment: .top)
                 .scrollContentBackground(.hidden)
                 .padding(6)
                 .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.secondary.opacity(0.3)))
@@ -37,7 +38,7 @@ struct NestedNoteSheet: View {
             }
         }
         .padding()
-        .frame(width: 420)
+        .frame(minWidth: 540, idealWidth: 640, maxWidth: .infinity, minHeight: 320, idealHeight: 480, maxHeight: .infinity)
         .onAppear { text = item.note ?? "" }
     }
 }
@@ -586,3 +587,4 @@ struct NestedFormattingBar: View {
         .sheet(isPresented: $showDetails) { NestedDetailsSheet(state: state, item: item) }
     }
 }
+
