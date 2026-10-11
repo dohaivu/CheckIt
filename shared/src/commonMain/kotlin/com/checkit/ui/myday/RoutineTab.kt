@@ -73,12 +73,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.AllWeekdays
+import com.checkit.domain.RepeatRule
 import com.checkit.domain.Routine
 import com.checkit.domain.RoutineDefaultColorHex
 import com.checkit.domain.RoutineStepTemplate
-import com.checkit.domain.WeekdayPresetWeekdays
-import com.checkit.domain.WeekdayPresetWeekends
-import com.checkit.domain.isRoutineScheduled
+import com.checkit.domain.label
 import com.checkit.domain.routinePercent
 import com.checkit.domain.usecase.toClockLabel
 import com.checkit.ui.components.AppEditorBottomSheet
@@ -88,13 +87,12 @@ import com.checkit.ui.components.DeleteOverflowMenu
 import com.checkit.ui.components.MarkdownVisualTransformation
 import com.checkit.ui.components.ReorderDragState
 import com.checkit.ui.components.TimePicker
+import com.checkit.ui.components.WeekdayPicker
 import com.checkit.ui.components.asMarkdownAnnotatedString
 import com.checkit.ui.components.findReorderTarget
 import com.checkit.ui.components.reorderableRowGraphics
-import com.checkit.ui.shortName
 import com.checkit.ui.theme.AppIconColorDefaults
 import com.checkit.ui.theme.toColor
-import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 import kotlin.uuid.Uuid
 
@@ -103,7 +101,7 @@ private data class RoutineEditorState(
     val title: String,
     val description: String,
     val reminderMinutes: Int?,
-    val activeWeekdays: Set<DayOfWeek>,
+    val repeatRule: RepeatRule,
     val color: String,
     val steps: List<RoutineStepTemplate>
 )
@@ -114,7 +112,7 @@ internal fun RoutineTab(
     checks: Map<String, Set<String>>,
     today: LocalDate,
     onToggleStep: (String, String) -> Unit,
-    onSaveRoutine: (String?, String, String, Int?, Set<DayOfWeek>, List<RoutineStepTemplate>, String) -> Unit,
+    onSaveRoutine: (String?, String, String, Int?, RepeatRule, List<RoutineStepTemplate>, String) -> Unit,
     onDeleteRoutine: (String) -> Unit,
     onMoveRoutine: (List<String>) -> Unit,
     modifier: Modifier = Modifier
@@ -127,7 +125,7 @@ internal fun RoutineTab(
     val currentOrdered by rememberUpdatedState(orderedRoutines)
     val currentOnMove by rememberUpdatedState(onMoveRoutine)
     val todayRoutines = remember(routines, today) {
-        routines.filter { isRoutineScheduled(today, it.activeWeekdays) }
+        routines.filter { it.repeatRule.isScheduled(today) }
     }
     val totalSteps = remember(todayRoutines) { todayRoutines.sumOf { it.steps.size } }
     val doneSteps = remember(todayRoutines, checks) {
@@ -194,7 +192,7 @@ internal fun RoutineTab(
                             title = "",
                             description = "",
                             reminderMinutes = null,
-                            activeWeekdays = AllWeekdays,
+                            repeatRule = RepeatRule.weekly(AllWeekdays),
                             color = RoutineDefaultColorHex,
                             steps = emptyList()
                         )
@@ -264,7 +262,7 @@ internal fun RoutineTab(
                         }
                         Button(
                             onClick = {
-                                editor = RoutineEditorState(id = null, title = "", description = "", reminderMinutes = null, activeWeekdays = AllWeekdays, color = RoutineDefaultColorHex, steps = emptyList())
+                                editor = RoutineEditorState(id = null, title = "", description = "", reminderMinutes = null, repeatRule = RepeatRule.weekly(AllWeekdays), color = RoutineDefaultColorHex, steps = emptyList())
                             },
                             shape = RoundedCornerShape(10.dp),
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
@@ -339,7 +337,7 @@ internal fun RoutineTab(
                         RoutineCard(
                             routine = routine,
                             checkedStepIds = checks[routine.id].orEmpty(),
-                            scheduledToday = isRoutineScheduled(today, routine.activeWeekdays),
+                            scheduledToday = routine.repeatRule.isScheduled(today),
                             isDragging = isDragging,
                             onToggleStep = { stepId -> onToggleStep(routine.id, stepId) },
                             onEdit = {
@@ -348,7 +346,7 @@ internal fun RoutineTab(
                                     title = routine.title,
                                     description = routine.description,
                                     reminderMinutes = routine.reminderMinutes,
-                                    activeWeekdays = routine.activeWeekdays,
+                                    repeatRule = routine.repeatRule,
                                     color = routine.color,
                                     steps = routine.steps
                                 )
@@ -367,8 +365,8 @@ internal fun RoutineTab(
         RoutineEditorSheet(
             state = state,
             onDismiss = { editor = null },
-            onSave = { id, title, description, reminderMinutes, activeWeekdays, steps, color ->
-                onSaveRoutine(id, title, description, reminderMinutes, activeWeekdays, steps, color)
+            onSave = { id, title, description, reminderMinutes, repeatRule, steps, color ->
+                onSaveRoutine(id, title, description, reminderMinutes, repeatRule, steps, color)
                 editor = null
             },
             onDelete = { id ->
@@ -484,7 +482,7 @@ private fun RoutineCard(
                             )
                         }
                     }
-                    if (routine.activeWeekdays != AllWeekdays) {
+                    if (routine.repeatRule.weekdays != AllWeekdays) {
                         Row(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
@@ -500,7 +498,7 @@ private fun RoutineCard(
                                 tint = cardColor
                             )
                             Text(
-                                text = formatActiveWeekdays(routine.activeWeekdays),
+                                text = routine.repeatRule.label(),
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Medium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -614,7 +612,7 @@ private fun RoutineCard(
 private fun RoutineEditorSheet(
     state: RoutineEditorState,
     onDismiss: () -> Unit,
-    onSave: (String?, String, String, Int?, Set<DayOfWeek>, List<RoutineStepTemplate>, String) -> Unit,
+    onSave: (String?, String, String, Int?, RepeatRule, List<RoutineStepTemplate>, String) -> Unit,
     onDelete: (String) -> Unit
 ) {
     var title by remember(state) { mutableStateOf(state.title) }
@@ -622,7 +620,7 @@ private fun RoutineEditorSheet(
     var reminderMinutes by remember(state) { mutableStateOf(state.reminderMinutes) }
     var color by remember(state) { mutableStateOf(state.color) }
     var colorExpanded by remember(state) { mutableStateOf(false) }
-    var activeWeekdays by remember(state) { mutableStateOf(state.activeWeekdays) }
+    var repeatRule by remember(state) { mutableStateOf(state.repeatRule) }
     var steps by remember(state) { mutableStateOf(state.steps) }
 
     AppEditorBottomSheet(
@@ -741,8 +739,8 @@ private fun RoutineEditorSheet(
 
                 item {
                     WeekdayPicker(
-                        selected = activeWeekdays,
-                        onChange = { activeWeekdays = it }
+                        selected = repeatRule.weekdays,
+                        onChange = { repeatRule = RepeatRule.weekly(it) }
                     )
                 }
 
@@ -858,7 +856,7 @@ private fun RoutineEditorSheet(
                                 title.trim(),
                                 description.trim(),
                                 reminderMinutes,
-                                activeWeekdays,
+                                repeatRule,
                                 steps.filter { it.title.isNotBlank() },
                                 color
                             )
@@ -880,132 +878,6 @@ private fun RoutineEditorSheet(
     }
 }
 
-/**
- * Weekday multi-select with Everyday/Weekdays/Weekends presets.
- * An empty selection means paused; the save button stays enabled and the
- * routine simply stops appearing and notifying until re-enabled.
- */
-@Composable
-private fun WeekdayPicker(
-    selected: Set<DayOfWeek>,
-    onChange: (Set<DayOfWeek>) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            WeekdayPresetChip(
-                label = "Everyday",
-                isSelected = selected == AllWeekdays,
-                onClick = { onChange(AllWeekdays) },
-                modifier = Modifier.weight(1f)
-            )
-            WeekdayPresetChip(
-                label = "Weekdays",
-                isSelected = selected == WeekdayPresetWeekdays,
-                onClick = { onChange(WeekdayPresetWeekdays) },
-                modifier = Modifier.weight(1f)
-            )
-            WeekdayPresetChip(
-                label = "Weekends",
-                isSelected = selected == WeekdayPresetWeekends,
-                onClick = { onChange(WeekdayPresetWeekends) },
-                modifier = Modifier.weight(1f)
-            )
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally)
-        ) {
-            DayOfWeek.entries.forEach { day ->
-                val isSelected = day in selected
-                Box(
-                    modifier = Modifier
-                        .size(34.dp)
-                        .clip(CircleShape)
-                        .background(
-                            if (isSelected) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                MaterialTheme.colorScheme.surfaceContainerHigh
-                            }
-                        )
-                        .clickable {
-                            onChange(
-                                if (isSelected) selected - day else selected + day
-                            )
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = day.shortName().take(2),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (isSelected) {
-                            MaterialTheme.colorScheme.onPrimary
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        }
-                    )
-                }
-            }
-        }
-        if (selected.isEmpty()) {
-            Text(
-                text = "Paused — no days selected",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-@Composable
-private fun WeekdayPresetChip(
-    label: String,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(
-                if (isSelected) {
-                    MaterialTheme.colorScheme.primaryContainer
-                } else {
-                    MaterialTheme.colorScheme.surfaceContainerHigh
-                }
-            )
-            .clickable(onClick = onClick)
-            .padding(vertical = 5.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.SemiBold,
-            color = if (isSelected) {
-                MaterialTheme.colorScheme.onPrimaryContainer
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            }
-        )
-    }
-}
-
-private fun formatActiveWeekdays(days: Set<DayOfWeek>): String = when {
-    days == AllWeekdays -> "Everyday"
-    days == WeekdayPresetWeekdays -> "Weekdays"
-    days == WeekdayPresetWeekends -> "Weekends"
-    days.isEmpty() -> "Paused"
-    else -> days.sortedBy { it.ordinal }.joinToString(", ") { it.shortName().take(2) }
-}
 
 /**
  * Template step editor: inline text rows with an add row, auto-focus on the new row,

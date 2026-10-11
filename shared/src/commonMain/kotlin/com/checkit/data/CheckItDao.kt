@@ -390,7 +390,7 @@ interface CheckItDao {
             doDateEpochDays = :doDateEpochDays,
             startTimeMinutes = :startTimeMinutes,
             endTimeMinutes = :endTimeMinutes,
-            repeatRRule = :repeatRRule,
+            repeatRuleJson = :repeatRuleJson,
             label = :label,
             metricsJson = :metricsJson,
             updatedAtMillis = :updatedAtMillis,
@@ -408,7 +408,7 @@ interface CheckItDao {
         doDateEpochDays: Int?,
         startTimeMinutes: Int?,
         endTimeMinutes: Int?,
-        repeatRRule: String?,
+        repeatRuleJson: String?,
         label: String?,
         metricsJson: String,
         updatedAtMillis: Long

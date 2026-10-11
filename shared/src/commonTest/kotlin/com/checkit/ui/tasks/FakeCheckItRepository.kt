@@ -311,7 +311,7 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
             doDate = input.doDate,
             startTimeMinutes = input.startTimeMinutes,
             endTimeMinutes = input.endTimeMinutes,
-            repeatRRule = input.repeatRRule,
+            repeatRule = input.repeatRule,
             metrics = input.metrics,
             sortOrder = 0,
             createdAtMillis = 0L,
@@ -338,7 +338,7 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
                         doDate = input.doDate,
                         startTimeMinutes = input.startTimeMinutes,
                         endTimeMinutes = input.endTimeMinutes,
-                        repeatRRule = input.repeatRRule,
+                        repeatRule = input.repeatRule,
                         metrics = input.metrics
                     )
                 } else it

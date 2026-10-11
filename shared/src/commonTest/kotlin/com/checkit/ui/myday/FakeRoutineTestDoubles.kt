@@ -6,10 +6,10 @@ import com.checkit.domain.Routine
 import com.checkit.domain.RoutineLog
 import com.checkit.domain.RoutineStepTemplate
 import com.checkit.domain.RoutineTodayState
+import com.checkit.domain.RepeatRule
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.datetime.DayOfWeek
 
 internal class FakeRoutineRepository(initial: List<Routine> = emptyList()) : RoutineRepository {
     val routines = initial.toMutableList()
@@ -26,13 +26,13 @@ internal class FakeRoutineRepository(initial: List<Routine> = emptyList()) : Rou
         title: String,
         description: String,
         reminderMinutes: Int?,
-        activeWeekdays: Set<DayOfWeek>,
+        repeatRule: RepeatRule,
         steps: List<RoutineStepTemplate>,
         color: String
     ): String {
         val routineId = id ?: "generated"
         routines.removeAll { it.id == routineId }
-        routines.add(Routine(id = routineId, title = title.trim(), description = description.trim(), reminderMinutes = reminderMinutes, activeWeekdays = activeWeekdays, steps = steps, color = color))
+        routines.add(Routine(id = routineId, title = title.trim(), description = description.trim(), reminderMinutes = reminderMinutes, repeatRule = repeatRule, steps = steps, color = color))
         routinesFlow.value = routines.toList()
         return routineId
     }

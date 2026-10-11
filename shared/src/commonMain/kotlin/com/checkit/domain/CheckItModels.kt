@@ -75,7 +75,7 @@ data class TaskItem(
     val completedDate: LocalDate? = null,
     val startTimeMinutes: Int? = null,
     val endTimeMinutes: Int? = null,
-    val repeatRRule: String? = null,
+    val repeatRule: RepeatRule = RepeatRule.None,
     val label: String? = null,
     val sortOrder: Int = 0,
     val isPinned: Boolean = false,
@@ -97,7 +97,7 @@ data class TaskItem(
         completedDateEpochDays: Int?,
         startTimeMinutes: Int?,
         endTimeMinutes: Int?,
-        repeatRRule: String?,
+        repeatRule: RepeatRule,
         label: String?,
         createdAtMillis: Long,
         updatedAtMillis: Long,
@@ -120,7 +120,7 @@ data class TaskItem(
             this.completedDate?.toEpochDays()?.toInt() == completedDateEpochDays &&
             this.startTimeMinutes == startTimeMinutes &&
             this.endTimeMinutes == endTimeMinutes &&
-            this.repeatRRule == repeatRRule &&
+            this.repeatRule == repeatRule &&
             this.label == label &&
             this.createdAtMillis == createdAtMillis &&
             this.updatedAtMillis == updatedAtMillis &&

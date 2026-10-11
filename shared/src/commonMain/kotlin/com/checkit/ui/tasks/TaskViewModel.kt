@@ -14,6 +14,7 @@ import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskPriority
+import com.checkit.domain.RepeatRule
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskType
 import com.checkit.domain.usecase.AddNoteUseCase
@@ -468,7 +469,7 @@ class TaskViewModel(
                     doDate = task.doDate,
                     startTimeMinutes = task.startTimeMinutes,
                     endTimeMinutes = task.endTimeMinutes,
-                    repeatPreset = RepeatPreset.fromRRule(task.repeatRRule),
+                    repeatRule = task.repeatRule,
                     subtasks = task.subtasks.map { subtask -> subtask.toEditorState() },
                     status = task.status,
                     priority = task.priority,
@@ -538,7 +539,7 @@ class TaskViewModel(
             endTimeMinutes = if ((startTimeMinutes == null) || ((endTimeMinutes != null) && (startTimeMinutes > endTimeMinutes))) null else endTimeMinutes
         )
     }
-    fun updateTaskRepeat(repeatPreset: RepeatPreset) = updateTaskForm { it.copy(repeatPreset = repeatPreset) }
+    fun updateTaskRepeat(repeatRule: RepeatRule) = updateTaskForm { it.copy(repeatRule = repeatRule) }
     fun updateTaskPriority(priority: TaskPriority) = updateTaskForm { it.copy(priority = priority) }
     fun addSubTask() = updateTaskForm { form ->
         form.copy(subtasks = form.subtasks + SubTaskEditorState(name = ""))
@@ -881,7 +882,7 @@ class TaskViewModel(
             doDate = doDate,
             startTimeMinutes = startTimeMinutes,
             endTimeMinutes = endTimeMinutes,
-            repeatRRule = repeatPreset.rrule,
+            repeatRule = repeatRule,
             label = label,
             isPinned = isPinned,
             subtasks = subtasks
@@ -907,7 +908,7 @@ class TaskViewModel(
             doDate = doDate,
             startTimeMinutes = startTimeMinutes,
             endTimeMinutes = endTimeMinutes,
-            repeatRRule = repeatRRule,
+            repeatRule = repeatRule,
             subtasks = subtasks.map { SubTaskWriteInput(name = it.name, isCompleted = it.isCompleted) },
             tagIds = tags.map { it.id },
             metrics = metrics.filter { it.isValidForSave() }

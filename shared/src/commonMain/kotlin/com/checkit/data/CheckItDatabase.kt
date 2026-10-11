@@ -13,7 +13,6 @@ import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import androidx.sqlite.execSQL
 import androidx.sqlite.SQLiteConnection
 import com.checkit.domain.TaskType
-import com.checkit.domain.ActiveWeekdaysAllJson
 import com.checkit.domain.RoutineDefaultColorHex
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -89,7 +88,8 @@ data class TaskEntity(
     val completedDateEpochDays: Int? = null,
     val startTimeMinutes: Int? = null,
     val endTimeMinutes: Int? = null,
-    val repeatRRule: String? = null,
+    /** Inline JSON [RepeatRule]; null means the task does not repeat. */
+    val repeatRuleJson: String? = null,
     val label: String? = null,
     /** Inline JSON list of MetricItem. */
     val metricsJson: String = "[]",
@@ -673,8 +673,8 @@ data class RoutineEntity(
     val title: String,
     val description: String = "",
     val reminderMinutes: Int? = null,
-    /** Inline JSON list of weekday names; empty list means paused. */
-    val activeWeekdaysJson: String = ActiveWeekdaysAllJson,
+    /** Inline JSON [RepeatRule]; blank/null falls back to weekly on every day. */
+    val repeatRuleJson: String? = null,
     val sortOrder: Int = 0,
     /** Inline JSON list of RoutineStepTemplate; history keeps percent only. */
     val stepsJson: String = "[]",
@@ -740,7 +740,7 @@ data class RoutineLogEntity(
         RoutineLogEntity::class,
         QuickNoteEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)
@@ -788,13 +788,39 @@ private val DropTaskRemindersMigration4To5 = object : Migration(4, 5) {
     }
 }
 
+/**
+ * v5 -> v6: unifies recurrence on the shared [RepeatRule] type.
+ *
+ * The old columns held an iCal RRULE string (tasks) and a JSON array of weekday
+ * names (routines). Both are dropped and re-added rather than renamed: a rename
+ * keeps the old NOT NULL constraint on `routines.activeWeekdaysJson`, which
+ * no nullable default can satisfy, while re-adding declares the column
+ * nullable directly.
+ *
+ * New rows land on the documented defaults: tasks do not repeat
+ * ([RepeatRule.None]) and routines repeat on every day, which is the historical
+ * default of `routines.activeWeekdaysJson` (see
+ * [RoutineEntity.toDomain][RoutineEntity.toDomain]). The task RRULE had no
+ * reader before this migration and repeating configuration is a one-click
+ * picker, so discarding the old values costs nothing.
+ */
+internal val RepeatRuleMigration5To6 = object : Migration(5, 6) {
+    override suspend fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("ALTER TABLE tasks DROP COLUMN repeatRRule")
+        connection.execSQL("ALTER TABLE tasks ADD COLUMN repeatRuleJson TEXT")
+
+        connection.execSQL("ALTER TABLE routines DROP COLUMN activeWeekdaysJson")
+        connection.execSQL("ALTER TABLE routines ADD COLUMN repeatRuleJson TEXT")
+    }
+}
+
 fun buildCheckItDatabase(
     builder: RoomDatabase.Builder<CheckItDatabase>
 ): CheckItDatabase {
     return builder
         .fallbackToDestructiveMigration(false)
         .fallbackToDestructiveMigrationOnDowngrade(false)
-        .addMigrations(RoutineColorMigration1To2, TaskMetricsMigration2To3, NestedCompletedAtMigration3To4, DropTaskRemindersMigration4To5)
+        .addMigrations(RoutineColorMigration1To2, TaskMetricsMigration2To3, NestedCompletedAtMigration3To4, DropTaskRemindersMigration4To5, RepeatRuleMigration5To6)
         .setQueryCoroutineContext(Dispatchers.IO)
         .setDriver(BundledSQLiteDriver())
         .addCallback(object : RoomDatabase.Callback() {

@@ -8,7 +8,6 @@ import kotlinx.datetime.plus
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class RoutineTest {
@@ -97,49 +96,6 @@ class RoutineTest {
     }
 
     @Test
-    fun weekdaysJsonRoundTrip() {
-        val days = setOf(DayOfWeek.WEDNESDAY, DayOfWeek.MONDAY)
-        assertEquals(days, decodeActiveWeekdays(encodeActiveWeekdays(days)))
-        assertEquals(emptySet(), decodeActiveWeekdays(encodeActiveWeekdays(emptySet())))
-    }
-
-    @Test
-    fun weekdaysJsonFallsBackToAllOnBlankOrCorrupt() {
-        assertEquals(AllWeekdays, decodeActiveWeekdays(null))
-        assertEquals(AllWeekdays, decodeActiveWeekdays(""))
-        assertEquals(AllWeekdays, decodeActiveWeekdays("not-json"))
-    }
-
-    @Test
-    fun weekdaysJsonIgnoresUnknownNames() {
-        assertEquals(
-            setOf(DayOfWeek.MONDAY),
-            decodeActiveWeekdays("[\"MONDAY\",\"FUNDAY\"]")
-        )
-    }
-
-    @Test
-    fun isRoutineScheduledRespectsWeekdays() {
-        val monday = LocalDate(2026, 9, 21)
-        assertEquals(DayOfWeek.MONDAY, monday.dayOfWeek)
-        assertTrue(isRoutineScheduled(monday, AllWeekdays))
-        assertTrue(isRoutineScheduled(monday, setOf(DayOfWeek.MONDAY)))
-        assertFalse(isRoutineScheduled(monday, setOf(DayOfWeek.TUESDAY)))
-        assertFalse(isRoutineScheduled(monday, emptySet()))
-    }
-
-    @Test
-    fun nextScheduledDateFindsSameDayNextDayAndWraps() {
-        val monday = LocalDate(2026, 9, 21)
-        val weekdays = setOf(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY)
-        assertEquals(monday, nextScheduledDate(monday, weekdays))
-        assertEquals(LocalDate(2026, 9, 23), nextScheduledDate(monday.plus(1, DateTimeUnit.DAY), weekdays))
-        assertEquals(LocalDate(2026, 9, 28), nextScheduledDate(LocalDate(2026, 9, 27), weekdays))
-        assertEquals(monday, nextScheduledDate(monday, AllWeekdays))
-        assertNull(nextScheduledDate(monday, emptySet()))
-    }
-
-    @Test
     fun streakSkipsOffScheduleDays() {
         // Mon 21 done, Tue 22 off-schedule, Wed 23 done, today Thu 24 done.
         val done = setOf(
@@ -147,40 +103,59 @@ class RoutineTest {
             LocalDate(2026, 9, 23),
             LocalDate(2026, 9, 24)
         )
-        val weekdays = setOf(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY)
-        assertEquals(3, calculateRoutineStreak(done, weekdays, LocalDate(2026, 9, 24)))
+        val rule = RepeatRule.weekly(
+            setOf(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY)
+        )
+        assertEquals(3, calculateRoutineStreak(done, rule, LocalDate(2026, 9, 24)))
     }
 
     @Test
     fun streakBreaksOnScheduledMissButNotOnOffDay() {
         // Wed 23 scheduled but missed; Tue 22 off-schedule.
         val done = setOf(LocalDate(2026, 9, 21))
-        val weekdays = setOf(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY)
-        assertEquals(0, calculateRoutineStreak(done, weekdays, LocalDate(2026, 9, 24)))
+        val rule = RepeatRule.weekly(
+            setOf(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY)
+        )
+        assertEquals(0, calculateRoutineStreak(done, rule, LocalDate(2026, 9, 24)))
     }
 
     @Test
     fun streakCountsFromYesterdayWhenTodayIsOffSchedule() {
         val done = setOf(LocalDate(2026, 9, 23))
-        val weekdays = setOf(DayOfWeek.WEDNESDAY)
+        val rule = RepeatRule.weekly(setOf(DayOfWeek.WEDNESDAY))
         // Thu 24 and Fri 25 are off-schedule: streak still counts Wed 23.
-        assertEquals(1, calculateRoutineStreak(done, weekdays, LocalDate(2026, 9, 24)))
-        assertEquals(1, calculateRoutineStreak(done, weekdays, LocalDate(2026, 9, 25)))
+        assertEquals(1, calculateRoutineStreak(done, rule, LocalDate(2026, 9, 24)))
+        assertEquals(1, calculateRoutineStreak(done, rule, LocalDate(2026, 9, 25)))
         // But a missed scheduled Wednesday breaks it.
-        assertEquals(0, calculateRoutineStreak(setOf(LocalDate(2026, 9, 16)), weekdays, LocalDate(2026, 9, 25)))
+        assertEquals(0, calculateRoutineStreak(setOf(LocalDate(2026, 9, 16)), rule, LocalDate(2026, 9, 25)))
     }
 
     @Test
     fun streakIsZeroWhenPaused() {
         val done = setOf(LocalDate(2026, 9, 24))
-        assertEquals(0, calculateRoutineStreak(done, emptySet(), LocalDate(2026, 9, 24)))
+        assertEquals(0, calculateRoutineStreak(done, RepeatRule.None, LocalDate(2026, 9, 24)))
     }
 
     @Test
-    fun shouldScheduleRequiresTimeAndNonEmptyWeekdays() {
-        assertTrue(shouldScheduleRoutineReminder(8 * 60, AllWeekdays))
-        assertFalse(shouldScheduleRoutineReminder(null, AllWeekdays))
-        assertFalse(shouldScheduleRoutineReminder(8 * 60, emptySet()))
-        assertFalse(shouldScheduleRoutineReminder(null, emptySet()))
+    fun shouldScheduleRequiresTimeAndActiveRule() {
+        val active = RepeatRule.weekly(AllWeekdays)
+        assertTrue(shouldScheduleRoutineReminder(8 * 60, active))
+        assertFalse(shouldScheduleRoutineReminder(null, active))
+        assertFalse(shouldScheduleRoutineReminder(8 * 60, RepeatRule.None))
+        assertFalse(shouldScheduleRoutineReminder(null, RepeatRule.None))
+    }
+
+    @Test
+    fun dailyRoutineDefaultsToEveryDay() {
+        val default = Routine(id = "1", title = "Routine")
+        assertTrue(default.repeatRule.isActive)
+        assertTrue(default.repeatRule.isScheduled(LocalDate(2026, 9, 21)))
+        assertTrue(default.repeatRule.isScheduled(LocalDate(2026, 9, 27)))
+    }
+
+    @Test
+    fun pausedRoutineIsNeverScheduled() {
+        val paused = Routine(id = "1", title = "Routine", repeatRule = RepeatRule.None)
+        assertFalse(paused.repeatRule.isScheduled(LocalDate(2026, 9, 21)))
     }
 }

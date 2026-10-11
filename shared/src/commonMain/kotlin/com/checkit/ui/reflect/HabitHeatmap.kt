@@ -384,7 +384,7 @@ internal fun buildRoutineSeries(
             key = routine.id,
             title = routine.title.ifBlank { "Routine" },
             intensityByDate = routineIntensityByDate(rows),
-            streak = calculateRoutineStreak(doneDates, routine.activeWeekdays, today),
+            streak = calculateRoutineStreak(doneDates, routine.repeatRule, today),
             totalDone = doneDates.size,
             baseColor = routine.color.toColor()
         )

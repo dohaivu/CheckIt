@@ -2,6 +2,7 @@ package com.checkit.notifications
 
 import android.content.Context
 import androidx.work.WorkManager
+import com.checkit.domain.RepeatRule
 
 class AndroidRoutineReminderScheduler(
     context: Context
@@ -10,7 +11,7 @@ class AndroidRoutineReminderScheduler(
     private val workManager = WorkManager.getInstance(appContext)
 
     override suspend fun scheduleRoutineReminder(reminder: ScheduledRoutineReminder) {
-        if (reminder.activeWeekdays.isEmpty()) {
+        if (!reminder.repeatRule.isActive) {
             cancelRoutineReminder(reminder.routineId)
             return
         }
@@ -20,8 +21,8 @@ class AndroidRoutineReminderScheduler(
             title = reminder.title,
             reminderMinutes = reminder.reminderMinutes,
             stepCount = reminder.stepCount,
-            activeWeekdays = reminder.activeWeekdays,
-            delayMillis = RoutineReminderWorker.delayUntilNext(reminder.reminderMinutes, reminder.activeWeekdays)
+            repeatRule = reminder.repeatRule,
+            delayMillis = RoutineReminderWorker.delayUntilNext(reminder.reminderMinutes, reminder.repeatRule)
         )
     }
 

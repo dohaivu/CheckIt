@@ -49,6 +49,7 @@ import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.ListItem
 import com.checkit.domain.MetricItem
+import com.checkit.domain.RepeatRule
 import com.checkit.domain.TagItem
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
@@ -67,6 +68,7 @@ import com.checkit.ui.components.MarkdownTextField
 import com.checkit.ui.components.MarkdownVisualTransformation
 import com.checkit.ui.components.MetricsSection
 import com.checkit.ui.components.PriorityPicker
+import com.checkit.ui.components.RepeatPicker
 import com.checkit.ui.components.TagPicker
 import com.checkit.ui.components.TimeRangePicker
 import com.checkit.ui.isOverdue
@@ -134,6 +136,7 @@ internal fun TaskEditorSheet(
                             onDoDateChange = actions.task.onDoDateChange,
                             onTimeChange = actions.task.onTimeChange,
                             onPriorityChange = actions.task.onPriorityChange,
+                            onRepeatChange = actions.task.onRepeatChange,
                             onSubTaskToggle = actions.subTask.onToggle,
                             onSubTaskAdd = actions.subTask.onAdd,
                             onSubTaskNameChange = actions.subTask.onNameChange,
@@ -331,6 +334,7 @@ private fun TaskFormContent(
     onDoDateChange: (LocalDate?) -> Unit,
     onTimeChange: (Int?, Int?) -> Unit,
     onPriorityChange: (TaskPriority) -> Unit,
+    onRepeatChange: (RepeatRule) -> Unit,
     onSubTaskToggle: (Int) -> Unit,
     onSubTaskAdd: () -> Unit,
     onSubTaskNameChange: (Int, String) -> Unit,
@@ -459,6 +463,14 @@ private fun TaskFormContent(
                     selectedListId = listId,
                     lists = availableLists,
                     onListChange = onListChange,
+                    enabled = enabled
+                )
+            }
+            if (!isHabit) {
+                RepeatPicker(
+                    selected = form.repeatRule,
+                    onRepeatChange = onRepeatChange,
+                    anchorDayOfMonth = form.doDate?.dayOfMonth,
                     enabled = enabled
                 )
             }

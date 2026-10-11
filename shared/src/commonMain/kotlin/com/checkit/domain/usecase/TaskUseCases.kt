@@ -93,6 +93,11 @@ class GetDailyPlanItemUseCase(
 /**
  * Adds open tasks due today to My Day. Idempotent: tasks already on the plan
  * are skipped, so repeated invocations within a day are safe.
+ *
+ * A task whose [RepeatRule] matches today qualifies even when its due date is
+ * in the past, which is what makes recurring tasks show up on each occurrence.
+ * The due date itself is not advanced - completing/reopening the task and the
+ * plan's per-day dedupe keep the copy consistent.
  */
 class AutoAddTodayTasksToMyDayUseCase(
     private val repository: CheckItRepository,
@@ -139,8 +144,8 @@ class AutoAddTodayTasksToMyDayUseCase(
 
 private fun TaskItem.qualifiesForAddToMyDay(today: LocalDate): Boolean =
     when (type) {
-        TaskType.Task -> doDate == today
         TaskType.Habit -> completedDate == null
+        TaskType.Task -> doDate == today || repeatRule.isScheduled(today)
     }
 
 class ObserveTagUsageCountsUseCase(

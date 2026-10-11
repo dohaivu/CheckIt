@@ -2,12 +2,12 @@ package com.checkit.ui.myday
 
 import com.checkit.domain.RoutineDefaultColorHex
 import com.checkit.domain.RoutineStepTemplate
+import com.checkit.domain.RepeatRule
 import com.checkit.ui.UiEvent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
-import kotlinx.datetime.DayOfWeek
 
 /** Observes routines + today checks and handles routine actions. */
 internal class RoutineController(
@@ -65,13 +65,13 @@ internal class RoutineController(
         title: String,
         description: String,
         reminderMinutes: Int?,
-        activeWeekdays: Set<DayOfWeek>,
+        repeatRule: RepeatRule,
         steps: List<RoutineStepTemplate>,
         color: String = RoutineDefaultColorHex
     ) {
         scope.launch {
             try {
-                deps.saveRoutine(id, title, description, reminderMinutes, activeWeekdays, steps, color)
+                deps.saveRoutine(id, title, description, reminderMinutes, repeatRule, steps, color)
             } catch (error: Exception) {
                 state.sendEvent(UiEvent.ShowSnackbar(error.message ?: "Unable to save routine"))
             }

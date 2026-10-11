@@ -35,6 +35,7 @@ import com.checkit.domain.SubTaskItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskFilter
 import com.checkit.domain.TaskItem
+import com.checkit.domain.RepeatRule
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TagItem
@@ -216,7 +217,7 @@ data class TaskWriteInput(
     val doDate: LocalDate?,
     val startTimeMinutes: Int?,
     val endTimeMinutes: Int?,
-    val repeatRRule: String?,
+    val repeatRule: RepeatRule,
     val label: String? = null,
     val isPinned: Boolean = false,
     val metrics: List<MetricItem> = emptyList(),
@@ -395,7 +396,7 @@ class RoomCheckItRepository(
                             completedDateEpochDays = entity.completedDateEpochDays,
                             startTimeMinutes = entity.startTimeMinutes,
                             endTimeMinutes = entity.endTimeMinutes,
-                            repeatRRule = entity.repeatRRule,
+                            repeatRule = RepeatRule.decode(entity.repeatRuleJson) ?: RepeatRule.None,
                             label = entity.label,
                             createdAtMillis = entity.createdAtMillis,
                             updatedAtMillis = entity.updatedAtMillis,
@@ -634,7 +635,7 @@ class RoomCheckItRepository(
                 doDateEpochDays = if (isTask) input.doDate?.toEpochDays()?.toInt() else null,
                 startTimeMinutes = if (isTask) input.startTimeMinutes else null,
                 endTimeMinutes = if (isTask) input.endTimeMinutes else null,
-                repeatRRule = if (isTask) input.repeatRRule else null,
+                repeatRuleJson = if (isTask) RepeatRule.encode(input.repeatRule) else null,
                 label = input.label,
                 metricsJson = Json.encodeToString(input.metrics.map { it.normalized() }),
                 createdAtMillis = now,
@@ -669,7 +670,7 @@ class RoomCheckItRepository(
             doDateEpochDays = if (isTask) input.doDate?.toEpochDays()?.toInt() else null,
             startTimeMinutes = if (isTask) input.startTimeMinutes else null,
             endTimeMinutes = if (isTask) input.endTimeMinutes else null,
-            repeatRRule = if (isTask) input.repeatRRule else null,
+            repeatRuleJson = if (isTask) RepeatRule.encode(input.repeatRule) else null,
             label = input.label,
             metricsJson = Json.encodeToString(input.metrics.map { it.normalized() }),
             updatedAtMillis = Clock.System.now().toEpochMilliseconds()
@@ -1808,7 +1809,7 @@ private fun TaskEntity.toDomain(
     completedDate = completedDateEpochDays?.let { LocalDate.fromEpochDays(it) },
     startTimeMinutes = startTimeMinutes,
     endTimeMinutes = endTimeMinutes,
-    repeatRRule = repeatRRule,
+    repeatRule = RepeatRule.decode(repeatRuleJson) ?: RepeatRule.None,
     label = label,
     sortOrder = listSortOrder,
     isPinned = isPinned,
