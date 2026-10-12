@@ -22,6 +22,7 @@ struct NestedListsWindowView: View {
     @ObservedObject private var account = QuickNoteGoogleSignIn.shared
     @FocusState private var focusedRow: String?
     @FocusState private var draftFocused: Bool
+    @FocusState private var searchFocused: Bool
 
     @State private var showNewDoc = false
     @State private var newDocTitle = ""
@@ -32,6 +33,7 @@ struct NestedListsWindowView: View {
 
     @State private var showMoveSheet = false
     @State private var moveDestinationId: String? = nil
+    @State private var showSortMenu = false
     @State private var draftText = ""
 
     var body: some View {
@@ -338,6 +340,19 @@ struct NestedListsWindowView: View {
                     TextField("Search items", text: $state.searchQuery)
                         .textFieldStyle(.plain)
                         .frame(width: 130)
+                        .focused($searchFocused)
+                        .onKeyPress(.escape) {
+                            // Resign first; claiming row focus must hop a tick
+                            // or the two writes race and focus lands nowhere
+                            // (dead keyboard), same pattern as the row handoffs.
+                            searchFocused = false
+                            DispatchQueue.main.async {
+                                if let id = state.selectedId {
+                                    focusedRow = id
+                                }
+                            }
+                            return .handled
+                        }
                     if !state.searchQuery.isEmpty {
                         Button {
                             state.searchQuery = ""
@@ -354,12 +369,13 @@ struct NestedListsWindowView: View {
                 .padding(.vertical, 4)
                 .background(RoundedRectangle(cornerRadius: 7).fill(Color.secondary.opacity(0.12)))
                 .accessibilityLabel("Search items")
+                .help("Search items (⌘F)")
                 barSeparator
-                editorBtn("Zoom In", system: "plus.magnifyingglass", help: "Zoom in") {
+                editorBtn("Zoom In", system: "plus.magnifyingglass", help: "Zoom in (⌘=)") {
                     state.zoomInSelected()
                 }
                 .disabled(!(node?.hasChildren ?? false))
-                editorBtn("Zoom Out", system: "minus.magnifyingglass", help: "Zoom out") {
+                editorBtn("Zoom Out", system: "minus.magnifyingglass", help: "Zoom out (⌘-)") {
                     state.zoomOut()
                 }
                 .disabled(state.zoomPath.isEmpty)
@@ -432,21 +448,32 @@ struct NestedListsWindowView: View {
                 .accessibilityLabel("Display")
                 .help(state.displayType == .all ? "Show all items" : "Show working items (priority, due date, open tasks, progress)")
                 barSeparator
-                Menu {
-                    Button("Name (A–Z)") { state.sortChildrenOfSelected(order: "NameAsc") }
-                    Button("Newest first") { state.sortChildrenOfSelected(order: "AddedDesc") }
-                    Button("Recently completed") { state.sortChildrenOfSelected(order: "CompletedDesc") }
-                    Button("Incomplete on top") { state.sortChildrenOfSelected(order: "IncompleteFirst") }
-                    Button("Priority (high first)") { state.sortChildrenOfSelected(order: "PriorityDesc") }
+                Button {
+                    showSortMenu = true
                 } label: {
                     Image(systemName: "arrow.up.arrow.down")
                         .imageScale(.medium)
                         .frame(width: 28, height: 28)
                 }
-                .menuStyle(.borderlessButton)
+                .buttonStyle(.borderless)
                 .accessibilityLabel("Sort children")
-                .help("Sort children of selected item")
+                .help("Sort children of selected item (S)")
                 .disabled(!(node?.hasChildren ?? false))
+                .popover(isPresented: $showSortMenu, arrowEdge: .bottom) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Sort children").font(.headline)
+                        ForEach(sortOrders, id: \.name) { order in
+                            Button(order.label) {
+                                state.sortChildrenOfSelected(order: order.name)
+                                showSortMenu = false
+                            }
+                            .buttonStyle(.plain)
+                            .padding(.vertical, 3)
+                        }
+                    }
+                    .padding(12)
+                    .frame(width: 220)
+                }
                 barSeparator
                 Button {
                     moveDestinationId = defaultMoveDestinationId()
@@ -458,7 +485,7 @@ struct NestedListsWindowView: View {
                 }
                 .buttonStyle(.borderless)
                 .accessibilityLabel("Move to")
-                .help("Move selected item under a sibling or uncle")
+                .help("Move selected item under a sibling or uncle (M)")
                 .disabled(!hasMoveDestinations)
             }
             .frame(maxWidth: .infinity, alignment: .center)
@@ -498,6 +525,16 @@ struct NestedListsWindowView: View {
     }
 
     // MARK: - Outline list + keyboard
+
+    private var sortOrders: [(name: String, label: String)] {
+        [
+            ("NameAsc", "Name (A–Z)"),
+            ("AddedDesc", "Newest first"),
+            ("CompletedDesc", "Recently completed"),
+            ("IncompleteFirst", "Incomplete on top"),
+            ("PriorityDesc", "Priority (high first)"),
+        ]
+    }
 
     private var hasSearchText: Bool {
         !state.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -773,6 +810,44 @@ struct NestedListsWindowView: View {
             .onKeyPress(keys: [KeyEquivalent("p"), KeyEquivalent("P")]) { _ in
                 guard state.editingId == nil, state.draft == nil, state.selectedId != nil else { return .ignored }
                 state.selectParentOfSelected()
+                return .handled
+            }
+            .onKeyPress(keys: [KeyEquivalent("m"), KeyEquivalent("M")]) { _ in
+                guard state.editingId == nil, state.draft == nil, state.selectedId != nil,
+                      hasMoveDestinations else { return .ignored }
+                moveDestinationId = defaultMoveDestinationId()
+                showMoveSheet = true
+                return .handled
+            }
+            .onKeyPress(keys: [KeyEquivalent("s"), KeyEquivalent("S")]) { _ in
+                guard state.editingId == nil, state.draft == nil,
+                      let sel = state.selectedId,
+                      state.indexById[sel]?.hasChildren == true else { return .ignored }
+                showSortMenu = true
+                return .handled
+            }
+            .onKeyPress(keys: [KeyEquivalent("="), KeyEquivalent("+")]) { press in
+                guard press.modifiers.contains(.command),
+                      state.editingId == nil, state.draft == nil,
+                      let sel = state.selectedId,
+                      state.indexById[sel]?.hasChildren == true else { return .ignored }
+                state.zoomInSelected()
+                return .handled
+            }
+            .onKeyPress(keys: [KeyEquivalent("-"), KeyEquivalent("_")]) { press in
+                guard press.modifiers.contains(.command),
+                      state.editingId == nil, state.draft == nil,
+                      !state.zoomPath.isEmpty else { return .ignored }
+                state.zoomOut()
+                return .handled
+            }
+            .onKeyPress(keys: [KeyEquivalent("f")]) { press in
+                guard press.modifiers.contains(.command) else { return .ignored }
+                searchFocused = true
+                return .handled
+            }
+            .onKeyPress(keys: [KeyEquivalent("/")]) { _ in
+                searchFocused = true
                 return .handled
             }
             .onKeyPress(.escape) {
