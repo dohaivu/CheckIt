@@ -840,6 +840,43 @@ final class NestedEditorState: ObservableObject {
         }
     }
 
+    /// Sibling group of the selection (roots when parentless), in position order.
+    private func siblingGroup() -> [NestedItemNode]? {
+        guard let id = selectedId, let tree else { return nil }
+        if let pid = indexById[id]?.item.parentId, !pid.isEmpty {
+            return indexById[pid]?.children
+        }
+        return tree.rootNodes
+    }
+
+    /// Move selection within the sibling group, clamped at the ends.
+    func moveToSibling(by delta: Int) {
+        // Same view-update deferral as moveSelection above.
+        Task { @MainActor [weak self] in
+            guard let self,
+                  let group = self.siblingGroup(),
+                  let id = self.selectedId,
+                  let idx = group.firstIndex(where: { $0.item.id == id }),
+                  !group.isEmpty
+            else { return }
+            self.selectedId = group[min(max(idx + delta, 0), group.count - 1)].item.id
+            self.editingId = nil
+        }
+    }
+
+    /// Jump selection to the first/last sibling.
+    func moveToSiblingEnd(first: Bool) {
+        // Same view-update deferral as moveSelection above.
+        Task { @MainActor [weak self] in
+            guard let self,
+                  let group = self.siblingGroup(),
+                  !group.isEmpty
+            else { return }
+            self.selectedId = (first ? group.first : group.last)!.item.id
+            self.editingId = nil
+        }
+    }
+
     // MARK: - Markdown export
 
     func markdown(includeTitle: Bool = false) -> String {

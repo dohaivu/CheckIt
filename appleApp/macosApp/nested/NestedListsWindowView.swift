@@ -750,6 +750,31 @@ struct NestedListsWindowView: View {
                 state.showDetailsSheet = true
                 return .handled
             }
+            .onKeyPress(keys: [KeyEquivalent("j"), KeyEquivalent("J")]) { _ in
+                guard state.editingId == nil, state.draft == nil, state.selectedId != nil else { return .ignored }
+                state.moveToSibling(by: 1)
+                return .handled
+            }
+            .onKeyPress(keys: [KeyEquivalent("k"), KeyEquivalent("K")]) { _ in
+                guard state.editingId == nil, state.draft == nil, state.selectedId != nil else { return .ignored }
+                state.moveToSibling(by: -1)
+                return .handled
+            }
+            .onKeyPress(keys: [KeyEquivalent("g")]) { _ in
+                guard state.editingId == nil, state.draft == nil, state.selectedId != nil else { return .ignored }
+                state.moveToSiblingEnd(first: true)
+                return .handled
+            }
+            .onKeyPress(keys: [KeyEquivalent("G")]) { _ in
+                guard state.editingId == nil, state.draft == nil, state.selectedId != nil else { return .ignored }
+                state.moveToSiblingEnd(first: false)
+                return .handled
+            }
+            .onKeyPress(keys: [KeyEquivalent("p"), KeyEquivalent("P")]) { _ in
+                guard state.editingId == nil, state.draft == nil, state.selectedId != nil else { return .ignored }
+                state.selectParentOfSelected()
+                return .handled
+            }
             .onKeyPress(.escape) {
                 if state.editingId != nil { state.cancelEdit(); return .handled }
                 if state.draft != nil { state.cancelDraft(); return .handled }
