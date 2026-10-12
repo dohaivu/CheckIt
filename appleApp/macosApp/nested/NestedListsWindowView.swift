@@ -34,6 +34,7 @@ struct NestedListsWindowView: View {
     @State private var showMoveSheet = false
     @State private var moveDestinationId: String? = nil
     @State private var showSortMenu = false
+    @State private var showCheatsheet = false
     @State private var draftText = ""
 
     var body: some View {
@@ -841,12 +842,18 @@ struct NestedListsWindowView: View {
                 state.zoomOut()
                 return .handled
             }
+            .onKeyPress(keys: [KeyEquivalent("?")]) { _ in
+                guard state.editingId == nil, state.draft == nil else { return .ignored }
+                showCheatsheet = true
+                return .handled
+            }
             .onKeyPress(keys: [KeyEquivalent("f")]) { press in
                 guard press.modifiers.contains(.command) else { return .ignored }
                 searchFocused = true
                 return .handled
             }
-            .onKeyPress(keys: [KeyEquivalent("/")]) { _ in
+            .onKeyPress(keys: [KeyEquivalent("/")]) { press in
+                guard !press.modifiers.contains(.shift) else { return .ignored }
                 searchFocused = true
                 return .handled
             }
@@ -862,6 +869,9 @@ struct NestedListsWindowView: View {
             .sheet(isPresented: $showMoveSheet) {
                 moveToSheet
             }
+            .sheet(isPresented: $showCheatsheet) {
+                cheatsheetView
+            }
         }
     }
 
@@ -874,6 +884,84 @@ struct NestedListsWindowView: View {
         let target = id ?? state.selectedId
         guard let target, let groups = state.moveDestinations(for: target) else { return nil }
         return groups.siblings.first?.id ?? groups.parentSiblings.first?.id
+    }
+
+    private func cheatKey(_ text: String) -> some View {
+        Text(text)
+            .font(.caption.monospaced())
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(Color.secondary.opacity(0.15), in: RoundedRectangle(cornerRadius: 5))
+    }
+
+    private func cheatRow(keys: [String], label: String) -> some View {
+        HStack {
+            HStack(spacing: 2) {
+                ForEach(keys, id: \.self) { cheatKey($0) }
+            }
+            .frame(width: 110, alignment: .trailing)
+            Text(label)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private func cheatSection(_ title: String, rows: [(keys: [String], label: String)]) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title.uppercased())
+                .font(.caption).bold()
+                .foregroundStyle(Color.accentColor)
+            ForEach(rows, id: \.label) { row in
+                cheatRow(keys: row.keys, label: row.label)
+            }
+        }
+    }
+
+    private var cheatsheetView: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Keyboard shortcuts").font(.headline)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 10) {
+                    cheatSection("Navigate", rows: [
+                        (["↑", "↓"], "Previous / next item"),
+                        (["J", "K"], "Next / previous sibling"),
+                        (["g", "G"], "First / last sibling"),
+                        (["P"], "Parent"),
+                        (["←"], "Collapse / go to parent"),
+                        (["→"], "Expand"),
+                    ])
+                    cheatSection("Edit", rows: [
+                        (["Return"], "Edit selected item"),
+                        (["Esc"], "Cancel edit / close draft"),
+                        (["Tab", "⇧Tab"], "Indent / outdent"),
+                    ])
+                    cheatSection("Structure", rows: [
+                        (["⌘↵"], "Add child"),
+                        (["⇧↵"], "Add sibling below"),
+                        (["⌘↑", "⌘↓"], "Move item up / down"),
+                        (["⌘←", "⌘→"], "Outdent / indent"),
+                        (["⌘⌥←", "⌘⌥→"], "Collapse all / expand all"),
+                        (["M"], "Move to…"),
+                        (["S"], "Sort children"),
+                        (["Del"], "Delete"),
+                    ])
+                    cheatSection("View & actions", rows: [
+                        (["⌘F", "/"], "Search"),
+                        (["Esc"], "Blur search"),
+                        (["N"], "Note"),
+                        (["D"], "Item details"),
+                        (["⌘=", "⌘-"], "Zoom in / out"),
+                        (["⌘C"], "Copy as Markdown"),
+                        (["?"], "This cheat sheet"),
+                    ])
+                }
+            }
+            HStack {
+                Spacer()
+                Button("Close") { showCheatsheet = false }.keyboardShortcut(.cancelAction)
+            }
+        }
+        .padding()
+        .frame(width: 380)
     }
 
     private var moveToSheet: some View {
