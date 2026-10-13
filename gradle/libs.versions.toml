@@ -40,7 +40,7 @@ emoji-kt="2.5.0"
 androidx-appfunctions = "1.0.0-alpha13"
 androidx-documentfile = "1.1.0"
 
-paging = "3.5.2"
+paging = "3.5.3"
 glance = "1.2.0"
 google-services-plugin = "4.5.0"
 firebase-crashlytics-plugin = "3.0.8"

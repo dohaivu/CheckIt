@@ -108,7 +108,7 @@ class AutoAddTodayTasksToMyDayUseCase(
 
     suspend operator fun invoke(): Int = mutex.withLock {
         val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
-        removeIncompleteHabitsFromYesterday(today)
+        removeIncompleteDailyPlanFromYesterday(today)
         val alreadyPlannedTaskIds = repository.dailyPlanForDate(today)
             ?.items
             ?.mapNotNull { it.taskId }
@@ -133,11 +133,11 @@ class AutoAddTodayTasksToMyDayUseCase(
         tasksToAdd.size
     }
 
-    private suspend fun removeIncompleteHabitsFromYesterday(today: LocalDate) {
+    private suspend fun removeIncompleteDailyPlanFromYesterday(today: LocalDate) {
         val yesterday = today.minus(1, DateTimeUnit.DAY)
         repository.dailyPlanForDate(yesterday)
             ?.items
-            ?.filter { it.isHabit && it.status != DailyPlanItemStatus.Done }
+            ?.filter { it.status != DailyPlanItemStatus.Done }
             ?.forEach { deleteDailyPlanItem(it.id) }
     }
 }
