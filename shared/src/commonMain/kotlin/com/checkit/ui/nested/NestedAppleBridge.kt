@@ -25,6 +25,7 @@ import com.checkit.domain.usecase.ObserveNestedDocumentTreeUseCase
 import com.checkit.domain.usecase.ObserveNestedDocumentsUseCase
 import com.checkit.domain.usecase.ObserveNestedTagsUseCase
 import com.checkit.domain.usecase.RenameNestedDocumentUseCase
+import com.checkit.domain.usecase.ReorderNestedDocumentsUseCase
 import com.checkit.domain.usecase.ReplaceNestedManualMetricsUseCase
 import com.checkit.domain.usecase.SetNestedItemCheckboxEnabledUseCase
 import com.checkit.domain.usecase.SetNestedItemsCheckedUseCase
@@ -91,6 +92,7 @@ class NestedAppleHelper(
     private val addDocument: AddNestedDocumentUseCase,
     private val renameDocumentUseCase: RenameNestedDocumentUseCase,
     private val deleteDocument: DeleteNestedDocumentUseCase,
+    private val reorderDocumentsUseCase: ReorderNestedDocumentsUseCase,
     private val addItem: AddNestedItemUseCase,
     private val updateItemText: UpdateNestedItemTextUseCase,
     private val updateItemNote: UpdateNestedItemNoteUseCase,
@@ -158,6 +160,10 @@ class NestedAppleHelper(
             runCatching { deleteDocument(documentId) }
             latestTrees.remove(documentId)
         }
+    }
+
+    fun reorderDocuments(documentIds: List<String>) {
+        scope.launch { runCatching { reorderDocumentsUseCase(documentIds) } }
     }
 
     // --- Items: add (mirrors NestedListsViewModel.commitNewItem position math) ---

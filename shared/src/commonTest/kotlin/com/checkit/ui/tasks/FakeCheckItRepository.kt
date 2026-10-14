@@ -987,6 +987,7 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
     override suspend fun addNestedDocument(title: String): String = Uuid.random().toString()
     override suspend fun renameNestedDocument(documentId: String, title: String) {}
     override suspend fun deleteNestedDocument(documentId: String) {}
+    override suspend fun reorderNestedDocuments(documentIds: List<String>) {}
     override suspend fun addNestedItem(documentId: String, parentId: String?, text: String, position: Int?): String = Uuid.random().toString()
     override suspend fun updateNestedItemText(itemId: String, text: String) {}
     override suspend fun updateNestedItemNote(itemId: String, note: String?) {}

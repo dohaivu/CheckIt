@@ -32,6 +32,7 @@ import kotlinx.serialization.json.put
 object NestedSyncDocument {
     const val FIELD_ID = "id"
     const val FIELD_TITLE = "title"
+    const val FIELD_SORT_ORDER = "sortOrder"
     const val FIELD_CREATED_AT = "createdAtMillis"
     const val FIELD_UPDATED_AT = "updatedAtMillis"
     const val FIELD_DELETED = "deleted"
@@ -64,9 +65,11 @@ object NestedSyncDocument {
         createdAtMillis: Long,
         updatedAtMillis: Long,
         deleted: Boolean,
+        sortOrder: Int = 0,
     ): Map<String, Any?> = mapOf(
         FIELD_ID to id,
         FIELD_TITLE to title,
+        FIELD_SORT_ORDER to sortOrder,
         FIELD_CREATED_AT to createdAtMillis,
         FIELD_UPDATED_AT to updatedAtMillis,
         FIELD_DELETED to deleted,
@@ -134,6 +137,7 @@ object NestedSyncDocument {
         return RemoteNestedDocument(
             id = (map[FIELD_ID] as? String)?.takeIf { it.isNotBlank() } ?: documentId,
             title = map[FIELD_TITLE] as? String ?: "",
+            sortOrder = (map[FIELD_SORT_ORDER] as? Number)?.toInt() ?: 0,
             createdAtMillis = createdAt,
             updatedAtMillis = updatedAt,
             deleted = map[FIELD_DELETED] as? Boolean ?: false,
@@ -287,6 +291,7 @@ object NestedSyncDocument {
 data class RemoteNestedDocument(
     val id: String,
     val title: String,
+    val sortOrder: Int = 0,
     val createdAtMillis: Long,
     val updatedAtMillis: Long,
     val deleted: Boolean,

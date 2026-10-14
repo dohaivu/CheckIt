@@ -1136,8 +1136,21 @@ interface CheckItDao {
         return document.id
     }
 
-    @Query("SELECT * FROM nested_documents WHERE deleted = 0 ORDER BY updatedAtMillis DESC, id ASC")
+    @Query("SELECT * FROM nested_documents WHERE deleted = 0 ORDER BY sortOrder ASC, updatedAtMillis DESC, id ASC")
     fun observeNestedDocuments(): Flow<List<NestedDocumentEntity>>
+
+    @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM nested_documents WHERE deleted = 0")
+    suspend fun nextNestedDocumentSortOrder(): Int
+
+    @Query("UPDATE nested_documents SET sortOrder = :sortOrder, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :documentId")
+    suspend fun updateNestedDocumentSortOrder(documentId: String, sortOrder: Int, updatedAtMillis: Long)
+
+    @Transaction
+    suspend fun reorderNestedDocuments(documentIds: List<String>, nowMillis: Long) {
+        documentIds.forEachIndexed { index, id ->
+            updateNestedDocumentSortOrder(id, index, nowMillis)
+        }
+    }
 
     @Query("SELECT * FROM nested_list_items WHERE deleted = 0 AND documentId = :documentId ORDER BY position ASC, id ASC")
     fun observeNestedItems(documentId: String): Flow<List<NestedListItemEntity>>
@@ -1542,7 +1555,7 @@ interface CheckItDao {
     @Query("SELECT * FROM period_goals")
     suspend fun getAllPeriodGoalsOnce(): List<PeriodGoalEntity>
 
-    @Query("SELECT * FROM nested_documents")
+    @Query("SELECT * FROM nested_documents ORDER BY sortOrder ASC, id ASC")
     suspend fun getAllNestedDocumentsOnce(): List<NestedDocumentEntity>
 
     @Query("SELECT * FROM nested_list_items")

@@ -125,6 +125,30 @@ struct NestedListsWindowView: View {
         VStack(spacing: 0) {
             List(state.documents, id: \.id, selection: docSelection) { doc in
                 Label(doc.title.isEmpty ? "Untitled document" : doc.title, systemImage: "list.bullet")
+                    .onDrag { NSItemProvider(object: "nested-doc:\(doc.id)" as NSString) }
+                    // Top/bottom halves are separate drop zones (insert above /
+                    // below), so no geometry measuring is needed and the list
+                    // end stays reachable via the last row's bottom half.
+                    .background {
+                        VStack(spacing: 0) {
+                            Color.clear
+                                .contentShape(Rectangle())
+                                .onDrop(of: [.text], delegate: NestedDocDropDelegate(state: state, targetId: doc.id, below: false))
+                            Color.clear
+                                .contentShape(Rectangle())
+                                .onDrop(of: [.text], delegate: NestedDocDropDelegate(state: state, targetId: doc.id, below: true))
+                        }
+                    }
+                    .listRowBackground(
+                        state.docDropTargetId == doc.id ? Color.accentColor.opacity(0.15) : Color.clear
+                    )
+                    .overlay(alignment: state.docDropBelow ? .bottom : .top) {
+                        if state.docDropTargetId == doc.id {
+                            Rectangle()
+                                .fill(Color.accentColor)
+                                .frame(height: 2)
+                        }
+                    }
                     .contextMenu {
                         Button {
                             state.copyDocumentAsMarkdown(id: doc.id)
@@ -142,6 +166,7 @@ struct NestedListsWindowView: View {
                     }
             }
             .listStyle(.sidebar)
+            Divider()
             Divider()
             Button {
                 newDocTitle = ""
@@ -164,6 +189,48 @@ struct NestedListsWindowView: View {
             Divider()
             nestedDocsSyncRow
                 .padding(12)
+        }
+    }
+
+    /// Sidebar document reorder: each row's top/bottom half is a drop zone
+    /// (insert above / below the row). Hover highlights the row with an
+    /// insertion edge, so the landing spot is always visible.
+    struct NestedDocDropDelegate: DropDelegate {
+        let state: NestedEditorState
+        let targetId: String
+        let below: Bool
+
+        func validateDrop(info: DropInfo) -> Bool {
+            info.hasItemsConforming(to: [.text])
+        }
+
+        func dropUpdated(info: DropInfo) -> DropProposal? {
+            DropProposal(operation: .move)
+        }
+
+        func dropEntered(info: DropInfo) {
+            state.showDocDropTarget(id: targetId, below: below)
+        }
+
+        func dropExited(info: DropInfo) {
+            if state.docDropTargetId == targetId {
+                state.clearDocDropTarget()
+            }
+        }
+
+        func performDrop(info: DropInfo) -> Bool {
+            // Clear first on every path: foreign payloads and torn-down
+            // sessions otherwise strand the highlight.
+            state.clearDocDropTarget()
+            guard let provider = info.itemProviders(for: [.text]).first else { return false }
+            _ = provider.loadObject(ofClass: NSString.self) { payload, _ in
+                guard let s = payload as? String, s.hasPrefix("nested-doc:") else { return }
+                let dragged = String(s.dropFirst("nested-doc:".count))
+                DispatchQueue.main.async {
+                    state.moveDocument(draggedId: dragged, onto: targetId, below: below)
+                }
+            }
+            return true
         }
     }
 

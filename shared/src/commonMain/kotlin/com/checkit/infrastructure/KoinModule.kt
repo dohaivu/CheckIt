@@ -85,6 +85,7 @@ import com.checkit.domain.usecase.UpdateRoutineOrderUseCase
 import com.checkit.domain.usecase.UpdateNoteStatusUseCase
 import com.checkit.domain.usecase.UpdateTaskStatusUseCase
 import com.checkit.domain.usecase.RenameNestedDocumentUseCase
+import com.checkit.domain.usecase.ReorderNestedDocumentsUseCase
 import com.checkit.domain.usecase.ReplaceNestedManualMetricsUseCase
 import com.checkit.domain.usecase.RestoreNoteUseCase
 import com.checkit.domain.usecase.RestoreTaskUseCase
@@ -256,6 +257,7 @@ val provideInteractorModule = module {
     single { AddNestedDocumentUseCase(get()) }
     single { RenameNestedDocumentUseCase(get()) }
     single { DeleteNestedDocumentUseCase(get()) }
+    single { ReorderNestedDocumentsUseCase(get()) }
     single { AddNestedItemUseCase(get()) }
     single { UpdateNestedItemTextUseCase(get()) }
     single { UpdateNestedItemNoteUseCase(get()) }
@@ -283,6 +285,7 @@ val provideInteractorModule = module {
             addDocument = get(),
             renameDocumentUseCase = get(),
             deleteDocument = get(),
+            reorderDocumentsUseCase = get(),
             addItem = get(),
             updateItemText = get(),
             updateItemNote = get(),

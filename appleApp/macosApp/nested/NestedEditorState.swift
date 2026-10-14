@@ -111,6 +111,8 @@ final class NestedEditorState: ObservableObject {
     @Published var lastError: String? = nil
     @Published var draggedId: String? = nil
     @Published var dropTarget: NestedDropTarget? = nil
+    @Published var docDropTargetId: String? = nil
+    @Published var docDropBelow: Bool = false
     @Published private(set) var visibleRows: [NestedRow] = []
     @Published var toastMessage: String? = nil
 
@@ -180,10 +182,12 @@ final class NestedEditorState: ObservableObject {
             else { return event }
 
             if event.type == .leftMouseUp {
-                if self.draggedId != nil || self.dropTarget != nil {
+                if self.draggedId != nil || self.dropTarget != nil ||
+                    self.docDropTargetId != nil {
                     MainActor.assumeIsolated {
                         self.draggedId = nil
                         self.dropTarget = nil
+                        self.clearDocDropTarget()
                     }
                 }
                 return event
@@ -245,6 +249,35 @@ final class NestedEditorState: ObservableObject {
                 if !newId.isEmpty { self?.openDocument(id: newId) }
             }
         }
+    }
+
+    /// Sidebar drag-drop: move the dragged document above (`below` false)
+    /// or below the target row, then persist the order. Skips when the
+    /// result matches the current order (self-drops, no-op moves), so no
+    /// redundant sync churn. Unknown ids are ignored.
+    func moveDocument(draggedId: String, onto targetId: String, below: Bool) {
+        var ids = documents.map { $0.id }.filter { $0 != draggedId }
+        guard ids.count != documents.count,
+              targetId != draggedId,
+              let idx = ids.firstIndex(of: targetId)
+        else { return }
+        ids.insert(draggedId, at: below ? idx + 1 : idx)
+        guard ids != documents.map({ $0.id }) else { return }
+        helper.reorderDocuments(documentIds: ids)
+    }
+
+    func clearDocDropTarget() {
+        docDropTargetId = nil
+        docDropBelow = false
+    }
+
+    /// Hover highlight with same-value guard: dropEntered fires on every
+    /// pointer movement, and republishing identical values rebuilds the
+    /// list mid-drag (flicker, wedged sessions, stuck highlight).
+    func showDocDropTarget(id: String, below: Bool) {
+        if docDropTargetId == id && docDropBelow == below { return }
+        docDropTargetId = id
+        docDropBelow = below
     }
 
     func renameDocument(id: String, title: String) {

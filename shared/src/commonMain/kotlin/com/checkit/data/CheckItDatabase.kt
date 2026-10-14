@@ -579,6 +579,7 @@ data class NestedDocumentEntity(
     @PrimaryKey
     val id: String,
     val title: String,
+    val sortOrder: Int = 0,
     val createdAtMillis: Long,
     val updatedAtMillis: Long,
     /** True when the row changed locally since the last successful upload. */
@@ -740,7 +741,7 @@ data class RoutineLogEntity(
         RoutineLogEntity::class,
         QuickNoteEntity::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)
@@ -798,13 +799,22 @@ private val RepeatRuleMigration5To6 = object : Migration(5, 6) {
     }
 }
 
+/** v6 -> v7: adds the nested document sort order column; existing rows take 0. */
+private val NestedDocumentSortOrderMigration6To7 = object : Migration(6, 7) {
+    override suspend fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            "ALTER TABLE nested_documents ADD COLUMN sortOrder INTEGER NOT NULL DEFAULT 0"
+        )
+    }
+}
+
 fun buildCheckItDatabase(
     builder: RoomDatabase.Builder<CheckItDatabase>
 ): CheckItDatabase {
     return builder
         .fallbackToDestructiveMigration(false)
         .fallbackToDestructiveMigrationOnDowngrade(false)
-        .addMigrations(RoutineColorMigration1To2, TaskMetricsMigration2To3, NestedCompletedAtMigration3To4, DropTaskRemindersMigration4To5, RepeatRuleMigration5To6)
+        .addMigrations(RoutineColorMigration1To2, TaskMetricsMigration2To3, NestedCompletedAtMigration3To4, DropTaskRemindersMigration4To5, RepeatRuleMigration5To6, NestedDocumentSortOrderMigration6To7)
         .setQueryCoroutineContext(Dispatchers.IO)
         .setDriver(BundledSQLiteDriver())
         .addCallback(object : RoomDatabase.Callback() {

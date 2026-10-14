@@ -13,6 +13,7 @@ class NestedSyncDocumentTest {
         val map = NestedSyncDocument.docToMap(
             id = "doc-1",
             title = "Groceries",
+            sortOrder = 3,
             createdAtMillis = 100L,
             updatedAtMillis = 200L,
             deleted = false,
@@ -24,6 +25,7 @@ class NestedSyncDocumentTest {
             RemoteNestedDocument(
                 id = "doc-1",
                 title = "Groceries",
+                sortOrder = 3,
                 createdAtMillis = 100L,
                 updatedAtMillis = 200L,
                 deleted = false,

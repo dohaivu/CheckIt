@@ -173,6 +173,7 @@ interface CheckItRepository {
     suspend fun addNestedDocument(title: String): String
     suspend fun renameNestedDocument(documentId: String, title: String)
     suspend fun deleteNestedDocument(documentId: String)
+    suspend fun reorderNestedDocuments(documentIds: List<String>)
     suspend fun addNestedItem(documentId: String, parentId: String?, text: String, position: Int?): String
     suspend fun updateNestedItemText(itemId: String, text: String)
     suspend fun updateNestedItemNote(itemId: String, note: String?)
@@ -1490,6 +1491,7 @@ class RoomCheckItRepository(
             NestedDocumentEntity(
                 id = id,
                 title = trimmed,
+                sortOrder = dao.nextNestedDocumentSortOrder(),
                 createdAtMillis = now,
                 updatedAtMillis = now
             )
@@ -1503,6 +1505,11 @@ class RoomCheckItRepository(
 
     override suspend fun deleteNestedDocument(documentId: String) {
         dao.deleteNestedDocument(documentId, Clock.System.now().toEpochMilliseconds())
+    }
+
+    override suspend fun reorderNestedDocuments(documentIds: List<String>) {
+        if (documentIds.isEmpty()) return
+        dao.reorderNestedDocuments(documentIds, Clock.System.now().toEpochMilliseconds())
     }
 
     override suspend fun addNestedItem(documentId: String, parentId: String?, text: String, position: Int?): String {
@@ -1660,6 +1667,7 @@ class RoomCheckItRepository(
         val docEntity = NestedDocumentEntity(
             id = finalDocId,
             title = finalTitle,
+            sortOrder = dao.nextNestedDocumentSortOrder(),
             createdAtMillis = if (export.document.createdAtMillis > 0) export.document.createdAtMillis else now,
             updatedAtMillis = now,
             dirty = true,
