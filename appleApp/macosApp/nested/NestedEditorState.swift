@@ -15,6 +15,7 @@ import SwiftUI
 import Combine
 import AppKit
 import Shared
+import UniformTypeIdentifiers
 
 /// Outline display filter. Named to avoid clashing with the shared
 /// Kotlin `NestedDisplayType` (Android filter state) in the Shared module.
@@ -929,9 +930,63 @@ final class NestedEditorState: ObservableObject {
         copyToClipboard(text, message: msg)
     }
 
-    private func copyToClipboard(_ text: String, message: String = "Copied as Markdown") {
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(text, forType: .string)
+    // MARK: - JSON Export & Import
+
+    func exportDocumentToJson(document: NestedDocument) {
+        let panel = NSSavePanel()
+        panel.title = "Export Document as JSON"
+        panel.allowedContentTypes = [.json]
+        let sanitized = document.title
+            .replacingOccurrences(of: "/", with: "-")
+            .replacingOccurrences(of: ":", with: "-")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        panel.nameFieldStringValue = "\(sanitized.isEmpty ? "document" : sanitized).json"
+        panel.canCreateDirectories = true
+
+        if panel.runModal() == .OK, let url = panel.url {
+            helper.exportDocumentToJson(documentId: document.id) { [weak self] json, error in
+                guard let self else { return }
+                if let json {
+                    do {
+                        try json.write(to: url, atomically: true, encoding: .utf8)
+                        self.showToast("Exported to JSON")
+                    } catch {
+                        self.showToast("Export failed: \(error.localizedDescription)")
+                    }
+                } else if let error {
+                    self.showToast("Export failed: \(error)")
+                }
+            }
+        }
+    }
+
+    func importDocumentFromJson() {
+        let panel = NSOpenPanel()
+        panel.title = "Import Document from JSON"
+        panel.allowedContentTypes = [.json]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+
+        if panel.runModal() == .OK, let url = panel.url {
+            do {
+                let json = try String(contentsOf: url, encoding: .utf8)
+                helper.importDocumentFromJson(json: json) { [weak self] newDocId, error in
+                    guard let self else { return }
+                    if let newDocId, !newDocId.isEmpty {
+                        self.openDocument(id: newDocId)
+                        self.showToast("Imported document")
+                    } else if let error {
+                        self.showToast("Import failed: \(error)")
+                    }
+                }
+            } catch {
+                showToast("Failed to read file: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    func showToast(_ message: String) {
         toastMessage = message
         Task { @MainActor [weak self] in
             try? await Task.sleep(nanoseconds: 2_000_000_000)
@@ -939,6 +994,12 @@ final class NestedEditorState: ObservableObject {
                 self?.toastMessage = nil
             }
         }
+    }
+
+    private func copyToClipboard(_ text: String, message: String = "Copied as Markdown") {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+        showToast(message)
     }
 }
 

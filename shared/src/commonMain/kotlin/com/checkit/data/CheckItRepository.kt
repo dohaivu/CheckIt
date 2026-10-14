@@ -56,6 +56,11 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
 import kotlin.uuid.Uuid
+import com.checkit.domain.usecase.NestedDocumentExport
+import com.checkit.domain.usecase.toExport
+import com.checkit.domain.usecase.flattenExportItems
+import com.checkit.domain.usecase.remapItemsForImport
+import com.checkit.domain.usecase.resolveUniqueTitle
 
 interface CheckItRepository {
     fun observeTaskBoard(onlyOpen: Boolean = true): Flow<TaskBoard>
@@ -186,6 +191,8 @@ interface CheckItRepository {
     suspend fun deleteNestedItems(itemIds: List<String>)
     suspend fun exportBackupJson(): String
     suspend fun importBackupJson(json: String)
+    suspend fun exportNestedDocumentJson(documentId: String): String
+    suspend fun importNestedDocumentJson(json: String): String
 }
 
 data class DailyPlanItemTimeUpdate(
@@ -1622,6 +1629,119 @@ class RoomCheckItRepository(
     override suspend fun deleteNestedItems(itemIds: List<String>) {
         if (itemIds.isEmpty()) return
         dao.deleteNestedItems(itemIds, Clock.System.now().toEpochMilliseconds())
+    }
+
+    override suspend fun exportNestedDocumentJson(documentId: String): String {
+        val tree = observeNestedDocumentTree(documentId).first()
+        require(tree.document.id.isNotBlank()) { "Document not found: $documentId" }
+        return tree.toExport().toJson()
+    }
+
+    override suspend fun importNestedDocumentJson(json: String): String {
+        val export = NestedDocumentExport.fromJson(json)
+        val existingDocs = dao.getAllNestedDocumentsOnce()
+        val existingLiveDocs = existingDocs.filter { !it.deleted }
+        val existingTitles = existingLiveDocs.map { it.title }.toSet()
+
+        val finalTitle = resolveUniqueTitle(export.document.title, existingTitles)
+
+        val docIdExists = export.document.id.isNotBlank() && existingDocs.any { it.id == export.document.id }
+        val flatItems = flattenExportItems(export.items)
+
+        val anyItemIdExists = docIdExists || flatItems.any { item ->
+            item.id.isNotBlank() && dao.nestedItemById(item.id) != null
+        }
+
+        val reassignIds = docIdExists || export.document.id.isBlank() || anyItemIdExists
+        val finalDocId = if (reassignIds) Uuid.random().toString() else export.document.id
+        val preparedItems = remapItemsForImport(flatItems, finalDocId, reassignIds)
+
+        val now = Clock.System.now().toEpochMilliseconds()
+        val docEntity = NestedDocumentEntity(
+            id = finalDocId,
+            title = finalTitle,
+            createdAtMillis = if (export.document.createdAtMillis > 0) export.document.createdAtMillis else now,
+            updatedAtMillis = now,
+            dirty = true,
+            deleted = false
+        )
+        dao.insertNestedDocument(docEntity)
+
+        val allTags = dao.getAllTagsOnce().associateBy { it.name.lowercase().trim() }.toMutableMap()
+        val tagIdByName = mutableMapOf<String, String>()
+        val distinctTagNames = preparedItems.flatMap { it.tags }.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+
+        distinctTagNames.forEach { tagName ->
+            val key = tagName.lowercase()
+            val existing = allTags[key]
+            if (existing != null) {
+                tagIdByName[key] = existing.id
+            } else {
+                val newTagId = Uuid.random().toString()
+                val newTag = TagEntity(
+                    id = newTagId,
+                    name = tagName,
+                    color = "#3B82F6",
+                    sortOrder = dao.nextTagSortOrder(),
+                    createdAtMillis = now,
+                    updatedAtMillis = now
+                )
+                dao.insertTag(newTag)
+                allTags[key] = newTag
+                tagIdByName[key] = newTagId
+            }
+        }
+
+        val itemEntities = mutableListOf<NestedListItemEntity>()
+        val itemTagLinks = mutableListOf<NestedItemTagEntity>()
+
+        preparedItems.forEach { item ->
+            itemEntities.add(
+                NestedListItemEntity(
+                    id = item.id,
+                    documentId = finalDocId,
+                    parentId = item.parentId,
+                    position = item.position,
+                    text = item.text,
+                    note = item.note?.takeIf { it.isNotBlank() },
+                    checkboxEnabled = item.checkboxEnabled,
+                    checked = item.checked,
+                    completedAtMillis = item.completedAtMillis,
+                    collapsed = item.collapsed,
+                    textStyle = runCatching { NestedTextStyle.valueOf(item.textStyle) }.getOrDefault(NestedTextStyle.Body).name,
+                    textColor = runCatching { NestedColorToken.valueOf(item.textColor) }.getOrDefault(NestedColorToken.Default).name,
+                    backgroundColor = runCatching { NestedColorToken.valueOf(item.backgroundColor) }.getOrDefault(NestedColorToken.Default).name,
+                    startDateEpochDays = item.startDate?.let { runCatching { LocalDate.parse(it).toEpochDays().toInt() }.getOrNull() },
+                    endDateEpochDays = item.endDate?.let { runCatching { LocalDate.parse(it).toEpochDays().toInt() }.getOrNull() },
+                    priority = runCatching { TaskPriority.valueOf(item.priority) }.getOrDefault(TaskPriority.None).name,
+                    actualMinutes = item.actualMinutes,
+                    metricRollupPolicy = runCatching { MetricRollupPolicy.valueOf(item.metricRollupPolicy) }.getOrDefault(MetricRollupPolicy.IncludeChildren).name,
+                    showTrackedMinutes = item.showTrackedMinutes,
+                    progressPercent = item.progressPercent,
+                    createdAtMillis = if (item.createdAtMillis > 0) item.createdAtMillis else now,
+                    updatedAtMillis = now,
+                    dirty = true,
+                    deleted = false,
+                    manualMetricsJson = if (item.manualMetrics.isNotEmpty()) {
+                        metricsJsonFormat.encodeToString(item.manualMetrics)
+                    } else "[]"
+                )
+            )
+            item.tags.forEach { tag ->
+                tagIdByName[tag.trim().lowercase()]?.let { tagId ->
+                    itemTagLinks.add(NestedItemTagEntity(itemId = item.id, tagId = tagId))
+                }
+            }
+        }
+
+        if (itemEntities.isNotEmpty()) {
+            dao.insertNestedListItems(itemEntities)
+        }
+        if (itemTagLinks.isNotEmpty()) {
+            dao.insertNestedItemTags(itemTagLinks)
+        }
+
+        return finalDocId
     }
 
     override suspend fun exportBackupJson(): String {

@@ -131,6 +131,11 @@ struct NestedListsWindowView: View {
                         } label: {
                             Label("Copy as Markdown", systemImage: "doc.on.doc")
                         }
+                        Button {
+                            state.exportDocumentToJson(document: doc)
+                        } label: {
+                            Label("Export to JSON…", systemImage: "square.and.arrow.up")
+                        }
                         Divider()
                         Button("Rename") { renameDoc = doc; showRename = true }
                         Button("Delete", role: .destructive) { deleteDoc = doc }
@@ -145,7 +150,17 @@ struct NestedListsWindowView: View {
                 Label("New document", systemImage: "plus")
             }
             .buttonStyle(.plain)
-            .padding(8)
+            .padding(.horizontal, 8)
+            .padding(.top, 8)
+
+            Button {
+                state.importDocumentFromJson()
+            } label: {
+                Label("Import from JSON…", systemImage: "square.and.arrow.down")
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
             Divider()
             nestedDocsSyncRow
                 .padding(12)

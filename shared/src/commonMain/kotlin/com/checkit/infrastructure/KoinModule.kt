@@ -45,6 +45,8 @@ import com.checkit.domain.usecase.DeleteListUseCase
 import com.checkit.domain.usecase.DeleteRoutineUseCase
 import com.checkit.domain.usecase.ExportBackupUseCase
 import com.checkit.domain.usecase.ExportNestedListToMarkdownUseCase
+import com.checkit.domain.usecase.ExportNestedDocumentJsonUseCase
+import com.checkit.domain.usecase.ImportNestedDocumentJsonUseCase
 import com.checkit.domain.usecase.ImportBackupUseCase
 import com.checkit.domain.usecase.DeleteSectionUseCase
 import com.checkit.domain.usecase.DeleteNestedDocumentUseCase
@@ -271,6 +273,8 @@ val provideInteractorModule = module {
     single { MoveNestedItemsUseCase(get()) }
     single { DeleteNestedItemsUseCase(get()) }
     single { ExportNestedListToMarkdownUseCase() }
+    single { ExportNestedDocumentJsonUseCase(get()) }
+    single { ImportNestedDocumentJsonUseCase(get()) }
     single {
         NestedAppleHelper(
             observeDocuments = get(),
@@ -294,7 +298,9 @@ val provideInteractorModule = module {
             toggleCollapsedUseCase = get(),
             setItemsCollapsed = get(),
             moveItems = get(),
-            deleteItems = get()
+            deleteItems = get(),
+            exportDocumentJsonUseCase = get(),
+            importDocumentJsonUseCase = get()
         )
     }
     single<QuickNoteRepository> { RoomQuickNoteRepository(get(), get(), get()) }

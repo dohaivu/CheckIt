@@ -1009,6 +1009,8 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
     override suspend fun importBackupJson(json: String) {
         lastBackupJson = json
     }
+    override suspend fun exportNestedDocumentJson(documentId: String): String = "{}"
+    override suspend fun importNestedDocumentJson(json: String): String = Uuid.random().toString()
 }
 
 private fun DailyPlanItemSource.isActionableDigestSource(): Boolean =
