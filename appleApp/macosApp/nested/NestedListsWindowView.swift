@@ -38,13 +38,28 @@ struct NestedListsWindowView: View {
     @State private var draftText = ""
 
     var body: some View {
-        HSplitView {
-            sidebar
-                .frame(minWidth: 200, idealWidth: 200, maxWidth: 300, maxHeight: .infinity)
-            detail
-                .frame(minWidth: 760, idealWidth: 760, maxWidth: .infinity, maxHeight: .infinity)
+        // Layout notes (this shape is deliberate; a constraint pass used to
+        // loop forever and abort the app):
+        //  • HSplitView must always keep the same number of children. Hiding
+        //    the sidebar by removing it leaves a single-child split view,
+        //    which thrashes Auto Layout — so the leading child is stable and
+        //    the sidebar collapses to zero width instead.
+        //  • The inspector is a plain fixed-width trailing sibling rather
+        //    than `.inspector(...)`, whose column-size negotiation also
+        //    fought the split view's constraints.
+        HStack(spacing: 0) {
+            HSplitView {
+                sidebarColumn
+                detail
+                    .frame(minWidth: 760, idealWidth: 760, maxWidth: .infinity, maxHeight: .infinity)
+            }
+            if state.showInspector {
+                Divider()
+                NestedInspectorPane(state: state)
+                    .frame(width: 300)
+            }
         }
-        .frame(minWidth: 960, minHeight: 680)
+        .frame(minWidth: 760, minHeight: 680)
         // Pin the outline to the light theme: the bright canvas/cream
         // selection assume dark ink, so every component inside resolves
         // its semantic colors (.primary/.secondary/...) to light values.
@@ -110,6 +125,19 @@ struct NestedListsWindowView: View {
         } message: {
             Text(deleteDoc?.title ?? "")
         }
+        // Legacy sheet paths for note/details. The formatting bar and the
+        // N/D keys reveal the inspector instead; these stay reachable via
+        // ⌥N/⌥D and the row context menu.
+        .sheet(isPresented: $state.showNoteSheet) {
+            if let item = state.selectedItem {
+                NestedNoteSheet(state: state, item: item)
+            }
+        }
+        .sheet(isPresented: $state.showDetailsSheet) {
+            if let item = state.selectedItem {
+                NestedDetailsSheet(state: state, item: item)
+            }
+        }
     }
 
     // MARK: - Sidebar
@@ -118,6 +146,23 @@ struct NestedListsWindowView: View {
         Binding(
             get: { state.selectedDocId.isEmpty ? nil : state.selectedDocId },
             set: { if let id = $0 { state.openDocument(id: id) } }
+        )
+    }
+
+    /// Stable leading child for the `HSplitView`. Wrapped in a concrete
+    /// container so the split view always sees exactly two children; when
+    /// hidden, the sidebar collapses to zero width instead of disappearing.
+    private var sidebarColumn: some View {
+        VStack(spacing: 0) {
+            if state.showSidebar {
+                sidebar
+            }
+        }
+        .frame(
+            minWidth: state.showSidebar ? 200 : 0,
+            idealWidth: state.showSidebar ? 200 : 0,
+            maxWidth: state.showSidebar ? 300 : 0,
+            maxHeight: .infinity
         )
     }
 
@@ -349,6 +394,13 @@ struct NestedListsWindowView: View {
 
     private var breadcrumbBar: some View {
         HStack(spacing: 4) {
+            paneToggle(
+                system: "sidebar.left",
+                label: state.showSidebar ? "Hide sidebar" : "Show sidebar",
+                help: "Toggle sidebar (⌘⌃S)",
+                tint: state.showSidebar ? Color.accentColor : .secondary 
+            ) { state.toggleSidebar() }
+            barSeparator
             Button("Root") { state.zoomToRoot() }
                 .buttonStyle(.link)
                 .fontWeight(state.zoomPath.isEmpty ? .bold : .regular)
@@ -366,9 +418,35 @@ struct NestedListsWindowView: View {
             }
             Spacer()
             nestedSyncStatus
+            barSeparator
+            paneToggle(
+                system: "sidebar.right",
+                label: state.showInspector ? "Hide inspector" : "Show inspector",
+                help: "Toggle inspector (⌘⌥I)",
+                tint: state.showInspector ? Color.accentColor : .secondary
+            ) { state.toggleInspector() }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
+    }
+
+    /// Compact icon button used for the sidebar/inspector pane toggles.
+    private func paneToggle(
+        system: String,
+        label: String,
+        help: String,
+        tint: Color,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: system)
+                .imageScale(.medium)
+                .foregroundStyle(tint)
+                .frame(width: 22, height: 22)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
+        .help(help)
     }
 
     // MARK: - Editor bar
@@ -745,6 +823,19 @@ struct NestedListsWindowView: View {
                                 }
                             }
                             Divider()
+                            Button {
+                                state.selectedId = row.id
+                                state.showNoteSheet = true
+                            } label: {
+                                Label("Note", systemImage: "note.text")
+                            }
+                            Button {
+                                state.selectedId = row.id
+                                state.showDetailsSheet = true
+                            } label: {
+                                Label("Item details", systemImage: "info.circle")
+                            }
+                            Divider()
                             Button(role: .destructive) {
                                 // Commit any open edit first (see row tap);
                                 // select() alone would strand it unsaved.
@@ -902,7 +993,11 @@ struct NestedListsWindowView: View {
                 showMoveSheet = true
                 return .handled
             }
-            .onKeyPress(keys: [KeyEquivalent("s"), KeyEquivalent("S")]) { _ in
+            .onKeyPress(keys: [KeyEquivalent("s"), KeyEquivalent("S")]) { press in
+                if press.modifiers.contains(.command), press.modifiers.contains(.control) {
+                    state.toggleSidebar()
+                    return .handled
+                }
                 guard state.editingId == nil, state.draft == nil,
                       let sel = state.selectedId,
                       state.indexById[sel]?.hasChildren == true else { return .ignored }
@@ -937,6 +1032,11 @@ struct NestedListsWindowView: View {
             .onKeyPress(keys: [KeyEquivalent("/")]) { press in
                 guard !press.modifiers.contains(.shift) else { return .ignored }
                 searchFocused = true
+                return .handled
+            }
+            .onKeyPress(keys: [KeyEquivalent("i"), KeyEquivalent("I")]) { press in
+                guard press.modifiers.contains(.command), press.modifiers.contains(.option) else { return .ignored }
+                state.toggleInspector()
                 return .handled
             }
             .onKeyPress(.escape) {
@@ -1031,6 +1131,8 @@ struct NestedListsWindowView: View {
                         (["Esc"], "Blur search"),
                         (["N"], "Note"),
                         (["D"], "Item details"),
+                        (["⌘⌥I"], "Toggle inspector"),
+                        (["⌘⌃S"], "Toggle sidebar"),
                         (["⌘=", "⌘-"], "Zoom in / out"),
                         (["⌘C"], "Copy as Markdown"),
                         (["?"], "This cheat sheet"),

@@ -24,6 +24,12 @@ enum NestedDisplayFilter {
     case working
 }
 
+/// Tab shown in the trailing inspector pane. Persisted as its raw value.
+enum NestedInspectorTab: String {
+    case details
+    case note
+}
+
 /// One visible outline row: node + indent depth.
 struct NestedRow: Identifiable, Equatable {
     let id: String
@@ -108,6 +114,19 @@ final class NestedEditorState: ObservableObject {
     @Published var showDeleteConfirm = false
     @Published var showNoteSheet = false
     @Published var showDetailsSheet = false
+    /// Sidebar visibility; persisted so the window restores its layout.
+    @Published var showSidebar = true {
+        didSet { UserDefaults.standard.set(showSidebar, forKey: "nested.showSidebar") }
+    }
+    /// Trailing inspector visibility; persisted. Independent of the
+    /// note/details sheets, which remain available as a legacy path.
+    @Published var showInspector = true {
+        didSet { UserDefaults.standard.set(showInspector, forKey: "nested.showInspector") }
+    }
+    /// Active inspector tab (details/metrics vs note); persisted.
+    @Published var inspectorTab: NestedInspectorTab = .details {
+        didSet { UserDefaults.standard.set(inspectorTab.rawValue, forKey: "nested.inspectorTab") }
+    }
     @Published var lastError: String? = nil
     @Published var draggedId: String? = nil
     @Published var dropTarget: NestedDropTarget? = nil
@@ -130,6 +149,16 @@ final class NestedEditorState: ObservableObject {
         helper = NestedAppleBridge.shared.helper()
         if UserDefaults.standard.string(forKey: "nested.displayType") == "working" {
             displayType = .working
+        }
+        if let v = UserDefaults.standard.object(forKey: "nested.showSidebar") as? Bool {
+            showSidebar = v
+        }
+        if let v = UserDefaults.standard.object(forKey: "nested.showInspector") as? Bool {
+            showInspector = v
+        }
+        if let raw = UserDefaults.standard.string(forKey: "nested.inspectorTab"),
+           let tab = NestedInspectorTab(rawValue: raw) {
+            inspectorTab = tab
         }
     }
 
@@ -210,6 +239,18 @@ final class NestedEditorState: ObservableObject {
         guard editingId == nil, draft == nil, selectedId != nil else { return false }
         if shift { outdentSelected() } else { indentSelected() }
         return true
+    }
+
+    // MARK: - Panes (sidebar / inspector)
+
+    func toggleSidebar() { showSidebar.toggle() }
+
+    func toggleInspector() { showInspector.toggle() }
+
+    /// Selected node's item, or nil when nothing/stale is selected.
+    var selectedItem: NestedListItem? {
+        guard let id = selectedId else { return nil }
+        return indexById[id]?.item
     }
 
     // MARK: - Documents
