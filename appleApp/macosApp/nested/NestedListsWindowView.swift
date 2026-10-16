@@ -1014,8 +1014,9 @@ struct NestedListsWindowView: View {
                 state.moveToSiblingEnd(first: false)
                 return .handled
             }
-            .onKeyPress(keys: [KeyEquivalent("p"), KeyEquivalent("P")]) { _ in
-                guard state.editingId == nil, state.draft == nil, state.selectedId != nil else { return .ignored }
+            .onKeyPress(keys: [KeyEquivalent("p"), KeyEquivalent("P")]) { press in
+                guard !press.modifiers.contains(.command),
+                      state.editingId == nil, state.draft == nil, state.selectedId != nil else { return .ignored }
                 state.selectParentOfSelected()
                 return .handled
             }
@@ -1164,6 +1165,7 @@ struct NestedListsWindowView: View {
                         (["Esc"], "Blur search"),
                         (["N"], "Note"),
                         (["D"], "Item details"),
+                        (["⌘⇧P"], "Preview note (note editor)"),
                         (["⌘⌥I"], "Toggle inspector"),
                         (["⌘⌃S"], "Toggle sidebar"),
                         (["⌘=", "⌘-"], "Zoom in / out"),

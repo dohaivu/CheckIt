@@ -13,23 +13,47 @@ import Shared
 /// Note text editor layout. The parent owns the `text` state and the save
 /// policy: the sheet saves on an explicit button, the inspector saves on
 /// focus loss. `focused` is a binding so the inspector can observe blur.
+/// The Edit/Preview tab renders the note read-only via `basicMarkdown`.
 struct NestedNoteEditor: View {
     @Binding var text: String
     /// True when `text` differs from the persisted note (drives the hint).
     var isDirty: Bool = false
     @FocusState.Binding var focused: Bool
 
+    /// Local mode toggle (resets with the view; not persisted).
+    @State private var showPreview = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            TextEditor(text: $text)
-                .font(.body)
-                .frame(minHeight: 200)
-                .frame(maxHeight: .infinity, alignment: .top)
-                .scrollContentBackground(.hidden)
-                .padding(6)
-                .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.secondary.opacity(0.3)))
-                .focused($focused)
-            HStack {
+            Group {
+                if showPreview {
+                    ScrollView {
+                        if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            Text("No note yet.")
+                                .font(.body)
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(6)
+                        } else {
+                            Text(basicMarkdown(text))
+                                .font(.body)
+                                .textSelection(.enabled)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(6)
+                        }
+                    }
+                } else {
+                    TextEditor(text: $text)
+                        .font(.body)
+                        .scrollContentBackground(.hidden)
+                        .padding(6)
+                        .focused($focused)
+                }
+            }
+            .frame(minHeight: 200, maxHeight: .infinity, alignment: .top)
+            .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.secondary.opacity(0.3)))
+
+            HStack(spacing: 8) {
                 if isDirty {
                     Text("Unsaved changes")
                         .font(.caption).foregroundStyle(.secondary)
@@ -37,6 +61,17 @@ struct NestedNoteEditor: View {
                 Spacer()
                 Text("\(text.count)/2,000")
                     .font(.caption).foregroundStyle(.secondary)
+                Button {
+                    showPreview.toggle()
+                } label: {
+                    Text("Preview")
+                        .font(.caption)
+                        .foregroundStyle(showPreview ? Color.accentColor : Color.secondary)
+                }
+                .buttonStyle(.plain)
+                .keyboardShortcut("p", modifiers: [.command, .shift])
+                .accessibilityLabel(showPreview ? "Show editor" : "Preview note")
+                .help(showPreview ? "Back to editing (⌘⇧P)" : "Preview note formatting (⌘⇧P)")
             }
         }
     }
