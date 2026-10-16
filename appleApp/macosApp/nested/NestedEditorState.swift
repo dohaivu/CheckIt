@@ -92,6 +92,11 @@ final class NestedEditorState: ObservableObject {
             recomputeVisibleRows()
         }
     }
+    /// Max lines of the note preview drawn under an outline row.
+    /// 0 means unlimited; persisted like `displayType`.
+    @Published var noteLineLimit: Int = 5 {
+        didSet { UserDefaults.standard.set(noteLineLimit, forKey: "nested.noteLineLimit") }
+    }
     @Published var searchQuery: String = "" {
         didSet {
             if searchQuery.isEmpty {
@@ -149,6 +154,9 @@ final class NestedEditorState: ObservableObject {
         helper = NestedAppleBridge.shared.helper()
         if UserDefaults.standard.string(forKey: "nested.displayType") == "working" {
             displayType = .working
+        }
+        if let v = UserDefaults.standard.object(forKey: "nested.noteLineLimit") as? Int {
+            noteLineLimit = max(0, min(50, v))
         }
         if let v = UserDefaults.standard.object(forKey: "nested.showSidebar") as? Bool {
             showSidebar = v

@@ -400,7 +400,7 @@ struct NestedRowView: View {
                 if let n = note, !n.isEmpty {
                     Text(basicMarkdown(n))
                         .font(.callout).foregroundStyle(.secondary)
-                        .lineLimit(5)
+                        .lineLimit(state.noteLineLimit > 0 ? state.noteLineLimit : nil)
                 }
                 if dateText != nil || !item.tags.isEmpty {
                     HStack(spacing: 6) {

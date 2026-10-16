@@ -609,6 +609,8 @@ struct NestedListsWindowView: View {
                 .accessibilityLabel("Display")
                 .help(state.displayType == .all ? "Show all items" : "Show working items (priority, due date, open tasks, progress)")
                 barSeparator
+                noteLinesMenu
+                barSeparator
                 Button {
                     showSortMenu = true
                 } label: {
@@ -683,6 +685,37 @@ struct NestedListsWindowView: View {
 
     private var barSeparator: some View {
         Divider().frame(height: 18)
+    }
+
+    /// Row note-preview line counts offered in the editor bar; 0 = unlimited.
+    private let noteLineOptions = [1, 2, 3, 4, 5, 6, 8, 10, 15, 20, 0]
+
+    /// Editor-bar control for how many lines of a row's note preview are
+    /// drawn (`NestedRowView` applies it as `lineLimit`). Persisted on state.
+    private var noteLinesMenu: some View {
+        Menu {
+            ForEach(noteLineOptions, id: \.self) { n in
+                Toggle(isOn: Binding(
+                    get: { state.noteLineLimit == n },
+                    set: { if $0 { state.noteLineLimit = n } }
+                )) {
+                    Text(n == 0 ? "Unlimited" : "\(n) line\(n == 1 ? "" : "s")")
+                }
+            }
+        } label: {
+            HStack(spacing: 3) {
+                Image(systemName: "text.alignleft")
+                    .imageScale(.medium)
+                Text(state.noteLineLimit == 0 ? "∞" : "\(state.noteLineLimit)")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(minWidth: 28, minHeight: 28)
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+        .accessibilityLabel("Note preview lines")
+        .help("Lines of each row's note preview")
     }
 
     // MARK: - Outline list + keyboard
