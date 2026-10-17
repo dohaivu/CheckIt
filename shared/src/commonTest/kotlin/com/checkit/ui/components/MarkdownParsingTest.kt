@@ -2,6 +2,7 @@ package com.checkit.ui.components
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -95,15 +96,30 @@ class MarkdownParsingTest {
 
         assertEquals("│  This is a quote", result.text)
 
+        // Italic applies to the quoted content only; the `│  ` indicator stays upright.
         val italicSpan = result.spanStyles.firstOrNull { it.item.fontStyle == FontStyle.Italic }
         assertTrue(italicSpan != null, "Expected italic style for quote")
-        assertEquals(0, italicSpan.start)
+        assertEquals(3, italicSpan.start)
         assertEquals(18, italicSpan.end)
 
         val barSpan = result.spanStyles.firstOrNull { it.item.fontWeight == FontWeight.Bold }
         assertTrue(barSpan != null, "Expected bold style for quote prefix bar")
         assertEquals(0, barSpan.start)
-        assertEquals(2, barSpan.end)
+        assertEquals(3, barSpan.end)
+        assertEquals(FontFamily.Monospace, barSpan.item.fontFamily)
+        assertEquals(null, barSpan.item.fontStyle)
+    }
+
+    @Test
+    fun parseMarkdownToAnnotatedString_quoteWithoutSpaceTrimsContent() {
+        val result = renderFullMarkdown(">tight quote")
+
+        assertEquals("│  tight quote", result.text)
+
+        val italicSpan = result.spanStyles.firstOrNull { it.item.fontStyle == FontStyle.Italic }
+        assertTrue(italicSpan != null, "Expected italic style for quote")
+        assertEquals(3, italicSpan.start)
+        assertEquals(14, italicSpan.end)
     }
 
     @Test

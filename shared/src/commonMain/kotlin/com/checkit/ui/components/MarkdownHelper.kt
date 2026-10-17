@@ -205,7 +205,6 @@ fun renderFullMarkdown(
             var isHeader = false
             var isQuote = false
             var headerStyle: SpanStyle? = null
-            var quoteStyle: SpanStyle? = null
 
             // 1. Process Line-Based Elements (Headers, Lists & Quotes)
             when {
@@ -228,14 +227,12 @@ fun renderFullMarkdown(
                     cleanLine = "•  " + cleanLine.substring(2)
                 }
                 cleanLine.startsWith("> ") -> {
-                    cleanLine = "│  " + cleanLine.substring(2)
+                    cleanLine = QuoteIndicator + cleanLine.substring(2)
                     isQuote = true
-                    quoteStyle = SpanStyle(fontStyle = FontStyle.Italic)
                 }
                 cleanLine.startsWith(">") -> {
-                    cleanLine = "│  " + cleanLine.substring(1).trimStart()
+                    cleanLine = QuoteIndicator + cleanLine.substring(1).trimStart()
                     isQuote = true
-                    quoteStyle = SpanStyle(fontStyle = FontStyle.Italic)
                 }
             }
 
@@ -256,14 +253,19 @@ fun renderFullMarkdown(
 
             // Apply quote styling and indicator prefix style if matched
             if (isQuote) {
+                // Upright bold monospace bar/indent so the spine reads cleanly.
+                val prefixEnd = (lineStartIndex + QuoteIndicator.length).coerceAtMost(lineEndIndex)
                 addStyle(
                     style = SpanStyle(fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace),
                     start = lineStartIndex,
-                    end = (lineStartIndex + 2).coerceAtMost(lineEndIndex)
+                    end = prefixEnd
                 )
-                if (quoteStyle != null) {
-                    addStyle(quoteStyle, lineStartIndex, lineEndIndex)
-                }
+                // Italic applies to the quoted content only, leaving the bar upright.
+                addStyle(
+                    style = SpanStyle(fontStyle = FontStyle.Italic),
+                    start = prefixEnd,
+                    end = lineEndIndex
+                )
             }
 
             // Apply all saved bold, italic, and strikethrough styles using their adjusted positions
@@ -311,6 +313,11 @@ fun renderInlineMarkdown(
 // Deep orange reads on both light and dark surfaces.
 internal val MarkdownHighlightColor: Color = Color(0xFFE65100)
 internal val MarkdownCodeBackgroundColor: Color = Color(0x20808080)
+
+// Leading indicator for `>` blockquote lines: a vertical bar plus two spaces.
+// Kept monospace-bold and upright so it reads as a spine and the italic
+// content starts at a fixed column.
+private const val QuoteIndicator = "│  "
 
 // A simple helper data class to store layout positions
 private data class StyleMarker(val style: SpanStyle, val start: Int, val end: Int)
