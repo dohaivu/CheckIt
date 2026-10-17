@@ -277,13 +277,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     @objc private func nestedListsClicked() {
         if nestedListsWindow == nil {
             let window = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 1280, height: 760),
+                contentRect: NSRect(origin: .zero, size: NestedListsWindowView.defaultContentSize),
                 styleMask: [.titled, .closable, .resizable, .miniaturizable],
                 backing: .buffered,
                 defer: false
             )
             window.title = "Nested Lists"
-            window.minSize = NSSize(width: 760, height: 480)
+            window.minSize = NSSize(
+                width: NestedListsWindowView.minContentWidth,
+                height: NestedListsWindowView.minContentHeight
+            )
             window.contentViewController = NSHostingController(rootView: NestedListsWindowView())
             window.delegate = self
             window.center()

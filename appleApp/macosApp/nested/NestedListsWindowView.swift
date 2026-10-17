@@ -37,6 +37,16 @@ struct NestedListsWindowView: View {
     @State private var showCheatsheet = false
     @State private var draftText = ""
 
+    // MARK: - Window sizing
+
+    /// Smallest content size that shows all three panes without clipping:
+    /// sidebar (240) + detail (760) + inspector (350) plus the two dividers.
+    static let minContentWidth: CGFloat = 1360
+    static let minContentHeight: CGFloat = 680
+    /// Default content size — wide enough to open with every pane visible.
+    static let defaultContentSize = NSSize(width: 1440, height: 820)
+    private static let sidebarWidth: CGFloat = 240
+    
     var body: some View {
         // Layout notes (this shape is deliberate; a constraint pass used to
         // loop forever and abort the app):
@@ -59,7 +69,7 @@ struct NestedListsWindowView: View {
                     .frame(width: 350)
             }
         }
-        .frame(minWidth: 760, minHeight: 680)
+        .frame(minWidth: Self.minContentWidth, minHeight: Self.minContentHeight)
         // Pin the outline to the light theme: the bright canvas/cream
         // selection assume dark ink, so every component inside resolves
         // its semantic colors (.primary/.secondary/...) to light values.
@@ -152,18 +162,19 @@ struct NestedListsWindowView: View {
     /// Stable leading child for the `HSplitView`. Wrapped in a concrete
     /// container so the split view always sees exactly two children; when
     /// hidden, the sidebar collapses to zero width instead of disappearing.
+    ///
+    /// The width is pinned (not `minWidth`/`idealWidth`/`maxWidth`) so the
+    /// split view can't re-derive it from the sidebar's content — otherwise
+    /// selecting a different document shifts the divider as the fitting width
+    /// of the document list / sync row changes.
     private var sidebarColumn: some View {
         VStack(spacing: 0) {
             if state.showSidebar {
                 sidebar
             }
         }
-        .frame(
-            minWidth: state.showSidebar ? 200 : 0,
-            idealWidth: state.showSidebar ? 200 : 0,
-            maxWidth: state.showSidebar ? 300 : 0,
-            maxHeight: .infinity
-        )
+        .frame(width: state.showSidebar ? Self.sidebarWidth : 0)
+        .frame(maxHeight: .infinity)
     }
 
     private var sidebar: some View {
