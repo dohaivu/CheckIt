@@ -76,8 +76,83 @@ func nestedArrowKeys(_ press: KeyPress) -> KeyPress.Result {
 /// breaks on emoji.
 func renderInlineMarkdown(_ raw: String, highlight: Color = Color.orange) -> AttributedString {
     let parsed = RichTextKt.parseRichText(input: raw)
+    return applyingRichSpans(parsed, to: AttributedString(parsed.text), highlight: highlight)
+}
+
+/// Multi-line counterpart of [renderInlineMarkdown], mirroring the shared
+/// `renderFullMarkdown` in MarkdownHelper.kt: line-based constructs are
+/// resolved first (headers become larger/bolder fonts, `- `/`* ` bullets become
+/// `•  `, `>` quotes become an italic `│  ` block), then the inline spans are
+/// applied per line. Use this for prose blocks; keep [renderInlineMarkdown] for
+/// single-line rows so `#tag` never blows up into a header.
+func renderFullMarkdown(_ raw: String?, highlight: Color = Color.orange) -> AttributedString {
+    guard let raw, !raw.isEmpty else { return AttributedString("") }
+    var result = AttributedString()
+    let lines = raw.components(separatedBy: "\n")
+
+    for (index, line) in lines.enumerated() {
+        var content = line
+        var prefix: AttributedString?
+        var headerFont: Font?
+        var isQuote = false
+
+        // 1. Line-based markers (strip the raw markers, style structurally).
+        if content.hasPrefix("# ") {
+            content.removeFirst(2)
+            headerFont = .system(size: 24, weight: .bold)
+        } else if content.hasPrefix("## ") {
+            content.removeFirst(3)
+            headerFont = .system(size: 20, weight: .bold)
+        } else if content.hasPrefix("### ") {
+            content.removeFirst(4)
+            headerFont = .system(size: 18, weight: .semibold)
+        } else if content.hasPrefix("- ") || content.hasPrefix("* ") {
+            prefix = AttributedString("•  ")
+            content.removeFirst(2)
+        } else if content.hasPrefix("> ") {
+            prefix = quotePrefix()
+            content.removeFirst(2)
+            isQuote = true
+        } else if content.hasPrefix(">") {
+            prefix = quotePrefix()
+            content = String(content.dropFirst().drop(while: { $0.isWhitespace }))
+            isQuote = true
+        }
+
+        // 2. Inline spans on the cleaned content. Base styling is applied
+        // first so per-span intents (e.g. bold inside a quote) win, matching
+        // the ordering in MarkdownHelper.kt.
+        let parsed = RichTextKt.parseRichText(input: content)
+        var lineText = AttributedString(parsed.text)
+        if let headerFont { lineText.font = headerFont }
+        if isQuote { lineText.inlinePresentationIntent = .emphasized }
+        lineText = applyingRichSpans(parsed, to: lineText, highlight: highlight)
+
+        if let prefix { result.append(prefix) }
+        result.append(lineText)
+        if index < lines.count - 1 { result.append(AttributedString("\n")) }
+    }
+    return result
+}
+
+/// Bold monospace `│  ` marker for blockquote lines.
+private func quotePrefix() -> AttributedString {
+    var prefix = AttributedString("│  ")
+    prefix.font = .system(.body, design: .monospaced).bold()
+    prefix.inlinePresentationIntent = .stronglyEmphasized
+    return prefix
+}
+
+/// Applies the shared inline spans onto `base`, converting UTF-16 offsets via
+/// `String.Index(utf16Offset:in:)` — never integer subscripting, which breaks
+/// on emoji.
+private func applyingRichSpans(
+    _ parsed: RichText,
+    to base: AttributedString,
+    highlight: Color
+) -> AttributedString {
     let clean = parsed.text
-    var out = AttributedString(clean)
+    var out = base
     for span in parsed.spans {
         let nsRange = NSRange(location: Int(span.start), length: Int(span.end - span.start))
         guard let swiftRange = Range(nsRange, in: clean),

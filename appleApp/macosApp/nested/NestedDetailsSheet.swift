@@ -13,7 +13,7 @@ import Shared
 /// Note text editor layout. The parent owns the `text` state and the save
 /// policy: the sheet saves on an explicit button, the inspector saves on
 /// focus loss. `focused` is a binding so the inspector can observe blur.
-/// The Edit/Preview tab renders the note read-only via `basicMarkdown`.
+/// The Edit/Preview tab renders the note read-only via `renderFullMarkdown`.
 struct NestedNoteEditor: View {
     @Binding var text: String
     /// True when `text` differs from the persisted note (drives the hint).
@@ -35,7 +35,7 @@ struct NestedNoteEditor: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(6)
                         } else {
-                            Text(renderInlineMarkdown(text))
+                            Text(renderFullMarkdown(text))
                                 .font(.body)
                                 .textSelection(.enabled)
                                 .frame(maxWidth: .infinity, alignment: .leading)
