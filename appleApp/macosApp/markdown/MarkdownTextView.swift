@@ -43,6 +43,33 @@ final class MarkdownEditorController: ObservableObject {
     }
 }
 
+/// `NSTextView` that routes formatting key equivalents (⌘B, ⌘I, …) to the
+/// editor while it holds focus. Scoped to focus so the shortcuts never fire
+/// while the caret is elsewhere in the window.
+final class MarkdownNSTextView: NSTextView {
+    /// Called on the main thread with the matched action; the host applies it.
+    var onFormattingShortcut: ((ToolbarAction) -> Void)?
+
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if window?.firstResponder === self, let action = MarkdownShortcuts.action(for: event) {
+            onFormattingShortcut?(action)
+            return true
+        }
+        return super.performKeyEquivalent(with: event)
+    }
+
+    override func keyDown(with event: NSEvent) {
+        // Fallback for key equivalents the window doesn't route through
+        // `performKeyEquivalent`; harmless when they do (the event is consumed
+        // before `keyDown` runs).
+        if window?.firstResponder === self, let action = MarkdownShortcuts.action(for: event) {
+            onFormattingShortcut?(action)
+            return
+        }
+        super.keyDown(with: event)
+    }
+}
+
 /// Multi-line editor over `NSTextView`. Keep the raw markdown source visible
 /// but style it live (headers, lists, quotes, inline spans), mirroring Android's
 /// `MarkdownVisualTransformation`.
@@ -55,11 +82,23 @@ struct MarkdownTextView: NSViewRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
     func makeNSView(context: Context) -> NSScrollView {
-        let scrollView = NSTextView.scrollableTextView()
+        // Build the scroll view by hand so the document view is our
+        // shortcut-aware `MarkdownNSTextView` (`scrollableTextView()` only
+        // makes a plain `NSTextView`).
+        let textView = MarkdownNSTextView(frame: .zero)
+        textView.minSize = NSSize(width: 0, height: 0)
+        textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = false
+        textView.autoresizingMask = [.width]
+        textView.textContainer?.containerSize = NSSize(width: 0, height: CGFloat.greatestFiniteMagnitude)
+        textView.textContainer?.widthTracksTextView = true
+
+        let scrollView = NSScrollView()
         scrollView.drawsBackground = false
         scrollView.borderType = .noBorder
         scrollView.hasVerticalScroller = true
-        guard let textView = scrollView.documentView as? NSTextView else { return scrollView }
+        scrollView.documentView = textView
 
         context.coordinator.textView = textView
         textView.delegate = context.coordinator
@@ -71,10 +110,6 @@ struct MarkdownTextView: NSViewRepresentable {
         textView.isEditable = isEditable
         textView.drawsBackground = false
         textView.textContainerInset = NSSize(width: 4, height: 6)
-        textView.isVerticallyResizable = true
-        textView.isHorizontallyResizable = false
-        textView.autoresizingMask = [.width]
-        textView.textContainer?.widthTracksTextView = true
         // Markdown markers must stay literal — no smart quotes/dashes/replacements.
         textView.isAutomaticQuoteSubstitutionEnabled = false
         textView.isAutomaticDashSubstitutionEnabled = false
@@ -85,6 +120,9 @@ struct MarkdownTextView: NSViewRepresentable {
         textView.font = MarkdownSourceStyling.baseFont
         textView.textColor = MarkdownSourceStyling.baseColor
         textView.typingAttributes = MarkdownSourceStyling.baseAttributes
+        textView.onFormattingShortcut = { [weak coordinator = context.coordinator] action in
+            coordinator?.applyShortcut(action)
+        }
 
         textView.string = text
         context.coordinator.highlight(textView)
@@ -117,6 +155,12 @@ struct MarkdownTextView: NSViewRepresentable {
         private var isHighlighting = false
 
         init(_ parent: MarkdownTextView) { self.parent = parent }
+
+        /// Applies a formatting shortcut (⌘B, ⌘I, …) using the same shared edit
+        /// path as the toolbar buttons.
+        func applyShortcut(_ action: ToolbarAction) {
+            parent.controller.apply(action, to: parent.$text)
+        }
 
         /// Rebuilds the display attributes from the shared source spans. Runs on
         /// every text edit; the `isHighlighting` guard keeps the resulting
