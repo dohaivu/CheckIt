@@ -424,7 +424,7 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
     }
 
     @Test
-    fun removesIncompleteHabitsFromYesterday() = runTest {
+    fun removesIncompleteDailyPlanFromYesterday() = runTest {
         val today = today()
         val yesterday = today.minus(1, DateTimeUnit.DAY)
         val repository = FakeCheckItRepository(
@@ -450,9 +450,9 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
 
         useCase()
 
-        assertEquals(listOf("100"), repository.deletedDailyPlanItemIds)
+        assertEquals(listOf("100", "102"), repository.deletedDailyPlanItemIds)
         assertEquals(
-            listOf("101", "102"),
+            listOf("101"),
             repository.dailyPlanForDate(yesterday)?.items?.map { it.id }
         )
     }
