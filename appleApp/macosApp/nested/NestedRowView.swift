@@ -235,7 +235,7 @@ struct NestedRowView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .writingToolsBehavior(.complete)
                     } else {
-                        Text(item.text.isEmpty ? AttributedString("Untitled item") : basicMarkdown(item.text))
+                        Text(item.text.isEmpty ? AttributedString("Untitled item") : renderInlineMarkdown(item.text))
                             .font(nestedRowFont(item.textStyle.name))
                             .foregroundStyle(nestedTextColor)
                             .strikethrough(item.checked)
@@ -298,7 +298,7 @@ struct NestedRowView: View {
             Circle()
                 .fill(nestedDotForDepth(row.depth))
                 .frame(width: 7, height: 7)
-            Text(item.text.isEmpty ? AttributedString("Untitled item") : basicMarkdown(item.text))
+            Text(item.text.isEmpty ? AttributedString("Untitled item") : renderInlineMarkdown(item.text))
                 .font(nestedRowFont(item.textStyle.name))
                 .foregroundStyle(nestedTextColor)
                 .lineLimit(1)
@@ -398,7 +398,7 @@ struct NestedRowView: View {
                     }
                 }
                 if let n = note, !n.isEmpty {
-                    Text(basicMarkdown(n))
+                    Text(renderInlineMarkdown(n))
                         .font(.callout).foregroundStyle(.secondary)
                         .lineLimit(state.noteLineLimit > 0 ? state.noteLineLimit : nil)
                 }

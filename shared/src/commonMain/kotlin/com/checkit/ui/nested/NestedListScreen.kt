@@ -89,7 +89,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -125,7 +124,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -181,7 +179,7 @@ import com.checkit.ui.components.MetricChip
 import com.checkit.ui.components.PeriodPicker
 import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TagPill
-import com.checkit.ui.components.parseMarkdownInline
+import com.checkit.ui.components.renderInlineMarkdown
 import com.checkit.ui.isValidForSave
 import com.checkit.ui.noRippleClickable
 import com.checkit.ui.tasks.views.ViewOptionChip
@@ -1273,7 +1271,7 @@ private fun NestedItemMetadataPreview(
         if (hasNote) {
             Text(
                 text = remember(item.note) {
-                    parseMarkdownInline(item.note.orEmpty())
+                    renderInlineMarkdown(item.note.orEmpty())
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.78f),
@@ -2422,7 +2420,7 @@ private fun NestedItemRow(
                                 // `#tag` keeps its row style. Markers stay raw while editing.
                                 Text(
                                     text = remember(item.text) {
-                                        parseMarkdownInline(item.text)
+                                        renderInlineMarkdown(item.text)
                                     },
                                     style = nestedTextStyle(item.textStyle),
                                     textDecoration = if (item.checked) TextDecoration.LineThrough else TextDecoration.None,

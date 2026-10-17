@@ -169,7 +169,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             string: "\(count) ",
             attributes: [.foregroundColor: NSColor.controlAccentColor]
         )
-        status.append(basicMarkdownNS(text))
+        status.append(renderInlineMarkdownNS(text))
         button.attributedTitle = status
     }
 

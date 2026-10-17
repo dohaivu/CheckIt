@@ -35,7 +35,7 @@ struct NestedNoteEditor: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(6)
                         } else {
-                            Text(basicMarkdown(text))
+                            Text(renderInlineMarkdown(text))
                                 .font(.body)
                                 .textSelection(.enabled)
                                 .frame(maxWidth: .infinity, alignment: .leading)

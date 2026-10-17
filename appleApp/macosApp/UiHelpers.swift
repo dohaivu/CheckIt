@@ -74,7 +74,7 @@ func nestedArrowKeys(_ press: KeyPress) -> KeyPress.Result {
 /// palette color). Shared offsets are UTF-16 code units, so ranges convert
 /// via `String.Index(utf16Offset:in:)` — never integer subscripting, which
 /// breaks on emoji.
-func basicMarkdown(_ raw: String, highlight: Color = Color.orange) -> AttributedString {
+func renderInlineMarkdown(_ raw: String, highlight: Color = Color.orange) -> AttributedString {
     let parsed = RichTextKt.parseRichText(input: raw)
     let clean = parsed.text
     var out = AttributedString(clean)
@@ -118,7 +118,7 @@ private func highlightColor(hex: String?, default highlight: Color) -> Color {
 /// and `NSColor` attributes. (Converting the SwiftUI `AttributedString`
 /// would drop presentation intents like bold/italic, which only SwiftUI
 /// renders.)
-func basicMarkdownNS(_ raw: String, highlight: NSColor = .orange) -> NSAttributedString {
+func renderInlineMarkdownNS(_ raw: String, highlight: NSColor = .orange) -> NSAttributedString {
     let parsed = RichTextKt.parseRichText(input: raw)
     let out = NSMutableAttributedString(string: parsed.text)
     for span in parsed.spans {

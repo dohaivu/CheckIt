@@ -12,7 +12,7 @@ import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.startOf
 import com.checkit.ui.components.ReportPeriod
-import com.checkit.ui.components.parseMarkdownToAnnotatedString
+import com.checkit.ui.components.renderFullMarkdown
 import com.checkit.ui.firstDayOfMonth
 import com.checkit.ui.isSameMonth
 import com.checkit.ui.myday.doneWorkMinutes
@@ -40,7 +40,7 @@ data class CalendarUiState(
             .filter { it.period == Period.Day }
             .filter { it.startDate.isSameMonth(selectedMonth) && it.review.isNotBlank() }
             .sortedByDescending { it.startDate }
-            .map { Triple(it.startDate, parseMarkdownToAnnotatedString(it.review), it.rating) }
+            .map { Triple(it.startDate, renderFullMarkdown(it.review), it.rating) }
     }
 
     /** Goal record (review + goal) for the currently selected date. */

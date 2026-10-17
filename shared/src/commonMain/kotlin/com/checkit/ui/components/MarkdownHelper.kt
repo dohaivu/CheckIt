@@ -24,7 +24,7 @@ import com.checkit.ui.theme.parseHexColorOrNull
 fun String?.asMarkdownAnnotatedString(): AnnotatedString {
     val text = this ?: ""
     return remember(text) {
-        parseMarkdownToAnnotatedString(text)
+        renderFullMarkdown(text)
     }
 }
 
@@ -192,7 +192,7 @@ class MarkdownVisualTransformation : VisualTransformation {
     }
 }
 
-fun parseMarkdownToAnnotatedString(
+fun renderFullMarkdown(
     markdown: String?,
     highlightColor: Color = MarkdownHighlightColor
 ): AnnotatedString {
@@ -283,6 +283,30 @@ fun parseMarkdownToAnnotatedString(
     }
 }
 
+/**
+ * Inline-only markdown for single-line rows: strips markers and returns a
+ * styled AnnotatedString. Unlike [renderFullMarkdown], line-based
+ * constructs (`# ` headers, `> ` quotes, list bullets) are left untouched so a
+ * row starting with `#tag` never blows up into a header.
+ */
+fun renderInlineMarkdown(
+    text: String,
+    highlightColor: Color = MarkdownHighlightColor
+): AnnotatedString {
+    val parsed = parseRichText(text)
+    return AnnotatedString(
+        text = parsed.text,
+        spanStyles = parsed.spans.map { span ->
+            AnnotatedString.Range(
+                span.toSpanStyle(highlightColor),
+                span.start,
+                span.end
+            )
+        }
+    )
+}
+
+
 // Default marker color for ==highlight== when callers don't pass a theme color.
 // Deep orange reads on both light and dark surfaces.
 internal val MarkdownHighlightColor: Color = Color(0xFFE65100)
@@ -314,27 +338,4 @@ private fun processInlineStyles(
             end = span.end
         )
     }
-}
-
-/**
- * Inline-only markdown for single-line rows: strips markers and returns a
- * styled AnnotatedString. Unlike [parseMarkdownToAnnotatedString], line-based
- * constructs (`# ` headers, `> ` quotes, list bullets) are left untouched so a
- * row starting with `#tag` never blows up into a header.
- */
-fun parseMarkdownInline(
-    text: String,
-    highlightColor: Color = MarkdownHighlightColor
-): AnnotatedString {
-    val parsed = parseRichText(text)
-    return AnnotatedString(
-        text = parsed.text,
-        spanStyles = parsed.spans.map { span ->
-            AnnotatedString.Range(
-                span.toSpanStyle(highlightColor),
-                span.start,
-                span.end
-            )
-        }
-    )
 }

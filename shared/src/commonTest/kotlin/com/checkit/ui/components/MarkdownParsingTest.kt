@@ -13,14 +13,14 @@ class MarkdownParsingTest {
 
     @Test
     fun parseMarkdownToAnnotatedString_handlesNullAndEmpty() {
-        assertEquals("", parseMarkdownToAnnotatedString(null).text)
-        assertEquals("", parseMarkdownToAnnotatedString("").text)
+        assertEquals("", renderFullMarkdown(null).text)
+        assertEquals("", renderFullMarkdown("").text)
     }
 
     @Test
     fun parseMarkdownToAnnotatedString_parsesStrikethrough() {
         val input = "This is ~~strikethrough~~ text"
-        val result = parseMarkdownToAnnotatedString(input)
+        val result = renderFullMarkdown(input)
 
         assertEquals("This is strikethrough text", result.text)
 
@@ -35,7 +35,7 @@ class MarkdownParsingTest {
     @Test
     fun parseMarkdownToAnnotatedString_parsesBoldAndItalicAndStrikethrough() {
         val input = "**Bold**, _italic_, and ~~strikethrough~~"
-        val result = parseMarkdownToAnnotatedString(input)
+        val result = renderFullMarkdown(input)
 
         assertEquals("Bold, italic, and strikethrough", result.text)
 
@@ -58,7 +58,7 @@ class MarkdownParsingTest {
     @Test
     fun parseMarkdownToAnnotatedString_parsesNestedStrikethroughAndBold() {
         val input = "~~**bold strikethrough**~~"
-        val result = parseMarkdownToAnnotatedString(input)
+        val result = renderFullMarkdown(input)
 
         assertEquals("bold strikethrough", result.text)
 
@@ -91,7 +91,7 @@ class MarkdownParsingTest {
     @Test
     fun parseMarkdownToAnnotatedString_parsesBlockquote() {
         val input = "> This is a quote"
-        val result = parseMarkdownToAnnotatedString(input)
+        val result = renderFullMarkdown(input)
 
         assertEquals("│  This is a quote", result.text)
 
@@ -109,7 +109,7 @@ class MarkdownParsingTest {
     @Test
     fun parseMarkdownToAnnotatedString_parsesHighlight() {
         val input = "==If== it's 9am, ==then== I will read book"
-        val result = parseMarkdownToAnnotatedString(input)
+        val result = renderFullMarkdown(input)
 
         assertEquals("If it's 9am, then I will read book", result.text)
 
@@ -125,7 +125,7 @@ class MarkdownParsingTest {
     @Test
     fun parseMarkdownToAnnotatedString_parsesNestedBoldHighlight() {
         val input = "**==both==**"
-        val result = parseMarkdownToAnnotatedString(input)
+        val result = renderFullMarkdown(input)
 
         assertEquals("both", result.text)
 
@@ -136,7 +136,7 @@ class MarkdownParsingTest {
     @Test
     fun parseMarkdownToAnnotatedString_leavesUnclosedHighlightLiteral() {
         val input = "==oops"
-        val result = parseMarkdownToAnnotatedString(input)
+        val result = renderFullMarkdown(input)
 
         assertEquals("==oops", result.text)
         assertTrue(result.spanStyles.none { it.item.color == MarkdownHighlightColor })
@@ -145,7 +145,7 @@ class MarkdownParsingTest {
     @Test
     fun parseMarkdownToAnnotatedString_parsesColoredHighlight() {
         val input = "=={c1}hi=="
-        val result = parseMarkdownToAnnotatedString(input)
+        val result = renderFullMarkdown(input)
 
         assertEquals("hi", result.text)
 
@@ -159,7 +159,7 @@ class MarkdownParsingTest {
     @Test
     fun parseMarkdownToAnnotatedString_leavesUnknownColorTokenLiteral() {
         val input = "=={c99}hi=="
-        val result = parseMarkdownToAnnotatedString(input)
+        val result = renderFullMarkdown(input)
 
         assertEquals("=={c99}hi==", result.text)
         assertTrue(result.spanStyles.isEmpty())
@@ -167,11 +167,11 @@ class MarkdownParsingTest {
 
     @Test
     fun parseMarkdownToAnnotatedString_degradesMalformedTokenToDefaultHighlight() {
-        val upper = parseMarkdownToAnnotatedString("=={C1}hi==")
+        val upper = renderFullMarkdown("=={C1}hi==")
         assertEquals("{C1}hi", upper.text)
         assertEquals(MarkdownHighlightColor, upper.spanStyles.single().item.color)
 
-        val nonDigit = parseMarkdownToAnnotatedString("=={cx}hi==")
+        val nonDigit = renderFullMarkdown("=={cx}hi==")
         assertEquals("{cx}hi", nonDigit.text)
         assertEquals(MarkdownHighlightColor, nonDigit.spanStyles.single().item.color)
     }
@@ -179,7 +179,7 @@ class MarkdownParsingTest {
     @Test
     fun parseMarkdownToAnnotatedString_parsesNestedColoredHighlight() {
         val input = "**=={c5}both==**"
-        val result = parseMarkdownToAnnotatedString(input)
+        val result = renderFullMarkdown(input)
 
         assertEquals("both", result.text)
         assertTrue(result.spanStyles.any { it.item.color == Color(0xFFDC2626) })
@@ -213,7 +213,7 @@ class MarkdownParsingTest {
     fun parseMarkdownToAnnotatedString_acceptsCustomHighlightColor() {
         val input = "==hi=="
         val custom = Color.Red
-        val result = parseMarkdownToAnnotatedString(input, highlightColor = custom)
+        val result = renderFullMarkdown(input, highlightColor = custom)
 
         assertEquals("hi", result.text)
         assertEquals(custom, result.spanStyles.single().item.color)
@@ -237,7 +237,7 @@ class MarkdownParsingTest {
     @Test
     fun parseMarkdownToAnnotatedString_parsesUnderscoreItalic() {
         val input = "This is _italic_ text"
-        val result = parseMarkdownToAnnotatedString(input)
+        val result = renderFullMarkdown(input)
 
         assertEquals("This is italic text", result.text)
 
@@ -250,7 +250,7 @@ class MarkdownParsingTest {
     @Test
     fun parseMarkdownToAnnotatedString_parsesNestedBoldUnderscoreItalic() {
         val input = "**_both_**"
-        val result = parseMarkdownToAnnotatedString(input)
+        val result = renderFullMarkdown(input)
 
         assertEquals("both", result.text)
         assertTrue(result.spanStyles.any { it.item.fontWeight == FontWeight.Bold })
@@ -260,7 +260,7 @@ class MarkdownParsingTest {
     @Test
     fun parseMarkdownToAnnotatedString_parsesNestedUnderscoreBold() {
         val input = "_**both**_"
-        val result = parseMarkdownToAnnotatedString(input)
+        val result = renderFullMarkdown(input)
 
         assertEquals("both", result.text)
         assertTrue(result.spanStyles.any { it.item.fontWeight == FontWeight.Bold })
@@ -270,7 +270,7 @@ class MarkdownParsingTest {
     @Test
     fun parseMarkdownToAnnotatedString_leavesSnakeCaseLiteral() {
         val input = "my_var_name"
-        val result = parseMarkdownToAnnotatedString(input)
+        val result = renderFullMarkdown(input)
 
         assertEquals("my_var_name", result.text)
         assertTrue(result.spanStyles.isEmpty())
@@ -279,7 +279,7 @@ class MarkdownParsingTest {
     @Test
     fun parseMarkdownToAnnotatedString_italicRespectsBoundaries() {
         val input = "(see _this_)"
-        val result = parseMarkdownToAnnotatedString(input)
+        val result = renderFullMarkdown(input)
 
         assertEquals("(see this)", result.text)
 
