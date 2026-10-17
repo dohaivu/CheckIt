@@ -227,7 +227,7 @@ private func highlightColorNS(hex: String?, default highlight: NSColor) -> NSCol
     return highlight
 }
 
-private extension NSColor {
+extension NSColor {
     convenience init?(nestedHex hex: String) {
         var s = hex.trimmingCharacters(in: .whitespacesAndNewlines)
         if s.hasPrefix("#") { s.removeFirst() }

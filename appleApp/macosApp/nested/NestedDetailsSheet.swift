@@ -43,11 +43,12 @@ struct NestedNoteEditor: View {
                         }
                     }
                 } else {
-                    TextEditor(text: $text)
-                        .font(.body)
-                        .scrollContentBackground(.hidden)
-                        .padding(6)
-                        .focused($focused)
+                    MarkdownTextField(
+                        text: $text,
+                        focused: Binding(get: { focused }, set: { focused = $0 }),
+                        placeholder: "Write a note…"
+                    )
+                    .padding(6)
                 }
             }
             .frame(minHeight: 200, maxHeight: .infinity, alignment: .top)
