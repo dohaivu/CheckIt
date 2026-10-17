@@ -70,7 +70,13 @@ struct NestedInspectorPane: View {
         case .details:
             VStack(spacing: 0) {
                 itemHeader(item)
-                NestedDetailsForm(draft: detailsDraft, state: state, item: item)
+                NestedDetailsForm(
+                    draft: detailsDraft,
+                    state: state,
+                    item: item
+                )
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
                 Divider()
                 detailsFooter(item: item)
             }

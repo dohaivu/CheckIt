@@ -55,7 +55,6 @@ struct NestedNoteEditor: View {
                                 .font(.body)
                                 .textSelection(.enabled)
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(6)
                         }
                     }
                 } else {
@@ -65,10 +64,10 @@ struct NestedNoteEditor: View {
                         placeholder: "Write a note…"
                     )
                     .padding(6)
+                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.secondary.opacity(0.2)))
                 }
             }
             .frame(minHeight: 200, maxHeight: .infinity, alignment: .top)
-            .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.secondary.opacity(0.3)))
 
             HStack(spacing: 8) {
                 if isDirty {

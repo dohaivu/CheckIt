@@ -25,6 +25,12 @@ struct MarkdownTextField: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
+            if showToolbar && isEditable {
+                MarkdownToolbar { action in
+                    controller.apply(action, to: $text)
+                }
+            }
+
             ZStack(alignment: .topLeading) {
                 MarkdownTextView(
                     text: $text,
@@ -41,12 +47,6 @@ struct MarkdownTextField: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-            if showToolbar && isEditable {
-                MarkdownToolbar { action in
-                    controller.apply(action, to: $text)
-                }
-            }
         }
         .frame(minHeight: minHeight, maxHeight: .infinity, alignment: .top)
     }
