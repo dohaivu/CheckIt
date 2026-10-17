@@ -12,13 +12,15 @@ import Shared
 
 /// Note text editor layout. The parent owns the `text` state and the save
 /// policy: the sheet saves on an explicit button, the inspector saves on
-/// focus loss. `focused` is a binding so the inspector can observe blur.
-/// The Edit/Preview tab renders the note read-only via `renderFullMarkdown`.
+/// focus loss. `focused` is a plain binding (not `@FocusState`) because the
+/// editor lives in an AppKit `NSViewRepresentable` that reports focus itself;
+/// the inspector observes blur to commit. The Edit/Preview tab renders the
+/// note read-only via `renderFullMarkdown`.
 struct NestedNoteEditor: View {
     @Binding var text: String
     /// True when `text` differs from the persisted note (drives the hint).
     var isDirty: Bool = false
-    @FocusState.Binding var focused: Bool
+    @Binding var focused: Bool
 
     /// Local mode toggle (resets with the view; not persisted).
     @State private var showPreview = false
@@ -45,7 +47,7 @@ struct NestedNoteEditor: View {
                 } else {
                     MarkdownTextField(
                         text: $text,
-                        focused: Binding(get: { focused }, set: { focused = $0 }),
+                        focused: $focused,
                         placeholder: "Write a note…"
                     )
                     .padding(6)
@@ -85,12 +87,12 @@ struct NestedNoteSheet: View {
     let item: NestedListItem
     @Environment(\.dismiss) private var dismiss
     @State private var text: String = ""
-    @FocusState private var focused: Bool
+    @State private var focused = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Note").font(.headline)
-            NestedNoteEditor(text: $text, focused: $focused)
+            NestedNoteEditor(text: $text, isDirty: isDirty, focused: $focused)
             HStack {
                 Spacer()
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
@@ -101,8 +103,16 @@ struct NestedNoteSheet: View {
             }
         }
         .padding()
-        .frame(minWidth: 540, idealWidth: 640, maxWidth: .infinity, minHeight: 320, idealHeight: 480, maxHeight: .infinity)
+        .frame(minWidth: 760, idealWidth: 920, maxWidth: .infinity, minHeight: 460, idealHeight: 620, maxHeight: .infinity)
         .onAppear { text = item.note ?? "" }
+    }
+
+    /// True when the draft differs from the persisted note (drives the hint and
+    /// the Save button's enabled state).
+    private var isDirty: Bool {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let baseline = (item.note ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed != baseline
     }
 }
 

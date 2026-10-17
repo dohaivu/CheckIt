@@ -18,7 +18,7 @@ struct NestedInspectorPane: View {
     @State private var loadedDetailsId: String? = nil
     @State private var noteText = ""
     @State private var noteBaseline = ""
-    @FocusState private var noteFocused: Bool
+    @State private var noteFocused = false
 
     var body: some View {
         VStack(spacing: 0) {
