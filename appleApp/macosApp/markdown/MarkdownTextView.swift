@@ -68,6 +68,27 @@ final class MarkdownNSTextView: NSTextView {
         }
         super.keyDown(with: event)
     }
+
+    /// Converts rich clipboard content to markdown source before inserting it.
+    /// Without this, AppKit imports the HTML/RTF attributes and the live
+    /// highlighter immediately discards them, losing the formatting.
+    override func paste(_ sender: Any?) {
+        guard isEditable, let markdown = MarkdownPasteboard.markdown(from: .general), !markdown.isEmpty else {
+            super.paste(sender)
+            return
+        }
+        insertText(markdown, replacementRange: selectedRange())
+    }
+
+    /// Same conversion for the drag-and-drop / Services read path. `paste(_:)`
+    /// short-circuits, so a ⌘V paste never reaches here and cannot insert twice.
+    override func readSelection(from pasteboard: NSPasteboard, type: NSPasteboard.PasteboardType) -> Bool {
+        guard isEditable, let markdown = MarkdownPasteboard.markdown(from: pasteboard), !markdown.isEmpty else {
+            return super.readSelection(from: pasteboard, type: type)
+        }
+        insertText(markdown, replacementRange: selectedRange())
+        return true
+    }
 }
 
 /// Multi-line editor over `NSTextView`. Keep the raw markdown source visible
@@ -181,7 +202,6 @@ struct MarkdownTextView: NSViewRepresentable {
                 storage.addAttributes(MarkdownSourceStyling.attributes(for: span), range: range)
             }
             storage.endEditing()
-            textView.typingAttributes = MarkdownSourceStyling.baseAttributes
         }
 
         func textStorage(
@@ -196,9 +216,23 @@ struct MarkdownTextView: NSViewRepresentable {
 
         func textDidChange(_ notification: Notification) {
             guard let textView = notification.object as? NSTextView else { return }
+            // Reset the typing style *after* the edit has settled. Doing this
+            // from `didProcessEditing` makes AppKit run `updateFontPanel`, which
+            // reads the text storage at a selection that is still stale right
+            // after a delete and raises an out-of-bounds exception.
+            resetTypingAttributes(textView)
             if parent.text != textView.string {
                 parent.text = textView.string
             }
+        }
+
+        private func resetTypingAttributes(_ textView: NSTextView) {
+            guard !textView.hasMarkedText() else { return }
+            let length = (textView.string as NSString).length
+            if textView.selectedRange().location > length {
+                textView.setSelectedRange(NSRange(location: length, length: 0))
+            }
+            textView.typingAttributes = MarkdownSourceStyling.baseAttributes
         }
 
         func textDidBeginEditing(_ notification: Notification) {
