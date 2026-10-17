@@ -8,9 +8,6 @@ internal object NotificationIds {
     const val CountdownOngoing = 1003
     const val CountdownFinished = 1004
 
-    fun taskReminder(taskId: String): Int =
-        taskId.hashCode()
-
     fun routineReminder(routineId: String): Int =
         60_000 + (routineId.hashCode() and 0x3fff)
 

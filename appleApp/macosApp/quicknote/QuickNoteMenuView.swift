@@ -354,7 +354,7 @@ struct QuickNoteRow: View {
     var body: some View {
         HStack(alignment: expanded ? .top : .center, spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(basicMarkdown(note.content))
+                Text(renderInlineMarkdown(note.content))
                     .lineLimit(expanded ? nil : 3)
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -508,7 +508,7 @@ struct QuickNoteDeletedRow: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 8) {
-            Text(basicMarkdown(note.content))
+            Text(renderInlineMarkdown(note.content))
                 .lineLimit(3)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)

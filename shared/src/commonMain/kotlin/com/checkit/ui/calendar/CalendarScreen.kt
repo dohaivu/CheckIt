@@ -82,7 +82,7 @@ import com.checkit.ui.components.RatingBar
 import com.checkit.ui.components.RatingStar
 import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TinyTopAppBar
-import com.checkit.ui.components.parseMarkdownToAnnotatedString
+import com.checkit.ui.components.renderFullMarkdown
 import com.checkit.ui.journal.JournalListSheet
 import com.checkit.ui.localizedMonthTitle
 import com.checkit.ui.localizedShortMonthName
@@ -94,7 +94,6 @@ import com.checkit.ui.today
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.minus
-import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalIsoWeekDate
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -539,7 +538,7 @@ private fun SelectedDateHeader(
                                 }
                                 Text(
                                     modifier = Modifier.weight(1f),
-                                    text = remember(dayReview) { parseMarkdownToAnnotatedString(dayReview) },
+                                    text = remember(dayReview) { renderFullMarkdown(dayReview) },
                                     style = MaterialTheme.typography.bodySmall.copy(
                                         color = MaterialTheme.colorScheme.onSurface,
                                         fontWeight = FontWeight.Medium

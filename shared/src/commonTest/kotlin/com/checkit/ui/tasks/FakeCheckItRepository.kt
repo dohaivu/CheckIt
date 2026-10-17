@@ -311,7 +311,7 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
             doDate = input.doDate,
             startTimeMinutes = input.startTimeMinutes,
             endTimeMinutes = input.endTimeMinutes,
-            repeatRRule = input.repeatRRule,
+            repeatRule = input.repeatRule,
             metrics = input.metrics,
             sortOrder = 0,
             createdAtMillis = 0L,
@@ -338,7 +338,7 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
                         doDate = input.doDate,
                         startTimeMinutes = input.startTimeMinutes,
                         endTimeMinutes = input.endTimeMinutes,
-                        repeatRRule = input.repeatRRule,
+                        repeatRule = input.repeatRule,
                         metrics = input.metrics
                     )
                 } else it
@@ -987,6 +987,7 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
     override suspend fun addNestedDocument(title: String): String = Uuid.random().toString()
     override suspend fun renameNestedDocument(documentId: String, title: String) {}
     override suspend fun deleteNestedDocument(documentId: String) {}
+    override suspend fun reorderNestedDocuments(documentIds: List<String>) {}
     override suspend fun addNestedItem(documentId: String, parentId: String?, text: String, position: Int?): String = Uuid.random().toString()
     override suspend fun updateNestedItemText(itemId: String, text: String) {}
     override suspend fun updateNestedItemNote(itemId: String, note: String?) {}
@@ -1009,6 +1010,8 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
     override suspend fun importBackupJson(json: String) {
         lastBackupJson = json
     }
+    override suspend fun exportNestedDocumentJson(documentId: String): String = "{}"
+    override suspend fun importNestedDocumentJson(json: String): String = Uuid.random().toString()
 }
 
 private fun DailyPlanItemSource.isActionableDigestSource(): Boolean =

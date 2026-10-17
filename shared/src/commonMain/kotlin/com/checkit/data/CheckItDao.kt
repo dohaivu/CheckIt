@@ -11,7 +11,6 @@ import androidx.room3.Upsert
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DayCloseCommitResult
 import com.checkit.domain.Period
-import com.checkit.domain.TaskReminderWriteInput
 import kotlinx.coroutines.flow.Flow
 import kotlin.uuid.Uuid
 
@@ -31,9 +30,6 @@ interface CheckItDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSubTask(subTask: SubTaskEntity)
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertReminder(reminder: TaskReminderEntity)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertList(list: ListEntity)
@@ -145,9 +141,6 @@ interface CheckItDao {
     @Query("DELETE FROM sub_tasks WHERE taskId = :taskId")
     suspend fun deleteSubTasks(taskId: String)
 
-    @Query("DELETE FROM task_reminders WHERE taskId = :taskId")
-    suspend fun deleteTaskReminders(taskId: String)
-
     @Query("DELETE FROM note_tags WHERE noteId = :noteId")
     suspend fun deleteNoteTags(noteId: String)
 
@@ -215,9 +208,6 @@ interface CheckItDao {
 
     @Query("SELECT * FROM sub_tasks ORDER BY sortOrder ASC, id ASC")
     fun observeSubTasks(): Flow<List<SubTaskEntity>>
-
-    @Query("SELECT * FROM task_reminders ORDER BY remindAtMillis ASC")
-    fun observeReminders(): Flow<List<TaskReminderEntity>>
 
     @Query("SELECT * FROM task_tags")
     fun observeTaskTags(): Flow<List<TaskTagEntity>>
@@ -299,9 +289,6 @@ interface CheckItDao {
 
     @Query("SELECT * FROM sub_tasks WHERE taskId = :taskId ORDER BY sortOrder ASC")
     suspend fun subTasksForTask(taskId: String): List<SubTaskEntity>
-
-    @Query("SELECT * FROM task_reminders WHERE taskId = :taskId ORDER BY remindAtMillis ASC")
-    suspend fun remindersForTask(taskId: String): List<TaskReminderEntity>
 
     @Query("SELECT id FROM lists WHERE title = 'Inbox' ORDER BY sortOrder ASC, id ASC LIMIT 1")
     suspend fun inboxListId(): String?
@@ -403,7 +390,7 @@ interface CheckItDao {
             doDateEpochDays = :doDateEpochDays,
             startTimeMinutes = :startTimeMinutes,
             endTimeMinutes = :endTimeMinutes,
-            repeatRRule = :repeatRRule,
+            repeatRuleJson = :repeatRuleJson,
             label = :label,
             metricsJson = :metricsJson,
             updatedAtMillis = :updatedAtMillis,
@@ -421,7 +408,7 @@ interface CheckItDao {
         doDateEpochDays: Int?,
         startTimeMinutes: Int?,
         endTimeMinutes: Int?,
-        repeatRRule: String?,
+        repeatRuleJson: String?,
         label: String?,
         metricsJson: String,
         updatedAtMillis: Long
@@ -444,21 +431,6 @@ interface CheckItDao {
                     name = subtask.name,
                     isCompleted = subtask.isCompleted,
                     sortOrder = index
-                )
-            )
-        }
-    }
-
-    @Transaction
-    suspend fun replaceTaskReminders(taskId: String, reminders: List<TaskReminderWriteInput>) {
-        deleteTaskReminders(taskId)
-        reminders.forEach { reminder ->
-            insertReminder(
-                TaskReminderEntity(
-                    id = Uuid.random().toString(),
-                    taskId = taskId,
-                    remindAtMillis = reminder.remindAtMillis,
-                    label = reminder.label
                 )
             )
         }
@@ -1164,8 +1136,21 @@ interface CheckItDao {
         return document.id
     }
 
-    @Query("SELECT * FROM nested_documents WHERE deleted = 0 ORDER BY updatedAtMillis DESC, id ASC")
+    @Query("SELECT * FROM nested_documents WHERE deleted = 0 ORDER BY sortOrder ASC, updatedAtMillis DESC, id ASC")
     fun observeNestedDocuments(): Flow<List<NestedDocumentEntity>>
+
+    @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM nested_documents WHERE deleted = 0")
+    suspend fun nextNestedDocumentSortOrder(): Int
+
+    @Query("UPDATE nested_documents SET sortOrder = :sortOrder, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :documentId")
+    suspend fun updateNestedDocumentSortOrder(documentId: String, sortOrder: Int, updatedAtMillis: Long)
+
+    @Transaction
+    suspend fun reorderNestedDocuments(documentIds: List<String>, nowMillis: Long) {
+        documentIds.forEachIndexed { index, id ->
+            updateNestedDocumentSortOrder(id, index, nowMillis)
+        }
+    }
 
     @Query("SELECT * FROM nested_list_items WHERE deleted = 0 AND documentId = :documentId ORDER BY position ASC, id ASC")
     fun observeNestedItems(documentId: String): Flow<List<NestedListItemEntity>>
@@ -1537,9 +1522,6 @@ interface CheckItDao {
     @Query("SELECT * FROM sub_tasks")
     suspend fun getAllSubTasksOnce(): List<SubTaskEntity>
 
-    @Query("SELECT * FROM task_reminders")
-    suspend fun getAllTaskRemindersOnce(): List<TaskReminderEntity>
-
     @Query("SELECT * FROM task_tags")
     suspend fun getAllTaskTagsOnce(): List<TaskTagEntity>
 
@@ -1573,7 +1555,7 @@ interface CheckItDao {
     @Query("SELECT * FROM period_goals")
     suspend fun getAllPeriodGoalsOnce(): List<PeriodGoalEntity>
 
-    @Query("SELECT * FROM nested_documents")
+    @Query("SELECT * FROM nested_documents ORDER BY sortOrder ASC, id ASC")
     suspend fun getAllNestedDocumentsOnce(): List<NestedDocumentEntity>
 
     @Query("SELECT * FROM nested_list_items")
@@ -1625,9 +1607,6 @@ interface CheckItDao {
     suspend fun insertSubTasks(rows: List<SubTaskEntity>)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertTaskReminders(rows: List<TaskReminderEntity>)
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertNotes(rows: List<NoteEntity>)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -1674,9 +1653,6 @@ interface CheckItDao {
 
     @Query("DELETE FROM note_list")
     suspend fun clearNoteLists()
-
-    @Query("DELETE FROM task_reminders")
-    suspend fun clearTaskReminders()
 
     @Query("DELETE FROM sub_tasks")
     suspend fun clearSubTasks()
@@ -1729,7 +1705,6 @@ interface CheckItDao {
         clearJournalEntryTags()
         clearTaskLists()
         clearNoteLists()
-        clearTaskReminders()
         clearSubTasks()
         clearDailyPlanItems()
         clearNotes()
@@ -1751,7 +1726,6 @@ interface CheckItDao {
         if (backup.tasks.isNotEmpty()) insertTasks(backup.tasks)
         if (backup.notes.isNotEmpty()) insertNotes(backup.notes)
         if (backup.subTasks.isNotEmpty()) insertSubTasks(backup.subTasks)
-        if (backup.taskReminders.isNotEmpty()) insertTaskReminders(backup.taskReminders)
         if (backup.taskFilters.isNotEmpty()) insertTaskFilters(backup.taskFilters)
         if (backup.journalEntries.isNotEmpty()) insertJournalEntries(backup.journalEntries)
         if (backup.periodGoals.isNotEmpty()) insertPeriodGoals(backup.periodGoals)

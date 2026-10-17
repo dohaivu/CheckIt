@@ -5,7 +5,94 @@
 
 import SwiftUI
 import AppKit
+import Combine
 import Shared
+
+// MARK: - Note editor (shared by sheet + inspector)
+
+/// Note text editor layout. The parent owns the `text` state and the save
+/// policy: the sheet saves on an explicit button, the inspector saves on
+/// focus loss. `focused` is a plain binding (not `@FocusState`) because the
+/// editor lives in an AppKit `NSViewRepresentable` that reports focus itself;
+/// the inspector observes blur to commit. The Edit/Preview tab renders the
+/// note read-only via `renderFullMarkdown`.
+struct NestedNoteEditor: View {
+    @Binding var text: String
+    /// True when `text` differs from the persisted note (drives the hint).
+    var isDirty: Bool = false
+    @Binding var focused: Bool
+
+    /// Local mode toggle (resets with the view; not persisted). Starts in the
+    /// read-only preview when `startsInPreview` is set (the inspector) and in
+    /// edit mode otherwise (the note sheet).
+    @State private var showPreview: Bool
+
+    init(
+        text: Binding<String>,
+        isDirty: Bool = false,
+        focused: Binding<Bool>,
+        startsInPreview: Bool = false
+    ) {
+        self._text = text
+        self.isDirty = isDirty
+        self._focused = focused
+        self._showPreview = State(initialValue: startsInPreview)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Group {
+                if showPreview {
+                    ScrollView {
+                        if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            Text("No note yet.")
+                                .font(.body)
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(6)
+                        } else {
+                            Text(renderFullMarkdown(text))
+                                .font(.body)
+                                .textSelection(.enabled)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(6)
+                        }
+                    }
+                } else {
+                    MarkdownTextField(
+                        text: $text,
+                        focused: $focused,
+                        placeholder: "Write a note…"
+                    )
+                    .padding(6)
+                }
+            }
+            .frame(minHeight: 200, maxHeight: .infinity, alignment: .top)
+            .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.secondary.opacity(0.3)))
+
+            HStack(spacing: 8) {
+                if isDirty {
+                    Text("Unsaved changes")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Text("\(text.count)/2,000")
+                    .font(.caption).foregroundStyle(.secondary)
+                Button {
+                    showPreview.toggle()
+                } label: {
+                    Text("Preview")
+                        .font(.caption)
+                        .foregroundStyle(showPreview ? Color.accentColor : Color.secondary)
+                }
+                .buttonStyle(.plain)
+                .keyboardShortcut("p", modifiers: [.command, .shift])
+                .accessibilityLabel(showPreview ? "Show editor" : "Preview note")
+                .help(showPreview ? "Back to editing (⌘⇧P)" : "Preview note formatting (⌘⇧P)")
+            }
+        }
+    }
+}
 
 // MARK: - Note sheet
 
@@ -14,19 +101,12 @@ struct NestedNoteSheet: View {
     let item: NestedListItem
     @Environment(\.dismiss) private var dismiss
     @State private var text: String = ""
+    @State private var focused = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Note").font(.headline)
-            TextEditor(text: $text)
-                .font(.body)
-                .frame(minHeight: 140)
-                .scrollContentBackground(.hidden)
-                .padding(6)
-                .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.secondary.opacity(0.3)))
-            Text("\(text.count)/2,000")
-                .font(.caption).foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .trailing)
+            NestedNoteEditor(text: $text, isDirty: isDirty, focused: $focused)
             HStack {
                 Spacer()
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
@@ -37,12 +117,20 @@ struct NestedNoteSheet: View {
             }
         }
         .padding()
-        .frame(width: 420)
+        .frame(minWidth: 760, idealWidth: 920, maxWidth: .infinity, minHeight: 460, idealHeight: 620, maxHeight: .infinity)
         .onAppear { text = item.note ?? "" }
+    }
+
+    /// True when the draft differs from the persisted note (drives the hint and
+    /// the Save button's enabled state).
+    private var isDirty: Bool {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let baseline = (item.note ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed != baseline
     }
 }
 
-// MARK: - Details sheet (time, rollup, progress, custom metrics)
+// MARK: - Details (time, rollup, progress, custom metrics)
 
 struct NestedMetricDraft: Identifiable {
     let id = UUID()
@@ -106,17 +194,81 @@ private func minutesSinceMidnight(of date: Date) -> Int {
 /// Display order for the unit picker comes from shared `MetricUnit.entries`;
 /// labels and names stay in shared Kotlin.
 
-struct NestedDetailsSheet: View {
+/// Draft state for the details form. Hoisted to the parent view so the
+/// commit buttons own the save; shared by the sheet and the inspector.
+@MainActor
+final class NestedDetailsDraft: ObservableObject {
+    @Published var minutes = ""
+    @Published var policy = "IncludeChildren"
+    @Published var showTracked = false
+    @Published var showProgress = false
+    @Published var progress = 0.0
+    @Published var metrics: [NestedMetricDraft] = []
+
+    /// (Re)initialise from the persisted item.
+    func load(from item: NestedListItem) {
+        minutes = item.actualMinutes > 0 ? String(item.actualMinutes) : ""
+        policy = item.metricRollupPolicy.name
+        showTracked = item.showTrackedMinutes
+        if let p = item.progressPercent?.int32Value {
+            showProgress = true
+            progress = Double(max(0, min(100, Int(p))))
+        } else {
+            showProgress = false
+            progress = 0
+        }
+        metrics = item.manualMetrics.map {
+            NestedMetricDraft(
+                name: $0.name,
+                value: $0.value,
+                target: $0.targetValue ?? "",
+                unit: $0.unit,
+                customUnit: $0.customUnit ?? "",
+                completed: $0.isCompleted,
+                dueDate: $0.dueDateEpochDays.map { nestedDate(fromEpochDays: Int64($0.int32Value)) },
+                dueTimeMinutes: $0.dueTimeMinutes.map { Int($0.int32Value) }
+            )
+        }
+    }
+
+    func save(state: NestedEditorState, itemId: String) {
+        let mins = Int32(minutes.trimmingCharacters(in: .whitespaces)) ?? 0
+        state.updateMetricsSettings(id: itemId, minutes: mins, policy: policy, show: showTracked)
+        state.updateProgress(id: itemId, value: showProgress ? Int32(progress.rounded()) : nil)
+        // Encode as MetricItem JSON for the shared decoder.
+        // Date-based units carry no value/target; the shared bridge
+        // (isValidForSave) keeps them when a due date is set.
+        let arr: [[String: Any]] = metrics.map { m in
+            let isDate = (m.unit == .countdown || m.unit == .duedate)
+            var d: [String: Any] = [
+                "name": m.name,
+                "value": isDate ? "" : m.value,
+                "sortOrder": 0,
+                "enabled": true,
+                "unit": m.unit.name,
+                "isCompleted": m.completed,
+            ]
+            d["targetValue"] = (isDate || m.target.isEmpty) ? NSNull() : m.target
+            d["customUnit"] = m.customUnit.isEmpty ? NSNull() : m.customUnit
+            d["dueDateEpochDays"] = m.dueDate.map { Int(nestedEpochDays(from: $0)) } ?? NSNull()
+            d["dueTimeMinutes"] = m.dueTimeMinutes ?? NSNull()
+            return d
+        }
+        if let data = try? JSONSerialization.data(withJSONObject: arr),
+           let json = String(data: data, encoding: .utf8)
+        {
+            state.replaceMetrics(id: itemId, json: json)
+        }
+    }
+}
+
+/// Details body (overview stats, time & rollup, progress, custom metrics).
+/// The parent owns the draft and supplies the commit buttons, so the same
+/// form backs both the sheet and the inspector.
+struct NestedDetailsForm: View {
+    @ObservedObject var draft: NestedDetailsDraft
     @ObservedObject var state: NestedEditorState
     let item: NestedListItem
-    @Environment(\.dismiss) private var dismiss
-
-    @State private var minutes = ""
-    @State private var policy = "IncludeChildren"
-    @State private var showTracked = false
-    @State private var showProgress = false
-    @State private var progress = 0.0
-    @State private var metrics: [NestedMetricDraft] = []
 
     var body: some View {
         let node = state.indexById[item.id]
@@ -127,185 +279,144 @@ struct NestedDetailsSheet: View {
         let summary = state.summary(for: item.id)
         let doneChildCount = summary?.doneItemCount ?? 0
         let totalTrackedMinutes = summary?.trackedMinutes ?? 0
-        return VStack(alignment: .leading, spacing: 12) {
-            Text("Item details").font(.headline)
-            Text(item.text.isEmpty ? "Untitled item" : item.text)
-                .foregroundStyle(.secondary).lineLimit(2)
-            if let ms = item.completedAtMillis?.int64Value {
-                Text("Completed · \(Date(timeIntervalSince1970: TimeInterval(ms) / 1000).formatted(date: .abbreviated, time: .shortened))")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-            ScrollView {
-                VStack(alignment: .leading, spacing: 10) {
-                    // Overview stat cards (Android Section 1 parity)
-                    HStack(spacing: 6) {
-                        statCard(
-                            title: "Children",
-                            value: directChildCount == totalChildCount
-                                ? "\(totalChildCount)" : "\(directChildCount) (\(totalChildCount))",
-                            subtitle: totalChildCount > 0 ? "\(doneChildCount) done" : "Leaf item"
-                        )
-                        statCard(
-                            title: "Actual time",
-                            value: "\(item.actualMinutes)m",
-                            subtitle: (!isLeaf && totalTrackedMinutes != Int(item.actualMinutes))
-                                ? "Total: \(totalTrackedMinutes)m" : "Direct time"
-                        )
+        return ScrollView {
+            VStack(alignment: .leading, spacing: 10) {
+                // Overview stat cards (Android Section 1 parity)
+                HStack(spacing: 6) {
+                    statCard(
+                        title: "Children",
+                        value: directChildCount == totalChildCount
+                            ? "\(totalChildCount)" : "\(directChildCount) (\(totalChildCount))",
+                        subtitle: totalChildCount > 0 ? "\(doneChildCount) done" : "Leaf item"
+                    )
+                    statCard(
+                        title: "Actual time",
+                        value: "\(item.actualMinutes)m",
+                        subtitle: (!isLeaf && totalTrackedMinutes != Int(item.actualMinutes))
+                            ? "Total: \(totalTrackedMinutes)m" : "Direct time"
+                    )
+                }
+                // Time & rollup
+                section("Time & rollup") {
+                    HStack {
+                        TextField("0", text: $draft.minutes)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 70)
+                        Text("min").foregroundStyle(.secondary)
+                        Picker("", selection: $draft.policy) {
+                            Text("Include children").tag("IncludeChildren")
+                            Text("Own item only").tag("OwnOnly")
+                            Text("Exclude from parent").tag("ExcludeFromParent")
+                        }
+                        .pickerStyle(.menu)
+                        .labelsHidden()
                     }
-                    // Time & rollup
-                    section("Time & rollup") {
+                    if !isLeaf {
+                        Toggle(isOn: $draft.showTracked) {
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text("Show tracked minutes on row")
+                                Text("\(totalTrackedMinutes) min total rollup")
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }
+                // Progress
+                section("Progress") {
+                    Toggle("Show progress", isOn: $draft.showProgress)
+                    if draft.showProgress {
                         HStack {
-                            TextField("0", text: $minutes)
-                                .textFieldStyle(.roundedBorder)
-                                .frame(width: 70)
-                            Text("min").foregroundStyle(.secondary)
-                            Picker("", selection: $policy) {
-                                Text("Include children").tag("IncludeChildren")
-                                Text("Own item only").tag("OwnOnly")
-                                Text("Exclude from parent").tag("ExcludeFromParent")
-                            }
-                            .pickerStyle(.menu)
-                            .labelsHidden()
+                            Slider(value: $draft.progress, in: 0...100)
+                            Text("\(Int(draft.progress))%")
+                                .font(.callout).bold()
+                                .foregroundStyle(Color.accentColor)
+                                .frame(width: 44, alignment: .trailing)
                         }
-                        if !isLeaf {
-                            Toggle(isOn: $showTracked) {
-                                VStack(alignment: .leading, spacing: 1) {
-                                    Text("Show tracked minutes on row")
-                                    Text("\(totalTrackedMinutes) min total rollup")
-                                        .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                // Custom metrics
+                section("Custom metrics") {
+                    ForEach($draft.metrics) { $m in
+                            VStack(alignment: .leading, spacing: 6) {
+                                HStack {
+                                    Toggle("", isOn: $m.completed).labelsHidden()
+                                    TextField("Metric name", text: $m.name)
+                                        .textFieldStyle(.roundedBorder)
+                                    Button {
+                                        draft.metrics.removeAll { $0.id == m.id }
+                                    } label: {
+                                        Image(systemName: "trash").foregroundStyle(.red)
+                                    }
+                                    .buttonStyle(.plain)
                                 }
-                            }
-                        }
-                    }
-                    // Progress
-                    section("Progress") {
-                        Toggle("Show progress", isOn: $showProgress)
-                        if showProgress {
-                            HStack {
-                                Slider(value: $progress, in: 0...100)
-                                Text("\(Int(progress))%")
-                                    .font(.callout).bold()
-                                    .foregroundStyle(Color.accentColor)
-                                    .frame(width: 44, alignment: .trailing)
-                            }
-                        }
-                    }
-                    // Custom metrics
-                    section("Custom metrics") {
-                        ForEach($metrics) { $m in
-                                VStack(alignment: .leading, spacing: 6) {
+                                if $m.wrappedValue.unit == .countdown || $m.wrappedValue.unit == .duedate {
                                     HStack {
-                                        Toggle("", isOn: $m.completed).labelsHidden()
-                                        TextField("Metric name", text: $m.name)
-                                            .textFieldStyle(.roundedBorder)
-                                        Button {
-                                            metrics.removeAll { $0.id == m.id }
-                                        } label: {
-                                            Image(systemName: "trash").foregroundStyle(.red)
-                                        }
-                                        .buttonStyle(.plain)
-                                    }
-                                    if $m.wrappedValue.unit == .countdown || $m.wrappedValue.unit == .duedate {
-                                        HStack {
-                                            DatePicker(
-                                                "Due",
-                                                selection: Binding(
-                                                    get: { $m.wrappedValue.dueDate ?? Calendar.current.startOfDay(for: Date()) },
-                                                    set: { $m.wrappedValue.dueDate = $0 }
-                                                ),
-                                                displayedComponents: .date
-                                            )
-                                            .labelsHidden()
-                                            .frame(width: 120)
-                                            if $m.wrappedValue.unit == .countdown {
-                                                Text(countdownPreview(dueDate: $m.wrappedValue.dueDate))
-                                                    .font(.caption)
-                                                    .foregroundStyle(countdownOverdue(dueDate: $m.wrappedValue.dueDate, completed: $m.wrappedValue.completed) ? .red : .secondary)
-                                            } else {
-                                                Toggle("Time", isOn: Binding(
-                                                    get: { $m.wrappedValue.dueTimeMinutes != nil },
-                                                    set: { $m.wrappedValue.dueTimeMinutes = $0 ? ($m.wrappedValue.dueTimeMinutes ?? 540) : nil }
-                                                ))
-                                                if $m.wrappedValue.dueTimeMinutes != nil {
-                                                    DatePicker(
-                                                        "",
-                                                        selection: Binding(
-                                                            get: {
-                                                                combineDateAndMinutes(
-                                                                    date: $m.wrappedValue.dueDate ?? Calendar.current.startOfDay(for: Date()),
-                                                                    minutes: $m.wrappedValue.dueTimeMinutes ?? 540
-                                                                )
-                                                            },
-                                                            set: { $m.wrappedValue.dueTimeMinutes = minutesSinceMidnight(of: $0) }
-                                                        ),
-                                                        displayedComponents: .hourAndMinute
-                                                    )
-                                                    .labelsHidden()
-                                                }
+                                        DatePicker(
+                                            "Due",
+                                            selection: Binding(
+                                                get: { $m.wrappedValue.dueDate ?? Calendar.current.startOfDay(for: Date()) },
+                                                set: { $m.wrappedValue.dueDate = $0 }
+                                            ),
+                                            displayedComponents: .date
+                                        )
+                                        .labelsHidden()
+                                        .frame(width: 120)
+                                        if $m.wrappedValue.unit == .countdown {
+                                            Text(countdownPreview(dueDate: $m.wrappedValue.dueDate))
+                                                .font(.caption)
+                                                .foregroundStyle(countdownOverdue(dueDate: $m.wrappedValue.dueDate, completed: $m.wrappedValue.completed) ? .red : .secondary)
+                                        } else {
+                                            Toggle("Time", isOn: Binding(
+                                                get: { $m.wrappedValue.dueTimeMinutes != nil },
+                                                set: { $m.wrappedValue.dueTimeMinutes = $0 ? ($m.wrappedValue.dueTimeMinutes ?? 540) : nil }
+                                            ))
+                                            if $m.wrappedValue.dueTimeMinutes != nil {
+                                                DatePicker(
+                                                    "",
+                                                    selection: Binding(
+                                                        get: {
+                                                            combineDateAndMinutes(
+                                                                date: $m.wrappedValue.dueDate ?? Calendar.current.startOfDay(for: Date()),
+                                                                minutes: $m.wrappedValue.dueTimeMinutes ?? 540
+                                                            )
+                                                        },
+                                                        set: { $m.wrappedValue.dueTimeMinutes = minutesSinceMidnight(of: $0) }
+                                                    ),
+                                                    displayedComponents: .hourAndMinute
+                                                )
+                                                .labelsHidden()
                                             }
-                                            Spacer()
-                                            unitPicker(for: $m)
                                         }
-                                    } else {
-                                        HStack {
-                                            TextField("Value", text: $m.value)
-                                                .textFieldStyle(.roundedBorder)
-                                            TextField("Target", text: $m.target)
-                                                .textFieldStyle(.roundedBorder)
-                                            Spacer()
-                                            unitPicker(for: $m)
-                                        }
-                                        if m.unit == .custom {
-                                            TextField("Custom unit (e.g. kg, pts)", text: $m.customUnit)
-                                                .textFieldStyle(.roundedBorder)
-                                        }
+                                        Spacer()
+                                        unitPicker(for: $m)
+                                    }
+                                } else {
+                                    HStack {
+                                        TextField("Value", text: $m.value)
+                                            .textFieldStyle(.roundedBorder)
+                                        TextField("Target", text: $m.target)
+                                            .textFieldStyle(.roundedBorder)
+                                        Spacer()
+                                        unitPicker(for: $m)
+                                    }
+                                    if m.unit == .custom {
+                                        TextField("Custom unit (e.g. kg, pts)", text: $m.customUnit)
+                                            .textFieldStyle(.roundedBorder)
                                     }
                                 }
-                                .padding(6)
-                                .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 6))
                             }
-                            Button {
-                                metrics.append(NestedMetricDraft())
-                            } label: {
-                                Label("Add metric", systemImage: "plus")
-                            }
-                            .buttonStyle(.link)
+                            .padding(6)
+                            .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 6))
                         }
+                        Button {
+                            draft.metrics.append(NestedMetricDraft())
+                        } label: {
+                            Label("Add metric", systemImage: "plus")
+                        }
+                        .buttonStyle(.link)
                     }
                 }
-            HStack {
-                Spacer()
-                Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button("Save") {
-                    save()
-                    dismiss()
-                }
-                .keyboardShortcut(.defaultAction)
             }
-        }
-        .padding()
-        .frame(width: 460, height: 560)
-        .onAppear {
-            minutes = item.actualMinutes > 0 ? String(item.actualMinutes) : ""
-            policy = item.metricRollupPolicy.name
-            showTracked = item.showTrackedMinutes
-            if let p = item.progressPercent?.int32Value {
-                showProgress = true
-                progress = Double(max(0, min(100, Int(p))))
-            }
-            metrics = item.manualMetrics.map {
-                NestedMetricDraft(
-                    name: $0.name,
-                    value: $0.value,
-                    target: $0.targetValue ?? "",
-                    unit: $0.unit,
-                    customUnit: $0.customUnit ?? "",
-                    completed: $0.isCompleted,
-                    dueDate: $0.dueDateEpochDays.map { nestedDate(fromEpochDays: Int64($0.int32Value)) },
-                    dueTimeMinutes: $0.dueTimeMinutes.map { Int($0.int32Value) }
-                )
-            }
-        }
     }
 
     /// Android Section parity: all-caps header in the highlight color over
@@ -361,35 +472,39 @@ struct NestedDetailsSheet: View {
         .pickerStyle(.menu)
         .frame(width: 120)
     }
+}
 
-    private func save() {
-        let mins = Int32(minutes.trimmingCharacters(in: .whitespaces)) ?? 0
-        state.updateMetricsSettings(id: item.id, minutes: mins, policy: policy, show: showTracked)
-        state.updateProgress(id: item.id, value: showProgress ? Int32(progress.rounded()) : nil)
-        // Encode as MetricItem JSON for the shared decoder.
-        // Date-based units carry no value/target; the shared bridge
-        // (isValidForSave) keeps them when a due date is set.
-        let arr: [[String: Any]] = metrics.map { m in
-            let isDate = (m.unit == .countdown || m.unit == .duedate)
-            var d: [String: Any] = [
-                "name": m.name,
-                "value": isDate ? "" : m.value,
-                "sortOrder": 0,
-                "enabled": true,
-                "unit": m.unit.name,
-                "isCompleted": m.completed,
-            ]
-            d["targetValue"] = (isDate || m.target.isEmpty) ? NSNull() : m.target
-            d["customUnit"] = m.customUnit.isEmpty ? NSNull() : m.customUnit
-            d["dueDateEpochDays"] = m.dueDate.map { Int(nestedEpochDays(from: $0)) } ?? NSNull()
-            d["dueTimeMinutes"] = m.dueTimeMinutes ?? NSNull()
-            return d
+// MARK: - Details sheet
+
+struct NestedDetailsSheet: View {
+    @ObservedObject var state: NestedEditorState
+    let item: NestedListItem
+    @Environment(\.dismiss) private var dismiss
+    @StateObject private var draft = NestedDetailsDraft()
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Item details").font(.headline)
+            Text(item.text.isEmpty ? "Untitled item" : item.text)
+                .foregroundStyle(.secondary).lineLimit(2)
+            if let ms = item.completedAtMillis?.int64Value {
+                Text("Completed · \(Date(timeIntervalSince1970: TimeInterval(ms) / 1000).formatted(date: .abbreviated, time: .shortened))")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            NestedDetailsForm(draft: draft, state: state, item: item)
+            HStack {
+                Spacer()
+                Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
+                Button("Save") {
+                    draft.save(state: state, itemId: item.id)
+                    dismiss()
+                }
+                .keyboardShortcut(.defaultAction)
+            }
         }
-        if let data = try? JSONSerialization.data(withJSONObject: arr),
-           let json = String(data: data, encoding: .utf8)
-        {
-            state.replaceMetrics(id: item.id, json: json)
-        }
+        .padding()
+        .frame(width: 460, height: 560)
+        .onAppear { draft.load(from: item) }
     }
 }
 
@@ -399,8 +514,6 @@ struct NestedFormattingBar: View {
     @ObservedObject var state: NestedEditorState
     let item: NestedListItem
 
-    @State private var showNote = false
-    @State private var showDetails = false
     @State private var showDates = false
     @State private var startDate = Date()
     @State private var endDate = Date()
@@ -562,9 +675,9 @@ struct NestedFormattingBar: View {
             barBtn(
                 "note.text",
                 tint: (item.note?.isEmpty ?? true) ? .secondary : Color.accentColor,
-                help: "Edit note"
+                help: "Edit note (N)"
             ) {
-                showNote = true
+                state.showNoteSheet = true
             }
             // Check
             barBtn(
@@ -575,14 +688,12 @@ struct NestedFormattingBar: View {
                 state.setCheckedExact(id: item.id, checked: !item.checked)
             }
             // Details
-            barBtn("info.circle", help: "Item details") {
-                showDetails = true
+            barBtn("info.circle", help: "Item details (D)") {
+                state.showDetailsSheet = true
             }
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .background(Color(nsColor: .windowBackgroundColor))
-        .sheet(isPresented: $showNote) { NestedNoteSheet(state: state, item: item) }
-        .sheet(isPresented: $showDetails) { NestedDetailsSheet(state: state, item: item) }
     }
 }

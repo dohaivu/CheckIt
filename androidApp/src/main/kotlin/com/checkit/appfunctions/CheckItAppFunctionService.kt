@@ -7,6 +7,7 @@ import androidx.appfunctions.AppFunctionService
 import androidx.appfunctions.AppFunctionServiceEntryPoint
 import com.checkit.data.JournalEntryWriteInput
 import com.checkit.data.TaskWriteInput
+import com.checkit.domain.RepeatRule
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskType
@@ -59,8 +60,7 @@ abstract class BaseCheckItAppFunctionService : AppFunctionService(), KoinCompone
                 doDate = null,
                 startTimeMinutes = null,
                 endTimeMinutes = null,
-                repeatRRule = null,
-                reminders = emptyList(),
+                repeatRule = RepeatRule.None,
                 tagIds = emptyList()
             )
         )

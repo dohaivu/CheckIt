@@ -60,7 +60,7 @@ data class AppenderCommandItem(
     val name: String,
     val label: String,
     val description: String? = null,
-    val action: (text: String, slashIndex: Int, cursorIndex: Int) -> JournalCursorEdit
+    val action: (text: String, slashIndex: Int, cursorIndex: Int) -> MarkdownEdit
 )
 
 internal data class SlashQuery(
@@ -90,12 +90,12 @@ internal fun applySlashReplacement(
     slashIndex: Int,
     cursorIndex: Int,
     replacement: String
-): JournalCursorEdit {
+): MarkdownEdit {
     val prefix = text.substring(0, slashIndex)
     val suffix = text.substring(cursorIndex.coerceAtMost(text.length))
     val newText = prefix + replacement + suffix
     val newCursor = slashIndex + replacement.length
-    return JournalCursorEdit(
+    return MarkdownEdit(
         text = newText,
         selectionStart = newCursor,
         selectionEnd = newCursor
@@ -482,7 +482,12 @@ enum class ToolbarAction {
     SlashCommand
 }
 
-data class JournalCursorEdit(
+/**
+ * Result of a markdown editing action: the new full text plus the resulting
+ * cursor/selection. Returned by [applyToolbarAction] and the slash-command
+ * appenders, and consumed by the Compose field and the macOS editor alike.
+ */
+data class MarkdownEdit(
     val text: String,
     val selectionStart: Int,
     val selectionEnd: Int
@@ -497,7 +502,7 @@ fun applyToolbarAction(
     selectionStart: Int,
     selectionEnd: Int,
     action: ToolbarAction
-): JournalCursorEdit {
+): MarkdownEdit {
     val safeText = text
     val start = selectionStart.coerceIn(0, safeText.length)
     val end = selectionEnd.coerceIn(0, safeText.length)
@@ -517,7 +522,7 @@ fun applyToolbarAction(
         ToolbarAction.SlashCommand -> {
             val insert = "/"
             val newText = safeText.substring(0, selStart) + insert + safeText.substring(selStart)
-            JournalCursorEdit(newText, selStart + 1, selStart + 1)
+            MarkdownEdit(newText, selStart + 1, selStart + 1)
         }
     }
 }
@@ -529,16 +534,16 @@ private fun wrapSelection(
     prefix: String,
     suffix: String,
     defaultPlaceholder: String
-): JournalCursorEdit {
+): MarkdownEdit {
     val pLen = prefix.length
     return if (selStart == selEnd) {
         val insert = "$prefix$defaultPlaceholder$suffix"
         val newText = safeText.substring(0, selStart) + insert + safeText.substring(selStart)
-        JournalCursorEdit(newText, selStart + pLen, selStart + pLen + defaultPlaceholder.length)
+        MarkdownEdit(newText, selStart + pLen, selStart + pLen + defaultPlaceholder.length)
     } else {
         val selected = safeText.substring(selStart, selEnd)
         val newText = safeText.substring(0, selStart) + prefix + selected + suffix + safeText.substring(selEnd)
-        JournalCursorEdit(newText, selStart + pLen, selEnd + pLen)
+        MarkdownEdit(newText, selStart + pLen, selEnd + pLen)
     }
 }
 
@@ -561,9 +566,9 @@ private fun toggleLinePrefix(
     selStart: Int,
     selEnd: Int,
     prefix: String
-): JournalCursorEdit {
+): MarkdownEdit {
     if (text.isEmpty()) {
-        return JournalCursorEdit(prefix, prefix.length, prefix.length)
+        return MarkdownEdit(prefix, prefix.length, prefix.length)
     }
     val fromLineStart = lineStartForOffset(text, selStart)
     val starts = lineStartOffsets(text).filter { it <= selEnd && (it >= fromLineStart) }
@@ -571,7 +576,7 @@ private fun toggleLinePrefix(
             val lineEnd = text.indexOf('\n', lineStart).let { if (it == -1) text.length else it }
             lineStart <= selEnd && lineEnd >= selStart
         }
-    if (starts.isEmpty()) return JournalCursorEdit(text, selStart, selEnd)
+    if (starts.isEmpty()) return MarkdownEdit(text, selStart, selEnd)
 
     val allHavePrefix = starts.all { lineStart ->
         text.regionMatches(lineStart, prefix, 0, prefix.length)
@@ -606,7 +611,7 @@ private fun toggleLinePrefix(
         }
     }
     builder.append(text, cursor, text.length)
-    return JournalCursorEdit(
+    return MarkdownEdit(
         builder.toString(),
         (selStart + deltaBeforeStart).coerceIn(0, builder.length),
         (selEnd + deltaBeforeEnd).coerceIn(0, builder.length)
@@ -615,15 +620,15 @@ private fun toggleLinePrefix(
 
 private val numberedPattern = Regex("^\\d+\\.\\s")
 
-private fun toggleNumberedPrefix(text: String, selStart: Int, selEnd: Int): JournalCursorEdit {
+private fun toggleNumberedPrefix(text: String, selStart: Int, selEnd: Int): MarkdownEdit {
     if (text.isEmpty()) {
-        return JournalCursorEdit("1. ", 3, 3)
+        return MarkdownEdit("1. ", 3, 3)
     }
     val starts = lineStartOffsets(text).filter { lineStart ->
         val lineEnd = text.indexOf('\n', lineStart).let { if (it == -1) text.length else it }
         lineStart <= selEnd && lineEnd >= selStart
     }.sorted()
-    if (starts.isEmpty()) return JournalCursorEdit(text, selStart, selEnd)
+    if (starts.isEmpty()) return MarkdownEdit(text, selStart, selEnd)
 
     fun existingMarkerLength(lineStart: Int): Int {
         val lineEnd = text.indexOf('\n', lineStart).let { if (it == -1) text.length else it }
@@ -660,7 +665,7 @@ private fun toggleNumberedPrefix(text: String, selStart: Int, selEnd: Int): Jour
         }
     }
     builder.append(text, cursor, text.length)
-    return JournalCursorEdit(
+    return MarkdownEdit(
         builder.toString(),
         (selStart + deltaBeforeStart).coerceIn(0, builder.length),
         (selEnd + deltaBeforeEnd).coerceIn(0, builder.length)

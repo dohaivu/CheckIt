@@ -7,7 +7,7 @@ import com.checkit.domain.RoutineDefaultColorHex
 import com.checkit.domain.RoutineLog
 import com.checkit.domain.RoutineStepTemplate
 import com.checkit.domain.RoutineTodayState
-import com.checkit.domain.isRoutineScheduled
+import com.checkit.domain.RepeatRule
 import com.checkit.domain.resolveRoutineTodayChecks
 import com.checkit.domain.routinePercent
 import com.checkit.domain.shouldScheduleRoutineReminder
@@ -15,7 +15,6 @@ import com.checkit.notifications.RoutineReminderScheduler
 import com.checkit.notifications.ScheduledRoutineReminder
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
-import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -71,20 +70,20 @@ class SaveRoutineUseCase(
         title: String,
         description: String,
         reminderMinutes: Int?,
-        activeWeekdays: Set<DayOfWeek>,
+        repeatRule: RepeatRule,
         steps: List<RoutineStepTemplate>,
         color: String = RoutineDefaultColorHex
     ): String {
-        val routineId = repository.saveRoutine(id, title, description, reminderMinutes, activeWeekdays, steps, color)
+        val routineId = repository.saveRoutine(id, title, description, reminderMinutes, repeatRule, steps, color)
         val trimmedTitle = title.trim()
-        if (reminderMinutes != null && shouldScheduleRoutineReminder(reminderMinutes, activeWeekdays)) {
+        if (reminderMinutes != null && shouldScheduleRoutineReminder(reminderMinutes, repeatRule)) {
             reminderScheduler.scheduleRoutineReminder(
                 ScheduledRoutineReminder(
                     routineId = routineId,
                     title = trimmedTitle,
                     reminderMinutes = reminderMinutes,
                     stepCount = steps.count { it.title.isNotBlank() },
-                    activeWeekdays = activeWeekdays
+                    repeatRule = repeatRule
                 )
             )
         } else if (id != null) {
@@ -131,7 +130,7 @@ class ToggleRoutineStepUseCase(
         val todayEpochDay = today.toEpochDays().toInt()
         val routine = repository.observeRoutines().first().firstOrNull { it.id == routineId }
             ?: return
-        if (!isRoutineScheduled(today, routine.activeWeekdays)) return
+        if (!routine.repeatRule.isScheduled(today)) return
         val current = todayStore.observe().first()
         val base = resolveRoutineTodayChecks(current.epochDay, current.checks, todayEpochDay)
         val checked = base[routineId].orEmpty()

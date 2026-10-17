@@ -7,6 +7,7 @@ import com.checkit.domain.ListItem
 import com.checkit.domain.ListSection
 import com.checkit.domain.MetricItem
 import com.checkit.domain.NoteItem
+import com.checkit.domain.RepeatRule
 import com.checkit.domain.SubTaskItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskFilter
@@ -139,9 +140,8 @@ sealed interface TaskEditorState {
         val doDate: LocalDate? = null,
         val startTimeMinutes: Int? = null,
         val endTimeMinutes: Int? = null,
-        val repeatPreset: RepeatPreset = RepeatPreset.None,
+        val repeatRule: RepeatRule = RepeatRule.None,
         val subtasks: List<SubTaskEditorState> = emptyList(),
-        val reminderOffsets: Set<Int> = emptySet(),
         val status: TaskStatus = TaskStatus.Open,
         val priority: TaskPriority = TaskPriority.None,
         val type: TaskType = TaskType.Task,
@@ -197,17 +197,3 @@ data class TagEditorState(
     val color: String = AppIconColorDefaults.CommonColors.first()
 )
 
-enum class RepeatPreset(
-    val label: String,
-    val rrule: String?
-) {
-    None("Does not repeat", null),
-    EveryDay("Everyday", "FREQ=DAILY;INTERVAL=1"),
-    EveryWeek("Weekly", "FREQ=WEEKLY;INTERVAL=1"),
-    EveryMonth("Monthly", "FREQ=MONTHLY;INTERVAL=1");
-
-    companion object {
-        fun fromRRule(rrule: String?): RepeatPreset =
-            entries.firstOrNull { it.rrule == rrule } ?: None
-    }
-}

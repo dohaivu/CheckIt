@@ -35,18 +35,14 @@ import com.checkit.domain.SubTaskItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskFilter
 import com.checkit.domain.TaskItem
+import com.checkit.domain.RepeatRule
 import com.checkit.domain.TaskPriority
-import com.checkit.domain.TaskReminder
-import com.checkit.domain.TaskReminderWriteInput
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TagItem
 import com.checkit.domain.TaskType
 import com.checkit.domain.hasEndTime
 import com.checkit.notifications.DailyPlanScheduleReminderScheduler
 import com.checkit.notifications.NoOpDailyPlanScheduleReminderScheduler
-import com.checkit.notifications.NoOpTaskReminderNotificationScheduler
-import com.checkit.notifications.ScheduledTaskReminder
-import com.checkit.notifications.TaskReminderNotificationScheduler
 import com.checkit.ui.tasks.views.currentTimeMinutes
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -60,6 +56,11 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
 import kotlin.uuid.Uuid
+import com.checkit.domain.usecase.NestedDocumentExport
+import com.checkit.domain.usecase.toExport
+import com.checkit.domain.usecase.flattenExportItems
+import com.checkit.domain.usecase.remapItemsForImport
+import com.checkit.domain.usecase.resolveUniqueTitle
 
 interface CheckItRepository {
     fun observeTaskBoard(onlyOpen: Boolean = true): Flow<TaskBoard>
@@ -172,6 +173,7 @@ interface CheckItRepository {
     suspend fun addNestedDocument(title: String): String
     suspend fun renameNestedDocument(documentId: String, title: String)
     suspend fun deleteNestedDocument(documentId: String)
+    suspend fun reorderNestedDocuments(documentIds: List<String>)
     suspend fun addNestedItem(documentId: String, parentId: String?, text: String, position: Int?): String
     suspend fun updateNestedItemText(itemId: String, text: String)
     suspend fun updateNestedItemNote(itemId: String, note: String?)
@@ -190,6 +192,8 @@ interface CheckItRepository {
     suspend fun deleteNestedItems(itemIds: List<String>)
     suspend fun exportBackupJson(): String
     suspend fun importBackupJson(json: String)
+    suspend fun exportNestedDocumentJson(documentId: String): String
+    suspend fun importNestedDocumentJson(json: String): String
 }
 
 data class DailyPlanItemTimeUpdate(
@@ -221,11 +225,10 @@ data class TaskWriteInput(
     val doDate: LocalDate?,
     val startTimeMinutes: Int?,
     val endTimeMinutes: Int?,
-    val repeatRRule: String?,
+    val repeatRule: RepeatRule,
     val label: String? = null,
     val isPinned: Boolean = false,
     val metrics: List<MetricItem> = emptyList(),
-    val reminders: List<TaskReminderWriteInput>,
     val tagIds: List<String>
 )
 
@@ -271,7 +274,6 @@ data class JournalEntryWriteInput(
 
 class RoomCheckItRepository(
     private val dao: CheckItDao,
-    private val reminderNotificationScheduler: TaskReminderNotificationScheduler = NoOpTaskReminderNotificationScheduler(),
     private val dailyPlanScheduleReminderScheduler: DailyPlanScheduleReminderScheduler =
         NoOpDailyPlanScheduleReminderScheduler(),
     private val quickNoteDao: QuickNoteDao? = null,
@@ -342,11 +344,10 @@ class RoomCheckItRepository(
 
         val joinsFlow = combine(
             dao.observeSubTasks(),
-            dao.observeReminders(),
             dao.observeTaskTags(),
             dao.observeNoteTags()
-        ) { subTasks, reminders, taskTags, noteTags ->
-            TaskBoardJoins(subTasks, reminders, taskTags, noteTags)
+        ) { subTasks, taskTags, noteTags ->
+            TaskBoardJoins(subTasks, taskTags, noteTags)
         }
 
         val metadataFlow = combine(
@@ -376,7 +377,6 @@ class RoomCheckItRepository(
             val taskTagIds = joins.taskTags.groupBy { it.taskId }.mapValues { entry -> entry.value.map { it.tagId } }
             val noteTagIds = joins.noteTags.groupBy { it.noteId }.mapValues { entry -> entry.value.map { it.tagId } }
             val subTasksByTask = joins.subTasks.groupBy { it.taskId }
-            val remindersByTask = joins.reminders.groupBy { it.taskId }
 
             val taskListMap = metadata.taskLists.associateBy { it.taskId }
             val noteListMap = metadata.noteLists.associateBy { it.noteId }
@@ -388,7 +388,6 @@ class RoomCheckItRepository(
                     val listJoin = taskListMap[entity.id]
                     val list = listJoin?.listId?.let { listsById[it] }
                     val subtasks = subTasksByTask[entity.id].orEmpty().map { it.toDomain() }
-                    val reminders = remindersByTask[entity.id].orEmpty().map { it.toDomain() }
                     val itemTags = taskTagIds[entity.id].orEmpty().mapNotNull { tagsById[it] }
                     val listSortOrder = listJoin?.sortOrder ?: 0
                     val isPinned = listJoin?.isPinned ?: false
@@ -405,14 +404,13 @@ class RoomCheckItRepository(
                             completedDateEpochDays = entity.completedDateEpochDays,
                             startTimeMinutes = entity.startTimeMinutes,
                             endTimeMinutes = entity.endTimeMinutes,
-                            repeatRRule = entity.repeatRRule,
+                            repeatRule = RepeatRule.decode(entity.repeatRuleJson) ?: RepeatRule.None,
                             label = entity.label,
                             createdAtMillis = entity.createdAtMillis,
                             updatedAtMillis = entity.updatedAtMillis,
                             trashedAtMillis = entity.trashedAtMillis,
                             resolvedListId = list?.id,
                             resolvedSubtasks = subtasks,
-                            resolvedReminders = reminders,
                             resolvedTags = itemTags,
                             resolvedSortOrder = listSortOrder,
                             resolvedIsPinned = isPinned,
@@ -425,7 +423,6 @@ class RoomCheckItRepository(
                         val newItem = entity.toDomain(
                             list = list,
                             subtasks = subtasks,
-                            reminders = reminders,
                             tags = itemTags,
                             listSortOrder = listSortOrder,
                             isPinned = isPinned,
@@ -646,7 +643,9 @@ class RoomCheckItRepository(
                 doDateEpochDays = if (isTask) input.doDate?.toEpochDays()?.toInt() else null,
                 startTimeMinutes = if (isTask) input.startTimeMinutes else null,
                 endTimeMinutes = if (isTask) input.endTimeMinutes else null,
-                repeatRRule = if (isTask) input.repeatRRule else null,
+                // Habits repeat too (AutoAddTodayTasksToMyDayUseCase gates on it),
+                // so the rule is stored for every type.
+                repeatRuleJson = RepeatRule.encode(input.repeatRule),
                 label = input.label,
                 metricsJson = Json.encodeToString(input.metrics.map { it.normalized() }),
                 createdAtMillis = now,
@@ -666,8 +665,6 @@ class RoomCheckItRepository(
         }
         input.tagIds.forEach { tagId -> addTaskTag(taskId, tagId) }
         dao.replaceTaskSubTasks(taskId, input.subtasks)
-        dao.replaceTaskReminders(taskId, input.reminders)
-        scheduleTaskReminders(taskId, input)
         return taskId
     }
 
@@ -683,7 +680,7 @@ class RoomCheckItRepository(
             doDateEpochDays = if (isTask) input.doDate?.toEpochDays()?.toInt() else null,
             startTimeMinutes = if (isTask) input.startTimeMinutes else null,
             endTimeMinutes = if (isTask) input.endTimeMinutes else null,
-            repeatRRule = if (isTask) input.repeatRRule else null,
+            repeatRuleJson = RepeatRule.encode(input.repeatRule),
             label = input.label,
             metricsJson = Json.encodeToString(input.metrics.map { it.normalized() }),
             updatedAtMillis = Clock.System.now().toEpochMilliseconds()
@@ -713,15 +710,12 @@ class RoomCheckItRepository(
         dao.deleteTaskTags(taskId)
         input.tagIds.forEach { tagId -> addTaskTag(taskId, tagId) }
         dao.replaceTaskSubTasks(taskId, input.subtasks)
-        dao.replaceTaskReminders(taskId, input.reminders)
-        scheduleTaskReminders(taskId, input)
     }
 
     override suspend fun trashTask(taskId: String) {
         val now = Clock.System.now().toEpochMilliseconds()
         dao.trashTask(taskId, now)
         dao.deletePlannedDailyPlanItemsForTask(taskId, now)
-        reminderNotificationScheduler.cancelTaskReminders(taskId)
         dailyPlanScheduleReminderScheduler.rescheduleNext()
     }
 
@@ -739,7 +733,6 @@ class RoomCheckItRepository(
             completedDateEpochDays = today.toEpochDays().toInt(),
             updatedAtMillis = completedAtMillis
         )
-        reminderNotificationScheduler.cancelTaskReminders(taskId)
     }
 
     override suspend fun updateTaskStatus(taskId: String, status: TaskStatus) {
@@ -984,14 +977,12 @@ class RoomCheckItRepository(
             listEntity.toDomain(sections.map { it.toDomain() })
         }
         val subtasks = dao.subTasksForTask(taskId).map { it.toDomain() }
-        val reminders = dao.remindersForTask(taskId).map { it.toDomain() }
         val tagIds = dao.tagIdsForTask(taskId)
         val tags = if (tagIds.isNotEmpty()) dao.tagsByIds(tagIds).map { it.toDomain() } else emptyList()
 
         return entity.toDomain(
             list = list,
             subtasks = subtasks,
-            reminders = reminders,
             tags = tags,
             listSortOrder = listJoin?.sortOrder ?: 0,
             isPinned = listJoin?.isPinned ?: false,
@@ -1500,6 +1491,7 @@ class RoomCheckItRepository(
             NestedDocumentEntity(
                 id = id,
                 title = trimmed,
+                sortOrder = dao.nextNestedDocumentSortOrder(),
                 createdAtMillis = now,
                 updatedAtMillis = now
             )
@@ -1513,6 +1505,11 @@ class RoomCheckItRepository(
 
     override suspend fun deleteNestedDocument(documentId: String) {
         dao.deleteNestedDocument(documentId, Clock.System.now().toEpochMilliseconds())
+    }
+
+    override suspend fun reorderNestedDocuments(documentIds: List<String>) {
+        if (documentIds.isEmpty()) return
+        dao.reorderNestedDocuments(documentIds, Clock.System.now().toEpochMilliseconds())
     }
 
     override suspend fun addNestedItem(documentId: String, parentId: String?, text: String, position: Int?): String {
@@ -1641,6 +1638,120 @@ class RoomCheckItRepository(
         dao.deleteNestedItems(itemIds, Clock.System.now().toEpochMilliseconds())
     }
 
+    override suspend fun exportNestedDocumentJson(documentId: String): String {
+        val tree = observeNestedDocumentTree(documentId).first()
+        require(tree.document.id.isNotBlank()) { "Document not found: $documentId" }
+        return tree.toExport().toJson()
+    }
+
+    override suspend fun importNestedDocumentJson(json: String): String {
+        val export = NestedDocumentExport.fromJson(json)
+        val existingDocs = dao.getAllNestedDocumentsOnce()
+        val existingLiveDocs = existingDocs.filter { !it.deleted }
+        val existingTitles = existingLiveDocs.map { it.title }.toSet()
+
+        val finalTitle = resolveUniqueTitle(export.document.title, existingTitles)
+
+        val docIdExists = export.document.id.isNotBlank() && existingDocs.any { it.id == export.document.id }
+        val flatItems = flattenExportItems(export.items)
+
+        val anyItemIdExists = docIdExists || flatItems.any { item ->
+            item.id.isNotBlank() && dao.nestedItemById(item.id) != null
+        }
+
+        val reassignIds = docIdExists || export.document.id.isBlank() || anyItemIdExists
+        val finalDocId = if (reassignIds) Uuid.random().toString() else export.document.id
+        val preparedItems = remapItemsForImport(flatItems, finalDocId, reassignIds)
+
+        val now = Clock.System.now().toEpochMilliseconds()
+        val docEntity = NestedDocumentEntity(
+            id = finalDocId,
+            title = finalTitle,
+            sortOrder = dao.nextNestedDocumentSortOrder(),
+            createdAtMillis = if (export.document.createdAtMillis > 0) export.document.createdAtMillis else now,
+            updatedAtMillis = now,
+            dirty = true,
+            deleted = false
+        )
+        dao.insertNestedDocument(docEntity)
+
+        val allTags = dao.getAllTagsOnce().associateBy { it.name.lowercase().trim() }.toMutableMap()
+        val tagIdByName = mutableMapOf<String, String>()
+        val distinctTagNames = preparedItems.flatMap { it.tags }.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+
+        distinctTagNames.forEach { tagName ->
+            val key = tagName.lowercase()
+            val existing = allTags[key]
+            if (existing != null) {
+                tagIdByName[key] = existing.id
+            } else {
+                val newTagId = Uuid.random().toString()
+                val newTag = TagEntity(
+                    id = newTagId,
+                    name = tagName,
+                    color = "#3B82F6",
+                    sortOrder = dao.nextTagSortOrder(),
+                    createdAtMillis = now,
+                    updatedAtMillis = now
+                )
+                dao.insertTag(newTag)
+                allTags[key] = newTag
+                tagIdByName[key] = newTagId
+            }
+        }
+
+        val itemEntities = mutableListOf<NestedListItemEntity>()
+        val itemTagLinks = mutableListOf<NestedItemTagEntity>()
+
+        preparedItems.forEach { item ->
+            itemEntities.add(
+                NestedListItemEntity(
+                    id = item.id,
+                    documentId = finalDocId,
+                    parentId = item.parentId,
+                    position = item.position,
+                    text = item.text,
+                    note = item.note?.takeIf { it.isNotBlank() },
+                    checkboxEnabled = item.checkboxEnabled,
+                    checked = item.checked,
+                    completedAtMillis = item.completedAtMillis,
+                    collapsed = item.collapsed,
+                    textStyle = runCatching { NestedTextStyle.valueOf(item.textStyle) }.getOrDefault(NestedTextStyle.Body).name,
+                    textColor = runCatching { NestedColorToken.valueOf(item.textColor) }.getOrDefault(NestedColorToken.Default).name,
+                    backgroundColor = runCatching { NestedColorToken.valueOf(item.backgroundColor) }.getOrDefault(NestedColorToken.Default).name,
+                    startDateEpochDays = item.startDate?.let { runCatching { LocalDate.parse(it).toEpochDays().toInt() }.getOrNull() },
+                    endDateEpochDays = item.endDate?.let { runCatching { LocalDate.parse(it).toEpochDays().toInt() }.getOrNull() },
+                    priority = runCatching { TaskPriority.valueOf(item.priority) }.getOrDefault(TaskPriority.None).name,
+                    actualMinutes = item.actualMinutes,
+                    metricRollupPolicy = runCatching { MetricRollupPolicy.valueOf(item.metricRollupPolicy) }.getOrDefault(MetricRollupPolicy.IncludeChildren).name,
+                    showTrackedMinutes = item.showTrackedMinutes,
+                    progressPercent = item.progressPercent,
+                    createdAtMillis = if (item.createdAtMillis > 0) item.createdAtMillis else now,
+                    updatedAtMillis = now,
+                    dirty = true,
+                    deleted = false,
+                    manualMetricsJson = if (item.manualMetrics.isNotEmpty()) {
+                        metricsJsonFormat.encodeToString(item.manualMetrics)
+                    } else "[]"
+                )
+            )
+            item.tags.forEach { tag ->
+                tagIdByName[tag.trim().lowercase()]?.let { tagId ->
+                    itemTagLinks.add(NestedItemTagEntity(itemId = item.id, tagId = tagId))
+                }
+            }
+        }
+
+        if (itemEntities.isNotEmpty()) {
+            dao.insertNestedListItems(itemEntities)
+        }
+        if (itemTagLinks.isNotEmpty()) {
+            dao.insertNestedItemTags(itemTagLinks)
+        }
+
+        return finalDocId
+    }
+
     override suspend fun exportBackupJson(): String {
         val backup = CheckItBackup(
             exportedAtMillis = Clock.System.now().toEpochMilliseconds(),
@@ -1650,7 +1761,6 @@ class RoomCheckItRepository(
             tags = dao.getAllTagsOnce(),
             tasks = dao.getAllTasksOnce(),
             subTasks = dao.getAllSubTasksOnce(),
-            taskReminders = dao.getAllTaskRemindersOnce(),
             taskTags = dao.getAllTaskTagsOnce(),
             taskLists = dao.getAllTaskListsOnce(),
             notes = dao.getAllNotesOnce(),
@@ -1741,24 +1851,6 @@ class RoomCheckItRepository(
             editedAtMillis = Clock.System.now().toEpochMilliseconds()
         )
     }
-
-    private suspend fun scheduleTaskReminders(taskId: String, input: TaskWriteInput) {
-        if (input.status == TaskStatus.Completed) {
-            reminderNotificationScheduler.cancelTaskReminders(taskId)
-            return
-        }
-        reminderNotificationScheduler.scheduleTaskReminders(
-            taskId = taskId,
-            reminders = input.reminders.map { reminder ->
-                ScheduledTaskReminder(
-                    taskId = taskId,
-                    taskName = input.name,
-                    remindAtMillis = reminder.remindAtMillis,
-                    label = reminder.label
-                )
-            }
-        )
-    }
 }
 
 private val backupJson = Json {
@@ -1775,7 +1867,6 @@ private data class TaskBoardRows(
 
 private data class TaskBoardJoins(
     val subTasks: List<SubTaskEntity>,
-    val reminders: List<TaskReminderEntity>,
     val taskTags: List<TaskTagEntity>,
     val noteTags: List<NoteTagEntity>
 )
@@ -1830,7 +1921,6 @@ private fun TaskFilterEntity.toDomain() = TaskFilter(
 private fun TaskEntity.toDomain(
     list: ListItem?,
     subtasks: List<SubTaskItem>,
-    reminders: List<TaskReminder>,
     tags: List<TagItem>,
     listSortOrder: Int,
     isPinned: Boolean,
@@ -1849,8 +1939,7 @@ private fun TaskEntity.toDomain(
     completedDate = completedDateEpochDays?.let { LocalDate.fromEpochDays(it) },
     startTimeMinutes = startTimeMinutes,
     endTimeMinutes = endTimeMinutes,
-    reminders = reminders,
-    repeatRRule = repeatRRule,
+    repeatRule = RepeatRule.decode(repeatRuleJson) ?: RepeatRule.None,
     label = label,
     sortOrder = listSortOrder,
     isPinned = isPinned,
@@ -1978,13 +2067,6 @@ private fun SubTaskEntity.toDomain() = SubTaskItem(
     name = name,
     isCompleted = isCompleted,
     sortOrder = sortOrder
-)
-
-private fun TaskReminderEntity.toDomain() = TaskReminder(
-    id = id,
-    taskId = taskId,
-    remindAtMillis = remindAtMillis,
-    label = label
 )
 
 private fun NoteEntity.toDomain(

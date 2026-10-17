@@ -16,7 +16,6 @@ import com.checkit.notifications.AndroidAppReminderScheduler
 import com.checkit.notifications.AndroidCountdownScheduler
 import com.checkit.notifications.AndroidRoutineReminderScheduler
 import com.checkit.notifications.AndroidSprintNotificationScheduler
-import com.checkit.notifications.AndroidTaskReminderNotificationScheduler
 import com.checkit.notifications.AppReminderScheduler
 import com.checkit.notifications.CheckInReminderForceRunner
 import com.checkit.notifications.CountdownScheduler
@@ -24,7 +23,6 @@ import com.checkit.notifications.DailyPlanScheduleReminderScheduler
 import com.checkit.notifications.QuickNoteReminderScheduler
 import com.checkit.notifications.RoutineReminderScheduler
 import com.checkit.notifications.SprintNotificationScheduler
-import com.checkit.notifications.TaskReminderNotificationScheduler
 import com.checkit.platform.AndroidBackupScheduler
 import com.checkit.platform.BackupScheduler
 import com.checkit.ui.quicknote.AndroidQuickNoteCameraCapture
@@ -33,7 +31,6 @@ import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
 
 actual fun platformModule() = module {
-    single<TaskReminderNotificationScheduler> { AndroidTaskReminderNotificationScheduler(androidContext()) }
     single<DailyPlanScheduleReminderScheduler> {
         AndroidDailyPlanScheduleReminderScheduler(androidContext(), get())
     }

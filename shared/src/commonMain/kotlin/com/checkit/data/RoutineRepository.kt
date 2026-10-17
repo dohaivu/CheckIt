@@ -1,14 +1,13 @@
 package com.checkit.data
 
+import com.checkit.domain.AllWeekdays
 import com.checkit.domain.Routine
 import com.checkit.domain.RoutineDefaultColorHex
 import com.checkit.domain.RoutineLog
 import com.checkit.domain.RoutineStepTemplate
-import com.checkit.domain.decodeActiveWeekdays
+import com.checkit.domain.RepeatRule
 import com.checkit.domain.decodeRoutineSteps
-import com.checkit.domain.encodeActiveWeekdays
 import com.checkit.domain.encodeRoutineSteps
-import kotlinx.datetime.DayOfWeek
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlin.time.Clock
@@ -22,7 +21,7 @@ interface RoutineRepository {
         title: String,
         description: String,
         reminderMinutes: Int?,
-        activeWeekdays: Set<DayOfWeek>,
+        repeatRule: RepeatRule,
         steps: List<RoutineStepTemplate>,
         color: String = RoutineDefaultColorHex
     ): String
@@ -48,7 +47,7 @@ class RoomRoutineRepository(
         title: String,
         description: String,
         reminderMinutes: Int?,
-        activeWeekdays: Set<DayOfWeek>,
+        repeatRule: RepeatRule,
         steps: List<RoutineStepTemplate>,
         color: String
     ): String {
@@ -72,7 +71,7 @@ class RoomRoutineRepository(
                 title = trimmed,
                 description = description.trim(),
                 reminderMinutes = reminderMinutes,
-                activeWeekdaysJson = encodeActiveWeekdays(activeWeekdays),
+                repeatRuleJson = RepeatRule.encode(repeatRule),
                 sortOrder = existing?.sortOrder ?: dao.nextRoutineSortOrder(),
                 stepsJson = encodeRoutineSteps(normalizedSteps),
                 color = color.ifBlank { existing?.color ?: RoutineDefaultColorHex },
@@ -113,7 +112,7 @@ fun RoutineEntity.toDomain(): Routine = Routine(
     title = title,
     description = description,
     reminderMinutes = reminderMinutes,
-    activeWeekdays = decodeActiveWeekdays(activeWeekdaysJson),
+    repeatRule = RepeatRule.decode(repeatRuleJson) ?: RepeatRule.weekly(AllWeekdays),
     sortOrder = sortOrder,
     steps = decodeRoutineSteps(stepsJson).sortedBy { it.sortOrder },
     color = color,

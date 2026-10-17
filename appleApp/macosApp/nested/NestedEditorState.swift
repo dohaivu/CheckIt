@@ -15,12 +15,19 @@ import SwiftUI
 import Combine
 import AppKit
 import Shared
+import UniformTypeIdentifiers
 
 /// Outline display filter. Named to avoid clashing with the shared
 /// Kotlin `NestedDisplayType` (Android filter state) in the Shared module.
 enum NestedDisplayFilter {
     case all
     case working
+}
+
+/// Tab shown in the trailing inspector pane. Persisted as its raw value.
+enum NestedInspectorTab: String {
+    case details
+    case note
 }
 
 /// One visible outline row: node + indent depth.
@@ -85,6 +92,11 @@ final class NestedEditorState: ObservableObject {
             recomputeVisibleRows()
         }
     }
+    /// Max lines of the note preview drawn under an outline row.
+    /// 0 means unlimited; persisted like `displayType`.
+    @Published var noteLineLimit: Int = 5 {
+        didSet { UserDefaults.standard.set(noteLineLimit, forKey: "nested.noteLineLimit") }
+    }
     @Published var searchQuery: String = "" {
         didSet {
             if searchQuery.isEmpty {
@@ -105,9 +117,26 @@ final class NestedEditorState: ObservableObject {
     @Published var editingId: String? = nil
     @Published var draft: NestedDraft? = nil
     @Published var showDeleteConfirm = false
+    @Published var showNoteSheet = false
+    @Published var showDetailsSheet = false
+    /// Sidebar visibility; persisted so the window restores its layout.
+    @Published var showSidebar = true {
+        didSet { UserDefaults.standard.set(showSidebar, forKey: "nested.showSidebar") }
+    }
+    /// Trailing inspector visibility; persisted. Independent of the
+    /// note/details sheets, which remain available as a legacy path.
+    @Published var showInspector = true {
+        didSet { UserDefaults.standard.set(showInspector, forKey: "nested.showInspector") }
+    }
+    /// Active inspector tab (details/metrics vs note); persisted.
+    @Published var inspectorTab: NestedInspectorTab = .details {
+        didSet { UserDefaults.standard.set(inspectorTab.rawValue, forKey: "nested.inspectorTab") }
+    }
     @Published var lastError: String? = nil
     @Published var draggedId: String? = nil
     @Published var dropTarget: NestedDropTarget? = nil
+    @Published var docDropTargetId: String? = nil
+    @Published var docDropBelow: Bool = false
     @Published private(set) var visibleRows: [NestedRow] = []
     @Published var toastMessage: String? = nil
 
@@ -125,6 +154,19 @@ final class NestedEditorState: ObservableObject {
         helper = NestedAppleBridge.shared.helper()
         if UserDefaults.standard.string(forKey: "nested.displayType") == "working" {
             displayType = .working
+        }
+        if let v = UserDefaults.standard.object(forKey: "nested.noteLineLimit") as? Int {
+            noteLineLimit = max(0, min(50, v))
+        }
+        if let v = UserDefaults.standard.object(forKey: "nested.showSidebar") as? Bool {
+            showSidebar = v
+        }
+        if let v = UserDefaults.standard.object(forKey: "nested.showInspector") as? Bool {
+            showInspector = v
+        }
+        if let raw = UserDefaults.standard.string(forKey: "nested.inspectorTab"),
+           let tab = NestedInspectorTab(rawValue: raw) {
+            inspectorTab = tab
         }
     }
 
@@ -177,10 +219,12 @@ final class NestedEditorState: ObservableObject {
             else { return event }
 
             if event.type == .leftMouseUp {
-                if self.draggedId != nil || self.dropTarget != nil {
+                if self.draggedId != nil || self.dropTarget != nil ||
+                    self.docDropTargetId != nil {
                     MainActor.assumeIsolated {
                         self.draggedId = nil
                         self.dropTarget = nil
+                        self.clearDocDropTarget()
                     }
                 }
                 return event
@@ -203,6 +247,18 @@ final class NestedEditorState: ObservableObject {
         guard editingId == nil, draft == nil, selectedId != nil else { return false }
         if shift { outdentSelected() } else { indentSelected() }
         return true
+    }
+
+    // MARK: - Panes (sidebar / inspector)
+
+    func toggleSidebar() { showSidebar.toggle() }
+
+    func toggleInspector() { showInspector.toggle() }
+
+    /// Selected node's item, or nil when nothing/stale is selected.
+    var selectedItem: NestedListItem? {
+        guard let id = selectedId else { return nil }
+        return indexById[id]?.item
     }
 
     // MARK: - Documents
@@ -242,6 +298,35 @@ final class NestedEditorState: ObservableObject {
                 if !newId.isEmpty { self?.openDocument(id: newId) }
             }
         }
+    }
+
+    /// Sidebar drag-drop: move the dragged document above (`below` false)
+    /// or below the target row, then persist the order. Skips when the
+    /// result matches the current order (self-drops, no-op moves), so no
+    /// redundant sync churn. Unknown ids are ignored.
+    func moveDocument(draggedId: String, onto targetId: String, below: Bool) {
+        var ids = documents.map { $0.id }.filter { $0 != draggedId }
+        guard ids.count != documents.count,
+              targetId != draggedId,
+              let idx = ids.firstIndex(of: targetId)
+        else { return }
+        ids.insert(draggedId, at: below ? idx + 1 : idx)
+        guard ids != documents.map({ $0.id }) else { return }
+        helper.reorderDocuments(documentIds: ids)
+    }
+
+    func clearDocDropTarget() {
+        docDropTargetId = nil
+        docDropBelow = false
+    }
+
+    /// Hover highlight with same-value guard: dropEntered fires on every
+    /// pointer movement, and republishing identical values rebuilds the
+    /// list mid-drag (flicker, wedged sessions, stuck highlight).
+    func showDocDropTarget(id: String, below: Bool) {
+        if docDropTargetId == id && docDropBelow == below { return }
+        docDropTargetId = id
+        docDropBelow = below
     }
 
     func renameDocument(id: String, title: String) {
@@ -838,6 +923,43 @@ final class NestedEditorState: ObservableObject {
         }
     }
 
+    /// Sibling group of the selection (roots when parentless), in position order.
+    private func siblingGroup() -> [NestedItemNode]? {
+        guard let id = selectedId, let tree else { return nil }
+        if let pid = indexById[id]?.item.parentId, !pid.isEmpty {
+            return indexById[pid]?.children
+        }
+        return tree.rootNodes
+    }
+
+    /// Move selection within the sibling group, clamped at the ends.
+    func moveToSibling(by delta: Int) {
+        // Same view-update deferral as moveSelection above.
+        Task { @MainActor [weak self] in
+            guard let self,
+                  let group = self.siblingGroup(),
+                  let id = self.selectedId,
+                  let idx = group.firstIndex(where: { $0.item.id == id }),
+                  !group.isEmpty
+            else { return }
+            self.selectedId = group[min(max(idx + delta, 0), group.count - 1)].item.id
+            self.editingId = nil
+        }
+    }
+
+    /// Jump selection to the first/last sibling.
+    func moveToSiblingEnd(first: Bool) {
+        // Same view-update deferral as moveSelection above.
+        Task { @MainActor [weak self] in
+            guard let self,
+                  let group = self.siblingGroup(),
+                  !group.isEmpty
+            else { return }
+            self.selectedId = (first ? group.first : group.last)!.item.id
+            self.editingId = nil
+        }
+    }
+
     // MARK: - Markdown export
 
     func markdown(includeTitle: Bool = false) -> String {
@@ -890,9 +1012,63 @@ final class NestedEditorState: ObservableObject {
         copyToClipboard(text, message: msg)
     }
 
-    private func copyToClipboard(_ text: String, message: String = "Copied as Markdown") {
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(text, forType: .string)
+    // MARK: - JSON Export & Import
+
+    func exportDocumentToJson(document: NestedDocument) {
+        let panel = NSSavePanel()
+        panel.title = "Export Document as JSON"
+        panel.allowedContentTypes = [.json]
+        let sanitized = document.title
+            .replacingOccurrences(of: "/", with: "-")
+            .replacingOccurrences(of: ":", with: "-")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        panel.nameFieldStringValue = "\(sanitized.isEmpty ? "document" : sanitized).json"
+        panel.canCreateDirectories = true
+
+        if panel.runModal() == .OK, let url = panel.url {
+            helper.exportDocumentToJson(documentId: document.id) { [weak self] json, error in
+                guard let self else { return }
+                if let json {
+                    do {
+                        try json.write(to: url, atomically: true, encoding: .utf8)
+                        self.showToast("Exported to JSON")
+                    } catch {
+                        self.showToast("Export failed: \(error.localizedDescription)")
+                    }
+                } else if let error {
+                    self.showToast("Export failed: \(error)")
+                }
+            }
+        }
+    }
+
+    func importDocumentFromJson() {
+        let panel = NSOpenPanel()
+        panel.title = "Import Document from JSON"
+        panel.allowedContentTypes = [.json]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+
+        if panel.runModal() == .OK, let url = panel.url {
+            do {
+                let json = try String(contentsOf: url, encoding: .utf8)
+                helper.importDocumentFromJson(json: json) { [weak self] newDocId, error in
+                    guard let self else { return }
+                    if let newDocId, !newDocId.isEmpty {
+                        self.openDocument(id: newDocId)
+                        self.showToast("Imported document")
+                    } else if let error {
+                        self.showToast("Import failed: \(error)")
+                    }
+                }
+            } catch {
+                showToast("Failed to read file: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    func showToast(_ message: String) {
         toastMessage = message
         Task { @MainActor [weak self] in
             try? await Task.sleep(nanoseconds: 2_000_000_000)
@@ -900,6 +1076,12 @@ final class NestedEditorState: ObservableObject {
                 self?.toastMessage = nil
             }
         }
+    }
+
+    private func copyToClipboard(_ text: String, message: String = "Copied as Markdown") {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+        showToast(message)
     }
 }
 

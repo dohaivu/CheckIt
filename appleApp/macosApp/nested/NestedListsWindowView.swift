@@ -22,6 +22,7 @@ struct NestedListsWindowView: View {
     @ObservedObject private var account = QuickNoteGoogleSignIn.shared
     @FocusState private var focusedRow: String?
     @FocusState private var draftFocused: Bool
+    @FocusState private var searchFocused: Bool
 
     @State private var showNewDoc = false
     @State private var newDocTitle = ""
@@ -32,16 +33,43 @@ struct NestedListsWindowView: View {
 
     @State private var showMoveSheet = false
     @State private var moveDestinationId: String? = nil
+    @State private var showSortMenu = false
+    @State private var showCheatsheet = false
     @State private var draftText = ""
 
+    // MARK: - Window sizing
+
+    /// Smallest content size that shows all three panes without clipping:
+    /// sidebar (240) + detail (760) + inspector (350) plus the two dividers.
+    static let minContentWidth: CGFloat = 1360
+    static let minContentHeight: CGFloat = 680
+    /// Default content size — wide enough to open with every pane visible.
+    static let defaultContentSize = NSSize(width: 1440, height: 820)
+    private static let sidebarWidth: CGFloat = 240
+    
     var body: some View {
-        HSplitView {
-            sidebar
-                .frame(minWidth: 200, idealWidth: 200, maxWidth: 300, maxHeight: .infinity)
-            detail
-                .frame(minWidth: 760, idealWidth: 760, maxWidth: .infinity, maxHeight: .infinity)
+        // Layout notes (this shape is deliberate; a constraint pass used to
+        // loop forever and abort the app):
+        //  • HSplitView must always keep the same number of children. Hiding
+        //    the sidebar by removing it leaves a single-child split view,
+        //    which thrashes Auto Layout — so the leading child is stable and
+        //    the sidebar collapses to zero width instead.
+        //  • The inspector is a plain fixed-width trailing sibling rather
+        //    than `.inspector(...)`, whose column-size negotiation also
+        //    fought the split view's constraints.
+        HStack(spacing: 0) {
+            HSplitView {
+                sidebarColumn
+                detail
+                    .frame(minWidth: 760, idealWidth: 760, maxWidth: .infinity, maxHeight: .infinity)
+            }
+            if state.showInspector {
+                Divider()
+                NestedInspectorPane(state: state)
+                    .frame(width: 350)
+            }
         }
-        .frame(minWidth: 960, minHeight: 680)
+        .frame(minWidth: Self.minContentWidth, minHeight: Self.minContentHeight)
         // Pin the outline to the light theme: the bright canvas/cream
         // selection assume dark ink, so every component inside resolves
         // its semantic colors (.primary/.secondary/...) to light values.
@@ -107,6 +135,19 @@ struct NestedListsWindowView: View {
         } message: {
             Text(deleteDoc?.title ?? "")
         }
+        // Legacy sheet paths for note/details. The formatting bar and the
+        // N/D keys reveal the inspector instead; these stay reachable via
+        // ⌥N/⌥D and the row context menu.
+        .sheet(isPresented: $state.showNoteSheet) {
+            if let item = state.selectedItem {
+                NestedNoteSheet(state: state, item: item)
+            }
+        }
+        .sheet(isPresented: $state.showDetailsSheet) {
+            if let item = state.selectedItem {
+                NestedDetailsSheet(state: state, item: item)
+            }
+        }
     }
 
     // MARK: - Sidebar
@@ -118,15 +159,62 @@ struct NestedListsWindowView: View {
         )
     }
 
+    /// Stable leading child for the `HSplitView`. Wrapped in a concrete
+    /// container so the split view always sees exactly two children; when
+    /// hidden, the sidebar collapses to zero width instead of disappearing.
+    ///
+    /// The width is pinned (not `minWidth`/`idealWidth`/`maxWidth`) so the
+    /// split view can't re-derive it from the sidebar's content — otherwise
+    /// selecting a different document shifts the divider as the fitting width
+    /// of the document list / sync row changes.
+    private var sidebarColumn: some View {
+        VStack(spacing: 0) {
+            if state.showSidebar {
+                sidebar
+            }
+        }
+        .frame(width: state.showSidebar ? Self.sidebarWidth : 0)
+        .frame(maxHeight: .infinity)
+    }
+
     private var sidebar: some View {
         VStack(spacing: 0) {
             List(state.documents, id: \.id, selection: docSelection) { doc in
                 Label(doc.title.isEmpty ? "Untitled document" : doc.title, systemImage: "list.bullet")
+                    .onDrag { NSItemProvider(object: "nested-doc:\(doc.id)" as NSString) }
+                    // Top/bottom halves are separate drop zones (insert above /
+                    // below), so no geometry measuring is needed and the list
+                    // end stays reachable via the last row's bottom half.
+                    .background {
+                        VStack(spacing: 0) {
+                            Color.clear
+                                .contentShape(Rectangle())
+                                .onDrop(of: [.text], delegate: NestedDocDropDelegate(state: state, targetId: doc.id, below: false))
+                            Color.clear
+                                .contentShape(Rectangle())
+                                .onDrop(of: [.text], delegate: NestedDocDropDelegate(state: state, targetId: doc.id, below: true))
+                        }
+                    }
+                    .listRowBackground(
+                        state.docDropTargetId == doc.id ? Color.accentColor.opacity(0.15) : Color.clear
+                    )
+                    .overlay(alignment: state.docDropBelow ? .bottom : .top) {
+                        if state.docDropTargetId == doc.id {
+                            Rectangle()
+                                .fill(Color.accentColor)
+                                .frame(height: 2)
+                        }
+                    }
                     .contextMenu {
                         Button {
                             state.copyDocumentAsMarkdown(id: doc.id)
                         } label: {
                             Label("Copy as Markdown", systemImage: "doc.on.doc")
+                        }
+                        Button {
+                            state.exportDocumentToJson(document: doc)
+                        } label: {
+                            Label("Export to JSON…", systemImage: "square.and.arrow.up")
                         }
                         Divider()
                         Button("Rename") { renameDoc = doc; showRename = true }
@@ -135,6 +223,7 @@ struct NestedListsWindowView: View {
             }
             .listStyle(.sidebar)
             Divider()
+            Divider()
             Button {
                 newDocTitle = ""
                 showNewDoc = true
@@ -142,10 +231,62 @@ struct NestedListsWindowView: View {
                 Label("New document", systemImage: "plus")
             }
             .buttonStyle(.plain)
-            .padding(8)
+            .padding(.horizontal, 8)
+            .padding(.top, 8)
+
+            Button {
+                state.importDocumentFromJson()
+            } label: {
+                Label("Import from JSON…", systemImage: "square.and.arrow.down")
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
             Divider()
             nestedDocsSyncRow
                 .padding(12)
+        }
+    }
+
+    /// Sidebar document reorder: each row's top/bottom half is a drop zone
+    /// (insert above / below the row). Hover highlights the row with an
+    /// insertion edge, so the landing spot is always visible.
+    struct NestedDocDropDelegate: DropDelegate {
+        let state: NestedEditorState
+        let targetId: String
+        let below: Bool
+
+        func validateDrop(info: DropInfo) -> Bool {
+            info.hasItemsConforming(to: [.text])
+        }
+
+        func dropUpdated(info: DropInfo) -> DropProposal? {
+            DropProposal(operation: .move)
+        }
+
+        func dropEntered(info: DropInfo) {
+            state.showDocDropTarget(id: targetId, below: below)
+        }
+
+        func dropExited(info: DropInfo) {
+            if state.docDropTargetId == targetId {
+                state.clearDocDropTarget()
+            }
+        }
+
+        func performDrop(info: DropInfo) -> Bool {
+            // Clear first on every path: foreign payloads and torn-down
+            // sessions otherwise strand the highlight.
+            state.clearDocDropTarget()
+            guard let provider = info.itemProviders(for: [.text]).first else { return false }
+            _ = provider.loadObject(ofClass: NSString.self) { payload, _ in
+                guard let s = payload as? String, s.hasPrefix("nested-doc:") else { return }
+                let dragged = String(s.dropFirst("nested-doc:".count))
+                DispatchQueue.main.async {
+                    state.moveDocument(draggedId: dragged, onto: targetId, below: below)
+                }
+            }
+            return true
         }
     }
 
@@ -264,6 +405,13 @@ struct NestedListsWindowView: View {
 
     private var breadcrumbBar: some View {
         HStack(spacing: 4) {
+            paneToggle(
+                system: "sidebar.left",
+                label: state.showSidebar ? "Hide sidebar" : "Show sidebar",
+                help: "Toggle sidebar (⌘⌃S)",
+                tint: state.showSidebar ? Color.accentColor : .secondary 
+            ) { state.toggleSidebar() }
+            barSeparator
             Button("Root") { state.zoomToRoot() }
                 .buttonStyle(.link)
                 .fontWeight(state.zoomPath.isEmpty ? .bold : .regular)
@@ -281,9 +429,35 @@ struct NestedListsWindowView: View {
             }
             Spacer()
             nestedSyncStatus
+            barSeparator
+            paneToggle(
+                system: "sidebar.right",
+                label: state.showInspector ? "Hide inspector" : "Show inspector",
+                help: "Toggle inspector (⌘⌥I)",
+                tint: state.showInspector ? Color.accentColor : .secondary
+            ) { state.toggleInspector() }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
+    }
+
+    /// Compact icon button used for the sidebar/inspector pane toggles.
+    private func paneToggle(
+        system: String,
+        label: String,
+        help: String,
+        tint: Color,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: system)
+                .imageScale(.medium)
+                .foregroundStyle(tint)
+                .frame(width: 22, height: 22)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
+        .help(help)
     }
 
     // MARK: - Editor bar
@@ -338,6 +512,19 @@ struct NestedListsWindowView: View {
                     TextField("Search items", text: $state.searchQuery)
                         .textFieldStyle(.plain)
                         .frame(width: 130)
+                        .focused($searchFocused)
+                        .onKeyPress(.escape) {
+                            // Resign first; claiming row focus must hop a tick
+                            // or the two writes race and focus lands nowhere
+                            // (dead keyboard), same pattern as the row handoffs.
+                            searchFocused = false
+                            DispatchQueue.main.async {
+                                if let id = state.selectedId {
+                                    focusedRow = id
+                                }
+                            }
+                            return .handled
+                        }
                     if !state.searchQuery.isEmpty {
                         Button {
                             state.searchQuery = ""
@@ -354,12 +541,13 @@ struct NestedListsWindowView: View {
                 .padding(.vertical, 4)
                 .background(RoundedRectangle(cornerRadius: 7).fill(Color.secondary.opacity(0.12)))
                 .accessibilityLabel("Search items")
+                .help("Search items (⌘F)")
                 barSeparator
-                editorBtn("Zoom In", system: "plus.magnifyingglass", help: "Zoom in") {
+                editorBtn("Zoom In", system: "plus.magnifyingglass", help: "Zoom in (⌘=)") {
                     state.zoomInSelected()
                 }
                 .disabled(!(node?.hasChildren ?? false))
-                editorBtn("Zoom Out", system: "minus.magnifyingglass", help: "Zoom out") {
+                editorBtn("Zoom Out", system: "minus.magnifyingglass", help: "Zoom out (⌘-)") {
                     state.zoomOut()
                 }
                 .disabled(state.zoomPath.isEmpty)
@@ -432,21 +620,34 @@ struct NestedListsWindowView: View {
                 .accessibilityLabel("Display")
                 .help(state.displayType == .all ? "Show all items" : "Show working items (priority, due date, open tasks, progress)")
                 barSeparator
-                Menu {
-                    Button("Name (A–Z)") { state.sortChildrenOfSelected(order: "NameAsc") }
-                    Button("Newest first") { state.sortChildrenOfSelected(order: "AddedDesc") }
-                    Button("Recently completed") { state.sortChildrenOfSelected(order: "CompletedDesc") }
-                    Button("Incomplete on top") { state.sortChildrenOfSelected(order: "IncompleteFirst") }
-                    Button("Priority (high first)") { state.sortChildrenOfSelected(order: "PriorityDesc") }
+                noteLinesMenu
+                barSeparator
+                Button {
+                    showSortMenu = true
                 } label: {
                     Image(systemName: "arrow.up.arrow.down")
                         .imageScale(.medium)
                         .frame(width: 28, height: 28)
                 }
-                .menuStyle(.borderlessButton)
+                .buttonStyle(.borderless)
                 .accessibilityLabel("Sort children")
-                .help("Sort children of selected item")
+                .help("Sort children of selected item (S)")
                 .disabled(!(node?.hasChildren ?? false))
+                .popover(isPresented: $showSortMenu, arrowEdge: .bottom) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Sort children").font(.headline)
+                        ForEach(sortOrders, id: \.name) { order in
+                            Button(order.label) {
+                                state.sortChildrenOfSelected(order: order.name)
+                                showSortMenu = false
+                            }
+                            .buttonStyle(.plain)
+                            .padding(.vertical, 3)
+                        }
+                    }
+                    .padding(12)
+                    .frame(width: 220)
+                }
                 barSeparator
                 Button {
                     moveDestinationId = defaultMoveDestinationId()
@@ -458,7 +659,7 @@ struct NestedListsWindowView: View {
                 }
                 .buttonStyle(.borderless)
                 .accessibilityLabel("Move to")
-                .help("Move selected item under a sibling or uncle")
+                .help("Move selected item under a sibling or uncle (M)")
                 .disabled(!hasMoveDestinations)
             }
             .frame(maxWidth: .infinity, alignment: .center)
@@ -497,7 +698,48 @@ struct NestedListsWindowView: View {
         Divider().frame(height: 18)
     }
 
+    /// Row note-preview line counts offered in the editor bar; 0 = unlimited.
+    private let noteLineOptions = [1, 2, 3, 4, 5, 6, 8, 10, 15, 20, 0]
+
+    /// Editor-bar control for how many lines of a row's note preview are
+    /// drawn (`NestedRowView` applies it as `lineLimit`). Persisted on state.
+    private var noteLinesMenu: some View {
+        Menu {
+            ForEach(noteLineOptions, id: \.self) { n in
+                Toggle(isOn: Binding(
+                    get: { state.noteLineLimit == n },
+                    set: { if $0 { state.noteLineLimit = n } }
+                )) {
+                    Text(n == 0 ? "Unlimited" : "\(n) line\(n == 1 ? "" : "s")")
+                }
+            }
+        } label: {
+            HStack(spacing: 3) {
+                Image(systemName: "text.alignleft")
+                    .imageScale(.medium)
+                Text(state.noteLineLimit == 0 ? "∞" : "\(state.noteLineLimit)")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(minWidth: 28, minHeight: 28)
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+        .accessibilityLabel("Note preview lines")
+        .help("Lines of each row's note preview")
+    }
+
     // MARK: - Outline list + keyboard
+
+    private var sortOrders: [(name: String, label: String)] {
+        [
+            ("NameAsc", "Name (A–Z)"),
+            ("AddedDesc", "Newest first"),
+            ("CompletedDesc", "Recently completed"),
+            ("IncompleteFirst", "Incomplete on top"),
+            ("PriorityDesc", "Priority (high first)"),
+        ]
+    }
 
     private var hasSearchText: Bool {
         !state.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -625,6 +867,19 @@ struct NestedListsWindowView: View {
                                 }
                             }
                             Divider()
+                            Button {
+                                state.selectedId = row.id
+                                state.showNoteSheet = true
+                            } label: {
+                                Label("Note", systemImage: "note.text")
+                            }
+                            Button {
+                                state.selectedId = row.id
+                                state.showDetailsSheet = true
+                            } label: {
+                                Label("Item details", systemImage: "info.circle")
+                            }
+                            Divider()
                             Button(role: .destructive) {
                                 // Commit any open edit first (see row tap);
                                 // select() alone would strand it unsaved.
@@ -740,6 +995,95 @@ struct NestedListsWindowView: View {
                 }
                 return .ignored
             }
+            .onKeyPress(keys: [KeyEquivalent("n"), KeyEquivalent("N")]) { _ in
+                guard state.editingId == nil, state.draft == nil, state.selectedId != nil else { return .ignored }
+                state.showNoteSheet = true
+                return .handled
+            }
+            .onKeyPress(keys: [KeyEquivalent("d"), KeyEquivalent("D")]) { _ in
+                guard state.editingId == nil, state.draft == nil, state.selectedId != nil else { return .ignored }
+                state.showDetailsSheet = true
+                return .handled
+            }
+            .onKeyPress(keys: [KeyEquivalent("j"), KeyEquivalent("J")]) { _ in
+                guard state.editingId == nil, state.draft == nil, state.selectedId != nil else { return .ignored }
+                state.moveToSibling(by: 1)
+                return .handled
+            }
+            .onKeyPress(keys: [KeyEquivalent("k"), KeyEquivalent("K")]) { _ in
+                guard state.editingId == nil, state.draft == nil, state.selectedId != nil else { return .ignored }
+                state.moveToSibling(by: -1)
+                return .handled
+            }
+            .onKeyPress(keys: [KeyEquivalent("g")]) { _ in
+                guard state.editingId == nil, state.draft == nil, state.selectedId != nil else { return .ignored }
+                state.moveToSiblingEnd(first: true)
+                return .handled
+            }
+            .onKeyPress(keys: [KeyEquivalent("G")]) { _ in
+                guard state.editingId == nil, state.draft == nil, state.selectedId != nil else { return .ignored }
+                state.moveToSiblingEnd(first: false)
+                return .handled
+            }
+            .onKeyPress(keys: [KeyEquivalent("p"), KeyEquivalent("P")]) { press in
+                guard !press.modifiers.contains(.command),
+                      state.editingId == nil, state.draft == nil, state.selectedId != nil else { return .ignored }
+                state.selectParentOfSelected()
+                return .handled
+            }
+            .onKeyPress(keys: [KeyEquivalent("m"), KeyEquivalent("M")]) { _ in
+                guard state.editingId == nil, state.draft == nil, state.selectedId != nil,
+                      hasMoveDestinations else { return .ignored }
+                moveDestinationId = defaultMoveDestinationId()
+                showMoveSheet = true
+                return .handled
+            }
+            .onKeyPress(keys: [KeyEquivalent("s"), KeyEquivalent("S")]) { press in
+                if press.modifiers.contains(.command), press.modifiers.contains(.control) {
+                    state.toggleSidebar()
+                    return .handled
+                }
+                guard state.editingId == nil, state.draft == nil,
+                      let sel = state.selectedId,
+                      state.indexById[sel]?.hasChildren == true else { return .ignored }
+                showSortMenu = true
+                return .handled
+            }
+            .onKeyPress(keys: [KeyEquivalent("="), KeyEquivalent("+")]) { press in
+                guard press.modifiers.contains(.command),
+                      state.editingId == nil, state.draft == nil,
+                      let sel = state.selectedId,
+                      state.indexById[sel]?.hasChildren == true else { return .ignored }
+                state.zoomInSelected()
+                return .handled
+            }
+            .onKeyPress(keys: [KeyEquivalent("-"), KeyEquivalent("_")]) { press in
+                guard press.modifiers.contains(.command),
+                      state.editingId == nil, state.draft == nil,
+                      !state.zoomPath.isEmpty else { return .ignored }
+                state.zoomOut()
+                return .handled
+            }
+            .onKeyPress(keys: [KeyEquivalent("?")]) { _ in
+                guard state.editingId == nil, state.draft == nil else { return .ignored }
+                showCheatsheet = true
+                return .handled
+            }
+            .onKeyPress(keys: [KeyEquivalent("f")]) { press in
+                guard press.modifiers.contains(.command) else { return .ignored }
+                searchFocused = true
+                return .handled
+            }
+            .onKeyPress(keys: [KeyEquivalent("/")]) { press in
+                guard !press.modifiers.contains(.shift) else { return .ignored }
+                searchFocused = true
+                return .handled
+            }
+            .onKeyPress(keys: [KeyEquivalent("i"), KeyEquivalent("I")]) { press in
+                guard press.modifiers.contains(.command), press.modifiers.contains(.option) else { return .ignored }
+                state.toggleInspector()
+                return .handled
+            }
             .onKeyPress(.escape) {
                 if state.editingId != nil { state.cancelEdit(); return .handled }
                 if state.draft != nil { state.cancelDraft(); return .handled }
@@ -751,6 +1095,9 @@ struct NestedListsWindowView: View {
             }
             .sheet(isPresented: $showMoveSheet) {
                 moveToSheet
+            }
+            .sheet(isPresented: $showCheatsheet) {
+                cheatsheetView
             }
         }
     }
@@ -764,6 +1111,87 @@ struct NestedListsWindowView: View {
         let target = id ?? state.selectedId
         guard let target, let groups = state.moveDestinations(for: target) else { return nil }
         return groups.siblings.first?.id ?? groups.parentSiblings.first?.id
+    }
+
+    private func cheatKey(_ text: String) -> some View {
+        Text(text)
+            .font(.caption.monospaced())
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(Color.secondary.opacity(0.15), in: RoundedRectangle(cornerRadius: 5))
+    }
+
+    private func cheatRow(keys: [String], label: String) -> some View {
+        HStack {
+            HStack(spacing: 2) {
+                ForEach(keys, id: \.self) { cheatKey($0) }
+            }
+            .frame(width: 110, alignment: .trailing)
+            Text(label)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private func cheatSection(_ title: String, rows: [(keys: [String], label: String)]) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title.uppercased())
+                .font(.caption).bold()
+                .foregroundStyle(Color.accentColor)
+            ForEach(rows, id: \.label) { row in
+                cheatRow(keys: row.keys, label: row.label)
+            }
+        }
+    }
+
+    private var cheatsheetView: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Keyboard shortcuts").font(.headline)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 10) {
+                    cheatSection("Navigate", rows: [
+                        (["↑", "↓"], "Previous / next item"),
+                        (["J", "K"], "Next / previous sibling"),
+                        (["g", "G"], "First / last sibling"),
+                        (["P"], "Parent"),
+                        (["←"], "Collapse / go to parent"),
+                        (["→"], "Expand"),
+                    ])
+                    cheatSection("Edit", rows: [
+                        (["Return"], "Edit selected item"),
+                        (["Esc"], "Cancel edit / close draft"),
+                        (["Tab", "⇧Tab"], "Indent / outdent"),
+                    ])
+                    cheatSection("Structure", rows: [
+                        (["⌘↵"], "Add child"),
+                        (["⇧↵"], "Add sibling below"),
+                        (["⌘↑", "⌘↓"], "Move item up / down"),
+                        (["⌘←", "⌘→"], "Outdent / indent"),
+                        (["⌘⌥←", "⌘⌥→"], "Collapse all / expand all"),
+                        (["M"], "Move to…"),
+                        (["S"], "Sort children"),
+                        (["Del"], "Delete"),
+                    ])
+                    cheatSection("View & actions", rows: [
+                        (["⌘F", "/"], "Search"),
+                        (["Esc"], "Blur search"),
+                        (["N"], "Note"),
+                        (["D"], "Item details"),
+                        (["⌘⇧P"], "Preview note (note editor)"),
+                        (["⌘⌥I"], "Toggle inspector"),
+                        (["⌘⌃S"], "Toggle sidebar"),
+                        (["⌘=", "⌘-"], "Zoom in / out"),
+                        (["⌘C"], "Copy as Markdown"),
+                        (["?"], "This cheat sheet"),
+                    ])
+                }
+            }
+            HStack {
+                Spacer()
+                Button("Close") { showCheatsheet = false }.keyboardShortcut(.cancelAction)
+            }
+        }
+        .padding()
+        .frame(width: 380)
     }
 
     private var moveToSheet: some View {

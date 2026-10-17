@@ -5,6 +5,7 @@ import com.checkit.domain.Routine
 import com.checkit.domain.RoutineLog
 import com.checkit.domain.RoutineStepTemplate
 import com.checkit.domain.RoutineTodayState
+import com.checkit.domain.RepeatRule
 import com.checkit.notifications.RoutineReminderScheduler
 import com.checkit.notifications.ScheduledRoutineReminder
 import com.checkit.ui.myday.FakeRoutineRepository
@@ -72,7 +73,7 @@ class RoutineUseCasesTest {
     fun toggleRoutineNotScheduledTodayIsNoop() = runTest {
         val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
         val tomorrowWeekday = today.plus(1, DateTimeUnit.DAY).dayOfWeek
-        val routine = routineWithSteps("r1", listOf("s1")).copy(activeWeekdays = setOf(tomorrowWeekday))
+        val routine = routineWithSteps("r1", listOf("s1")).copy(repeatRule = RepeatRule.weekly(setOf(tomorrowWeekday)))
         val repo = FakeRoutineRepository(listOf(routine))
         val store = FakeRoutineTodayStore()
         ToggleRoutineStepUseCase(repo, store)("r1", "s1")
@@ -110,7 +111,7 @@ class RoutineUseCasesTest {
             title = " Morning ",
             description = " Daily reset ",
             reminderMinutes = 8 * 60,
-            activeWeekdays = AllWeekdays,
+            repeatRule = RepeatRule.weekly(AllWeekdays),
             steps = listOf(
                 RoutineStepTemplate(id = "s1", title = "Water"),
                 RoutineStepTemplate(id = "s2", title = "  ")
@@ -124,7 +125,7 @@ class RoutineUseCasesTest {
                     title = "Morning",
                     reminderMinutes = 8 * 60,
                     stepCount = 1,
-                    activeWeekdays = AllWeekdays
+                    repeatRule = RepeatRule.weekly(AllWeekdays),
                 )
             ),
             scheduler.scheduled
@@ -143,7 +144,7 @@ class RoutineUseCasesTest {
             title = "Morning",
             description = "",
             reminderMinutes = null,
-            activeWeekdays = AllWeekdays,
+            repeatRule = RepeatRule.weekly(AllWeekdays),
             steps = emptyList(),
             color = "#16A34A"
         )
@@ -160,7 +161,7 @@ class RoutineUseCasesTest {
             title = "Evening",
             description = "",
             reminderMinutes = null,
-            activeWeekdays = AllWeekdays,
+            repeatRule = RepeatRule.weekly(AllWeekdays),
             steps = emptyList()
         )
 
@@ -177,7 +178,7 @@ class RoutineUseCasesTest {
             title = "Paused",
             description = "",
             reminderMinutes = 8 * 60,
-            activeWeekdays = emptySet(),
+            repeatRule = RepeatRule.None,
             steps = emptyList()
         )
 

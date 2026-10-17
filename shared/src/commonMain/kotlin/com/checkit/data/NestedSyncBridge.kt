@@ -28,6 +28,7 @@ class NestedSyncBridge(
             NestedSyncDocument.docToMap(
                 id = entity.id,
                 title = entity.title,
+                sortOrder = entity.sortOrder,
                 createdAtMillis = entity.createdAtMillis,
                 updatedAtMillis = entity.updatedAtMillis,
                 deleted = entity.deleted,
@@ -42,6 +43,7 @@ class NestedSyncBridge(
                 NestedSyncDocument.docToMap(
                     id = entity.id,
                     title = entity.title,
+                    sortOrder = entity.sortOrder,
                     createdAtMillis = entity.createdAtMillis,
                     updatedAtMillis = entity.updatedAtMillis,
                     deleted = entity.deleted,
@@ -149,6 +151,7 @@ class NestedSyncBridge(
                     local = NestedSyncDocument.docToMap(
                         id = existing.id,
                         title = existing.title,
+                        sortOrder = existing.sortOrder,
                         createdAtMillis = existing.createdAtMillis,
                         updatedAtMillis = existing.updatedAtMillis,
                         deleted = existing.deleted,
@@ -156,6 +159,7 @@ class NestedSyncBridge(
                     remote = NestedSyncDocument.docToMap(
                         id = remote.id,
                         title = remote.title,
+                        sortOrder = remote.sortOrder,
                         createdAtMillis = remote.createdAtMillis,
                         updatedAtMillis = remote.updatedAtMillis,
                         deleted = remote.deleted,
@@ -170,6 +174,7 @@ class NestedSyncBridge(
             NestedDocumentEntity(
                 id = remote.id,
                 title = remote.title,
+                sortOrder = remote.sortOrder,
                 createdAtMillis = existing?.createdAtMillis ?: remote.createdAtMillis,
                 updatedAtMillis = updatedAt,
                 dirty = dirty,

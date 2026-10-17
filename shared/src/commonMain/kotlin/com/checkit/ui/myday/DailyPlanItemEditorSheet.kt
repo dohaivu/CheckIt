@@ -79,7 +79,8 @@ internal fun DailyPlanItemEditorSheet(
         onDismiss = onDismiss,
         modifier = Modifier
             .fillMaxHeight(0.9f)
-            .padding(bottom = 24.dp)
+            .padding(bottom = 24.dp),
+        sheetGesturesEnabled = false
     ) {
         DailyPlanItemSheetHeader(
             state = state,

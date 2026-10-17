@@ -63,6 +63,12 @@ class DeleteNestedDocumentUseCase(
     suspend operator fun invoke(documentId: String) = repository.deleteNestedDocument(documentId)
 }
 
+class ReorderNestedDocumentsUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(documentIds: List<String>) = repository.reorderNestedDocuments(documentIds)
+}
+
 class AddNestedItemUseCase(
     private val repository: CheckItRepository
 ) {

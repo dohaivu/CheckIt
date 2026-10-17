@@ -45,6 +45,8 @@ import com.checkit.domain.usecase.DeleteListUseCase
 import com.checkit.domain.usecase.DeleteRoutineUseCase
 import com.checkit.domain.usecase.ExportBackupUseCase
 import com.checkit.domain.usecase.ExportNestedListToMarkdownUseCase
+import com.checkit.domain.usecase.ExportNestedDocumentJsonUseCase
+import com.checkit.domain.usecase.ImportNestedDocumentJsonUseCase
 import com.checkit.domain.usecase.ImportBackupUseCase
 import com.checkit.domain.usecase.DeleteSectionUseCase
 import com.checkit.domain.usecase.DeleteNestedDocumentUseCase
@@ -83,6 +85,7 @@ import com.checkit.domain.usecase.UpdateRoutineOrderUseCase
 import com.checkit.domain.usecase.UpdateNoteStatusUseCase
 import com.checkit.domain.usecase.UpdateTaskStatusUseCase
 import com.checkit.domain.usecase.RenameNestedDocumentUseCase
+import com.checkit.domain.usecase.ReorderNestedDocumentsUseCase
 import com.checkit.domain.usecase.ReplaceNestedManualMetricsUseCase
 import com.checkit.domain.usecase.RestoreNoteUseCase
 import com.checkit.domain.usecase.RestoreTaskUseCase
@@ -184,7 +187,7 @@ val provideInteractorModule = module {
     single { SprintTransitionUseCase(get(), get(), get()) }
     single { UpsertDailyPlanItemUseCase(get()) }
     single { AddSuggestedTaskToMyDayUseCase(get(), get(), get()) }
-    single { RoomCheckItRepository(get(), get(), get(), get(), get()) as CheckItRepository }
+    single { RoomCheckItRepository(get(), get(), get(), get()) as CheckItRepository }
     single { ObserveTaskBoardUseCase(get()) }
     single { ObserveTagUsageCountsUseCase(get()) }
     single { GetTaskUseCase(get()) }
@@ -254,6 +257,7 @@ val provideInteractorModule = module {
     single { AddNestedDocumentUseCase(get()) }
     single { RenameNestedDocumentUseCase(get()) }
     single { DeleteNestedDocumentUseCase(get()) }
+    single { ReorderNestedDocumentsUseCase(get()) }
     single { AddNestedItemUseCase(get()) }
     single { UpdateNestedItemTextUseCase(get()) }
     single { UpdateNestedItemNoteUseCase(get()) }
@@ -271,6 +275,8 @@ val provideInteractorModule = module {
     single { MoveNestedItemsUseCase(get()) }
     single { DeleteNestedItemsUseCase(get()) }
     single { ExportNestedListToMarkdownUseCase() }
+    single { ExportNestedDocumentJsonUseCase(get()) }
+    single { ImportNestedDocumentJsonUseCase(get()) }
     single {
         NestedAppleHelper(
             observeDocuments = get(),
@@ -279,6 +285,7 @@ val provideInteractorModule = module {
             addDocument = get(),
             renameDocumentUseCase = get(),
             deleteDocument = get(),
+            reorderDocumentsUseCase = get(),
             addItem = get(),
             updateItemText = get(),
             updateItemNote = get(),
@@ -294,7 +301,9 @@ val provideInteractorModule = module {
             toggleCollapsedUseCase = get(),
             setItemsCollapsed = get(),
             moveItems = get(),
-            deleteItems = get()
+            deleteItems = get(),
+            exportDocumentJsonUseCase = get(),
+            importDocumentJsonUseCase = get()
         )
     }
     single<QuickNoteRepository> { RoomQuickNoteRepository(get(), get(), get()) }

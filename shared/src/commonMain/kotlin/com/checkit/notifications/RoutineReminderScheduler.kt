@@ -1,13 +1,13 @@
 package com.checkit.notifications
 
-import kotlinx.datetime.DayOfWeek
+import com.checkit.domain.RepeatRule
 
 data class ScheduledRoutineReminder(
     val routineId: String,
     val title: String,
     val reminderMinutes: Int,
     val stepCount: Int,
-    val activeWeekdays: Set<DayOfWeek>
+    val repeatRule: RepeatRule
 )
 
 interface RoutineReminderScheduler {

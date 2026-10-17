@@ -14,9 +14,11 @@ import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.sp
+import com.checkit.domain.MarkdownSourceStyleKind
+import com.checkit.domain.MarkdownSourceStyleSpan
 import com.checkit.domain.RichSpan
 import com.checkit.domain.RichSpanKind
-import com.checkit.domain.highlightHexForToken
+import com.checkit.domain.parseMarkdownSourceStyles
 import com.checkit.domain.parseRichText
 import com.checkit.ui.theme.parseHexColorOrNull
 
@@ -24,175 +26,51 @@ import com.checkit.ui.theme.parseHexColorOrNull
 fun String?.asMarkdownAnnotatedString(): AnnotatedString {
     val text = this ?: ""
     return remember(text) {
-        parseMarkdownToAnnotatedString(text)
+        renderFullMarkdown(text)
     }
 }
 
 class MarkdownVisualTransformation : VisualTransformation {
-    private val boldRegex = Regex("\\*\\*(.*?)\\*\\*")
-    private val italicRegex = Regex("(?:^|\\W)_([^_\\n]+?)_(?=$|\\W)")
-    private val strikethroughRegex = Regex("~~(.*?)~~")
-    private val highlightPattern = Regex("==(\\{c\\d+\\})?(.+?)==")
-    private val codePattern = Regex("`([^`\\n]+?)`")
-    // Matches any digit followed by a period and a space (e.g., "1. ", "12. ")
-    private val numberedListRegex = Regex("^\\d+\\.\\s")
-
     override fun filter(text: AnnotatedString): TransformedText {
         val rawText = text.text
-
         val transformed = buildAnnotatedString {
-            // 1. Put down the raw text first
+            // Keep the raw source; only add display styles over it.
             append(rawText)
-
-            // 2. Format Line-Based Elements: Headers & Lists
-            var currentLineStart = 0
-            val lines = rawText.split('\n')
-
-            lines.forEach { line ->
-                val lineLength = line.length
-
-                when {
-                    // Header 1: "# "
-                    line.startsWith("# ") -> {
-                        addStyle(
-                            style = SpanStyle(fontSize = 24.sp, fontWeight = FontWeight.Bold),
-                            start = currentLineStart,
-                            end = currentLineStart + lineLength
-                        )
-                    }
-                    // Header 2: "## "
-                    line.startsWith("## ") -> {
-                        addStyle(
-                            style = SpanStyle(fontSize = 20.sp, fontWeight = FontWeight.Bold),
-                            start = currentLineStart,
-                            end = currentLineStart + lineLength
-                        )
-                    }
-                    // Header 3: "### "
-                    line.startsWith("### ") -> {
-                        addStyle(
-                            style = SpanStyle(fontSize = 18.sp, fontWeight = FontWeight.SemiBold),
-                            start = currentLineStart,
-                            end = currentLineStart + lineLength
-                        )
-                    }
-                    // Bullet Lists: Starts with "- " or "* " (followed by space, not bolding)
-                    line.startsWith("- ") || line.startsWith("* ") -> {
-                        // Style just the marker symbol to make it look clean
-                        addStyle(
-                            style = SpanStyle(
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = FontFamily.Monospace
-                            ),
-                            start = currentLineStart,
-                            end = currentLineStart + 2
-                        )
-                    }
-                    // Numbered Lists: Starts with digits like "1. " or "2. "
-                    numberedListRegex.find(line) != null -> {
-                        val match = numberedListRegex.find(line)!!
-                        val markerLength = match.value.length
-                        // Style the number prefix to keep spacing consistent
-                        addStyle(
-                            style = SpanStyle(
-                                fontWeight = FontWeight.Medium,
-                                fontFamily = FontFamily.Monospace
-                            ),
-                            start = currentLineStart,
-                            end = currentLineStart + markerLength
-                        )
-                    }
-                    // Blockquotes: Starts with "> " or ">"
-                    line.startsWith("> ") || line.startsWith(">") -> {
-                        val prefixLen = if (line.startsWith("> ")) 2 else 1
-                        addStyle(
-                            style = SpanStyle(
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = FontFamily.Monospace
-                            ),
-                            start = currentLineStart,
-                            end = currentLineStart + prefixLen
-                        )
-                        addStyle(
-                            style = SpanStyle(fontStyle = FontStyle.Italic),
-                            start = currentLineStart,
-                            end = currentLineStart + lineLength
-                        )
-                    }
-                }
-                // Move index tracker past the current line and its \n newline token
-                currentLineStart += lineLength + 1
-            }
-
-            // 3. Format Inline Elements: Bold (**text**)
-            boldRegex.findAll(rawText).forEach { matchResult ->
-                val range = matchResult.range
+            parseMarkdownSourceStyles(rawText).forEach { span ->
                 addStyle(
-                    style = SpanStyle(fontWeight = FontWeight.Bold),
-                    start = range.first,
-                    end = range.last + 1
-                )
-            }
-
-            // 4. Format Inline Elements: Italic (_text_)
-            italicRegex.findAll(rawText).forEach { matchResult ->
-                val range = matchResult.range
-                addStyle(
-                    style = SpanStyle(fontStyle = FontStyle.Italic),
-                    start = range.first,
-                    end = range.last + 1
-                )
-            }
-
-            // 5. Format Inline Elements: Strikethrough (~~text~~)
-            strikethroughRegex.findAll(rawText).forEach { matchResult ->
-                val range = matchResult.range
-                addStyle(
-                    style = SpanStyle(textDecoration = TextDecoration.LineThrough),
-                    start = range.first,
-                    end = range.last + 1
-                )
-            }
-
-            // 6. Format Inline Elements: Highlight (==text== / =={cN}text==,
-            // markers included like the rest). Unknown tokens stay unstyled.
-            highlightPattern.findAll(rawText).forEach { matchResult ->
-                val range = matchResult.range
-                val token = matchResult.groupValues[1]
-                val color = if (token.isEmpty()) {
-                    MarkdownHighlightColor
-                } else {
-                    highlightHexForToken(token)?.parseHexColorOrNull() ?: return@forEach
-                }
-                addStyle(
-                    style = SpanStyle(
-                        fontWeight = FontWeight.Bold,
-                        color = color
-                    ),
-                    start = range.first,
-                    end = range.last + 1
-                )
-            }
-
-            // 7. Format Inline Elements: Code (`text`)
-            codePattern.findAll(rawText).forEach { matchResult ->
-                val range = matchResult.range
-                addStyle(
-                    style = SpanStyle(
-                        fontFamily = FontFamily.Monospace,
-                        background = MarkdownCodeBackgroundColor
-                    ),
-                    start = range.first,
-                    end = range.last + 1
+                    style = span.toSpanStyle(),
+                    start = span.start.coerceIn(0, rawText.length),
+                    end = span.end.coerceIn(0, rawText.length)
                 )
             }
         }
-
         return TransformedText(transformed, OffsetMapping.Identity)
     }
 }
 
-fun parseMarkdownToAnnotatedString(
+/** Maps a shared source-style kind to its Compose display style. */
+private fun MarkdownSourceStyleSpan.toSpanStyle(): SpanStyle = when (kind) {
+    MarkdownSourceStyleKind.Bold -> SpanStyle(fontWeight = FontWeight.Bold)
+    MarkdownSourceStyleKind.Italic -> SpanStyle(fontStyle = FontStyle.Italic)
+    MarkdownSourceStyleKind.Strikethrough -> SpanStyle(textDecoration = TextDecoration.LineThrough)
+    MarkdownSourceStyleKind.Highlight -> SpanStyle(
+        fontWeight = FontWeight.Bold,
+        color = colorHex?.parseHexColorOrNull() ?: MarkdownHighlightColor
+    )
+    MarkdownSourceStyleKind.Code -> SpanStyle(
+        fontFamily = FontFamily.Monospace,
+        background = MarkdownCodeBackgroundColor
+    )
+    MarkdownSourceStyleKind.Header1 -> SpanStyle(fontSize = 24.sp, fontWeight = FontWeight.Bold)
+    MarkdownSourceStyleKind.Header2 -> SpanStyle(fontSize = 20.sp, fontWeight = FontWeight.Bold)
+    MarkdownSourceStyleKind.Header3 -> SpanStyle(fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+    MarkdownSourceStyleKind.Bullet -> SpanStyle(fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+    MarkdownSourceStyleKind.Numbered -> SpanStyle(fontWeight = FontWeight.Medium, fontFamily = FontFamily.Monospace)
+    MarkdownSourceStyleKind.Quote -> SpanStyle(fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+    MarkdownSourceStyleKind.Quoted -> SpanStyle(fontStyle = FontStyle.Italic)
+}
+
+fun renderFullMarkdown(
     markdown: String?,
     highlightColor: Color = MarkdownHighlightColor
 ): AnnotatedString {
@@ -205,7 +83,6 @@ fun parseMarkdownToAnnotatedString(
             var isHeader = false
             var isQuote = false
             var headerStyle: SpanStyle? = null
-            var quoteStyle: SpanStyle? = null
 
             // 1. Process Line-Based Elements (Headers, Lists & Quotes)
             when {
@@ -228,14 +105,12 @@ fun parseMarkdownToAnnotatedString(
                     cleanLine = "•  " + cleanLine.substring(2)
                 }
                 cleanLine.startsWith("> ") -> {
-                    cleanLine = "│  " + cleanLine.substring(2)
+                    cleanLine = QuoteIndicator + cleanLine.substring(2)
                     isQuote = true
-                    quoteStyle = SpanStyle(fontStyle = FontStyle.Italic)
                 }
                 cleanLine.startsWith(">") -> {
-                    cleanLine = "│  " + cleanLine.substring(1).trimStart()
+                    cleanLine = QuoteIndicator + cleanLine.substring(1).trimStart()
                     isQuote = true
-                    quoteStyle = SpanStyle(fontStyle = FontStyle.Italic)
                 }
             }
 
@@ -256,14 +131,19 @@ fun parseMarkdownToAnnotatedString(
 
             // Apply quote styling and indicator prefix style if matched
             if (isQuote) {
+                // Upright bold monospace bar/indent so the spine reads cleanly.
+                val prefixEnd = (lineStartIndex + QuoteIndicator.length).coerceAtMost(lineEndIndex)
                 addStyle(
                     style = SpanStyle(fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace),
                     start = lineStartIndex,
-                    end = (lineStartIndex + 2).coerceAtMost(lineEndIndex)
+                    end = prefixEnd
                 )
-                if (quoteStyle != null) {
-                    addStyle(quoteStyle, lineStartIndex, lineEndIndex)
-                }
+                // Italic applies to the quoted content only, leaving the bar upright.
+                addStyle(
+                    style = SpanStyle(fontStyle = FontStyle.Italic),
+                    start = prefixEnd,
+                    end = lineEndIndex
+                )
             }
 
             // Apply all saved bold, italic, and strikethrough styles using their adjusted positions
@@ -283,10 +163,39 @@ fun parseMarkdownToAnnotatedString(
     }
 }
 
+/**
+ * Inline-only markdown for single-line rows: strips markers and returns a
+ * styled AnnotatedString. Unlike [renderFullMarkdown], line-based
+ * constructs (`# ` headers, `> ` quotes, list bullets) are left untouched so a
+ * row starting with `#tag` never blows up into a header.
+ */
+fun renderInlineMarkdown(
+    text: String,
+    highlightColor: Color = MarkdownHighlightColor
+): AnnotatedString {
+    val parsed = parseRichText(text)
+    return AnnotatedString(
+        text = parsed.text,
+        spanStyles = parsed.spans.map { span ->
+            AnnotatedString.Range(
+                span.toSpanStyle(highlightColor),
+                span.start,
+                span.end
+            )
+        }
+    )
+}
+
+
 // Default marker color for ==highlight== when callers don't pass a theme color.
 // Deep orange reads on both light and dark surfaces.
 internal val MarkdownHighlightColor: Color = Color(0xFFE65100)
 internal val MarkdownCodeBackgroundColor: Color = Color(0x20808080)
+
+// Leading indicator for `>` blockquote lines: a vertical bar plus two spaces.
+// Kept monospace-bold and upright so it reads as a spine and the italic
+// content starts at a fixed column.
+private const val QuoteIndicator = "│  "
 
 // A simple helper data class to store layout positions
 private data class StyleMarker(val style: SpanStyle, val start: Int, val end: Int)
@@ -314,27 +223,4 @@ private fun processInlineStyles(
             end = span.end
         )
     }
-}
-
-/**
- * Inline-only markdown for single-line rows: strips markers and returns a
- * styled AnnotatedString. Unlike [parseMarkdownToAnnotatedString], line-based
- * constructs (`# ` headers, `> ` quotes, list bullets) are left untouched so a
- * row starting with `#tag` never blows up into a header.
- */
-fun parseMarkdownInline(
-    text: String,
-    highlightColor: Color = MarkdownHighlightColor
-): AnnotatedString {
-    val parsed = parseRichText(text)
-    return AnnotatedString(
-        text = parsed.text,
-        spanStyles = parsed.spans.map { span ->
-            AnnotatedString.Range(
-                span.toSpanStyle(highlightColor),
-                span.start,
-                span.end
-            )
-        }
-    )
 }

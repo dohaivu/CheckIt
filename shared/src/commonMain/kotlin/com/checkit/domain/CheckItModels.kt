@@ -75,8 +75,7 @@ data class TaskItem(
     val completedDate: LocalDate? = null,
     val startTimeMinutes: Int? = null,
     val endTimeMinutes: Int? = null,
-    val reminders: List<TaskReminder> = emptyList(),
-    val repeatRRule: String? = null,
+    val repeatRule: RepeatRule = RepeatRule.None,
     val label: String? = null,
     val sortOrder: Int = 0,
     val isPinned: Boolean = false,
@@ -98,14 +97,13 @@ data class TaskItem(
         completedDateEpochDays: Int?,
         startTimeMinutes: Int?,
         endTimeMinutes: Int?,
-        repeatRRule: String?,
+        repeatRule: RepeatRule,
         label: String?,
         createdAtMillis: Long,
         updatedAtMillis: Long,
         trashedAtMillis: Long?,
         resolvedListId: String?,
         resolvedSubtasks: List<SubTaskItem>,
-        resolvedReminders: List<TaskReminder>,
         resolvedTags: List<TagItem>,
         resolvedSortOrder: Int,
         resolvedIsPinned: Boolean,
@@ -122,14 +120,13 @@ data class TaskItem(
             this.completedDate?.toEpochDays()?.toInt() == completedDateEpochDays &&
             this.startTimeMinutes == startTimeMinutes &&
             this.endTimeMinutes == endTimeMinutes &&
-            this.repeatRRule == repeatRRule &&
+            this.repeatRule == repeatRule &&
             this.label == label &&
             this.createdAtMillis == createdAtMillis &&
             this.updatedAtMillis == updatedAtMillis &&
             this.trashedAtMillis == trashedAtMillis &&
             this.list?.id == resolvedListId &&
             this.subtasks == resolvedSubtasks &&
-            this.reminders == resolvedReminders &&
             this.tags == resolvedTags &&
             this.sortOrder == resolvedSortOrder &&
             this.isPinned == resolvedIsPinned &&
@@ -307,13 +304,6 @@ data class TagItem(
         val None = TagItem(id = "", name = "None", color = "#FFFFFF")
     }
 }
-
-data class TaskReminder(
-    val id: String,
-    val taskId: String,
-    val remindAtMillis: Long,
-    val label: String = ""
-)
 
 data class TaskFilter(
     val id: String,

@@ -2,6 +2,7 @@ package com.checkit.ui.tasks
 
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.MetricItem
+import com.checkit.domain.RepeatRule
 import com.checkit.domain.TaskPriority
 import kotlinx.datetime.LocalDate
 
@@ -30,9 +31,8 @@ data class TaskEditorActions(
         val onDescriptionChange: (String) -> Unit,
         val onDoDateChange: (LocalDate?) -> Unit,
         val onTimeChange: (Int?, Int?) -> Unit,
-        val onRepeatChange: (RepeatPreset) -> Unit,
+        val onRepeatChange: (RepeatRule) -> Unit,
         val onPriorityChange: (TaskPriority) -> Unit,
-        val onReminderToggle: (Int) -> Unit,
         val onTagToggle: (String) -> Unit,
         val onLabelChange: (String) -> Unit,
         val onMetricsChange: (List<MetricItem>) -> Unit

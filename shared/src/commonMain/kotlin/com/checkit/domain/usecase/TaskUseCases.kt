@@ -93,6 +93,11 @@ class GetDailyPlanItemUseCase(
 /**
  * Adds open tasks due today to My Day. Idempotent: tasks already on the plan
  * are skipped, so repeated invocations within a day are safe.
+ *
+ * A task whose [RepeatRule] matches today qualifies even when its due date is
+ * in the past, which is what makes recurring tasks show up on each occurrence.
+ * The due date itself is not advanced - completing/reopening the task and the
+ * plan's per-day dedupe keep the copy consistent.
  */
 class AutoAddTodayTasksToMyDayUseCase(
     private val repository: CheckItRepository,
@@ -103,7 +108,7 @@ class AutoAddTodayTasksToMyDayUseCase(
 
     suspend operator fun invoke(): Int = mutex.withLock {
         val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
-        removeIncompleteHabitsFromYesterday(today)
+        removeIncompleteDailyPlanFromYesterday(today)
         val alreadyPlannedTaskIds = repository.dailyPlanForDate(today)
             ?.items
             ?.mapNotNull { it.taskId }
@@ -128,20 +133,24 @@ class AutoAddTodayTasksToMyDayUseCase(
         tasksToAdd.size
     }
 
-    private suspend fun removeIncompleteHabitsFromYesterday(today: LocalDate) {
+    private suspend fun removeIncompleteDailyPlanFromYesterday(today: LocalDate) {
         val yesterday = today.minus(1, DateTimeUnit.DAY)
         repository.dailyPlanForDate(yesterday)
             ?.items
-            ?.filter { it.isHabit && it.status != DailyPlanItemStatus.Done }
+            ?.filter { it.status != DailyPlanItemStatus.Done }
             ?.forEach { deleteDailyPlanItem(it.id) }
     }
 }
 
 private fun TaskItem.qualifiesForAddToMyDay(today: LocalDate): Boolean =
     when (type) {
-        TaskType.Task -> doDate == today
-        TaskType.Habit -> completedDate == null
+        TaskType.Task -> doDate == today || repeatRule.isScheduled(today)
+        TaskType.Habit -> completedDate == null && qualifiesByRepeatRule(today)
     }
+
+/** True when the item repeats today, or carries no repeat rule at all. */
+private fun TaskItem.qualifiesByRepeatRule(today: LocalDate): Boolean =
+    !repeatRule.isActive || repeatRule.isScheduled(today)
 
 class ObserveTagUsageCountsUseCase(
     private val repository: CheckItRepository

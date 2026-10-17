@@ -49,6 +49,8 @@ import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.ListItem
 import com.checkit.domain.MetricItem
+import com.checkit.domain.RepeatRule
+import com.checkit.domain.label
 import com.checkit.domain.TagItem
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
@@ -67,6 +69,7 @@ import com.checkit.ui.components.MarkdownTextField
 import com.checkit.ui.components.MarkdownVisualTransformation
 import com.checkit.ui.components.MetricsSection
 import com.checkit.ui.components.PriorityPicker
+import com.checkit.ui.components.RepeatPicker
 import com.checkit.ui.components.TagPicker
 import com.checkit.ui.components.TimeRangePicker
 import com.checkit.ui.isOverdue
@@ -85,7 +88,8 @@ internal fun TaskEditorSheet(
 ) {
     AppEditorBottomSheet(
         onDismiss = actions.common.onDismiss,
-        modifier = Modifier.fillMaxHeight(0.9f)
+        modifier = Modifier.fillMaxHeight(0.9f),
+        sheetGesturesEnabled = false
     ) {
         TrashedStatusSection(
             isTrashed = editor.isTrashed(),
@@ -134,6 +138,7 @@ internal fun TaskEditorSheet(
                             onDoDateChange = actions.task.onDoDateChange,
                             onTimeChange = actions.task.onTimeChange,
                             onPriorityChange = actions.task.onPriorityChange,
+                            onRepeatChange = actions.task.onRepeatChange,
                             onSubTaskToggle = actions.subTask.onToggle,
                             onSubTaskAdd = actions.subTask.onAdd,
                             onSubTaskNameChange = actions.subTask.onNameChange,
@@ -331,6 +336,7 @@ private fun TaskFormContent(
     onDoDateChange: (LocalDate?) -> Unit,
     onTimeChange: (Int?, Int?) -> Unit,
     onPriorityChange: (TaskPriority) -> Unit,
+    onRepeatChange: (RepeatRule) -> Unit,
     onSubTaskToggle: (Int) -> Unit,
     onSubTaskAdd: () -> Unit,
     onSubTaskNameChange: (Int, String) -> Unit,
@@ -348,6 +354,14 @@ private fun TaskFormContent(
         TaskType.Task -> "What would you like to do?"
         TaskType.Habit -> "What habit do you want to build?"
     }
+    // Habits default to every day; the RepeatPicker below narrows it, so keep the
+    // summary in sync with whatever rule is chosen there.
+    val habitSubtitle =
+        if (form.repeatRule.isActive) {
+            "${form.repeatRule.label()} · auto-added to My Day"
+        } else {
+            "Every day · auto-added to My Day"
+        }
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         LabelTextField(
@@ -370,7 +384,7 @@ private fun TaskFormContent(
                     color = form.priority.priorityColor()
                 )
                 Text(
-                    text = "Every day · auto-added to My Day",
+                    text = habitSubtitle,
                     modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -467,6 +481,13 @@ private fun TaskFormContent(
                 selectedTagIds = form.selectedTagIds,
                 onTagToggle = onTagToggle,
                 onNewTagClick = onNewTagClick,
+                enabled = enabled
+            )
+            RepeatPicker(
+                selected = form.repeatRule,
+                onRepeatChange = onRepeatChange,
+                anchorDayOfMonth = form.doDate?.dayOfMonth,
+                anchorWeekday = form.doDate?.dayOfWeek,
                 enabled = enabled
             )
         }

@@ -25,6 +25,7 @@ import com.checkit.domain.usecase.ObserveNestedDocumentTreeUseCase
 import com.checkit.domain.usecase.ObserveNestedDocumentsUseCase
 import com.checkit.domain.usecase.ObserveNestedTagsUseCase
 import com.checkit.domain.usecase.RenameNestedDocumentUseCase
+import com.checkit.domain.usecase.ReorderNestedDocumentsUseCase
 import com.checkit.domain.usecase.ReplaceNestedManualMetricsUseCase
 import com.checkit.domain.usecase.SetNestedItemCheckboxEnabledUseCase
 import com.checkit.domain.usecase.SetNestedItemsCheckedUseCase
@@ -40,6 +41,8 @@ import com.checkit.domain.usecase.UpdateNestedItemTagsUseCase
 import com.checkit.domain.usecase.UpdateNestedItemTextUseCase
 import com.checkit.domain.usecase.NestedMarkdownExportOptions
 import com.checkit.domain.usecase.toMarkdown
+import com.checkit.domain.usecase.ExportNestedDocumentJsonUseCase
+import com.checkit.domain.usecase.ImportNestedDocumentJsonUseCase
 import com.checkit.infrastructure.initKoin
 import com.checkit.ui.quicknote.QuickNoteAppleBridge
 import kotlinx.coroutines.CoroutineScope
@@ -48,6 +51,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.LocalDate
@@ -88,6 +92,7 @@ class NestedAppleHelper(
     private val addDocument: AddNestedDocumentUseCase,
     private val renameDocumentUseCase: RenameNestedDocumentUseCase,
     private val deleteDocument: DeleteNestedDocumentUseCase,
+    private val reorderDocumentsUseCase: ReorderNestedDocumentsUseCase,
     private val addItem: AddNestedItemUseCase,
     private val updateItemText: UpdateNestedItemTextUseCase,
     private val updateItemNote: UpdateNestedItemNoteUseCase,
@@ -104,6 +109,8 @@ class NestedAppleHelper(
     private val setItemsCollapsed: SetNestedItemsCollapsedUseCase,
     private val moveItems: MoveNestedItemsUseCase,
     private val deleteItems: DeleteNestedItemsUseCase,
+    private val exportDocumentJsonUseCase: ExportNestedDocumentJsonUseCase,
+    private val importDocumentJsonUseCase: ImportNestedDocumentJsonUseCase,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val moveMutex = Mutex()
@@ -153,6 +160,10 @@ class NestedAppleHelper(
             runCatching { deleteDocument(documentId) }
             latestTrees.remove(documentId)
         }
+    }
+
+    fun reorderDocuments(documentIds: List<String>) {
+        scope.launch { runCatching { reorderDocumentsUseCase(documentIds) } }
     }
 
     // --- Items: add (mirrors NestedListsViewModel.commitNewItem position math) ---
@@ -411,6 +422,32 @@ class NestedAppleHelper(
     fun exportDocumentToMarkdown(documentId: String, includeTitle: Boolean = false): String {
         val tree = latestTrees[documentId] ?: return ""
         return tree.toMarkdown(NestedMarkdownExportOptions(includeDocumentTitle = includeTitle))
+    }
+
+    fun exportDocumentToJson(documentId: String, onComplete: (String?, String?) -> Unit) {
+        scope.launch(Dispatchers.Default) {
+            val result = runCatching { exportDocumentJsonUseCase(documentId) }
+            withContext(Dispatchers.Main) {
+                result.onSuccess { json ->
+                    onComplete(json, null)
+                }.onFailure { err ->
+                    onComplete(null, err.message ?: "Export failed")
+                }
+            }
+        }
+    }
+
+    fun importDocumentFromJson(json: String, onComplete: (String?, String?) -> Unit) {
+        scope.launch(Dispatchers.Default) {
+            val result = runCatching { importDocumentJsonUseCase(json) }
+            withContext(Dispatchers.Main) {
+                result.onSuccess { docId ->
+                    onComplete(docId, null)
+                }.onFailure { err ->
+                    onComplete(null, err.message ?: "Import failed")
+                }
+            }
+        }
     }
 
     fun close() {

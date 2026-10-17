@@ -13,7 +13,6 @@ import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import androidx.sqlite.execSQL
 import androidx.sqlite.SQLiteConnection
 import com.checkit.domain.TaskType
-import com.checkit.domain.ActiveWeekdaysAllJson
 import com.checkit.domain.RoutineDefaultColorHex
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -89,7 +88,8 @@ data class TaskEntity(
     val completedDateEpochDays: Int? = null,
     val startTimeMinutes: Int? = null,
     val endTimeMinutes: Int? = null,
-    val repeatRRule: String? = null,
+    /** Inline JSON [RepeatRule]; null means the task does not repeat. */
+    val repeatRuleJson: String? = null,
     val label: String? = null,
     /** Inline JSON list of MetricItem. */
     val metricsJson: String = "[]",
@@ -444,27 +444,6 @@ data class JournalEntryTagEntity(
     val tagId: String
 )
 
-@Serializable
-@Entity(
-    tableName = "task_reminders",
-    foreignKeys = [
-        ForeignKey(
-            entity = TaskEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["taskId"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ],
-    indices = [Index("taskId"), Index("remindAtMillis")]
-)
-data class TaskReminderEntity(
-    @PrimaryKey
-    val id: String,
-    val taskId: String,
-    val remindAtMillis: Long,
-    val label: String = ""
-)
-
 /**
  * Local-only UI configuration (seeded defaults); never synced.
  */
@@ -600,6 +579,7 @@ data class NestedDocumentEntity(
     @PrimaryKey
     val id: String,
     val title: String,
+    val sortOrder: Int = 0,
     val createdAtMillis: Long,
     val updatedAtMillis: Long,
     /** True when the row changed locally since the last successful upload. */
@@ -694,8 +674,8 @@ data class RoutineEntity(
     val title: String,
     val description: String = "",
     val reminderMinutes: Int? = null,
-    /** Inline JSON list of weekday names; empty list means paused. */
-    val activeWeekdaysJson: String = ActiveWeekdaysAllJson,
+    /** Inline JSON [RepeatRule]; blank/null falls back to weekly on every day. */
+    val repeatRuleJson: String? = null,
     val sortOrder: Int = 0,
     /** Inline JSON list of RoutineStepTemplate; history keeps percent only. */
     val stepsJson: String = "[]",
@@ -746,7 +726,6 @@ data class RoutineLogEntity(
         DailyPlanItemTagEntity::class,
         JournalEntryEntity::class,
         JournalEntryTagEntity::class,
-        TaskReminderEntity::class,
         TaskFilterEntity::class,
         ListEntity::class,
         ListSectionEntity::class,
@@ -762,7 +741,7 @@ data class RoutineLogEntity(
         RoutineLogEntity::class,
         QuickNoteEntity::class
     ],
-    version = 4,
+    version = 7,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)
@@ -803,13 +782,39 @@ private val NestedCompletedAtMigration3To4 = object : Migration(3, 4) {
     }
 }
 
+/** v4 -> v5: drops the task reminders table; tasks keep their other data. */
+private val DropTaskRemindersMigration4To5 = object : Migration(4, 5) {
+    override suspend fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("DROP TABLE IF EXISTS task_reminders")
+    }
+}
+
+private val RepeatRuleMigration5To6 = object : Migration(5, 6) {
+    override suspend fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("ALTER TABLE tasks DROP COLUMN repeatRRule")
+        connection.execSQL("ALTER TABLE tasks ADD COLUMN repeatRuleJson TEXT")
+
+        connection.execSQL("ALTER TABLE routines DROP COLUMN activeWeekdaysJson")
+        connection.execSQL("ALTER TABLE routines ADD COLUMN repeatRuleJson TEXT")
+    }
+}
+
+/** v6 -> v7: adds the nested document sort order column; existing rows take 0. */
+private val NestedDocumentSortOrderMigration6To7 = object : Migration(6, 7) {
+    override suspend fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            "ALTER TABLE nested_documents ADD COLUMN sortOrder INTEGER NOT NULL DEFAULT 0"
+        )
+    }
+}
+
 fun buildCheckItDatabase(
     builder: RoomDatabase.Builder<CheckItDatabase>
 ): CheckItDatabase {
     return builder
         .fallbackToDestructiveMigration(false)
         .fallbackToDestructiveMigrationOnDowngrade(false)
-        .addMigrations(RoutineColorMigration1To2, TaskMetricsMigration2To3, NestedCompletedAtMigration3To4)
+        .addMigrations(RoutineColorMigration1To2, TaskMetricsMigration2To3, NestedCompletedAtMigration3To4, DropTaskRemindersMigration4To5, RepeatRuleMigration5To6, NestedDocumentSortOrderMigration6To7)
         .setQueryCoroutineContext(Dispatchers.IO)
         .setDriver(BundledSQLiteDriver())
         .addCallback(object : RoomDatabase.Callback() {
