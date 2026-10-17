@@ -182,7 +182,7 @@ internal fun StandardTaskRowContent(task: TaskItem, showList: Boolean) {
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         TaskTitleRow(task, descriptionMaxLines = 1)
-        task.subtasks.takeIf { it.isNotEmpty() }?.let { SubtaskProgressText(task) }
+        if (task.subtasks.isNotEmpty()) { SubtaskProgressText(task) }
         SupportingPills(
             date = { DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes, isOverdue = task.isOverdue()) },
             list = if (showList) task.list else null,
@@ -201,7 +201,7 @@ internal fun DetailTaskRowContent(task: TaskItem, showList: Boolean) {
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         TaskTitleRow(task, descriptionMaxLines = 10)
-        SubtaskBriefList(task.subtasks)
+        if (task.subtasks.isNotEmpty()) SubtaskBriefList(task.subtasks)
         SupportingPills(
             date = { DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes, isOverdue = task.isOverdue()) },
             list = if (showList) task.list else null,

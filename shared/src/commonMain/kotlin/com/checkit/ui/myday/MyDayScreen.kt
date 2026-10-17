@@ -222,17 +222,17 @@ internal fun MyDayScreen(
                         }
                     }
                     if (!onQuickPage) {
-                        IconButton(
-                            onClick = viewModel::smartSchedule,
-                            modifier = Modifier.size(36.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.AutoAwesome,
-                                contentDescription = "Smart Schedule",
-                                modifier = Modifier.size(20.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
-                            )
-                        }
+//                        IconButton(
+//                            onClick = viewModel::smartSchedule,
+//                            modifier = Modifier.size(36.dp)
+//                        ) {
+//                            Icon(
+//                                Icons.Default.AutoAwesome,
+//                                contentDescription = "Smart Schedule",
+//                                modifier = Modifier.size(20.dp),
+//                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+//                            )
+//                        }
                         IconButton(
                             onClick = viewModel::openDayClose,
                             modifier = Modifier.size(36.dp)
