@@ -82,7 +82,8 @@ struct NestedInspectorPane: View {
                 NestedNoteEditor(
                     text: $noteText,
                     isDirty: trimmedNote != noteBaseline,
-                    focused: $noteFocused
+                    focused: $noteFocused,
+                    startsInPreview: true
                 )
                 .padding(.horizontal, 10)
                 .padding(.bottom, 8)

@@ -22,8 +22,22 @@ struct NestedNoteEditor: View {
     var isDirty: Bool = false
     @Binding var focused: Bool
 
-    /// Local mode toggle (resets with the view; not persisted).
-    @State private var showPreview = false
+    /// Local mode toggle (resets with the view; not persisted). Starts in the
+    /// read-only preview when `startsInPreview` is set (the inspector) and in
+    /// edit mode otherwise (the note sheet).
+    @State private var showPreview: Bool
+
+    init(
+        text: Binding<String>,
+        isDirty: Bool = false,
+        focused: Binding<Bool>,
+        startsInPreview: Bool = false
+    ) {
+        self._text = text
+        self.isDirty = isDirty
+        self._focused = focused
+        self._showPreview = State(initialValue: startsInPreview)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {

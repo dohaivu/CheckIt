@@ -56,7 +56,7 @@ struct NestedListsWindowView: View {
             if state.showInspector {
                 Divider()
                 NestedInspectorPane(state: state)
-                    .frame(width: 300)
+                    .frame(width: 350)
             }
         }
         .frame(minWidth: 760, minHeight: 680)
