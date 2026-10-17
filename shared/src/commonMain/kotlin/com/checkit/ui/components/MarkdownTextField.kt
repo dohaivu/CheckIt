@@ -15,12 +15,24 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.FormatListBulleted
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.FormatBold
+import androidx.compose.material.icons.filled.FormatColorText
+import androidx.compose.material.icons.filled.FormatItalic
+import androidx.compose.material.icons.filled.FormatListNumbered
+import androidx.compose.material.icons.filled.FormatQuote
+import androidx.compose.material.icons.filled.FormatSize
+import androidx.compose.material.icons.filled.StrikethroughS
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -278,6 +290,26 @@ fun AppenderPopup(
 }
 
 @Composable
+private fun MarkdownToolbarButton(
+    onClick: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
+                shape = RoundedCornerShape(8.dp)
+            )
+            .clickable(onClick = onClick)
+    ) {
+        content()
+    }
+}
+
+@Composable
 fun MarkdownToolbar(
     onAction: (ToolbarAction) -> Unit,
     modifier: Modifier = Modifier
@@ -288,36 +320,37 @@ fun MarkdownToolbar(
         modifier = modifier.fillMaxWidth()
     ) {
         listOf(
-            "B" to ToolbarAction.Bold,
-            "I" to ToolbarAction.Italic,
-            "` `" to ToolbarAction.Code,
-            "==" to ToolbarAction.Highlight,
-            "~~" to ToolbarAction.Strikethrough,
-            "H" to ToolbarAction.Heading,
-            "• " to ToolbarAction.Bullet,
-            "1. " to ToolbarAction.Numbered,
-            "Quote" to ToolbarAction.Quote,
-            "/" to ToolbarAction.SlashCommand
-        ).forEach { (label, action) ->
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.surface)
-                    .border(
-                        width = 1.dp,
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
-                        shape = RoundedCornerShape(8.dp)
-                    )
-                    .clickable { onAction(action) }
-            ) {
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+            Triple(Icons.Default.FormatBold, "Bold", ToolbarAction.Bold),
+            Triple(Icons.Default.FormatItalic, "Italic", ToolbarAction.Italic),
+            Triple(Icons.Default.Code, "Code", ToolbarAction.Code),
+            Triple(Icons.Default.FormatColorText, "Highlight", ToolbarAction.Highlight),
+            Triple(Icons.Default.StrikethroughS, "Strikethrough", ToolbarAction.Strikethrough),
+            Triple(Icons.Default.FormatSize, "Heading", ToolbarAction.Heading),
+            Triple(Icons.AutoMirrored.Filled.FormatListBulleted, "Bullet list", ToolbarAction.Bullet),
+            Triple(Icons.Default.FormatListNumbered, "Numbered list", ToolbarAction.Numbered),
+            Triple(Icons.Default.FormatQuote, "Quote", ToolbarAction.Quote)
+        ).forEach { (icon, label, action) ->
+            MarkdownToolbarButton(onClick = { onAction(action) }) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = label,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .padding(horizontal = 8.dp, vertical = 6.dp)
+                        .size(18.dp)
                 )
             }
+        }
+        // The slash command keeps its literal "/" trigger glyph rather than an
+        // icon — it reads better than any replacement symbol.
+        MarkdownToolbarButton(onClick = { onAction(ToolbarAction.SlashCommand) }) {
+            Text(
+                text = "/",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp)
+            )
         }
     }
 }
