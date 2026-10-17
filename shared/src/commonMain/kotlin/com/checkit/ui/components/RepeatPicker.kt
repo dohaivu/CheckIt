@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -140,14 +141,15 @@ private fun RepeatOptionRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Icon(
             imageVector = Icons.Default.Check,
             contentDescription = null,
-            tint = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent
+            tint = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent,
+            modifier = Modifier.size(16.dp)
         )
         Text(
             text = label,
@@ -163,6 +165,6 @@ private fun RepeatDivider() {
     HorizontalDivider(
         color = Color.LightGray.copy(alpha = 0.4f),
         thickness = 0.5.dp,
-        modifier = Modifier.padding(horizontal = 16.dp)
+        modifier = Modifier.padding(horizontal = 12.dp)
     )
 }
