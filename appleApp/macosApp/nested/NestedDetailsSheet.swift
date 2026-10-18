@@ -78,11 +78,19 @@ struct NestedNoteEditor: View {
                 Text("\(text.count)/2,000")
                     .font(.caption).foregroundStyle(.secondary)
                 Button {
-                    // Leaving edit mode swaps the AppKit editor out without a
-                    // `textDidEndEditing`, and a plain macOS button never takes
-                    // first responder. Signal blur explicitly so the owner's
-                    // focus-loss commit still runs (the inspector saves there).
-                    if !showPreview { focused = false }
+                    if showPreview {
+                        // Preview → editor: focus once the AppKit editor is
+                        // mounted (it needs a window to take first responder),
+                        // so the user can keep typing without an extra click.
+                        DispatchQueue.main.async { focused = true }
+                    } else {
+                        // Editor → preview: leaving edit mode swaps the AppKit
+                        // editor out without a `textDidEndEditing`, and a plain
+                        // macOS button never takes first responder. Signal blur
+                        // explicitly so the owner's focus-loss commit still runs
+                        // (the inspector saves there).
+                        focused = false
+                    }
                     showPreview.toggle()
                 } label: {
                     Text("Preview")
@@ -122,7 +130,13 @@ struct NestedNoteSheet: View {
         }
         .padding()
         .frame(minWidth: 760, idealWidth: 920, maxWidth: .infinity, minHeight: 460, idealHeight: 620, maxHeight: .infinity)
-        .onAppear { text = item.note ?? "" }
+        .onAppear {
+            text = item.note ?? ""
+            // Focus once the sheet's window exists: the AppKit editor can only
+            // take first responder once it is in a window, and the user should
+            // be able to start typing immediately.
+            DispatchQueue.main.async { focused = true }
+        }
     }
 
     /// True when the draft differs from the persisted note (drives the hint and

@@ -126,7 +126,7 @@ struct NestedRowView: View {
                         ZStack {
                             Circle()
                                 .stroke(nestedDotForDepth(row.depth), lineWidth: 1.5)
-                                .frame(width: 13, height: 13)
+                                .frame(width: 12, height: 12)
                             Image(systemName: item.collapsed ? "chevron.right" : "chevron.down")
                                 .font(.system(size: 8, weight: .semibold))
                                 .foregroundStyle(nestedDotForDepth(row.depth))
