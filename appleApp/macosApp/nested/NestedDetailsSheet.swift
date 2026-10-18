@@ -78,6 +78,11 @@ struct NestedNoteEditor: View {
                 Text("\(text.count)/2,000")
                     .font(.caption).foregroundStyle(.secondary)
                 Button {
+                    // Leaving edit mode swaps the AppKit editor out without a
+                    // `textDidEndEditing`, and a plain macOS button never takes
+                    // first responder. Signal blur explicitly so the owner's
+                    // focus-loss commit still runs (the inspector saves there).
+                    if !showPreview { focused = false }
                     showPreview.toggle()
                 } label: {
                     Text("Preview")
