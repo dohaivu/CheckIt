@@ -5,6 +5,16 @@ on:
     tags:
       - "[0-9]*.[0-9]*.[0-9]*"
   workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag or ref to build (defaults to the ref the workflow is run from)
+        required: false
+        type: string
+      dry_run:
+        description: Build, validate, and upload the APK without touching a GitHub Release
+        required: false
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -13,61 +23,79 @@ concurrency:
   group: release-apk-${{ github.ref_name }}
   cancel-in-progress: false
 
+env:
+  JAVA_VERSION: "25"
+
 jobs:
   release-apk:
     name: Build release APK
     runs-on: ubuntu-latest
+    # Guards against a stuck Gradle daemon burning the 6h default limit.
+    timeout-minutes: 45
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
+          # A tag push already checks out the tag; the input only matters for manual runs.
+          ref: ${{ inputs.tag || github.ref }}
+          # The Android version name/code come from `com.gladed.androidgitversion`,
+          # which runs `git describe` and therefore needs the tags and history.
           fetch-depth: 0
+          fetch-tags: true
 
-      - name: Set up JDK
-        uses: actions/setup-java@v5
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
-          java-version: 25
+          java-version: ${{ env.JAVA_VERSION }}
 
-      - name: Accept Android SDK licenses
-        shell: bash
-        run: |
-          export ANDROID_SDK_ROOT="${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}"
-          SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
-          test -x "$SDKMANAGER" || SDKMANAGER="$(find "$ANDROID_SDK_ROOT/cmdline-tools" -maxdepth 2 -name sdkmanager | head -n 1)"
-          test -x "$SDKMANAGER"
-          yes | "$SDKMANAGER" --licenses > /dev/null || true
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v5
 
-      - name: Prepare release version
-        shell: bash
+      - name: Resolve release version
+        id: release
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
-          VERSION_NAME="$GITHUB_REF_NAME"
-          echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
+          if [ -n "$INPUT_TAG" ]; then
+            RELEASE_TAG="$INPUT_TAG"
+          else
+            RELEASE_TAG="$REF_NAME"
+          fi
+          echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+          echo "version_name=${RELEASE_TAG#v}" >> "$GITHUB_OUTPUT"
 
       - name: Decode release keystore
-        shell: bash
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          test -n "$ANDROID_KEYSTORE_BASE64"
-          test -n "$ANDROID_KEYSTORE_PASSWORD"
-          test -n "$ANDROID_KEY_ALIAS"
-          test -n "$ANDROID_KEY_PASSWORD"
-          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/checkit-release.jks"
-          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/checkit-release.jks" >> "$GITHUB_ENV"
-          echo "ANDROID_KEYSTORE_PASSWORD=$ANDROID_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
-          echo "ANDROID_KEY_ALIAS=$ANDROID_KEY_ALIAS" >> "$GITHUB_ENV"
-          echo "ANDROID_KEY_PASSWORD=$ANDROID_KEY_PASSWORD" >> "$GITHUB_ENV"
+          # Fail fast: without all four values Gradle silently falls back to the
+          # debug signing config and would publish a debug-signed "release" APK.
+          missing=""
+          for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              missing="$missing $name"
+            fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Missing release signing secret(s):$missing"
+            exit 1
+          fi
+
+          KEYSTORE_PATH="$RUNNER_TEMP/checkit-release.jks"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
+          test -s "$KEYSTORE_PATH"
+          echo "KEYSTORE_PATH=$KEYSTORE_PATH" >> "$GITHUB_ENV"
 
       - name: Prepare Google services config
-        shell: bash
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
@@ -108,34 +136,72 @@ jobs:
           fi
 
       - name: Build release APK
+        env:
+          # Passed as step env instead of $GITHUB_ENV so the passwords are not
+          # exported to every later step of the job.
+          ANDROID_KEYSTORE_PATH: ${{ env.KEYSTORE_PATH }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          VERSION_NAME: ${{ steps.release.outputs.version_name }}
         run: ./gradlew :androidApp:assembleRelease --no-configuration-cache
 
       - name: Prepare APK artifact
-        shell: bash
         run: |
+          APK_DIR="androidApp/build/outputs/apk/release"
+          APK_PATH="$(find "$APK_DIR" -type f -name '*.apk' ! -name '*unsigned*' -print -quit)"
+          if [ -z "$APK_PATH" ]; then
+            echo "::error::No signed release APK found in $APK_DIR"
+            exit 1
+          fi
+
           mkdir -p release-apk
-          APK_PATH="$(find androidApp/build/outputs/apk/release -name '*.apk' ! -name '*unsigned*' | head -n 1)"
-          test -n "$APK_PATH"
-          cp "$APK_PATH" "release-apk/CheckIt-${GITHUB_REF_NAME}.apk"
-          echo "APK_FILE=release-apk/CheckIt-${GITHUB_REF_NAME}.apk" >> "$GITHUB_ENV"
+          APK_FILE="release-apk/CheckIt-${{ steps.release.outputs.tag }}.apk"
+          cp "$APK_PATH" "$APK_FILE"
+
+          {
+            echo "APK_FILE=$APK_FILE"
+            echo "APK_SHA256=$(sha256sum "$APK_FILE" | cut -d ' ' -f1)"
+          } >> "$GITHUB_ENV"
+
+          ls -lh "$APK_FILE"
+
+      - name: Verify APK signature
+        run: |
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-$HOME/Android/Sdk}}"
+          APKSIGNER="$(find "$SDK_ROOT/build-tools" -type f -name apksigner 2>/dev/null | sort -V | tail -n 1)"
+          if [ -z "$APKSIGNER" ]; then
+            echo "::warning::apksigner not found under $SDK_ROOT; skipping signature verification."
+            exit 0
+          fi
+
+          # Fails if the APK is unsigned or has a broken signature scheme.
+          "$APKSIGNER" verify --verbose --print-certs "$APK_FILE"
 
       - name: Upload workflow artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: CheckIt-${{ github.ref_name }}-apk
+          name: CheckIt-${{ steps.release.outputs.tag }}-apk
           path: ${{ env.APK_FILE }}
           if-no-files-found: error
+          retention-days: 14
 
       - name: Publish GitHub Release
-        if: github.event_name == 'push'
-        shell: bash
+        # Manual runs default to a dry run and leave existing releases untouched.
+        if: github.event_name == 'push' || inputs.dry_run == false
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release.outputs.tag }}
+          VERSION_NAME: ${{ steps.release.outputs.version_name }}
         run: |
-          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
-            gh release upload "$GITHUB_REF_NAME" "$APK_FILE" --clobber
+          NOTES="$(printf 'Android APK release for CheckIt %s.\n\nSHA-256: %s' "$VERSION_NAME" "$APK_SHA256")"
+
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" "$APK_FILE" --clobber
+            gh release edit "$TAG" --notes "$NOTES"
           else
-            gh release create "$GITHUB_REF_NAME" "$APK_FILE" \
-              --title "$GITHUB_REF_NAME" \
-              --notes "Android APK release for CheckIt $VERSION_NAME."
+            gh release create "$TAG" "$APK_FILE" \
+              --title "$TAG" \
+              --verify-tag \
+              --notes "$NOTES"
           fi
