@@ -355,13 +355,19 @@ struct NestedRowView: View {
               state.isDescendant(itemId: item.id, of: selId),
               let selNode = state.indexById[selId]
         else { return nil }
+        // Depths in `visibleRows` (and the guide grid) start at the zoom
+        // root, so stop counting there rather than at the document root.
+        let zoomRootId = state.zoomPath.last
+        if selId == zoomRootId { return 0 }
         var depth = 0
         var cursor = selNode.item.parentId
         while let pid = cursor, !pid.isEmpty {
+            if pid == zoomRootId { return depth + 1 }
             depth += 1
             cursor = state.indexById[pid]?.item.parentId
         }
-        return depth
+        // Not under the zoom root: nothing visible starts at its column.
+        return zoomRootId == nil ? depth : nil
     }
 
     private var rowBackground: Color {
