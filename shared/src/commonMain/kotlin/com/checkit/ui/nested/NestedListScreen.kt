@@ -167,7 +167,7 @@ import com.checkit.domain.NestedSortOrder
 import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.TagItem
 import com.checkit.domain.TaskPriority
-import com.checkit.domain.filterNestedTree
+import com.checkit.domain.filterNestedTreeWithFocus
 import com.checkit.domain.moveDestinations
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.CompactFlatTextField
@@ -230,9 +230,9 @@ internal fun NestedListScreen(
     val unfilteredRoots = remember(focusedNode, tree.rootNodes) {
         focusedNode?.let { listOf(it) } ?: tree.rootNodes
     }
-    val visibleRoots = remember(unfilteredRoots, state.filters) {
+    val outlineFocus = remember(unfilteredRoots, state.filters) {
         if (state.filters.isVisible || state.filters.displayType != NestedDisplayType.All) {
-            filterNestedTree(
+            filterNestedTreeWithFocus(
                 roots = unfilteredRoots,
                 start = state.filters.focus?.start,
                 end = state.filters.focus?.endInclusive,
@@ -242,10 +242,15 @@ internal fun NestedListScreen(
                 workingOnly = state.filters.displayType == NestedDisplayType.Working
             )
         } else {
-            unfilteredRoots
+            null
         }
     }
-    val visibleRows = remember(visibleRoots) { flattenVisibleNodes(visibleRoots) }
+    val visibleRoots = outlineFocus?.roots ?: unfilteredRoots
+    // Ancestors kept only to hold matches under them recede visually.
+    val contextIds = remember(outlineFocus) { outlineFocus?.contextIds?.toSet().orEmpty() }
+    val visibleRows = remember(visibleRoots, contextIds) {
+        flattenVisibleNodes(visibleRoots, contextIds)
+    }
     val breadcrumbs = remember(state.zoomPath, tree.rootNodes) { buildBreadcrumbs(state, tree.rootNodes) }
 
     Column(modifier = modifier.fillMaxSize()) {
@@ -526,6 +531,7 @@ internal fun NestedListScreen(
                                         isVisible = row.isVisible,
                                         isInCheckedBranch = row.isInCheckedBranch,
                                         continuingLevels = row.continuingLevels,
+                                        isContext = row.isContext,
                                         state = state,
                                         viewModel = viewModel,
                                         isDragActive = drag != null,
@@ -2245,6 +2251,7 @@ private fun NestedItemRow(
     continuingLevels: Set<Int>,
     state: NestedEditorState.Active,
     viewModel: NestedListsViewModel,
+    isContext: Boolean = false,
     isDragActive: Boolean = false,
     isDragged: Boolean = false
 ) {
@@ -2476,6 +2483,11 @@ private fun NestedItemRow(
                                     style = nestedTextStyle(item.textStyle),
                                     textDecoration = if (item.checked) TextDecoration.LineThrough else TextDecoration.None,
                                     color = when {
+                                        isContext && !isEmphasized ->
+                                            MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                                                alpha = 0.6f
+                                            )
+
                                         isInCheckedBranch -> MaterialTheme.colorScheme.onSurfaceVariant.copy(
                                             alpha = 0.68f
                                         )
@@ -2574,7 +2586,9 @@ private data class VisibleNestedRow(
     val depth: Int,
     val isVisible: Boolean,
     val isInCheckedBranch: Boolean,
-    val continuingLevels: Set<Int> = emptySet()
+    val continuingLevels: Set<Int> = emptySet(),
+    /** Kept only as ancestor scaffolding for a filtered match. */
+    val isContext: Boolean = false
 )
 
 private data class NestedTraversalEntry(
@@ -2751,7 +2765,10 @@ private fun DropIndicatorLine(depth: Int) {
     }
 }
 
-private fun flattenVisibleNodes(roots: List<NestedItemNode>): List<VisibleNestedRow> {
+private fun flattenVisibleNodes(
+    roots: List<NestedItemNode>,
+    contextIds: Set<String> = emptySet()
+): List<VisibleNestedRow> {
     if (roots.isEmpty()) return emptyList()
     val result = ArrayList<VisibleNestedRow>()
     val stack = ArrayDeque<NestedTraversalEntry>()
@@ -2772,13 +2789,13 @@ private fun flattenVisibleNodes(roots: List<NestedItemNode>): List<VisibleNested
         val entry = stack.removeLast()
         val node = entry.node
         val isInCheckedBranch = entry.ancestorChecked || node.item.checked
-        
         result += VisibleNestedRow(
             node = node,
             depth = entry.depth,
             isVisible = entry.isVisible,
             isInCheckedBranch = isInCheckedBranch,
-            continuingLevels = entry.continuingLevels
+            continuingLevels = entry.continuingLevels,
+            isContext = node.item.id in contextIds
         )
         
         val childrenVisible = entry.isVisible && !node.item.collapsed

@@ -133,6 +133,30 @@ fun filterOutlineRoots(
     filterNestedTree(roots, start = null, end = null, query = query, workingOnly = workingOnly)
 
 /**
+ * Filtered outline plus the context metadata views use for quiet rows:
+ *
+ * - [roots]: the pruned tree, same shape as [filterNestedTree] returns.
+ * - [contextIds]: items kept only to hold matches under their ancestors.
+ *   They are scaffolding, not work, and views render them muted. Empty when
+ *   no positive criterion is active.
+ */
+class NestedOutlineFocus(
+    val roots: List<NestedItemNode>,
+    val contextIds: List<String>
+)
+
+/**
+ * Swift-friendly variant of [filterNestedTreeWithFocus] for the macOS
+ * Working/search outline (no date/tag interop).
+ */
+fun filterOutlineFocus(
+    roots: List<NestedItemNode>,
+    query: String = "",
+    workingOnly: Boolean = false
+): NestedOutlineFocus =
+    filterNestedTreeWithFocus(roots, start = null, end = null, query = query, workingOnly = workingOnly)
+
+/**
  * Prunes the tree, keeping only nodes that overlap with [start] to [end]
  * (inclusive) OR have descendants that do. Supports text [query] and [hideChecked] status.
  *
@@ -151,16 +175,58 @@ fun filterNestedTree(
     hideChecked: Boolean = false,
     selectedTagIds: Set<String> = emptySet(),
     workingOnly: Boolean = false
-): List<NestedItemNode> {
-    val found = roots.mapNotNull { filterNestedNode(it, start, end, query, hideChecked, selectedTagIds) }
-    if (!workingOnly) return found
-    // Refine (see KDoc): checked subtrees were already pruned above when
-    // hideChecked is set; Working additionally implies hide-checked, since
-    // done work is noise in a needs-attention view (All stays for review).
-    return found.mapNotNull {
-        filterNestedNode(it, null, null, "", hideChecked = true, workingOnly = true)
+): List<NestedItemNode> =
+    filterNestedTreeWithFocus(roots, start, end, query, hideChecked, selectedTagIds, workingOnly).roots
+
+/** [filterNestedTree] plus the context metadata described on [NestedOutlineFocus]. */
+fun filterNestedTreeWithFocus(
+    roots: List<NestedItemNode>,
+    start: LocalDate? = null,
+    end: LocalDate? = null,
+    query: String = "",
+    hideChecked: Boolean = false,
+    selectedTagIds: Set<String> = emptySet(),
+    workingOnly: Boolean = false
+): NestedOutlineFocus {
+    var filtered = roots.mapNotNull {
+        filterNestedNode(it, start, end, query, hideChecked, selectedTagIds)
     }
+    if (workingOnly) {
+        // Refine (see KDoc): checked subtrees were already pruned above when
+        // hideChecked is set; Working additionally implies hide-checked, since
+        // done work is noise in a needs-attention view (All stays for review).
+        // Context metadata belongs to the refined pass, so start it clean.
+        filtered = filtered.mapNotNull {
+            filterNestedNode(
+                it.node, null, null, "", hideChecked = true, workingOnly = true
+            )
+        }
+    }
+    val contextIds = LinkedHashSet<String>()
+    // Pre-order so ids read top-down, matching the outline itself.
+    val stack = ArrayDeque<FilteredNestedNode>()
+    filtered.asReversed().forEach(stack::addLast)
+    while (stack.isNotEmpty()) {
+        val result = stack.removeLast()
+        // Kept only because a descendant matched: ancestor scaffolding.
+        if (!result.matchesSelf && !result.isForced) contextIds.add(result.node.item.id)
+        result.children.asReversed().forEach(stack::addLast)
+    }
+    return NestedOutlineFocus(
+        roots = filtered.map { it.node },
+        contextIds = contextIds.toList()
+    )
 }
+
+/** One kept node with the match bookkeeping the context metadata is built from. */
+private class FilteredNestedNode(
+    val node: NestedItemNode,
+    val children: List<FilteredNestedNode>,
+    /** Satisfies the filter directly. */
+    val matchesSelf: Boolean,
+    /** Kept because an ancestor matched, not for a match of its own. */
+    val isForced: Boolean
+)
 
 private fun filterNestedNode(
     node: NestedItemNode,
@@ -171,7 +237,7 @@ private fun filterNestedNode(
     selectedTagIds: Set<String> = emptySet(),
     forceKeep: Boolean = false,
     workingOnly: Boolean = false
-): NestedItemNode? {
+): FilteredNestedNode? {
     val item = node.item
 
     // 1. Hide Checked: if enabled and item is checked, prune it and its subtree entirely
@@ -213,18 +279,24 @@ private fun filterNestedNode(
 
     // 3. Recurse children
     val filteredChildren = node.children.mapNotNull {
-        filterNestedNode(it, start, end, query, hideChecked, selectedTagIds, shouldForceKeepDescendants, workingOnly)
+        filterNestedNode(
+            it, start, end, query, hideChecked, selectedTagIds,
+            shouldForceKeepDescendants, workingOnly
+        )
     }
 
     // Keep node if:
     // a) It's forced kept (because an ancestor matched positive filters)
     // b) It matched positive filters directly
     // c) It has descendants that matched (bottom-up context)
-    return if (shouldForceKeepDescendants || filteredChildren.isNotEmpty()) {
-        node.copy(children = filteredChildren)
-    } else {
-        null
-    }
+    if (!shouldForceKeepDescendants && filteredChildren.isEmpty()) return null
+
+    return FilteredNestedNode(
+        node = node.copy(children = filteredChildren.map { it.node }),
+        children = filteredChildren,
+        matchesSelf = matchesSelf,
+        isForced = forceKeep
+    )
 }
 
 /**

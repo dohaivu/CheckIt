@@ -37,11 +37,14 @@ struct NestedRow: Identifiable, Equatable {
     let node: NestedItemNode
     /// Self or any ancestor checked (Android `isInCheckedBranch` parity).
     let isInCheckedBranch: Bool
+    /// Kept only as ancestor scaffolding for a filtered match.
+    var isContext: Bool = false
 
     static func == (lhs: NestedRow, rhs: NestedRow) -> Bool {
         lhs.id == rhs.id
             && lhs.depth == rhs.depth
             && lhs.isInCheckedBranch == rhs.isInCheckedBranch
+            && lhs.isContext == rhs.isContext
             && lhs.node.item.updatedAtMillis == rhs.node.item.updatedAtMillis
     }
 }
@@ -385,14 +388,28 @@ final class NestedEditorState: ObservableObject {
         // priority / due date / countdown metric + ancestor context) instead
         // of reimplementing it. Runs on the debounced query (see searchQuery).
         let query = appliedQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-        let roots: [NestedItemNode] = (displayType == .working || !query.isEmpty)
-            ? NestedListKt.filterOutlineRoots(roots: zoomRoots, query: query, workingOnly: displayType == .working)
-            : zoomRoots
+        let focus: NestedOutlineFocus? = (displayType == .working || !query.isEmpty)
+            ? NestedListKt.filterOutlineFocus(
+                roots: zoomRoots,
+                query: query,
+                workingOnly: displayType == .working
+            )
+            : nil
+        let contextIds = Set(focus?.contextIds ?? [])
+        let roots: [NestedItemNode] = focus?.roots ?? zoomRoots
         var out: [NestedRow] = []
         var stack = roots.reversed().map { ($0, 0, false) }
         while let (node, depth, ancestorChecked) = stack.popLast() {
             let inCheckedBranch = ancestorChecked || node.item.checked
-            out.append(NestedRow(id: node.item.id, depth: depth, node: node, isInCheckedBranch: inCheckedBranch))
+            out.append(
+                NestedRow(
+                    id: node.item.id,
+                    depth: depth,
+                    node: node,
+                    isInCheckedBranch: inCheckedBranch,
+                    isContext: contextIds.contains(node.item.id)
+                )
+            )
             if !node.item.collapsed {
                 for child in node.children.reversed() {
                     stack.append((child, depth + 1, inCheckedBranch))

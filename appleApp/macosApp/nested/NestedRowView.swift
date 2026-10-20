@@ -332,6 +332,9 @@ struct NestedRowView: View {
     }
 
     private var nestedTextColor: Color {
+        // Context rows (kept only to hold matches under their ancestors)
+        // recede so working rows carry the eye; selecting one restores ink.
+        if row.isContext && !isEmphasized { return Color.secondary.opacity(0.6) }
         // Android parity (NestedListScreen): rows in a checked branch (self
         // or any ancestor checked) fade to onSurfaceVariant at 0.68 alpha.
         if row.isInCheckedBranch { return Color.secondary.opacity(0.68) }
