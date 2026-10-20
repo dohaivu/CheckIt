@@ -1,0 +1,30 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+  <group
+      android:scaleX="1.6"
+      android:scaleY="1.6"
+      android:pivotX="256"
+      android:pivotY="256">
+    <!-- Card body outline -->
+    <path
+        android:pathData="M152,140L360,140A24,24 0,0 1,384 164L384,348A24,24 0,0 1,360 372L152,372A24,24 0,0 1,128 348L128,164A24,24 0,0 1,152 140z"
+        android:strokeWidth="28"
+        android:strokeColor="#FFFFFFFF"
+        android:fillColor="#00000000" />
+    <!-- Top header bar of card -->
+    <path
+        android:pathData="M128,140h256v50H128z"
+        android:fillColor="#FFFFFFFF" />
+    <!-- Checkmark inside card -->
+    <path
+        android:pathData="M210,290l35,35 65,-65"
+        android:strokeLineJoin="round"
+        android:strokeWidth="40"
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round" />
+  </group>
+</vector>
