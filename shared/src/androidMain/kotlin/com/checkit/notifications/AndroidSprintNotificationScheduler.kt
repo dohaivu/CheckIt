@@ -63,9 +63,8 @@ class AndroidSprintNotificationScheduler(
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
 
-            val iconRes = context.applicationInfo.icon
             val builder = NotificationCompat.Builder(context, NotificationChannels.ReminderId)
-                .setSmallIcon(if (iconRes != 0) iconRes else R.mipmap.ic_launcher_round)
+                .setSmallIcon(R.mipmap.ic_launcher_round)
                 .setContentTitle(title)
                 .setContentText(body)
                 .setStyle(NotificationCompat.BigTextStyle().bigText(body))
