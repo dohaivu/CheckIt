@@ -189,9 +189,11 @@ import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
 
-// Palette shared with macOS NestedRowView (nestedDepthSolids): guides cycle
-// one muted color per depth at 0.5 opacity; the toggle ring/dot uses the
-// same depth solid at full opacity so nesting can be followed by hue.
+// Palette shared with macOS NestedRowView (nestedDepthSolids). Guides and
+// dots are quiet by default — the depth hue is a hint, not a statement. The
+// active row promotes its own dot/ring and the spine running down to its
+// children, so selection points at the branch instead of repainting the
+// whole outline.
 private val nestedDepthSolids: List<Color> = listOf(
     Color(0xFFD97F5F), // 0 terracotta
     Color(0xFF7EA38A), // 1 sage
@@ -199,7 +201,18 @@ private val nestedDepthSolids: List<Color> = listOf(
     Color(0xFFC09F5E), // 3 warm sand
 )
 
-private val nestedGuideColors: List<Color> = nestedDepthSolids.map { it.copy(alpha = 0.5f) }
+private const val nestedGuideSubtleAlpha = 0.18f
+private const val nestedGuideStrongAlpha = 0.92f
+private const val nestedDotSubtleAlpha = 0.5f
+
+private fun nestedDepthColor(depth: Int): Color =
+    nestedDepthSolids[depth % nestedDepthSolids.size]
+
+private fun nestedGuideColor(level: Int, emphasized: Boolean = false): Color =
+    nestedDepthColor(level).copy(alpha = if (emphasized) nestedGuideStrongAlpha else nestedGuideSubtleAlpha)
+
+private fun nestedDotColor(depth: Int, emphasized: Boolean = false): Color =
+    nestedDepthColor(depth).copy(alpha = if (emphasized) 1f else nestedDotSubtleAlpha)
 
 @Composable
 internal fun NestedListScreen(
@@ -2195,6 +2208,34 @@ private fun EmptyNestedList(onAddItem: () -> Unit) {
     }
 }
 
+/**
+ * Depth of the selected node in the current (zoomed/filtered) view, for rows
+ * inside its subtree. Walking up from this row, the selected node sits
+ * `hops` levels above, so its depth is `rowDepth - hops` — no separate zoom
+ * offset needed. Null on the selected row itself and outside its subtree:
+ * the strong spine only points down at children, never up at ancestors.
+ */
+private fun selectedSpineLevel(
+    state: NestedEditorState.Active,
+    itemId: String,
+    rowDepth: Int
+): Int? {
+    // Multi-select has no single current node; only dots emphasize there.
+    if (state.selection.isActive) return null
+    val selId = state.selectedItemId ?: return null
+    if (selId == itemId) return null
+    val nodes = state.tree.nodeById
+    var cursor = nodes[itemId]?.item?.parentId
+    var hops = 1
+    while (true) {
+        val pid = cursor?.takeIf { it.isNotEmpty() } ?: break
+        if (pid == selId) return (rowDepth - hops).takeIf { it >= 0 }
+        cursor = nodes[pid]?.item?.parentId
+        hops++
+    }
+    return null
+}
+
 @Composable
 private fun NestedItemRow(
     node: NestedItemNode,
@@ -2208,10 +2249,13 @@ private fun NestedItemRow(
     isDragged: Boolean = false
 ) {
     val item = node.item
-    val guideColors = nestedGuideColors
     val isSelected = item.id in state.selection.selectedIds ||
             (!state.selection.isActive && state.selectedItemId == item.id)
     val isEditing = state.editingTextItemId == item.id
+    // Active row: solid dot/ring and the spine down to its children. Ancestor
+    // guides never emphasize, so selection points down the branch, not up.
+    val isEmphasized = isSelected || isEditing
+    val spineLevel = selectedSpineLevel(state, itemId = item.id, rowDepth = depth)
 
     AnimatedVisibility(
         visible = isVisible,
@@ -2241,7 +2285,7 @@ private fun NestedItemRow(
                             continuingLevels.forEach { level ->
                                 val x = guideX(level)
                                 drawLine(
-                                    color = guideColors[level % guideColors.size],
+                                    color = nestedGuideColor(level, emphasized = level == spineLevel),
                                     start = Offset(x, 0f),
                                     end = Offset(x, size.height),
                                     strokeWidth = strokeWidth,
@@ -2265,7 +2309,10 @@ private fun NestedItemRow(
                                 }
                                 drawPath(
                                     path = path,
-                                    color = guideColors[(depth - 1) % guideColors.size],
+                                    color = nestedGuideColor(
+                                        depth - 1,
+                                        emphasized = depth - 1 == spineLevel
+                                    ),
                                     style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
                                 )
                             }
@@ -2273,7 +2320,7 @@ private fun NestedItemRow(
                             if (node.hasChildren && !item.collapsed) {
                                 val x = guideX(depth)
                                 drawLine(
-                                    color = guideColors[depth % guideColors.size],
+                                    color = nestedGuideColor(depth, emphasized = isEmphasized),
                                     start = Offset(x, dotBottomY),
                                     end = Offset(x, size.height),
                                     strokeWidth = strokeWidth,
@@ -2300,7 +2347,7 @@ private fun NestedItemRow(
                             ),
                         contentAlignment = Alignment.TopStart
                     ) {
-                        val dotColor = nestedDepthSolids[depth % nestedDepthSolids.size]
+                        val dotColor = nestedDotColor(depth, emphasized = isEmphasized)
                         Box(
                             modifier = Modifier
                                 .width(16.dp)
@@ -2314,7 +2361,11 @@ private fun NestedItemRow(
                                     .clip(CircleShape)
                                     .then(
                                         if (node.hasChildren) {
-                                            Modifier.border(2.dp, dotColor, CircleShape)
+                                            Modifier.border(
+                                                if (isEmphasized) 2.dp else 1.5.dp,
+                                                dotColor,
+                                                CircleShape
+                                            )
                                         } else {
                                             Modifier.background(dotColor)
                                         }
@@ -2764,7 +2815,6 @@ private fun NewItemRow(
     onCancel: () -> Unit,
     continuingLevels: Set<Int>
 ) {
-    val guideColors = nestedGuideColors
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -2779,7 +2829,7 @@ private fun NewItemRow(
                 continuingLevels.forEach { level ->
                     val x = guideX(level)
                     drawLine(
-                        color = guideColors[level % guideColors.size],
+                        color = nestedGuideColor(level),
                         start = Offset(x, 0f),
                         end = Offset(x, size.height),
                         strokeWidth = strokeWidth,
@@ -2803,7 +2853,7 @@ private fun NewItemRow(
                     }
                     drawPath(
                         path = path,
-                        color = guideColors[(depth - 1) % guideColors.size],
+                        color = nestedGuideColor(depth - 1),
                         style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
                     )
                 }
