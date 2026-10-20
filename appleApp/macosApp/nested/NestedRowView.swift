@@ -48,7 +48,8 @@ extension Color {
 // Warm paper canvas instead of near-white: it cuts blue-light glare while
 // keeping dark-ink contrast, which fatigues less over hours. Guides cycle
 // one muted color per depth; the toggle ring/dot uses the same depth color
-// so the eye can follow nesting by hue.
+// so the eye can follow nesting by hue. Both stay faint by default and only
+// the active row (see `isEmphasized`) draws them at full strength.
 
 let nestedDepthSolids: [Color] = [
     Color(red: 0xD9 / 255.0, green: 0x7F / 255.0, blue: 0x5F / 255.0), // 0 terracotta
@@ -63,12 +64,25 @@ let nestedSelectedColor = Color(red: 0xF9 / 255.0, green: 0xEC / 255.0, blue: 0x
 let nestedEditingColor = Color.accentColor.opacity(0.18)
 let nestedInkColor = Color(red: 0x2E / 255.0, green: 0x2A / 255.0, blue: 0x26 / 255.0)
 
-func nestedGuideColor(_ level: Int) -> Color {
-    nestedDepthSolids[level % nestedDepthSolids.count].opacity(0.5)
+// Guides and dots are quiet by default: the depth hue is a hint, not a
+// statement. The active row (selected or editing) promotes its own guides
+// and spine to full strength so the eye can follow the branch, without
+// repainting the whole outline.
+let nestedGuideSubtleOpacity = 0.18
+let nestedGuideStrongOpacity = 0.92
+let nestedDotSubtleOpacity = 0.5
+
+func nestedDepthColor(_ depth: Int) -> Color {
+    nestedDepthSolids[depth % nestedDepthSolids.count]
 }
 
-func nestedDotForDepth(_ depth: Int) -> Color {
-    nestedDepthSolids[depth % nestedDepthSolids.count]
+func nestedGuideColor(_ level: Int, emphasized: Bool = false) -> Color {
+    nestedDepthColor(level).opacity(emphasized ? nestedGuideStrongOpacity : nestedGuideSubtleOpacity)
+}
+
+/// Quiet by default; `emphasized` restores the solid depth color.
+func nestedDotForDepth(_ depth: Int, emphasized: Bool = false) -> Color {
+    nestedDepthColor(depth).opacity(emphasized ? 1.0 : nestedDotSubtleOpacity)
 }
 
 private let nestedDateFormatter: DateFormatter = {
@@ -103,15 +117,20 @@ struct NestedRowView: View {
     private var item: NestedListItem { row.node.item }
 
     var body: some View {
+        // Ancestor guides stay quiet always: the emphasis is the selected
+        // node's dot/ring plus its spine running down through its children.
+        // Descendant rows carry that spine at the selected node's level.
+        let spineLevel = selectedSpineLevel
         HStack(alignment: .top, spacing: 0) {
             // Indent guides, sharing one x per depth (slightly right of
             // cell center) — the toggle column below uses the same grid.
             ForEach(0..<row.depth, id: \.self) { level in
                 Rectangle()
-                    .fill(nestedGuideColor(level))
+                    .fill(nestedGuideColor(level, emphasized: level == spineLevel))
                     .frame(width: 1)
                     .padding(.leading, 10)
                     .frame(width: 16, alignment: .leading)
+                    .animation(.easeOut(duration: 0.15), value: level == spineLevel)
             }
             // Collapse toggle: chevron wrapped in an outside circle (parents)
             // or a small filled dot (leaves), matching the attachment where
@@ -125,20 +144,21 @@ struct NestedRowView: View {
                     if row.node.hasChildren {
                         ZStack {
                             Circle()
-                                .stroke(nestedDotForDepth(row.depth), lineWidth: 1.5)
+                                .stroke(nestedDotForDepth(row.depth, emphasized: isEmphasized), lineWidth: isEmphasized ? 2 : 1.5)
                                 .frame(width: 12, height: 12)
                             Image(systemName: item.collapsed ? "chevron.right" : "chevron.down")
                                 .font(.system(size: 8, weight: .semibold))
-                                .foregroundStyle(nestedDotForDepth(row.depth))
+                                .foregroundStyle(nestedDotForDepth(row.depth, emphasized: isEmphasized))
                         }
                     } else {
                         Circle()
-                            .fill(nestedDotForDepth(row.depth))
+                            .fill(nestedDotForDepth(row.depth, emphasized: isEmphasized))
                             .frame(width: 7, height: 7)
                     }
                 }
                 .frame(width: 16, height: 24)
                 .contentShape(Rectangle())
+                .animation(.easeOut(duration: 0.15), value: isEmphasized)
             }
             .buttonStyle(.plain)
             .padding(.top, 2).padding(.leading, 3)
@@ -259,11 +279,12 @@ struct NestedRowView: View {
             // at 20pt — start the line there so it touches the ring.
             if row.node.hasChildren && !item.collapsed {
                 Rectangle()
-                    .fill(nestedGuideColor(row.depth))
+                    .fill(nestedGuideColor(row.depth, emphasized: isEmphasized))
                     .frame(width: 1)
                     .padding(.top, 20)
                     .padding(.leading, CGFloat(row.depth * 16) + 10)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .animation(.easeOut(duration: 0.15), value: isEmphasized)
             }
         }
         .background(nestedCanvasColor)
@@ -296,7 +317,7 @@ struct NestedRowView: View {
     private var dragPreview: some View {
         HStack(spacing: 6) {
             Circle()
-                .fill(nestedDotForDepth(row.depth))
+                .fill(nestedDepthColor(row.depth))
                 .frame(width: 7, height: 7)
             Text(item.text.isEmpty ? AttributedString("Untitled item") : renderInlineMarkdown(item.text))
                 .font(nestedRowFont(item.textStyle.name))
@@ -321,6 +342,27 @@ struct NestedRowView: View {
     }
 
     private var isSelected: Bool { state.selectedId == item.id }
+
+    /// The active row promotes its dot/ring and the spine below it to full
+    /// strength. Everything else stays on the quiet tier.
+    private var isEmphasized: Bool { isSelected || isEditing }
+
+    /// Depth column carrying the selected node's spine through its subtree.
+    /// Nil on the selected row itself (its own guides point up at ancestors,
+    /// which stay quiet) and on rows outside the subtree.
+    private var selectedSpineLevel: Int? {
+        guard !isSelected, let selId = state.selectedId,
+              state.isDescendant(itemId: item.id, of: selId),
+              let selNode = state.indexById[selId]
+        else { return nil }
+        var depth = 0
+        var cursor = selNode.item.parentId
+        while let pid = cursor, !pid.isEmpty {
+            depth += 1
+            cursor = state.indexById[pid]?.item.parentId
+        }
+        return depth
+    }
 
     private var rowBackground: Color {
         if isEditing { return nestedEditingColor }
@@ -361,7 +403,7 @@ struct NestedRowView: View {
                                 RoundedRectangle(cornerRadius: 2)
                                     .fill(Color.black.opacity(0.08))
                                 RoundedRectangle(cornerRadius: 2)
-                                    .fill(nestedDotForDepth(row.depth).opacity(0.65))
+                                    .fill(nestedDepthColor(row.depth).opacity(0.65))
                                     .frame(width: geo.size.width * ratio)
                             }
                         }
