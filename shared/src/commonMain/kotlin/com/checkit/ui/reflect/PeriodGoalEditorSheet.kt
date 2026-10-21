@@ -316,8 +316,10 @@ internal object ReflectionPrompts {
                 "Where did you feel friction? What distracted you? How can I prevent it tomorrow?",
             ),
             goalPrompts = listOf(
-                "What can I make slightly better today? Why? If/When-Then",
-                "How you want to be?"
+                "1. What matters today?",
+                "2. What is the next observable action?",
+                "3. What will probably stop me?",
+                "4. If it happens → Then what will I do?",
             )
         )
         Period.Week -> ReflectionPrompt(

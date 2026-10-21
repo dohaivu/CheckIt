@@ -110,6 +110,7 @@ struct NestedRowView: View {
     let row: NestedRow
     let isEditing: Bool
     let focusTier: NestedFocusTier
+    let spineRootId: String?
 
     @State private var editText = ""
     @State private var rowHeight: CGFloat = 32
@@ -118,10 +119,11 @@ struct NestedRowView: View {
     private var item: NestedListItem { row.node.item }
 
     var body: some View {
-        // Ancestor guides stay quiet always: the emphasis is the selected
-        // node's dot/ring plus its spine running down through its children.
-        // Descendant rows carry that spine at the selected node's level.
+        // Ancestor guides stay quiet always: the emphasis is the selection
+        // root's dot/ring plus its spine running down through its children.
+        // Descendant rows carry that spine at the root's level.
         let spineLevel = selectedSpineLevel
+        let dotEmphasis = isEmphasized || isSpineRoot
         HStack(alignment: .top, spacing: 0) {
             // Indent guides, sharing one x per depth (slightly right of
             // cell center) — the toggle column below uses the same grid.
@@ -146,22 +148,22 @@ struct NestedRowView: View {
                     if row.node.hasChildren {
                         ZStack {
                             Circle()
-                                .stroke(nestedDotForDepth(row.depth, emphasized: isEmphasized), lineWidth: isEmphasized ? 2 : 1.5)
+                                .stroke(nestedDotForDepth(row.depth, emphasized: dotEmphasis), lineWidth: dotEmphasis ? 2 : 1.5)
                                 .frame(width: 12, height: 12)
                             Image(systemName: item.collapsed ? "chevron.right" : "chevron.down")
                                 .font(.system(size: 8, weight: .semibold))
-                                .foregroundStyle(nestedDotForDepth(row.depth, emphasized: isEmphasized))
+                                .foregroundStyle(nestedDotForDepth(row.depth, emphasized: dotEmphasis))
                         }
                     } else {
                         Circle()
-                            .fill(nestedDotForDepth(row.depth, emphasized: isEmphasized))
+                            .fill(nestedDotForDepth(row.depth, emphasized: dotEmphasis))
                             .frame(width: 7, height: 7)
                     }
                 }
                 .frame(width: 16, height: 24)
                 .contentShape(Rectangle())
                 .opacity(focusOpacity)
-                .animation(.easeOut(duration: 0.15), value: isEmphasized)
+                .animation(.easeOut(duration: 0.15), value: dotEmphasis)
             }
             .buttonStyle(.plain)
             .padding(.top, 2).padding(.leading, 3)
@@ -284,13 +286,13 @@ struct NestedRowView: View {
             // at 20pt — start the line there so it touches the ring.
             if row.node.hasChildren && !item.collapsed {
                 Rectangle()
-                    .fill(nestedGuideColor(row.depth, emphasized: isEmphasized))
+                    .fill(nestedGuideColor(row.depth, emphasized: isEmphasized || isSpineRoot))
                     .frame(width: 1)
                     .padding(.top, 20)
                     .padding(.leading, CGFloat(row.depth * 16) + 10)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     .opacity(focusOpacity)
-                    .animation(.easeOut(duration: 0.15), value: isEmphasized)
+                    .animation(.easeOut(duration: 0.15), value: isEmphasized || isSpineRoot)
             }
         }
         .background(nestedCanvasColor)
@@ -375,11 +377,17 @@ struct NestedRowView: View {
     /// strength. Everything else stays on the quiet tier.
     private var isEmphasized: Bool { isSelected || isEditing }
 
-    /// Depth column carrying the selected node's spine through its subtree.
-    /// Nil on the selected row itself (its own guides point up at ancestors,
-    /// which stay quiet) and on rows outside the subtree.
+    /// True for the effective branch root. A selected leaf promotes to its
+    /// parent, whose downward guide should still read as the spine.
+    private var isSpineRoot: Bool { spineRootId == item.id }
+
+    /// Depth column carrying the selection root's spine through its subtree.
+    /// A leaf promotes to its visible parent, so its branch still gets a
+    /// spine. Nil on the root row itself (its own guides point up at
+    /// ancestors, which stay quiet) and on rows outside the subtree.
     private var selectedSpineLevel: Int? {
-        guard !isSelected, let selId = state.selectedId,
+        guard let selId = spineRootId,
+              selId != item.id,
               state.isDescendant(itemId: item.id, of: selId),
               let selNode = state.indexById[selId]
         else { return nil }

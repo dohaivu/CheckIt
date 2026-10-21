@@ -116,13 +116,20 @@ final class NestedEditorState: ObservableObject {
         didSet { recomputeVisibleRows() }
     }
     @Published var selectedId: String? = nil {
-        didSet { recomputeFocusSnapshot() }
+        didSet {
+            recomputeSelectionRoot()
+            recomputeFocusSnapshot()
+        }
     }
     /// Transient view mode: dim everything outside the selected subtree.
     /// Not persisted; resets with the editor's lifetime.
     @Published var focusSelectionEnabled: Bool = false {
         didSet { recomputeFocusSnapshot() }
     }
+    /// Effective branch root for selection: the selected node, or its visible
+    /// parent when the selection is a leaf. Drives both focus scope and the
+    /// selection spine.
+    @Published private(set) var selectionRootId: String? = nil
     /// Derived pre-order range + ancestor path for focus selection.
     @Published private(set) var focusSnapshot: NestedFocusSnapshot = .inactive
     @Published var displayType: NestedDisplayFilter = .all {
@@ -412,6 +419,7 @@ final class NestedEditorState: ObservableObject {
     private func recomputeVisibleRows() {
         guard let tree else {
             visibleRows = []
+            recomputeSelectionRoot()
             recomputeFocusSnapshot()
             return
         }
@@ -455,7 +463,26 @@ final class NestedEditorState: ObservableObject {
             }
         }
         visibleRows = out
+        recomputeSelectionRoot()
         recomputeFocusSnapshot()
+    }
+
+    /// A selected parent is its own branch root; a leaf promotes to its
+    /// visible parent so focus and the selection spine keep the sibling
+    /// branch in context. If the parent is filtered out, the leaf stays root.
+    private func recomputeSelectionRoot() {
+        guard let selectedId, let selected = nodeIndex[selectedId] else {
+            selectionRootId = nil
+            return
+        }
+        if !selected.hasChildren,
+           let parentId = selected.item.parentId,
+           !parentId.isEmpty,
+           visibleRows.contains(where: { $0.id == parentId }) {
+            selectionRootId = parentId
+        } else {
+            selectionRootId = selectedId
+        }
     }
 
     /// Focus selection is a render-time overlay on `visibleRows`: filters,
@@ -464,8 +491,8 @@ final class NestedEditorState: ObservableObject {
     /// suspends until it is visible again; no filter state is touched.
     private func recomputeFocusSnapshot() {
         guard focusSelectionEnabled,
-              let selectedId,
-              let start = visibleRows.firstIndex(where: { $0.id == selectedId })
+              let focusRootId = selectionRootId,
+              let start = visibleRows.firstIndex(where: { $0.id == focusRootId })
         else {
             focusSnapshot = .inactive
             return
@@ -476,7 +503,7 @@ final class NestedEditorState: ObservableObject {
             end += 1
         }
         var ancestors: Set<String> = []
-        var cursor: String? = nodeIndex[selectedId]?.item.parentId
+        var cursor: String? = nodeIndex[focusRootId]?.item.parentId
         while let id = cursor, !id.isEmpty, ancestors.insert(id).inserted {
             cursor = nodeIndex[id]?.item.parentId
         }

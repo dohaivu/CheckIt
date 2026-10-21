@@ -411,12 +411,28 @@ internal fun NestedListScreen(
             // state. A selection hidden by the current projection simply has
             // no range, so focus suspends until it is visible again.
             val focusActive = state.focusSelectionEnabled && !state.selection.isActive
-            val focusRange = remember(effectiveVisibleRows, state.selectedItemId, focusActive) {
-                if (focusActive) focusRowRange(effectiveVisibleRows, state.selectedItemId) else null
+            // Effective branch root: the selected node, or its visible parent
+            // when the selection is a leaf (MindNode behavior). Focus scope
+            // and the selection spine both use this so a leaf doesn't leave
+            // its surrounding branch visually orphaned.
+            val selectionRoot = remember(
+                state.tree,
+                state.selectedItemId,
+                effectiveVisibleRows,
+                state.selection.isActive
+            ) {
+                if (state.selection.isActive) {
+                    null
+                } else {
+                    selectionRootIdOf(effectiveVisibleRows, state.tree, state.selectedItemId)
+                }
             }
-            val focusAncestors = remember(state.tree, state.selectedItemId, focusActive) {
+            val focusRange = remember(effectiveVisibleRows, selectionRoot, focusActive) {
+                if (focusActive) focusRowRange(effectiveVisibleRows, selectionRoot) else null
+            }
+            val focusAncestors = remember(state.tree, selectionRoot, focusActive) {
                 if (focusActive) {
-                    focusAncestorIdsOf(state.tree, state.selectedItemId)
+                    focusAncestorIdsOf(state.tree, selectionRoot)
                 } else {
                     emptySet()
                 }
@@ -576,6 +592,7 @@ internal fun NestedListScreen(
                                         isInCheckedBranch = row.isInCheckedBranch,
                                         continuingLevels = row.continuingLevels,
                                         isContext = row.isContext,
+                                        spineRootId = selectionRoot,
                                         focusTier = focusTier(
                                             index = index,
                                             itemId = row.node.item.id,
@@ -2310,22 +2327,33 @@ private fun EmptyNestedList(onAddItem: () -> Unit) {
 }
 
 /**
- * Depth of the selected node in the current (zoomed/filtered) view, for rows
- * inside its subtree. Walking up from this row, the selected node sits
- * `hops` levels above, so its depth is `rowDepth - hops` — no separate zoom
- * offset needed. Null on the selected row itself and outside its subtree:
- * the strong spine only points down at children, never up at ancestors.
+ * Depth of the selection's branch root in the current (zoomed/filtered) view,
+ * for rows inside its subtree. A selected parent is its own root; a selected
+ * leaf promotes to its parent so the branch still gets a spine. Walking up
+ * from this row, the root sits `hops` levels above, so its depth is
+ * `rowDepth - hops` — no separate zoom offset needed. Null on the root row
+ * itself and outside its subtree: the strong spine only points down at
+ * children, never up at ancestors.
  */
 private fun selectedSpineLevel(
     state: NestedEditorState.Active,
+    rootId: String?,
     itemId: String,
     rowDepth: Int
 ): Int? {
     // Multi-select has no single current node; only dots emphasize there.
     if (state.selection.isActive) return null
-    val selId = state.selectedItemId ?: return null
+    return spineLevelOf(state.tree.nodeById, rootId, itemId, rowDepth)
+}
+
+internal fun spineLevelOf(
+    nodes: Map<String, NestedItemNode>,
+    rootId: String?,
+    itemId: String,
+    rowDepth: Int
+): Int? {
+    val selId = rootId ?: return null
     if (selId == itemId) return null
-    val nodes = state.tree.nodeById
     var cursor = nodes[itemId]?.item?.parentId
     var hops = 1
     while (true) {
@@ -2347,6 +2375,7 @@ private fun NestedItemRow(
     state: NestedEditorState.Active,
     viewModel: NestedListsViewModel,
     isContext: Boolean = false,
+    spineRootId: String? = null,
     focusTier: NestedFocusTier = NestedFocusTier.None,
     isDragActive: Boolean = false,
     isDragged: Boolean = false
@@ -2358,7 +2387,13 @@ private fun NestedItemRow(
     // Active row: solid dot/ring and the spine down to its children. Ancestor
     // guides never emphasize, so selection points down the branch, not up.
     val isEmphasized = isSelected || isEditing
-    val spineLevel = selectedSpineLevel(state, itemId = item.id, rowDepth = depth)
+    val isSpineRoot = spineRootId == item.id
+    val spineLevel = selectedSpineLevel(
+        state = state,
+        rootId = spineRootId,
+        itemId = item.id,
+        rowDepth = depth
+    )
     // Focus selection dims everything outside the selected subtree. Path rows
     // keep a little more ink than unrelated branches so the way back to the
     // root stays legible. Around 140ms keeps the change calm without feeling
@@ -2446,7 +2481,7 @@ private fun NestedItemRow(
                             if (node.hasChildren && !item.collapsed) {
                                 val x = guideX(depth)
                                 drawLine(
-                                    color = nestedGuideColor(depth, emphasized = isEmphasized, focusAlpha = focusAlpha),
+                                    color = nestedGuideColor(depth, emphasized = isEmphasized || isSpineRoot, focusAlpha = focusAlpha),
                                     start = Offset(x, dotBottomY),
                                     end = Offset(x, size.height),
                                     strokeWidth = strokeWidth,
@@ -2473,7 +2508,11 @@ private fun NestedItemRow(
                             ),
                         contentAlignment = Alignment.TopStart
                     ) {
-                        val dotColor = nestedDotColor(depth, emphasized = isEmphasized, focusAlpha = focusAlpha)
+                        val dotColor = nestedDotColor(
+                            depth,
+                            emphasized = isEmphasized || isSpineRoot,
+                            focusAlpha = focusAlpha
+                        )
                         Box(
                             modifier = Modifier
                                 .width(16.dp)
@@ -2488,7 +2527,7 @@ private fun NestedItemRow(
                                     .then(
                                         if (node.hasChildren) {
                                             Modifier.border(
-                                                if (isEmphasized) 2.dp else 1.5.dp,
+                                                if (isEmphasized || isSpineRoot) 2.dp else 1.5.dp,
                                                 dotColor,
                                                 CircleShape
                                             )
@@ -2716,6 +2755,24 @@ internal fun focusTier(
     index in range -> NestedFocusTier.Focused
     itemId in ancestorIds -> NestedFocusTier.Path
     else -> NestedFocusTier.Outside
+}
+
+/**
+ * Effective branch root for a selection. A selected parent is its own root;
+ * a leaf promotes to its visible parent so focus and the selection spine keep
+ * the surrounding sibling branch visible. If the parent is filtered out, the
+ * leaf itself remains the root.
+ */
+internal fun selectionRootIdOf(
+    rows: List<VisibleNestedRow>,
+    tree: NestedDocumentTree,
+    selectedId: String?
+): String? {
+    val id = selectedId ?: return null
+    val node = tree.nodeById[id] ?: return null
+    if (node.hasChildren) return id
+    val parentId = node.item.parentId?.takeIf { it.isNotEmpty() } ?: return id
+    return if (rows.any { it.node.item.id == parentId }) parentId else id
 }
 
 /**

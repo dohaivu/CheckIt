@@ -12,8 +12,9 @@ import kotlin.test.assertTrue
 
 /**
  * Focus selection is derived from the already-filtered pre-order rows, so a
- * subtree is one contiguous index range. These tests pin that contract and
- * the ancestor path used for the medium-emphasis tier.
+ * subtree is one contiguous index range. These tests pin that contract, the
+ * leaf-to-parent promotion that keeps siblings in context, the selection
+ * spine, and the ancestor path used for the medium-emphasis tier.
  */
 class NestedFocusRangeTest {
 
@@ -88,6 +89,93 @@ class NestedFocusRangeTest {
             row("sibling", 0),
         )
         assertEquals(0..2, focusRowRange(rows, selectedId = "root"))
+    }
+
+    @Test
+    fun leafPromotesFocusToVisibleParentSubtree() {
+        val tree = treeOf(
+            listOf(
+                item("root"),
+                item("parent", parentId = "root"),
+                item("leaf", parentId = "parent"),
+                item("sibling", parentId = "parent", position = 1),
+            )
+        )
+        val rows = listOf(
+            row("root", 0),
+            row("parent", 1),
+            row("leaf", 2),
+            row("sibling", 2),
+        )
+        val focusRoot = selectionRootIdOf(rows, tree, "leaf")
+        assertEquals("parent", focusRoot)
+        // The parent's whole visible subtree is focused, not just the leaf.
+        assertEquals(1..3, focusRowRange(rows, focusRoot))
+        // Ancestors above the parent remain on the medium path tier.
+        assertEquals(setOf("root"), focusAncestorIdsOf(tree, focusRoot))
+    }
+
+    @Test
+    fun leafWithHiddenParentStaysOnLeaf() {
+        val tree = treeOf(listOf(item("root"), item("leaf", parentId = "root")))
+        assertEquals("leaf", selectionRootIdOf(listOf(row("leaf", 0)), tree, "leaf"))
+    }
+
+    @Test
+    fun parentSelectionStaysOnItsOwnSubtree() {
+        val tree = treeOf(
+            listOf(
+                item("root"),
+                item("parent", parentId = "root"),
+                item("leaf", parentId = "parent"),
+            )
+        )
+        assertEquals(
+            "parent",
+            selectionRootIdOf(
+                listOf(row("root", 0), row("parent", 1), row("leaf", 2)),
+                tree,
+                "parent"
+            )
+        )
+    }
+
+    @Test
+    fun rootLeafStaysOnItself() {
+        val tree = treeOf(listOf(item("root")))
+        assertEquals("root", selectionRootIdOf(listOf(row("root", 0)), tree, "root"))
+    }
+
+    @Test
+    fun missingSelectionHasNoFocusRoot() {
+        val tree = treeOf(listOf(item("root")))
+        assertNull(selectionRootIdOf(listOf(row("root", 0)), tree, "missing"))
+    }
+
+    @Test
+    fun spineRunsFromSelectionRootThroughItsSubtree() {
+        val tree = treeOf(
+            listOf(
+                item("root"),
+                item("parent", parentId = "root"),
+                item("leaf", parentId = "parent"),
+                item("sibling", parentId = "parent", position = 1),
+            )
+        )
+        val nodes = tree.nodeById
+        // A leaf promotes to "parent", so the spine sits at the parent's depth.
+        assertEquals(1, spineLevelOf(nodes, "parent", "leaf", rowDepth = 2))
+        assertEquals(1, spineLevelOf(nodes, "parent", "sibling", rowDepth = 2))
+        // The root row itself has no spine, and ancestors stay quiet.
+        assertNull(spineLevelOf(nodes, "parent", "parent", rowDepth = 1))
+        assertNull(spineLevelOf(nodes, "parent", "root", rowDepth = 0))
+    }
+
+    @Test
+    fun spineNeedsASelectionRoot() {
+        val tree = treeOf(listOf(item("root")))
+        assertNull(spineLevelOf(tree.nodeById, null, "root", rowDepth = 0))
+        assertNull(spineLevelOf(tree.nodeById, "root", "root", rowDepth = 0))
     }
 
     @Test

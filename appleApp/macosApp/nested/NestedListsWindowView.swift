@@ -554,7 +554,7 @@ struct NestedListsWindowView: View {
                 editorBtn(
                     "Focus Selection",
                     system: "scope",
-                    help: "Focus the selected subtree (dim the rest)",
+                    help: "Focus the selected branch (dim the rest)",
                     active: state.focusSelectionEnabled
                 ) {
                     state.focusSelectionEnabled.toggle()
@@ -801,7 +801,8 @@ struct NestedListsWindowView: View {
                                 state: state,
                                 row: row,
                                 isEditing: state.editingId == row.id,
-                                focusTier: state.focusSnapshot.tier(for: row)
+                                focusTier: state.focusSnapshot.tier(for: row),
+                                spineRootId: state.selectionRootId
                             )
                             if state.dropTarget?.displayRowId == row.id && state.dropTarget!.below {
                                 DropIndicatorLine(depth: state.dropTarget!.depth)
