@@ -167,7 +167,7 @@ import com.checkit.domain.NestedSortOrder
 import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.TagItem
 import com.checkit.domain.TaskPriority
-import com.checkit.domain.filterNestedTreeWithFocus
+import com.checkit.domain.filterNestedTreeWithContext
 import com.checkit.domain.moveDestinations
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.CompactFlatTextField
@@ -230,24 +230,38 @@ internal fun NestedListScreen(
     val unfilteredRoots = remember(focusedNode, tree.rootNodes) {
         focusedNode?.let { listOf(it) } ?: tree.rootNodes
     }
-    val outlineFocus = remember(unfilteredRoots, state.filters) {
-        if (state.filters.isVisible || state.filters.displayType != NestedDisplayType.All) {
-            filterNestedTreeWithFocus(
+    // Typing shouldn't re-filter the whole outline on every keystroke (macOS
+    // debounces the same way). The text field keeps the immediate query; the
+    // outline follows the settled one. Clearing applies immediately.
+    var settledQuery by remember(state.documentId) { mutableStateOf(state.filters.query) }
+    LaunchedEffect(state.filters.query) {
+        val query = state.filters.query
+        if (query.isEmpty()) {
+            settledQuery = ""
+        } else {
+            delay(150)
+            settledQuery = query
+        }
+    }
+    val effectiveFilters = state.filters.copy(query = settledQuery)
+    val outlineProjection = remember(unfilteredRoots, effectiveFilters) {
+        if (effectiveFilters.isVisible || effectiveFilters.displayType != NestedDisplayType.All) {
+            filterNestedTreeWithContext(
                 roots = unfilteredRoots,
-                start = state.filters.focus?.start,
-                end = state.filters.focus?.endInclusive,
-                query = state.filters.query,
-                hideChecked = state.filters.hideChecked,
-                selectedTagIds = state.filters.selectedTagIds,
-                workingOnly = state.filters.displayType == NestedDisplayType.Working
+                start = effectiveFilters.focus?.start,
+                end = effectiveFilters.focus?.endInclusive,
+                query = effectiveFilters.query,
+                hideChecked = effectiveFilters.hideChecked,
+                selectedTagIds = effectiveFilters.selectedTagIds,
+                workingOnly = effectiveFilters.displayType == NestedDisplayType.Working
             )
         } else {
             null
         }
     }
-    val visibleRoots = outlineFocus?.roots ?: unfilteredRoots
+    val visibleRoots = outlineProjection?.roots ?: unfilteredRoots
     // Ancestors kept only to hold matches under them recede visually.
-    val contextIds = remember(outlineFocus) { outlineFocus?.contextIds?.toSet().orEmpty() }
+    val contextIds = remember(outlineProjection) { outlineProjection?.contextIds?.toSet().orEmpty() }
     val visibleRows = remember(visibleRoots, contextIds) {
         flattenVisibleNodes(visibleRoots, contextIds)
     }

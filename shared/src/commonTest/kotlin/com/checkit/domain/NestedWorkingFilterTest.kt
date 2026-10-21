@@ -159,7 +159,7 @@ class NestedWorkingFilterTest {
                 item("task open", null, 1, priority = TaskPriority.Low),
             )
         )
-        val filtered = filterOutlineRoots(roots, query = "task", workingOnly = true)
+        val filtered = filterNestedTree(roots, query = "task", workingOnly = true)
         assertEquals(listOf("task open"), flatIds(filtered))
     }
 
@@ -172,7 +172,7 @@ class NestedWorkingFilterTest {
                 item("other", null, 1),
             )
         )
-        val filtered = filterOutlineRoots(roots, query = "milk")
+        val filtered = filterNestedTree(roots, query = "milk")
         assertEquals(listOf("groceries", "buy milk"), flatIds(filtered))
     }
 
@@ -185,7 +185,7 @@ class NestedWorkingFilterTest {
                 item("buy eggs", "groceries", 1),
             )
         )
-        val filtered = filterOutlineRoots(roots, query = "buy", workingOnly = true)
+        val filtered = filterNestedTree(roots, query = "buy", workingOnly = true)
         assertEquals(listOf("groceries", "buy milk"), flatIds(filtered))
     }
 
@@ -197,7 +197,7 @@ class NestedWorkingFilterTest {
                 item("task", "project", 0, priority = TaskPriority.High),
             )
         )
-        val filtered = filterOutlineRoots(roots, query = "project", workingOnly = true)
+        val filtered = filterNestedTree(roots, query = "project", workingOnly = true)
         assertEquals(listOf("project", "task"), flatIds(filtered))
     }
 
@@ -209,7 +209,7 @@ class NestedWorkingFilterTest {
                 item("oat milk", "buy milk", 0),
             )
         )
-        val filtered = filterOutlineRoots(roots, query = "oat", workingOnly = true)
+        val filtered = filterNestedTree(roots, query = "oat", workingOnly = true)
         assertEquals(listOf("buy milk", "oat milk"), flatIds(filtered))
     }
 
@@ -222,7 +222,7 @@ class NestedWorkingFilterTest {
                 item("unrelated", null, 1, priority = TaskPriority.Medium),
             )
         )
-        val filtered = filterOutlineRoots(roots, query = "project", workingOnly = true)
+        val filtered = filterNestedTree(roots, query = "project", workingOnly = true)
         assertEquals(listOf("project", "task"), flatIds(filtered))
     }
 }

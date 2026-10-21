@@ -2,13 +2,14 @@ package com.checkit.domain
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 /**
- * Context metadata on top of [filterNestedTreeWithFocus]: which rows are
- * ancestor scaffolding kept only to hold matches, and therefore render muted.
+ * Context metadata from [filterNestedTreeWithContext]: which rows are ancestor
+ * scaffolding kept only to hold matches, and therefore render muted.
  */
-class NestedOutlineFocusTest {
+class NestedOutlineProjectionTest {
 
     private fun item(
         id: String,
@@ -31,17 +32,17 @@ class NestedOutlineFocusTest {
     )
 
     @Test
-    fun noCriteriaReportsNoContext() {
+    fun noCriteriaPreservesRootsAndReportsNoContext() {
         val roots = buildNestedTree(
             listOf(
                 item("root", null, 0),
                 item("child", "root", 0, priority = TaskPriority.High),
             )
         )
-        val focus = filterNestedTreeWithFocus(roots)
-        assertTrue(focus.contextIds.isEmpty())
-        assertEquals(listOf("root"), focus.roots.map { it.item.id })
-        assertEquals(listOf("child"), focus.roots.first().children.map { it.item.id })
+        val projection = filterNestedTreeWithContext(roots)
+        // Identity matters: an idle filter must not deep-copy the outline.
+        assertSame(roots, projection.roots)
+        assertTrue(projection.contextIds.isEmpty())
     }
 
     @Test
@@ -52,8 +53,8 @@ class NestedOutlineFocusTest {
                 item("child", "root", 0, checkboxEnabled = true),
             )
         )
-        val focus = filterNestedTreeWithFocus(roots, hideChecked = true)
-        assertTrue(focus.contextIds.isEmpty())
+        val projection = filterNestedTreeWithContext(roots, hideChecked = true)
+        assertTrue(projection.contextIds.isEmpty())
     }
 
     @Test
@@ -66,9 +67,9 @@ class NestedOutlineFocusTest {
                 item("other", null, 1),
             )
         )
-        val focus = filterNestedTreeWithFocus(roots, workingOnly = true)
-        assertEquals(listOf("root"), focus.contextIds)
-        assertEquals(listOf("root", "busy"), focus.roots.flatMapIds())
+        val projection = filterNestedTreeWithContext(roots, workingOnly = true)
+        assertEquals(listOf("root"), projection.contextIds)
+        assertEquals(listOf("root", "busy"), projection.roots.flatMapIds())
     }
 
     @Test
@@ -79,8 +80,8 @@ class NestedOutlineFocusTest {
                 item("plain", "busy", 0),
             )
         )
-        val focus = filterNestedTreeWithFocus(roots, workingOnly = true)
-        assertTrue(focus.contextIds.isEmpty())
+        val projection = filterNestedTreeWithContext(roots, workingOnly = true)
+        assertTrue(projection.contextIds.isEmpty())
     }
 
     @Test
@@ -91,8 +92,8 @@ class NestedOutlineFocusTest {
                 item("task", "project", 0, priority = TaskPriority.High),
             )
         )
-        val focus = filterNestedTreeWithFocus(roots, workingOnly = true)
-        assertTrue(focus.contextIds.isEmpty())
+        val projection = filterNestedTreeWithContext(roots, workingOnly = true)
+        assertTrue(projection.contextIds.isEmpty())
     }
 
     @Test
@@ -104,9 +105,9 @@ class NestedOutlineFocusTest {
                 item("task", "middle", 0, checkboxEnabled = true),
             )
         )
-        val focus = filterNestedTreeWithFocus(roots, workingOnly = true)
-        assertEquals(listOf("root", "middle"), focus.contextIds)
-        assertEquals(listOf("root", "middle", "task"), focus.roots.flatMapIds())
+        val projection = filterNestedTreeWithContext(roots, workingOnly = true)
+        assertEquals(listOf("root", "middle"), projection.contextIds)
+        assertEquals(listOf("root", "middle", "task"), projection.roots.flatMapIds())
     }
 
     @Test
@@ -118,9 +119,9 @@ class NestedOutlineFocusTest {
                 item("other", null, 1),
             )
         )
-        val focus = filterNestedTreeWithFocus(roots, query = "milk")
-        assertEquals(listOf("groceries"), focus.contextIds)
-        assertEquals(listOf("groceries", "buy milk"), focus.roots.flatMapIds())
+        val projection = filterNestedTreeWithContext(roots, query = "milk")
+        assertEquals(listOf("groceries"), projection.contextIds)
+        assertEquals(listOf("groceries", "buy milk"), projection.roots.flatMapIds())
     }
 
     @Test
@@ -131,9 +132,28 @@ class NestedOutlineFocusTest {
                 item("child", "busy", 0),
             )
         )
-        val focus = filterNestedTreeWithFocus(roots, workingOnly = true)
-        assertTrue(focus.contextIds.isEmpty())
-        assertEquals(listOf("busy", "child"), focus.roots.flatMapIds())
+        val projection = filterNestedTreeWithContext(roots, workingOnly = true)
+        assertTrue(projection.contextIds.isEmpty())
+        assertEquals(listOf("busy", "child"), projection.roots.flatMapIds())
+    }
+
+    @Test
+    fun deepChainsFilterWithoutRecursion() {
+        val depth = 20_000
+        val items = (0 until depth).map { index ->
+            item(
+                id = "n$index",
+                parentId = if (index == 0) null else "n${index - 1}",
+                position = 0,
+                checkboxEnabled = index == depth - 1,
+            )
+        }
+        val roots = buildNestedTree(items)
+        val projection = filterNestedTreeWithContext(roots, workingOnly = true)
+        assertEquals(depth - 1, projection.contextIds.size)
+        assertEquals("n0", projection.contextIds.first())
+        assertEquals("n${depth - 2}", projection.contextIds.last())
+        assertEquals(listOf("n0"), projection.roots.map { it.item.id })
     }
 
     /** Pre-order ids across the pruned forest. */

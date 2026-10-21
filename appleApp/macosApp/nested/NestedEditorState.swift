@@ -388,15 +388,15 @@ final class NestedEditorState: ObservableObject {
         // priority / due date / countdown metric + ancestor context) instead
         // of reimplementing it. Runs on the debounced query (see searchQuery).
         let query = appliedQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-        let focus: NestedOutlineFocus? = (displayType == .working || !query.isEmpty)
-            ? NestedListKt.filterOutlineFocus(
+        let projection: NestedOutlineProjection? = (displayType == .working || !query.isEmpty)
+            ? NestedAppleBridge.shared.filterOutlineProjection(
                 roots: zoomRoots,
                 query: query,
                 workingOnly: displayType == .working
             )
             : nil
-        let contextIds = Set(focus?.contextIds ?? [])
-        let roots: [NestedItemNode] = focus?.roots ?? zoomRoots
+        let contextIds = Set(projection?.contextIds ?? [])
+        let roots: [NestedItemNode] = projection?.roots ?? zoomRoots
         var out: [NestedRow] = []
         var stack = roots.reversed().map { ($0, 0, false) }
         while let (node, depth, ancestorChecked) = stack.popLast() {

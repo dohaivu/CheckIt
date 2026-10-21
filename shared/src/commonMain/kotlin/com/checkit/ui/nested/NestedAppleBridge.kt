@@ -11,8 +11,10 @@ import com.checkit.domain.NestedSortOrder
 import com.checkit.domain.MoveDestinations
 import com.checkit.domain.moveDestinations
 import com.checkit.domain.NestedMetricSummary
+import com.checkit.domain.NestedOutlineProjection
 import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.computeNestedInsertPosition
+import com.checkit.domain.filterNestedTreeWithContext
 import com.checkit.domain.TagItem
 import com.checkit.domain.TaskPriority
 import com.checkit.ui.isValidForSave
@@ -467,6 +469,18 @@ object NestedAppleBridge {
 
     fun helper(): NestedAppleHelper =
         koinApp?.koin?.get() ?: KoinPlatform.getKoin().get()
+
+    /**
+     * Swift-friendly outline projection for the macOS Working/search UI:
+     * text query plus the Working filter, with the same ancestor-context keep
+     * semantics as the Compose editor. Avoids date/tag interop.
+     */
+    fun filterOutlineProjection(
+        roots: List<NestedItemNode>,
+        query: String = "",
+        workingOnly: Boolean = false
+    ): NestedOutlineProjection =
+        filterNestedTreeWithContext(roots, query = query, workingOnly = workingOnly)
 
     fun syncBridge(): com.checkit.data.NestedSyncBridge =
         koinApp?.koin?.get() ?: KoinPlatform.getKoin().get()
