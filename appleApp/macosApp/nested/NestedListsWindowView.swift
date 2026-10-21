@@ -802,7 +802,7 @@ struct NestedListsWindowView: View {
                                 row: row,
                                 isEditing: state.editingId == row.id,
                                 focusTier: state.focusSnapshot.tier(for: row),
-                                spineRootId: state.selectionRootId
+                                selectionBranch: state.selectionBranch
                             )
                             if state.dropTarget?.displayRowId == row.id && state.dropTarget!.below {
                                 DropIndicatorLine(depth: state.dropTarget!.depth)

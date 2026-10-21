@@ -34,7 +34,7 @@ enum NestedInspectorTab: String {
 struct NestedRow: Identifiable, Equatable {
     let id: String
     /// Position in `visibleRows`; focus selection uses the contiguous
-    /// pre-order range of the selected subtree.
+    /// pre-order range of the selection branch.
     let index: Int
     let depth: Int
     let node: NestedItemNode
@@ -60,9 +60,9 @@ enum NestedFocusTier {
     case outside
 }
 
-/// Snapshot of the selected subtree's pre-order range plus its ancestor path.
+/// Snapshot of the selection branch's pre-order range plus its ancestor path.
 /// Computed once per selection/filter change; rows only do an O(1) check.
-struct NestedFocusSnapshot {
+struct NestedFocusSnapshot: Equatable {
     var range: ClosedRange<Int>? = nil
     var ancestorIds: Set<String> = []
 
@@ -74,6 +74,15 @@ struct NestedFocusSnapshot {
         if ancestorIds.contains(row.id) { return .path }
         return .outside
     }
+}
+
+/// Effective selection branch: the root row, its contiguous pre-order range,
+/// and the guide column that carries its spine. Resolving this once lets rows
+/// check membership in O(1) instead of walking ancestors one by one.
+struct NestedSelectionBranch: Equatable {
+    let rootId: String
+    let range: ClosedRange<Int>
+    let depth: Int
 }
 
 /// Draft for the inline "new item" row.
@@ -116,20 +125,16 @@ final class NestedEditorState: ObservableObject {
         didSet { recomputeVisibleRows() }
     }
     @Published var selectedId: String? = nil {
-        didSet {
-            recomputeSelectionRoot()
-            recomputeFocusSnapshot()
-        }
+        didSet { recomputeSelectionFocus() }
     }
-    /// Transient view mode: dim everything outside the selected subtree.
+    /// Transient view mode: dim everything outside the selection branch.
     /// Not persisted; resets with the editor's lifetime.
     @Published var focusSelectionEnabled: Bool = false {
         didSet { recomputeFocusSnapshot() }
     }
-    /// Effective branch root for selection: the selected node, or its visible
-    /// parent when the selection is a leaf. Drives both focus scope and the
-    /// selection spine.
-    @Published private(set) var selectionRootId: String? = nil
+    /// Effective selection branch: selected node, or its visible parent for a
+    /// leaf. Drives both focus scope and the selection spine.
+    @Published private(set) var selectionBranch: NestedSelectionBranch? = nil
     /// Derived pre-order range + ancestor path for focus selection.
     @Published private(set) var focusSnapshot: NestedFocusSnapshot = .inactive
     @Published var displayType: NestedDisplayFilter = .all {
@@ -419,8 +424,7 @@ final class NestedEditorState: ObservableObject {
     private func recomputeVisibleRows() {
         guard let tree else {
             visibleRows = []
-            recomputeSelectionRoot()
-            recomputeFocusSnapshot()
+            recomputeSelectionFocus()
             return
         }
         let zoomRoots: [NestedItemNode]
@@ -463,38 +467,37 @@ final class NestedEditorState: ObservableObject {
             }
         }
         visibleRows = out
-        recomputeSelectionRoot()
+        recomputeSelectionFocus()
+    }
+
+    /// Keep the selection branch and focus snapshot in sync. The branch also
+    /// drives the spine, so it updates even when focus mode is off.
+    private func recomputeSelectionFocus() {
+        recomputeSelectionBranch()
         recomputeFocusSnapshot()
     }
 
     /// A selected parent is its own branch root; a leaf promotes to its
     /// visible parent so focus and the selection spine keep the sibling
-    /// branch in context. If the parent is filtered out, the leaf stays root.
-    private func recomputeSelectionRoot() {
+    /// branch in context. If the parent is filtered out or hidden, the leaf
+    /// stays root. A root outside the current projection yields no branch, so
+    /// focus suspends until it is visible again.
+    private func recomputeSelectionBranch() {
         guard let selectedId, let selected = nodeIndex[selectedId] else {
-            selectionRootId = nil
+            setSelectionBranch(nil)
             return
         }
+        let rootId: String
         if !selected.hasChildren,
            let parentId = selected.item.parentId,
            !parentId.isEmpty,
            visibleRows.contains(where: { $0.id == parentId }) {
-            selectionRootId = parentId
+            rootId = parentId
         } else {
-            selectionRootId = selectedId
+            rootId = selectedId
         }
-    }
-
-    /// Focus selection is a render-time overlay on `visibleRows`: filters,
-    /// Working Mode, zoom, and collapse have already shaped the list. A
-    /// selected row hidden by the projection yields no range, so focus
-    /// suspends until it is visible again; no filter state is touched.
-    private func recomputeFocusSnapshot() {
-        guard focusSelectionEnabled,
-              let focusRootId = selectionRootId,
-              let start = visibleRows.firstIndex(where: { $0.id == focusRootId })
-        else {
-            focusSnapshot = .inactive
+        guard let start = visibleRows.firstIndex(where: { $0.id == rootId }) else {
+            setSelectionBranch(nil)
             return
         }
         let depth = visibleRows[start].depth
@@ -502,12 +505,37 @@ final class NestedEditorState: ObservableObject {
         while end + 1 < visibleRows.count, visibleRows[end + 1].depth > depth {
             end += 1
         }
+        setSelectionBranch(
+            NestedSelectionBranch(rootId: rootId, range: start...end, depth: depth)
+        )
+    }
+
+    private func setSelectionBranch(_ branch: NestedSelectionBranch?) {
+        if selectionBranch != branch {
+            selectionBranch = branch
+        }
+    }
+
+    /// Focus selection is a render-time overlay on `visibleRows`: filters,
+    /// Working Mode, zoom, and collapse have already shaped the list. A
+    /// branch hidden by the projection is nil, so focus suspends until it is
+    /// visible again; no filter state is touched.
+    private func recomputeFocusSnapshot() {
+        guard focusSelectionEnabled, let branch = selectionBranch else {
+            if focusSnapshot != .inactive {
+                focusSnapshot = .inactive
+            }
+            return
+        }
         var ancestors: Set<String> = []
-        var cursor: String? = nodeIndex[focusRootId]?.item.parentId
+        var cursor: String? = nodeIndex[branch.rootId]?.item.parentId
         while let id = cursor, !id.isEmpty, ancestors.insert(id).inserted {
             cursor = nodeIndex[id]?.item.parentId
         }
-        focusSnapshot = NestedFocusSnapshot(range: start...end, ancestorIds: ancestors)
+        let snapshot = NestedFocusSnapshot(range: branch.range, ancestorIds: ancestors)
+        if focusSnapshot != snapshot {
+            focusSnapshot = snapshot
+        }
     }
 
     var indexById: [String: NestedItemNode] {

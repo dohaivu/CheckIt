@@ -110,7 +110,7 @@ struct NestedRowView: View {
     let row: NestedRow
     let isEditing: Bool
     let focusTier: NestedFocusTier
-    let spineRootId: String?
+    let selectionBranch: NestedSelectionBranch?
 
     @State private var editText = ""
     @State private var rowHeight: CGFloat = 32
@@ -120,7 +120,7 @@ struct NestedRowView: View {
 
     var body: some View {
         // Ancestor guides stay quiet always: the emphasis is the selection
-        // root's dot/ring plus its spine running down through its children.
+        // branch's dot/ring plus its spine running down through its children.
         // Descendant rows carry that spine at the root's level.
         let spineLevel = selectedSpineLevel
         let dotEmphasis = isEmphasized || isSpineRoot
@@ -359,7 +359,7 @@ struct NestedRowView: View {
         return base.opacity(focusOpacity)
     }
 
-    /// Focus selection dims everything outside the selected subtree. Path
+    /// Focus selection dims everything outside the selection branch. Path
     /// rows keep a little more ink than unrelated branches so the way back
     /// to the root stays legible. `min()` in `nestedTextColor` avoids
     /// stacking context/checked-branch alpha into unreadable text.
@@ -373,37 +373,22 @@ struct NestedRowView: View {
 
     private var isSelected: Bool { state.selectedId == item.id }
 
-    /// The active row promotes its dot/ring and the spine below it to full
-    /// strength. Everything else stays on the quiet tier.
+    /// The active row gets full-strength ink and selection chrome.
     private var isEmphasized: Bool { isSelected || isEditing }
 
     /// True for the effective branch root. A selected leaf promotes to its
     /// parent, whose downward guide should still read as the spine.
-    private var isSpineRoot: Bool { spineRootId == item.id }
+    private var isSpineRoot: Bool { selectionBranch?.rootId == item.id }
 
-    /// Depth column carrying the selection root's spine through its subtree.
-    /// A leaf promotes to its visible parent, so its branch still gets a
-    /// spine. Nil on the root row itself (its own guides point up at
-    /// ancestors, which stay quiet) and on rows outside the subtree.
+    /// Depth column carrying the selection branch's spine through its
+    /// subtree. Nil on the root row itself (its own guides point up at
+    /// ancestors, which stay quiet) and on rows outside the branch.
     private var selectedSpineLevel: Int? {
-        guard let selId = spineRootId,
-              selId != item.id,
-              state.isDescendant(itemId: item.id, of: selId),
-              let selNode = state.indexById[selId]
+        guard let branch = selectionBranch,
+              branch.rootId != item.id,
+              branch.range.contains(row.index)
         else { return nil }
-        // Depths in `visibleRows` (and the guide grid) start at the zoom
-        // root, so stop counting there rather than at the document root.
-        let zoomRootId = state.zoomPath.last
-        if selId == zoomRootId { return 0 }
-        var depth = 0
-        var cursor = selNode.item.parentId
-        while let pid = cursor, !pid.isEmpty {
-            if pid == zoomRootId { return depth + 1 }
-            depth += 1
-            cursor = state.indexById[pid]?.item.parentId
-        }
-        // Not under the zoom root: nothing visible starts at its column.
-        return zoomRootId == nil ? depth : nil
+        return branch.depth
     }
 
     private var rowBackground: Color {

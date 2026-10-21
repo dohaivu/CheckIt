@@ -119,8 +119,8 @@ sealed interface NestedEditorState {
         val availableTags: List<TagItem> = emptyList(),
         val filters: NestedFilterState = NestedFilterState(),
         /**
-         * Transient view mode: dim everything outside [selectedItemId]'s
-         * subtree. Reset per document; never persisted or written to data.
+         * Transient view mode: dim everything outside the selection branch.
+         * Reset per document; never persisted or written to data.
          */
         val focusSelectionEnabled: Boolean = false
     ) : NestedEditorState {
@@ -566,7 +566,7 @@ class NestedListsViewModel(
         }
     }
 
-    /** Toggles the transient "dim outside the selected subtree" view mode. */
+    /** Toggles the transient "dim outside the selection branch" view mode. */
     fun toggleFocusSelection() {
         updateActiveEditor { it.copy(focusSelectionEnabled = !it.focusSelectionEnabled) }
     }

@@ -49,20 +49,29 @@ class NestedFocusRangeTest {
 
     @Test
     fun noSelectionHasNoRange() {
-        assertNull(focusRowRange(listOf(row("a", 0)), selectedId = null))
+        assertNull(focusRowRange(listOf(row("a", 0)), rootId = null))
     }
 
     @Test
     fun selectionMissingFromProjectionHasNoRange() {
         // Filters/Working Mode/zoom can hide the selected row; focus suspends
         // rather than forcing the row back into the outline.
-        assertNull(focusRowRange(listOf(row("a", 0), row("b", 0)), selectedId = "hidden"))
+        assertNull(focusRowRange(listOf(row("a", 0), row("b", 0)), rootId = "hidden"))
     }
 
     @Test
-    fun selectedLeafCoversOnlyItsRow() {
+    fun collapsedHiddenSelectionHasNoRange() {
+        // The row list keeps collapsed descendants with isVisible=false for
+        // the animation. A hidden root must still suspend focus.
+        val rows = listOf(row("root", 0), row("hidden", 1, isVisible = false))
+        assertNull(focusRowRange(rows, rootId = "hidden"))
+    }
+
+    @Test
+    fun rawLeafRangeCoversOnlyItsRow() {
+        // Low-level range only; the editor passes the promoted parent root.
         val rows = listOf(row("root", 0), row("leaf", 1), row("sibling", 1))
-        assertEquals(1..1, focusRowRange(rows, selectedId = "leaf"))
+        assertEquals(1..1, focusRowRange(rows, rootId = "leaf"))
     }
 
     @Test
@@ -74,7 +83,7 @@ class NestedFocusRangeTest {
             row("sibling", 1),
             row("other", 0),
         )
-        assertEquals(1..2, focusRowRange(rows, selectedId = "branch"))
+        assertEquals(1..2, focusRowRange(rows, rootId = "branch"))
     }
 
     @Test
@@ -88,7 +97,7 @@ class NestedFocusRangeTest {
             row("hiddenLeaf", 2, isVisible = false),
             row("sibling", 0),
         )
-        assertEquals(0..2, focusRowRange(rows, selectedId = "root"))
+        assertEquals(0..2, focusRowRange(rows, rootId = "root"))
     }
 
     @Test
@@ -119,6 +128,25 @@ class NestedFocusRangeTest {
     fun leafWithHiddenParentStaysOnLeaf() {
         val tree = treeOf(listOf(item("root"), item("leaf", parentId = "root")))
         assertEquals("leaf", selectionRootIdOf(listOf(row("leaf", 0)), tree, "leaf"))
+    }
+
+    @Test
+    fun leafWithHiddenParentRowStaysOnLeaf() {
+        // Android keeps collapsed descendants in the row list for animation;
+        // a non-visible parent must not attract the focus root.
+        val tree = treeOf(
+            listOf(
+                item("root"),
+                item("parent", parentId = "root"),
+                item("leaf", parentId = "parent"),
+            )
+        )
+        val rows = listOf(
+            row("root", 0),
+            row("parent", 1, isVisible = false),
+            row("leaf", 2, isVisible = false),
+        )
+        assertEquals("leaf", selectionRootIdOf(rows, tree, "leaf"))
     }
 
     @Test
@@ -153,7 +181,7 @@ class NestedFocusRangeTest {
     }
 
     @Test
-    fun spineRunsFromSelectionRootThroughItsSubtree() {
+    fun selectionBranchPromotesLeafAndCarriesRootDepth() {
         val tree = treeOf(
             listOf(
                 item("root"),
@@ -162,20 +190,18 @@ class NestedFocusRangeTest {
                 item("sibling", parentId = "parent", position = 1),
             )
         )
-        val nodes = tree.nodeById
-        // A leaf promotes to "parent", so the spine sits at the parent's depth.
-        assertEquals(1, spineLevelOf(nodes, "parent", "leaf", rowDepth = 2))
-        assertEquals(1, spineLevelOf(nodes, "parent", "sibling", rowDepth = 2))
-        // The root row itself has no spine, and ancestors stay quiet.
-        assertNull(spineLevelOf(nodes, "parent", "parent", rowDepth = 1))
-        assertNull(spineLevelOf(nodes, "parent", "root", rowDepth = 0))
-    }
-
-    @Test
-    fun spineNeedsASelectionRoot() {
-        val tree = treeOf(listOf(item("root")))
-        assertNull(spineLevelOf(tree.nodeById, null, "root", rowDepth = 0))
-        assertNull(spineLevelOf(tree.nodeById, "root", "root", rowDepth = 0))
+        val rows = listOf(
+            row("root", 0),
+            row("parent", 1),
+            row("leaf", 2),
+            row("sibling", 2),
+        )
+        val branch = selectionBranchOf(rows, tree, "leaf")
+        // The leaf promotes to its parent; the spine rides the parent's
+        // column through the parent's whole subtree.
+        assertEquals("parent", branch?.rootId)
+        assertEquals(1..3, branch?.range)
+        assertEquals(1, branch?.depth)
     }
 
     @Test
@@ -192,8 +218,8 @@ class NestedFocusRangeTest {
     fun deepChainRangeDoesNotRecurse() {
         val depth = 10_000
         val rows = (0 until depth).map { index -> row("n$index", index) }
-        assertEquals(0..(depth - 1), focusRowRange(rows, selectedId = "n0"))
-        assertEquals(5_000..(depth - 1), focusRowRange(rows, selectedId = "n5000"))
+        assertEquals(0..(depth - 1), focusRowRange(rows, rootId = "n0"))
+        assertEquals(5_000..(depth - 1), focusRowRange(rows, rootId = "n5000"))
     }
 
     @Test
