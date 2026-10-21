@@ -551,6 +551,16 @@ struct NestedListsWindowView: View {
                     state.zoomOut()
                 }
                 .disabled(state.zoomPath.isEmpty)
+                editorBtn(
+                    "Focus Selection",
+                    system: "scope",
+                    help: "Focus the selected subtree (dim the rest)",
+                    active: state.focusSelectionEnabled
+                ) {
+                    state.focusSelectionEnabled.toggle()
+                }
+                .disabled(sel == nil && !state.focusSelectionEnabled)
+                .accessibilityValue(state.focusSelectionEnabled ? "On" : "Off")
                 editorBtn("Expand All", system: "chevron.down.2", help: "Expand all (ShiftCtrl→)") {
                     state.expandAll()
                 }
@@ -672,6 +682,7 @@ struct NestedListsWindowView: View {
         system: String,
         help: String,
         shortcut: String? = nil,
+        active: Bool = false,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
@@ -685,6 +696,11 @@ struct NestedListsWindowView: View {
                 }
             }
             .frame(minWidth: 28, minHeight: 28)
+            .foregroundStyle(active ? Color.accentColor : Color.primary)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(active ? Color.accentColor.opacity(0.14) : Color.clear)
+            )
         }
         // Match macOS toolbar conventions: template icons, a predictable
         // hit target, and text exposed through help and accessibility rather
@@ -784,7 +800,8 @@ struct NestedListsWindowView: View {
                             NestedRowView(
                                 state: state,
                                 row: row,
-                                isEditing: state.editingId == row.id
+                                isEditing: state.editingId == row.id,
+                                focusTier: state.focusSnapshot.tier(for: row)
                             )
                             if state.dropTarget?.displayRowId == row.id && state.dropTarget!.below {
                                 DropIndicatorLine(depth: state.dropTarget!.depth)

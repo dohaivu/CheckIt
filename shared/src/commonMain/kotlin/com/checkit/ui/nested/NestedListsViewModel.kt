@@ -117,7 +117,12 @@ sealed interface NestedEditorState {
         val selectedItemId: String? = null,
         val editingTextItemId: String? = null,
         val availableTags: List<TagItem> = emptyList(),
-        val filters: NestedFilterState = NestedFilterState()
+        val filters: NestedFilterState = NestedFilterState(),
+        /**
+         * Transient view mode: dim everything outside [selectedItemId]'s
+         * subtree. Reset per document; never persisted or written to data.
+         */
+        val focusSelectionEnabled: Boolean = false
     ) : NestedEditorState {
         val focusedItem: NestedItemNode? get() = tree.nodeById[zoomPath.lastOrNull()]
         val selectedItem: NestedItemNode? get() = tree.nodeById[selectedItemId]
@@ -559,6 +564,11 @@ class NestedListsViewModel(
                 editingTextItemId = null
             )
         }
+    }
+
+    /** Toggles the transient "dim outside the selected subtree" view mode. */
+    fun toggleFocusSelection() {
+        updateActiveEditor { it.copy(focusSelectionEnabled = !it.focusSelectionEnabled) }
     }
 
     fun stopEditText() {

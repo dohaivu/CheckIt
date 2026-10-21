@@ -109,6 +109,7 @@ struct NestedRowView: View {
     @ObservedObject var state: NestedEditorState
     let row: NestedRow
     let isEditing: Bool
+    let focusTier: NestedFocusTier
 
     @State private var editText = ""
     @State private var rowHeight: CGFloat = 32
@@ -130,6 +131,7 @@ struct NestedRowView: View {
                     .frame(width: 1)
                     .padding(.leading, 10)
                     .frame(width: 16, alignment: .leading)
+                    .opacity(focusOpacity)
                     .animation(.easeOut(duration: 0.15), value: level == spineLevel)
             }
             // Collapse toggle: chevron wrapped in an outside circle (parents)
@@ -158,6 +160,7 @@ struct NestedRowView: View {
                 }
                 .frame(width: 16, height: 24)
                 .contentShape(Rectangle())
+                .opacity(focusOpacity)
                 .animation(.easeOut(duration: 0.15), value: isEmphasized)
             }
             .buttonStyle(.plain)
@@ -173,6 +176,7 @@ struct NestedRowView: View {
                         } label: {
                             Image(systemName: item.checked ? "checkmark.square.fill" : "square")
                                 .foregroundStyle(item.checked ? Color.accentColor : .secondary)
+                                .opacity(focusOpacity)
                         }
                         .buttonStyle(.plain)
                         .help(item.checked ? "Uncheck" : "Check off")
@@ -182,6 +186,7 @@ struct NestedRowView: View {
                         Image(systemName: "flag.fill")
                             .imageScale(.small)
                             .foregroundStyle(color)
+                            .opacity(focusOpacity)
                             .padding(.top, 1)
                             .help("Priority: \(item.priority.name)")
                     }
@@ -264,7 +269,7 @@ struct NestedRowView: View {
                             .onTapGesture(count: 2) { state.startEdit(id: item.id) }
                     }
                 }
-                metadata
+                metadata.opacity(focusOpacity)
             }
             .padding(.vertical, 5)
             .padding(.horizontal, 6)
@@ -284,6 +289,7 @@ struct NestedRowView: View {
                     .padding(.top, 20)
                     .padding(.leading, CGFloat(row.depth * 16) + 10)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .opacity(focusOpacity)
                     .animation(.easeOut(duration: 0.15), value: isEmphasized)
             }
         }
@@ -334,14 +340,33 @@ struct NestedRowView: View {
     private var nestedTextColor: Color {
         // Context rows (kept only to hold matches under their ancestors)
         // recede so working rows carry the eye; selecting one restores ink.
-        if row.isContext && !isEmphasized { return Color.secondary.opacity(0.6) }
+        if row.isContext && !isEmphasized {
+            return Color.secondary.opacity(min(0.6, focusOpacity))
+        }
         // Android parity (NestedListScreen): rows in a checked branch (self
         // or any ancestor checked) fade to onSurfaceVariant at 0.68 alpha.
-        if row.isInCheckedBranch { return Color.secondary.opacity(0.68) }
+        if row.isInCheckedBranch {
+            return Color.secondary.opacity(min(0.68, focusOpacity))
+        }
         // Explicit light-theme ink: .primary would turn white in dark mode
         // and vanish on the paper canvas. Warm charcoal is softer than pure
         // black for long sessions.
-        return item.textColor.name == "Default" ? nestedInkColor : nestedTokenColor(item.textColor.name)
+        let base = item.textColor.name == "Default"
+            ? nestedInkColor
+            : nestedTokenColor(item.textColor.name)
+        return base.opacity(focusOpacity)
+    }
+
+    /// Focus selection dims everything outside the selected subtree. Path
+    /// rows keep a little more ink than unrelated branches so the way back
+    /// to the root stays legible. `min()` in `nestedTextColor` avoids
+    /// stacking context/checked-branch alpha into unreadable text.
+    private var focusOpacity: Double {
+        switch focusTier {
+        case .none, .focused: return 1
+        case .path: return 0.72
+        case .outside: return 0.45
+        }
     }
 
     private var isSelected: Bool { state.selectedId == item.id }
@@ -377,7 +402,7 @@ struct NestedRowView: View {
         if isEditing { return nestedEditingColor }
         if isSelected { return nestedSelectedColor }
         if item.backgroundColor.name != "Default" {
-            return nestedTokenColor(item.backgroundColor.name).opacity(0.20)
+            return nestedTokenColor(item.backgroundColor.name).opacity(0.20 * focusOpacity)
         }
         return .clear
     }

@@ -3,6 +3,7 @@ package com.checkit.ui.nested
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -37,7 +38,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListLayoutInfo
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -52,6 +53,7 @@ import androidx.compose.material.icons.automirrored.filled.DriveFileMove
 import androidx.compose.material.icons.automirrored.filled.NoteAdd
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CenterFocusStrong
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
@@ -87,6 +89,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
@@ -104,6 +107,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
@@ -148,6 +152,7 @@ import checkit.shared.generated.resources.nested_delete_confirm
 import checkit.shared.generated.resources.nested_delete_confirm_multiple
 import checkit.shared.generated.resources.nested_edit_note
 import checkit.shared.generated.resources.nested_expand_all
+import checkit.shared.generated.resources.nested_focus_selection
 import checkit.shared.generated.resources.nested_indent
 import checkit.shared.generated.resources.nested_move_down
 import checkit.shared.generated.resources.nested_move_up
@@ -160,6 +165,7 @@ import com.checkit.domain.MetricItem
 import com.checkit.domain.MetricRollupPolicy
 import com.checkit.domain.MoveDestinations
 import com.checkit.domain.NestedColorToken
+import com.checkit.domain.NestedDocumentTree
 import com.checkit.domain.NestedItemNode
 import com.checkit.domain.NestedListItem
 import com.checkit.domain.NestedMetricSummary
@@ -208,11 +214,15 @@ private const val nestedDotSubtleAlpha = 0.5f
 private fun nestedDepthColor(depth: Int): Color =
     nestedDepthSolids[depth % nestedDepthSolids.size]
 
-private fun nestedGuideColor(level: Int, emphasized: Boolean = false): Color =
-    nestedDepthColor(level).copy(alpha = if (emphasized) nestedGuideStrongAlpha else nestedGuideSubtleAlpha)
+private fun nestedGuideColor(level: Int, emphasized: Boolean = false, focusAlpha: Float = 1f): Color =
+    nestedDepthColor(level).copy(
+        alpha = (if (emphasized) nestedGuideStrongAlpha else nestedGuideSubtleAlpha) * focusAlpha
+    )
 
-private fun nestedDotColor(depth: Int, emphasized: Boolean = false): Color =
-    nestedDepthColor(depth).copy(alpha = if (emphasized) 1f else nestedDotSubtleAlpha)
+private fun nestedDotColor(depth: Int, emphasized: Boolean = false, focusAlpha: Float = 1f): Color =
+    nestedDepthColor(depth).copy(
+        alpha = (if (emphasized) 1f else nestedDotSubtleAlpha) * focusAlpha
+    )
 
 @Composable
 internal fun NestedListScreen(
@@ -334,6 +344,8 @@ internal fun NestedListScreen(
                     onEnterSelection = viewModel::enterSelectionMode,
                     onSortChildren = { showSortDialog = true },
                     onMoveTo = { showMoveDialog = true },
+                    focusSelectionEnabled = state.focusSelectionEnabled,
+                    onToggleFocusSelection = viewModel::toggleFocusSelection,
                     onAddToDailyPlan = {
                         state.selectedItemId?.let { id ->
                             state.tree.nodeById[id]?.item?.let { item ->
@@ -392,6 +404,21 @@ internal fun NestedListScreen(
                     visibleRows.filterNot { it.node.item.id in draggedDescendantIds }
                 } else {
                     visibleRows
+                }
+            }
+            // Focus selection is a render-time overlay on the filtered rows:
+            // it never touches the filter, Working Mode, zoom, or collapse
+            // state. A selection hidden by the current projection simply has
+            // no range, so focus suspends until it is visible again.
+            val focusActive = state.focusSelectionEnabled && !state.selection.isActive
+            val focusRange = remember(effectiveVisibleRows, state.selectedItemId, focusActive) {
+                if (focusActive) focusRowRange(effectiveVisibleRows, state.selectedItemId) else null
+            }
+            val focusAncestors = remember(state.tree, state.selectedItemId, focusActive) {
+                if (focusActive) {
+                    focusAncestorIdsOf(state.tree, state.selectedItemId)
+                } else {
+                    emptySet()
                 }
             }
 
@@ -465,7 +492,10 @@ internal fun NestedListScreen(
                         }
                     }
                 } else {
-                    items(effectiveVisibleRows, key = { it.node.item.id }) { row ->
+                    itemsIndexed(
+                        effectiveVisibleRows,
+                        key = { _, row -> row.node.item.id }
+                    ) { index, row ->
                         val isDragged = drag?.itemId == row.node.item.id
                         val indicator = drag?.takeIf { it.indicatorRowId == row.node.item.id }
                         Box(
@@ -546,6 +576,12 @@ internal fun NestedListScreen(
                                         isInCheckedBranch = row.isInCheckedBranch,
                                         continuingLevels = row.continuingLevels,
                                         isContext = row.isContext,
+                                        focusTier = focusTier(
+                                            index = index,
+                                            itemId = row.node.item.id,
+                                            range = focusRange,
+                                            ancestorIds = focusAncestors
+                                        ),
                                         state = state,
                                         viewModel = viewModel,
                                         isDragActive = drag != null,
@@ -2032,7 +2068,9 @@ private fun EditorToolbar(
     onCopyToTask: () -> Unit,
     onEnterSelection: () -> Unit,
     onSortChildren: () -> Unit,
-    onMoveTo: () -> Unit
+    onMoveTo: () -> Unit,
+    focusSelectionEnabled: Boolean,
+    onToggleFocusSelection: () -> Unit
 ) {
     val hasSelection = state.selectedItemId != null
     val selectedNode = state.selectedItemId?.let { id -> state.tree.nodeById[id] }
@@ -2059,6 +2097,13 @@ private fun EditorToolbar(
             // Group 1: Zoom & Fold
             ToolbarButton(Icons.Default.ZoomIn, stringResource(Res.string.nested_zoom_in), canZoomIn, onZoomIn)
             ToolbarButton(Icons.Default.ZoomOut, stringResource(Res.string.nested_zoom_out), canZoomOut, onZoomOut)
+            ToolbarToggleButton(
+                icon = Icons.Default.CenterFocusStrong,
+                label = stringResource(Res.string.nested_focus_selection),
+                checked = focusSelectionEnabled,
+                enabled = hasSelection || focusSelectionEnabled,
+                onCheckedChange = { onToggleFocusSelection() }
+            )
             ToolbarButton(Icons.Default.UnfoldMore, stringResource(Res.string.nested_expand_all), hasCollapsible, onExpandAll)
             ToolbarButton(Icons.Default.UnfoldLess, stringResource(Res.string.nested_collapse_all), hasCollapsible, onCollapseAll)
 
@@ -2172,6 +2217,42 @@ private fun ToolbarButton(
 }
 
 @Composable
+private fun ToolbarToggleButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    checked: Boolean,
+    enabled: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    IconToggleButton(
+        checked = checked,
+        onCheckedChange = onCheckedChange,
+        enabled = enabled,
+        modifier = Modifier
+            .size(30.dp)
+            .background(
+                if (checked) {
+                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.75f)
+                } else {
+                    Color.Transparent
+                },
+                CircleShape
+            )
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            tint = when {
+                !enabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f)
+                checked -> MaterialTheme.colorScheme.primary
+                else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+            },
+            modifier = Modifier.size(18.dp)
+        )
+    }
+}
+
+@Composable
 private fun SelectionToolbar(
     state: NestedEditorState.Active,
     onToggleDone: () -> Unit,
@@ -2266,6 +2347,7 @@ private fun NestedItemRow(
     state: NestedEditorState.Active,
     viewModel: NestedListsViewModel,
     isContext: Boolean = false,
+    focusTier: NestedFocusTier = NestedFocusTier.None,
     isDragActive: Boolean = false,
     isDragged: Boolean = false
 ) {
@@ -2277,6 +2359,28 @@ private fun NestedItemRow(
     // guides never emphasize, so selection points down the branch, not up.
     val isEmphasized = isSelected || isEditing
     val spineLevel = selectedSpineLevel(state, itemId = item.id, rowDepth = depth)
+    // Focus selection dims everything outside the selected subtree. Path rows
+    // keep a little more ink than unrelated branches so the way back to the
+    // root stays legible. Around 140ms keeps the change calm without feeling
+    // laggy; only visible rows animate.
+    val focusAlpha by animateFloatAsState(
+        targetValue = when (focusTier) {
+            NestedFocusTier.None, NestedFocusTier.Focused -> 1f
+            NestedFocusTier.Path -> 0.72f
+            NestedFocusTier.Outside -> 0.45f
+        },
+        animationSpec = tween(durationMillis = 140),
+        label = "nestedFocusAlpha"
+    )
+    val baseTextColor = when {
+        isContext && !isEmphasized -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+        isInCheckedBranch -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.68f)
+        item.textColor != NestedColorToken.Default -> nestedColor(item.textColor)
+        else -> MaterialTheme.colorScheme.onSurface
+    }
+    // min(), not multiplication: a filtered context row outside focus should
+    // not stack 0.6 * 0.45 into unreadable 0.27 text.
+    val itemTextColor = baseTextColor.copy(alpha = minOf(baseTextColor.alpha, focusAlpha))
 
     AnimatedVisibility(
         visible = isVisible,
@@ -2306,7 +2410,7 @@ private fun NestedItemRow(
                             continuingLevels.forEach { level ->
                                 val x = guideX(level)
                                 drawLine(
-                                    color = nestedGuideColor(level, emphasized = level == spineLevel),
+                                    color = nestedGuideColor(level, emphasized = level == spineLevel, focusAlpha = focusAlpha),
                                     start = Offset(x, 0f),
                                     end = Offset(x, size.height),
                                     strokeWidth = strokeWidth,
@@ -2332,7 +2436,8 @@ private fun NestedItemRow(
                                     path = path,
                                     color = nestedGuideColor(
                                         depth - 1,
-                                        emphasized = depth - 1 == spineLevel
+                                        emphasized = depth - 1 == spineLevel,
+                                        focusAlpha = focusAlpha
                                     ),
                                     style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
                                 )
@@ -2341,7 +2446,7 @@ private fun NestedItemRow(
                             if (node.hasChildren && !item.collapsed) {
                                 val x = guideX(depth)
                                 drawLine(
-                                    color = nestedGuideColor(depth, emphasized = isEmphasized),
+                                    color = nestedGuideColor(depth, emphasized = isEmphasized, focusAlpha = focusAlpha),
                                     start = Offset(x, dotBottomY),
                                     end = Offset(x, size.height),
                                     strokeWidth = strokeWidth,
@@ -2368,7 +2473,7 @@ private fun NestedItemRow(
                             ),
                         contentAlignment = Alignment.TopStart
                     ) {
-                        val dotColor = nestedDotColor(depth, emphasized = isEmphasized)
+                        val dotColor = nestedDotColor(depth, emphasized = isEmphasized, focusAlpha = focusAlpha)
                         Box(
                             modifier = Modifier
                                 .width(16.dp)
@@ -2421,7 +2526,7 @@ private fun NestedItemRow(
                                     )
                                     item.backgroundColor != NestedColorToken.Default -> nestedColor(
                                         item.backgroundColor
-                                    ).copy(alpha = 0.18f)
+                                    ).copy(alpha = 0.18f * focusAlpha)
 
                                     else -> Color.Transparent
                                 }
@@ -2466,8 +2571,8 @@ private fun NestedItemRow(
                                     onValueChange = { text = it },
                                     singleLine = false,
                                     textStyle = nestedTextStyle(item.textStyle).copy(
-                                        color = nestedTextColor(
-                                            item.textColor
+                                        color = nestedTextColor(item.textColor).copy(
+                                            alpha = minOf(1f, focusAlpha)
                                         )
                                     ),
                                     cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
@@ -2496,31 +2601,24 @@ private fun NestedItemRow(
                                     },
                                     style = nestedTextStyle(item.textStyle),
                                     textDecoration = if (item.checked) TextDecoration.LineThrough else TextDecoration.None,
-                                    color = when {
-                                        isContext && !isEmphasized ->
-                                            MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                                                alpha = 0.6f
-                                            )
-
-                                        isInCheckedBranch -> MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                                            alpha = 0.68f
-                                        )
-
-                                        item.textColor != NestedColorToken.Default -> nestedColor(
-                                            item.textColor
-                                        )
-
-                                        else -> MaterialTheme.colorScheme.onSurface
-                                    },
+                                    color = itemTextColor,
                                     fontWeight = if (depth == 0 && !node.hasChildren) FontWeight.Bold else null
                                 )
                             }
-                            NestedItemMetadataPreview(
-                                item = item,
-                                summary = state.tree.metricSummaryById[item.id]
-                                    ?: NestedMetricSummary(),
-                                isLeaf = !node.hasChildren
-                            )
+                            Box(
+                                modifier = if (focusAlpha < 1f) {
+                                    Modifier.alpha(focusAlpha)
+                                } else {
+                                    Modifier
+                                }
+                            ) {
+                                NestedItemMetadataPreview(
+                                    item = item,
+                                    summary = state.tree.metricSummaryById[item.id]
+                                        ?: NestedMetricSummary(),
+                                    isLeaf = !node.hasChildren
+                                )
+                            }
                         }
 
                         if (item.priority != TaskPriority.None) {
@@ -2528,7 +2626,7 @@ private fun NestedItemRow(
                                 imageVector = Icons.Default.Flag,
                                 contentDescription = null,
                                 tint = priorityColor(item.priority),
-                                modifier = Modifier.size(18.dp)
+                                modifier = Modifier.size(18.dp).alpha(focusAlpha)
                             )
                         }
 
@@ -2595,7 +2693,7 @@ private fun nestedColor(token: NestedColorToken) = when (token) {
     NestedColorToken.Pink -> Color(0xFFEC407A)
 }
 
-private data class VisibleNestedRow(
+internal data class VisibleNestedRow(
     val node: NestedItemNode,
     val depth: Int,
     val isVisible: Boolean,
@@ -2604,6 +2702,50 @@ private data class VisibleNestedRow(
     /** Kept only as ancestor scaffolding for a filtered match. */
     val isContext: Boolean = false
 )
+
+/** How far a row sits from the focused subtree. */
+internal enum class NestedFocusTier { None, Focused, Path, Outside }
+
+internal fun focusTier(
+    index: Int,
+    itemId: String,
+    range: IntRange?,
+    ancestorIds: Set<String>
+): NestedFocusTier = when {
+    range == null -> NestedFocusTier.None
+    index in range -> NestedFocusTier.Focused
+    itemId in ancestorIds -> NestedFocusTier.Path
+    else -> NestedFocusTier.Outside
+}
+
+/**
+ * Pre-order rows make a subtree a contiguous index range: everything after
+ * the selected row whose depth is still deeper is a descendant. Returns null
+ * when the selection is missing from the current projection (filtered out,
+ * or outside the zoom root), so focus suspends without touching filters.
+ */
+internal fun focusRowRange(rows: List<VisibleNestedRow>, selectedId: String?): IntRange? {
+    if (selectedId == null) return null
+    val start = rows.indexOfFirst { it.node.item.id == selectedId }
+    if (start < 0) return null
+    val depth = rows[start].depth
+    var end = start
+    while (end + 1 < rows.size && rows[end + 1].depth > depth) end++
+    return start..end
+}
+
+/** Ancestors of the selection, used for the medium-emphasis path tier. */
+internal fun focusAncestorIdsOf(tree: NestedDocumentTree, selectedId: String?): Set<String> {
+    if (selectedId == null) return emptySet()
+    val ancestors = LinkedHashSet<String>()
+    var cursor: String? = tree.itemById[selectedId]?.parentId
+    while (true) {
+        val id = cursor?.takeIf { it.isNotEmpty() } ?: break
+        if (!ancestors.add(id)) break
+        cursor = tree.itemById[id]?.parentId
+    }
+    return ancestors
+}
 
 private data class NestedTraversalEntry(
     val node: NestedItemNode,

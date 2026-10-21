@@ -187,6 +187,7 @@
     <string name="nested_add_sibling">Add sibling</string>
     <string name="nested_zoom_in">Zoom in</string>
     <string name="nested_zoom_out">Zoom out</string>
+    <string name="nested_focus_selection">Focus selection</string>
     <string name="nested_expand_all">Expand all</string>
     <string name="nested_collapse_all">Collapse all</string>
     <string name="nested_edit_note">Note</string>

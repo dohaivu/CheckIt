@@ -33,6 +33,9 @@ enum NestedInspectorTab: String {
 /// One visible outline row: node + indent depth.
 struct NestedRow: Identifiable, Equatable {
     let id: String
+    /// Position in `visibleRows`; focus selection uses the contiguous
+    /// pre-order range of the selected subtree.
+    let index: Int
     let depth: Int
     let node: NestedItemNode
     /// Self or any ancestor checked (Android `isInCheckedBranch` parity).
@@ -46,6 +49,30 @@ struct NestedRow: Identifiable, Equatable {
             && lhs.isInCheckedBranch == rhs.isInCheckedBranch
             && lhs.isContext == rhs.isContext
             && lhs.node.item.updatedAtMillis == rhs.node.item.updatedAtMillis
+    }
+}
+
+/// Render-time emphasis tier for the transient focus-selection mode.
+enum NestedFocusTier {
+    case none
+    case focused
+    case path
+    case outside
+}
+
+/// Snapshot of the selected subtree's pre-order range plus its ancestor path.
+/// Computed once per selection/filter change; rows only do an O(1) check.
+struct NestedFocusSnapshot {
+    var range: ClosedRange<Int>? = nil
+    var ancestorIds: Set<String> = []
+
+    static let inactive = NestedFocusSnapshot()
+
+    func tier(for row: NestedRow) -> NestedFocusTier {
+        guard let range else { return .none }
+        if range.contains(row.index) { return .focused }
+        if ancestorIds.contains(row.id) { return .path }
+        return .outside
     }
 }
 
@@ -88,7 +115,16 @@ final class NestedEditorState: ObservableObject {
     @Published var zoomPath: [String] = [] {
         didSet { recomputeVisibleRows() }
     }
-    @Published var selectedId: String? = nil
+    @Published var selectedId: String? = nil {
+        didSet { recomputeFocusSnapshot() }
+    }
+    /// Transient view mode: dim everything outside the selected subtree.
+    /// Not persisted; resets with the editor's lifetime.
+    @Published var focusSelectionEnabled: Bool = false {
+        didSet { recomputeFocusSnapshot() }
+    }
+    /// Derived pre-order range + ancestor path for focus selection.
+    @Published private(set) var focusSnapshot: NestedFocusSnapshot = .inactive
     @Published var displayType: NestedDisplayFilter = .all {
         didSet {
             UserDefaults.standard.set(displayType == .working ? "working" : "all", forKey: "nested.displayType")
@@ -376,6 +412,7 @@ final class NestedEditorState: ObservableObject {
     private func recomputeVisibleRows() {
         guard let tree else {
             visibleRows = []
+            recomputeFocusSnapshot()
             return
         }
         let zoomRoots: [NestedItemNode]
@@ -404,6 +441,7 @@ final class NestedEditorState: ObservableObject {
             out.append(
                 NestedRow(
                     id: node.item.id,
+                    index: out.count,
                     depth: depth,
                     node: node,
                     isInCheckedBranch: inCheckedBranch,
@@ -417,6 +455,32 @@ final class NestedEditorState: ObservableObject {
             }
         }
         visibleRows = out
+        recomputeFocusSnapshot()
+    }
+
+    /// Focus selection is a render-time overlay on `visibleRows`: filters,
+    /// Working Mode, zoom, and collapse have already shaped the list. A
+    /// selected row hidden by the projection yields no range, so focus
+    /// suspends until it is visible again; no filter state is touched.
+    private func recomputeFocusSnapshot() {
+        guard focusSelectionEnabled,
+              let selectedId,
+              let start = visibleRows.firstIndex(where: { $0.id == selectedId })
+        else {
+            focusSnapshot = .inactive
+            return
+        }
+        let depth = visibleRows[start].depth
+        var end = start
+        while end + 1 < visibleRows.count, visibleRows[end + 1].depth > depth {
+            end += 1
+        }
+        var ancestors: Set<String> = []
+        var cursor: String? = nodeIndex[selectedId]?.item.parentId
+        while let id = cursor, !id.isEmpty, ancestors.insert(id).inserted {
+            cursor = nodeIndex[id]?.item.parentId
+        }
+        focusSnapshot = NestedFocusSnapshot(range: start...end, ancestorIds: ancestors)
     }
 
     var indexById: [String: NestedItemNode] {
@@ -436,6 +500,8 @@ final class NestedEditorState: ObservableObject {
     }
 
     private func clearTree() {
+        // Focus mode is per open document; switching or closing clears it.
+        focusSelectionEnabled = false
         nodeIndex = [:]
         tree = nil
         recomputeVisibleRows()
