@@ -141,6 +141,8 @@ class NestedFocusWidget : GlanceAppWidget(), KoinComponent {
                     val rows = remember(tree, maxDepth) {
                         val roots = tree?.rootNodes.orEmpty()
                         flattenFocusRows(focusSubtrees(roots, maxDepth))
+                            // Completed rows add noise to a glanceable widget.
+                            .filterNot { it.item.checked }
                     }
                     if (rows.isEmpty()) {
                         Text(
@@ -155,25 +157,42 @@ class NestedFocusWidget : GlanceAppWidget(), KoinComponent {
                         LazyColumn(modifier = GlanceModifier.fillMaxWidth().defaultWeight()) {
                             items(rows) { row ->
                                 val (item, depth, hasChildren) = row
-                                Text(
-                                    // Glance Text is String-only: strip markers, no spans.
-                                    text = parseRichText(item.text).text.ifBlank { "Untitled item" },
+                                Row(
                                     modifier = GlanceModifier
                                         .fillMaxWidth()
                                         .padding(start = (depth * 12).dp)
                                         .padding(vertical = 3.dp)
                                         .clickable(actionStartActivity<MainActivity>()),
-                                    style = TextStyle(
-                                        fontWeight = if (depth == 0) FontWeight.Bold else if (hasChildren) FontWeight.Medium else FontWeight.Normal,
-                                        fontSize = 13.sp,
-                                        color = if (hasChildren) {
-                                            NestedFocusDepthColors[depth % NestedFocusDepthColors.size]
-                                        } else {
-                                            GlanceTheme.colors.onSurface
-                                        }
-                                    ),
-                                    maxLines = 2
-                                )
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    if (item.checkboxEnabled) {
+                                        Image(
+                                            provider = ImageProvider(
+                                                if (item.checked) R.drawable.check_box_24px
+                                                else R.drawable.check_box_outline_blank_24px
+                                            ),
+                                            contentDescription = if (item.checked) "Checked" else "Unchecked",
+                                            modifier = GlanceModifier.size(14.dp),
+                                            colorFilter = ColorFilter.tint(GlanceTheme.colors.onSurfaceVariant)
+                                        )
+                                        Spacer(modifier = GlanceModifier.width(6.dp))
+                                    }
+                                    Text(
+                                        // Glance Text is String-only: strip markers, no spans.
+                                        text = parseRichText(item.text).text.ifBlank { "Untitled item" },
+                                        modifier = GlanceModifier.defaultWeight(),
+                                        style = TextStyle(
+                                            fontWeight = if (depth == 0) FontWeight.Bold else if (hasChildren) FontWeight.Medium else FontWeight.Normal,
+                                            fontSize = 13.sp,
+                                            color = if (hasChildren) {
+                                                NestedFocusDepthColors[depth % NestedFocusDepthColors.size]
+                                            } else {
+                                                GlanceTheme.colors.onSurface
+                                            }
+                                        ),
+                                        maxLines = 2
+                                    )
+                                }
                             }
                         }
                     }
