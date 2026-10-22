@@ -198,20 +198,6 @@ internal fun NestedDocumentsScreen(
                         } else if (activeEditor != null) {
                             val isSyncing = state.syncState.status == NestedSyncStatus.SYNCING &&
                                 state.syncState.documentId == activeEditor.documentId
-                            IconButton(
-                                onClick = viewModel::syncOpenDocument,
-                                enabled = !isSyncing
-                            ) {
-                                if (isSyncing) {
-                                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                                } else {
-                                    Icon(
-                                        imageVector = Icons.Default.Sync,
-                                        contentDescription = "Sync this document",
-                                        tint = MaterialTheme.colorScheme.onSurface
-                                    )
-                                }
-                            }
                             IconButton(onClick = viewModel::toggleFilterVisibility) {
                                 Icon(
                                     imageVector = Icons.Default.FilterList,
