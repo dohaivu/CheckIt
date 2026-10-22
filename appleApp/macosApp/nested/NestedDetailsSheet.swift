@@ -75,7 +75,9 @@ struct NestedNoteEditor: View {
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
-                Text("\(text.count)/2,000")
+                // Character budget shown next to the note; shared by the sheet
+                // and the inspector, which display the same note.
+                Text("\(text.count)/5,000")
                     .font(.caption).foregroundStyle(.secondary)
                 Button {
                     if showPreview {
@@ -111,6 +113,8 @@ struct NestedNoteEditor: View {
 struct NestedNoteSheet: View {
     @ObservedObject var state: NestedEditorState
     let item: NestedListItem
+    /// ⌃N opens the sheet in read-only preview instead of the editor.
+    var startsInPreview: Bool = false
     @Environment(\.dismiss) private var dismiss
     @State private var text: String = ""
     @State private var focused = false
@@ -118,7 +122,12 @@ struct NestedNoteSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Note").font(.headline)
-            NestedNoteEditor(text: $text, isDirty: isDirty, focused: $focused)
+            NestedNoteEditor(
+                text: $text,
+                isDirty: isDirty,
+                focused: $focused,
+                startsInPreview: startsInPreview
+            )
             HStack {
                 Spacer()
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
@@ -129,13 +138,16 @@ struct NestedNoteSheet: View {
             }
         }
         .padding()
-        .frame(minWidth: 760, idealWidth: 920, maxWidth: .infinity, minHeight: 460, idealHeight: 620, maxHeight: .infinity)
+        .frame(minWidth: 900, idealWidth: 1120, maxWidth: .infinity, minHeight: 560, idealHeight: 760, maxHeight: .infinity)
         .onAppear {
             text = item.note ?? ""
             // Focus once the sheet's window exists: the AppKit editor can only
             // take first responder once it is in a window, and the user should
-            // be able to start typing immediately.
-            DispatchQueue.main.async { focused = true }
+            // be able to start typing immediately. Preview mode is read-only,
+            // so it never grabs focus.
+            if !startsInPreview {
+                DispatchQueue.main.async { focused = true }
+            }
         }
     }
 

@@ -36,6 +36,8 @@ struct NestedListsWindowView: View {
     @State private var showSortMenu = false
     @State private var showCheatsheet = false
     @State private var draftText = ""
+    /// Ctrl+N opens the note sheet read-only; reset whenever the sheet closes.
+    @State private var noteStartsInPreview = false
 
     // MARK: - Window sizing
 
@@ -140,8 +142,11 @@ struct NestedListsWindowView: View {
         // ⌥N/⌥D and the row context menu.
         .sheet(isPresented: $state.showNoteSheet) {
             if let item = state.selectedItem {
-                NestedNoteSheet(state: state, item: item)
+                NestedNoteSheet(state: state, item: item, startsInPreview: noteStartsInPreview)
             }
+        }
+        .onChange(of: state.showNoteSheet) { _, showing in
+            if !showing { noteStartsInPreview = false }
         }
         .sheet(isPresented: $state.showDetailsSheet) {
             if let item = state.selectedItem {
@@ -887,6 +892,7 @@ struct NestedListsWindowView: View {
                             Divider()
                             Button {
                                 state.selectedId = row.id
+                                noteStartsInPreview = false
                                 state.showNoteSheet = true
                             } label: {
                                 Label("Note", systemImage: "note.text")
@@ -1013,8 +1019,12 @@ struct NestedListsWindowView: View {
                 }
                 return .ignored
             }
-            .onKeyPress(keys: [KeyEquivalent("n"), KeyEquivalent("N")]) { _ in
+            .onKeyPress(keys: [KeyEquivalent("n"), KeyEquivalent("N")]) { press in
                 guard state.editingId == nil, state.draft == nil, state.selectedId != nil else { return .ignored }
+                // ⌘N stays free for the standard New command; ⌃N opens the
+                // sheet straight into the read-only preview.
+                guard !press.modifiers.contains(.command) else { return .ignored }
+                noteStartsInPreview = press.modifiers.contains(.control)
                 state.showNoteSheet = true
                 return .handled
             }
@@ -1193,6 +1203,7 @@ struct NestedListsWindowView: View {
                         (["⌘F", "/"], "Search"),
                         (["Esc"], "Blur search"),
                         (["N"], "Note"),
+                        (["⌃N"], "Note preview"),
                         (["D"], "Item details"),
                         (["⌘⇧P"], "Preview note (note editor)"),
                         (["⌘⌥I"], "Toggle inspector"),
