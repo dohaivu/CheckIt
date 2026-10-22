@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -45,6 +46,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
@@ -82,6 +84,7 @@ import androidx.compose.material.icons.outlined.LocalOffer
 import androidx.compose.material.icons.rounded.CheckBox
 import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.DropdownMenu
@@ -175,6 +178,7 @@ import com.checkit.domain.TagItem
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.filterNestedTreeWithContext
 import com.checkit.domain.moveDestinations
+import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.CompactFlatTextField
 import com.checkit.ui.components.DateRangePill
@@ -185,6 +189,7 @@ import com.checkit.ui.components.MetricChip
 import com.checkit.ui.components.PeriodPicker
 import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TagPill
+import com.checkit.ui.components.asMarkdownAnnotatedString
 import com.checkit.ui.components.renderInlineMarkdown
 import com.checkit.ui.isValidForSave
 import com.checkit.ui.noRippleClickable
@@ -692,51 +697,11 @@ internal fun NestedListScreen(
             )
         }
         is NestedEditorOverlay.EditingNote -> {
-            var note by remember(overlay.itemId) { mutableStateOf(overlay.initialText) }
-            AlertDialog(
-                onDismissRequest = viewModel::stopEditNote,
-                properties = DialogProperties(usePlatformDefaultWidth = false),
-                title = { Text(stringResource(Res.string.nested_edit_note)) },
-                text = {
-                    Column(
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        MarkdownTextField(
-                            value = note,
-                            onValueChange = { note = it.take(2_000) },
-                            placeholder = "Add label or details",
-                            textStyle = MaterialTheme.typography.bodyMedium.copy(
-                                color = MaterialTheme.colorScheme.onSurface
-                            ),
-                            minLines = 4,
-                            maxLines = 8,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                                .border(
-                                    width = 1.dp,
-                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-                                    shape = RoundedCornerShape(8.dp)
-                                )
-                                .padding(10.dp),
-                        )
-                        Text(
-                            "${note.length}/2,000",
-                            modifier = Modifier.fillMaxWidth(),
-                            style = MaterialTheme.typography.bodySmall,
-                            textAlign = TextAlign.End
-                        )
-                    }
-                },
-                confirmButton = {
-                    TextButton(onClick = { viewModel.saveItemNote(overlay.itemId, note) }) {
-                        Text("Save")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = viewModel::stopEditNote) { Text(stringResource(Res.string.cancel)) }
-                }
+            NestedNoteEditorSheet(
+                itemId = overlay.itemId,
+                initialText = overlay.initialText,
+                onDismiss = viewModel::stopEditNote,
+                onSave = { note -> viewModel.saveItemNote(overlay.itemId, note) }
             )
         }
         else -> {}
@@ -787,6 +752,131 @@ internal fun NestedListScreen(
                 }
             )
         }
+    }
+}
+
+/**
+ * Full-height note editor for one outline row. Long notes get the whole
+ * sheet; Preview renders the draft as Markdown (read-only) so it can be
+ * scanned without the editing chrome. The 5,000-character budget matches
+ * the macOS note sheet.
+ */
+@Composable
+private fun NestedNoteEditorSheet(
+    itemId: String,
+    initialText: String,
+    onDismiss: () -> Unit,
+    onSave: (String) -> Unit
+) {
+    var note by remember(itemId) { mutableStateOf(initialText) }
+    var preview by remember(itemId) { mutableStateOf(false) }
+    val scrollState = rememberScrollState()
+    LaunchedEffect(preview) { scrollState.scrollTo(0) }
+
+    AppEditorBottomSheet(
+        onDismiss = onDismiss,
+        sheetGesturesEnabled = false,
+        modifier = Modifier.fillMaxHeight(0.9f)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = stringResource(Res.string.nested_edit_note),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            TextButton(onClick = { preview = !preview }) {
+                Text(if (preview) "Edit" else "Preview")
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+        ) {
+            if (preview) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(scrollState)
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    if (note.isBlank()) {
+                        Text(
+                            text = "Nothing to preview yet.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        SelectionContainer {
+                            Text(
+                                text = note.asMarkdownAnnotatedString(),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                }
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(scrollState)
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    MarkdownTextField(
+                        value = note,
+                        onValueChange = { note = it.take(NESTED_NOTE_MAX_LENGTH) },
+                        placeholder = "Add label or details",
+                        textStyle = MaterialTheme.typography.bodyLarge.copy(
+                            color = MaterialTheme.colorScheme.onSurface
+                        ),
+                        minLines = 12,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+                            .border(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            .padding(12.dp)
+                    )
+                }
+            }
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "${note.length}/5,000",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(Res.string.cancel))
+                }
+                Spacer(Modifier.width(8.dp))
+                Button(onClick = { onSave(note) }) {
+                    Text("Save")
+                }
+            }
+        }
+        Spacer(Modifier.height(8.dp))
     }
 }
 

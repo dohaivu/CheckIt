@@ -65,6 +65,9 @@ import com.checkit.ui.today
 
 // --- State Hierarchy ---
 
+/** Maximum characters kept for one outline item note; matches the macOS note sheet. */
+const val NESTED_NOTE_MAX_LENGTH = 5_000
+
 data class NewItemDraft(
     val anchorId: String? = null,
     val parentId: String? = null,
@@ -657,7 +660,7 @@ class NestedListsViewModel(
     fun saveItemNote(itemId: String, note: String?) {
         stopEditNote()
         viewModelScope.launch {
-            updateItemNoteUseCase(itemId, note?.take(2_000))
+            updateItemNoteUseCase(itemId, note?.take(NESTED_NOTE_MAX_LENGTH))
         }
     }
 

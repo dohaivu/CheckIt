@@ -201,7 +201,7 @@ class NestedAppleHelper(
     }
 
     fun saveItemNote(itemId: String, note: String?) {
-        scope.launch { runCatching { updateItemNote(itemId, note?.take(2_000)) } }
+        scope.launch { runCatching { updateItemNote(itemId, note?.take(NESTED_NOTE_MAX_LENGTH)) } }
     }
 
     // --- Formatting & metadata (same use cases as Android) ---
