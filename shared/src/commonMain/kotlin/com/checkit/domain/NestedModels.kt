@@ -34,7 +34,10 @@ enum class MetricRollupPolicy {
 }
 
 data class NestedMetricSummary(
-    val doneItemCount: Int = 0,
+    /** Direct children with a checkbox that are checked. */
+    val doneTaskCount: Int = 0,
+    /** Direct children with a checkbox enabled, checked or not. */
+    val totalTaskCount: Int = 0,
     val trackedMinutes: Int = 0
 )
 

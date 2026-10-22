@@ -636,8 +636,9 @@ internal fun NestedListScreen(
                 val selectedItem = state.selectedItemId?.let { tree.itemById[it] }
                 if (selectedItem != null) {
                     Box(modifier = Modifier.align(Alignment.BottomCenter)) {
-                        NestedFormattingBottomBar(
+                        NestedFormattingBar(
                             item = selectedItem,
+                            hasChildren = state.tree.nodeById[selectedItem.id]?.hasChildren == true,
                             onFormattingChange = { style, textColor, backgroundColor ->
                                 viewModel.updateItemFormatting(selectedItem.id, style, textColor, backgroundColor)
                             },
@@ -651,6 +652,7 @@ internal fun NestedListScreen(
                             onTagsChange = { viewModel.updateItemTags(selectedItem.id, it) },
                             onToggleNote = { viewModel.startEditNote(selectedItem.id) },
                             onToggleCheckbox = { viewModel.toggleCheckboxEnabled(selectedItem.id) },
+                            onEnableCheckboxForChildren = { viewModel.enableCheckboxForChildren(selectedItem.id) },
                             onSetChecked = { checked -> viewModel.setChecked(selectedItem.id, checked) }
                         )
                     }
@@ -957,15 +959,17 @@ private fun NestedSortOrder.label(): String = when (this) {
 }
 
 @Composable
-private fun NestedFormattingBottomBar(
-    item: com.checkit.domain.NestedListItem,
+private fun NestedFormattingBar(
+    item: NestedListItem,
+    hasChildren: Boolean,
     onFormattingChange: (NestedTextStyle, NestedColorToken, NestedColorToken) -> Unit,
     onPriorityChange: (TaskPriority) -> Unit,
     onDateRangeChange: (kotlinx.datetime.LocalDate?, kotlinx.datetime.LocalDate?) -> Unit,
-    availableTags: List<com.checkit.domain.TagItem>,
+    availableTags: List<TagItem>,
     onTagsChange: (List<String>) -> Unit,
     onToggleNote: () -> Unit,
     onToggleCheckbox: () -> Unit,
+    onEnableCheckboxForChildren: () -> Unit,
     onSetChecked: (Boolean) -> Unit
 ) {
     var priorityExpanded by remember { mutableStateOf(false) }
@@ -1034,6 +1038,14 @@ private fun NestedFormattingBottomBar(
                         onClick = {
                             styleExpanded = false
                             onToggleCheckbox()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Add checkbox for children") },
+                        enabled = hasChildren,
+                        onClick = {
+                            styleExpanded = false
+                            onEnableCheckboxForChildren()
                         }
                     )
                 }
@@ -1335,10 +1347,10 @@ private fun NestedItemMetadataPreview(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (summary.doneItemCount > 0) {
+            if (summary.totalTaskCount > 0) {
                 SummaryChip(buildAnnotatedString {
                     withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)) {
-                        append("${summary.doneItemCount}")
+                        append("${summary.doneTaskCount}/${summary.totalTaskCount}")
                     }
                     append(" done")
                 })
@@ -1427,7 +1439,8 @@ private fun NestedItemDetailsDialog(
 
     val directChildCount = node.children.size
     val totalChildCount = remember(node) { countTotalDescendants(node) }
-    val doneChildCount = summary.doneItemCount
+    val doneTaskCount = summary.doneTaskCount
+    val totalTaskCount = summary.totalTaskCount
     val totalTrackedMinutes = summary.trackedMinutes
 
     AlertDialog(
@@ -1484,7 +1497,11 @@ private fun NestedItemDetailsDialog(
                     DetailMetricStatCard(
                         title = "Children",
                         value = if (directChildCount == totalChildCount) "$totalChildCount" else "$directChildCount ($totalChildCount)",
-                        subtitle = if (totalChildCount > 0) "$doneChildCount done" else "Leaf item",
+                        subtitle = if (totalChildCount > 0) {
+                            if (totalTaskCount > 0) "$doneTaskCount/$totalTaskCount done" else "No checkboxes"
+                        } else {
+                            "Leaf item"
+                        },
                         modifier = Modifier.weight(1f)
                     )
                     DetailMetricStatCard(

@@ -314,6 +314,20 @@ class NestedAppleHelper(
         scope.launch { runCatching { setCheckboxEnabled(itemId, enabled) } }
     }
 
+    /** Enables checkboxes on every direct child that does not already have one. */
+    fun enableCheckboxForChildren(itemId: String) {
+        scope.launch {
+            val ids = latestTrees.values
+                .firstNotNullOfOrNull { it.nodeById[itemId] }
+                ?.children
+                .orEmpty()
+                .map { it.item }
+                .filter { !it.checkboxEnabled }
+                .map { it.id }
+            ids.forEach { runCatching { setCheckboxEnabled(it, true) } }
+        }
+    }
+
     fun setChecked(itemIds: List<String>, checked: Boolean) {
         scope.launch { runCatching { setItemsChecked(itemIds, checked) } }
     }

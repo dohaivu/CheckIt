@@ -1001,6 +1001,11 @@ final class NestedEditorState: ObservableObject {
         helper.toggleCheckboxEnabled(itemId: id, enabled: enabled)
     }
 
+    /// Enables checkboxes on every direct child that does not already have one.
+    func enableCheckboxForChildren(id: String) {
+        helper.enableCheckboxForChildren(itemId: id)
+    }
+
     func setCheckedExact(id: String, checked: Bool) {
         helper.toggleChecked(itemId: id, checked: checked)
     }

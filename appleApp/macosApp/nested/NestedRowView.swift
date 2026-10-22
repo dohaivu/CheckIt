@@ -414,7 +414,7 @@ struct NestedRowView: View {
         let isLeaf = !row.node.hasChildren
         let showTracked = isLeaf || item.showTrackedMinutes
         let visibleMetrics = item.manualMetrics.filter { $0.enabled && ($0.isCompleted || $0.isValidForSave()) }
-        if progress != nil || (summary?.doneItemCount ?? 0) > 0
+        if progress != nil || (summary?.totalTaskCount ?? 0) > 0
             || (showTracked && (summary?.trackedMinutes ?? 0) > 0)
             || (note != nil && !(note!.isEmpty)) || !item.tags.isEmpty || dateText != nil
             || !visibleMetrics.isEmpty
@@ -441,8 +441,8 @@ struct NestedRowView: View {
                     }
                 }
                 HStack(spacing: 6) {
-                    if let s = summary, s.doneItemCount > 0 {
-                        Text("\(s.doneItemCount) done")
+                    if let s = summary, s.totalTaskCount > 0 {
+                        Text("\(s.doneTaskCount)/\(s.totalTaskCount) done")
                             .font(.caption)
                             .padding(.horizontal, 6).padding(.vertical, 1)
                             .background(Color.secondary.opacity(0.15), in: RoundedRectangle(cornerRadius: 5))

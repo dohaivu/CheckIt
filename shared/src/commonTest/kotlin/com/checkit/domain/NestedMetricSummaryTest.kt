@@ -9,6 +9,7 @@ class NestedMetricSummaryTest {
         parentId: String? = null,
         position: Int = 0,
         checked: Boolean = false,
+        checkboxEnabled: Boolean = false,
         actualMinutes: Int = 0,
         policy: MetricRollupPolicy = MetricRollupPolicy.IncludeChildren
     ) = NestedListItem(
@@ -17,6 +18,7 @@ class NestedMetricSummaryTest {
         parentId = parentId,
         position = position,
         text = "Item $id",
+        checkboxEnabled = checkboxEnabled,
         checked = checked,
         actualMinutes = actualMinutes,
         metricRollupPolicy = policy,
@@ -29,13 +31,13 @@ class NestedMetricSummaryTest {
         val tree = buildNestedTree(
             listOf(
                 item("1", actualMinutes = 10),
-                item("2", parentId = "1", checked = true, actualMinutes = 20),
-                item("3", parentId = "1", policy = MetricRollupPolicy.ExcludeFromParent)
+                item("2", parentId = "1", checked = true, checkboxEnabled = true, actualMinutes = 20),
+                item("3", parentId = "1", checkboxEnabled = true, policy = MetricRollupPolicy.ExcludeFromParent)
             )
         )
 
         assertEquals(
-            NestedMetricSummary(doneItemCount = 1, trackedMinutes = 30),
+            NestedMetricSummary(doneTaskCount = 1, totalTaskCount = 2, trackedMinutes = 30),
             calculateNestedMetricSummaries(tree)["1"]
         )
     }
@@ -50,7 +52,7 @@ class NestedMetricSummaryTest {
         )
 
         assertEquals(
-            NestedMetricSummary(doneItemCount = 0, trackedMinutes = 10),
+            NestedMetricSummary(doneTaskCount = 0, totalTaskCount = 0, trackedMinutes = 10),
             calculateNestedMetricSummaries(tree)["1"]
         )
     }
@@ -68,6 +70,23 @@ class NestedMetricSummaryTest {
 
         assertEquals(50, summaries["2"]?.trackedMinutes)
         assertEquals(10, summaries["1"]?.trackedMinutes)
-        assertEquals(0, summaries["1"]?.doneItemCount)
+        assertEquals(0, summaries["1"]?.doneTaskCount)
+        assertEquals(0, summaries["1"]?.totalTaskCount)
+    }
+
+    @Test
+    fun checkedWithoutCheckboxIsNeitherDoneNorTotal() {
+        val tree = buildNestedTree(
+            listOf(
+                item("1"),
+                item("2", parentId = "1", checked = true),
+                item("3", parentId = "1", checkboxEnabled = true),
+                item("4", parentId = "1", checkboxEnabled = true, checked = true)
+            )
+        )
+        val summary = calculateNestedMetricSummaries(tree)["1"]
+
+        assertEquals(1, summary?.doneTaskCount)
+        assertEquals(2, summary?.totalTaskCount)
     }
 }

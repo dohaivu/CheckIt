@@ -3,9 +3,10 @@ package com.checkit.domain
 /**
  * Rolls child metric summaries up into each parent.
  *
- * [NestedMetricSummary.doneItemCount] counts directly checked children (not
- * descendants), while tracked minutes follow each item's
- * [MetricRollupPolicy]. Iterative: nested lists have no depth limit, so
+ * [NestedMetricSummary.doneTaskCount] counts directly checked children and
+ * [NestedMetricSummary.totalTaskCount] counts direct children with a checkbox,
+ * both without descending (not descendants), while tracked minutes follow each
+ * item's [MetricRollupPolicy]. Iterative: nested lists have no depth limit, so
  * recursion here could overflow on a pathological document.
  */
 fun calculateNestedMetricSummaries(roots: List<NestedItemNode>): Map<String, NestedMetricSummary> {
@@ -19,7 +20,8 @@ fun calculateNestedMetricSummaries(roots: List<NestedItemNode>): Map<String, Nes
             node.children.asReversed().forEach { stack.addLast(it to false) }
             continue
         }
-        val doneItemCount = node.children.count { it.item.checked }
+        val totalTaskCount = node.children.count { it.item.checkboxEnabled }
+        val doneTaskCount = node.children.count { it.item.checkboxEnabled && it.item.checked }
         var trackedMinutes = node.item.actualMinutes.coerceAtLeast(0)
         node.children.forEach { child ->
             // Post-order guarantees the child summary exists; surface a bug
@@ -31,7 +33,11 @@ fun calculateNestedMetricSummaries(roots: List<NestedItemNode>): Map<String, Nes
                 trackedMinutes += childSummary.trackedMinutes
             }
         }
-        summaries[node.item.id] = NestedMetricSummary(doneItemCount, trackedMinutes)
+        summaries[node.item.id] = NestedMetricSummary(
+            doneTaskCount = doneTaskCount,
+            totalTaskCount = totalTaskCount,
+            trackedMinutes = trackedMinutes
+        )
     }
     return summaries
 }

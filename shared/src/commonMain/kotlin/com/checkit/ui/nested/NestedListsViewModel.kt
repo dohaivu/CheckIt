@@ -636,6 +636,16 @@ class NestedListsViewModel(
         viewModelScope.launch { setCheckboxEnabledUseCase(itemId, !item.checkboxEnabled) }
     }
 
+    /** Enables checkboxes on every direct child that does not already have one. */
+    fun enableCheckboxForChildren(itemId: String) {
+        val children = getActiveEditor()?.tree?.nodeById?.get(itemId)?.children ?: return
+        val ids = children.map { it.item }.filter { !it.checkboxEnabled }.map { it.id }
+        if (ids.isEmpty()) return
+        viewModelScope.launch {
+            ids.forEach { setCheckboxEnabledUseCase(it, true) }
+        }
+    }
+
     fun toggleChecked(itemId: String) {
         val item = getActiveEditor()?.tree?.itemById?.get(itemId) ?: return
         if (!item.checkboxEnabled) return
