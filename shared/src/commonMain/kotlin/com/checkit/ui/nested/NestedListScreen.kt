@@ -954,7 +954,7 @@ private fun NestedSortOrder.label(): String = when (this) {
     NestedSortOrder.NameAsc -> "Name (A–Z)"
     NestedSortOrder.AddedDesc -> "Newest first"
     NestedSortOrder.CompletedDesc -> "Recently completed"
-    NestedSortOrder.IncompleteFirst -> "Incomplete on top"
+    NestedSortOrder.UncheckedFirst -> "Unchecked first"
     NestedSortOrder.PriorityDesc -> "Priority (high first)"
 }
 

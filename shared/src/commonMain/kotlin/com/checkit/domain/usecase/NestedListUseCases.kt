@@ -329,7 +329,7 @@ class MoveNestedItemsUseCase(
             NestedSortOrder.NameAsc -> compareBy<NestedListItem> { it.text.lowercase() }
             NestedSortOrder.AddedDesc -> compareByDescending<NestedListItem> { it.createdAtMillis }
             NestedSortOrder.CompletedDesc -> compareByDescending<NestedListItem> { it.completedAtMillis ?: Long.MIN_VALUE }
-            NestedSortOrder.IncompleteFirst -> compareBy<NestedListItem> { it.checked }
+            NestedSortOrder.UncheckedFirst -> compareBy<NestedListItem> { it.checked }
             NestedSortOrder.PriorityDesc -> compareBy<NestedListItem> { it.priority.sortRank() }
         }.thenBy { it.position }.thenBy { it.id }
         return renormalizeGroup(siblings.sortedWith(comparator), parentId)

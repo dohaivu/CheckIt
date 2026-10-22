@@ -47,7 +47,7 @@ enum class NestedSortOrder {
     NameAsc,
     AddedDesc,
     CompletedDesc,
-    IncompleteFirst,
+    UncheckedFirst,
     PriorityDesc,
 }
 

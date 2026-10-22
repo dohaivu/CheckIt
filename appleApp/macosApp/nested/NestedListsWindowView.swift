@@ -752,7 +752,7 @@ struct NestedListsWindowView: View {
             ("NameAsc", "Name (A–Z)"),
             ("AddedDesc", "Newest first"),
             ("CompletedDesc", "Recently completed"),
-            ("IncompleteFirst", "Incomplete on top"),
+            ("UncheckedFirst", "Unchecked first"),
             ("PriorityDesc", "Priority (high first)"),
         ]
     }
