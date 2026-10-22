@@ -21,14 +21,19 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -42,7 +47,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -54,10 +63,17 @@ import checkit.shared.generated.resources.cancel
 import checkit.shared.generated.resources.nested_delete_confirm
 import checkit.shared.generated.resources.nested_delete_document
 import checkit.shared.generated.resources.nested_documents_empty
+import checkit.shared.generated.resources.nested_force_confirm
+import checkit.shared.generated.resources.nested_force_pull
+import checkit.shared.generated.resources.nested_force_pull_confirm
+import checkit.shared.generated.resources.nested_force_push
+import checkit.shared.generated.resources.nested_force_push_confirm
 import checkit.shared.generated.resources.nested_lists_title
 import checkit.shared.generated.resources.nested_new_document
 import checkit.shared.generated.resources.nested_rename_document
+import checkit.shared.generated.resources.nested_sync_now
 import checkit.shared.generated.resources.nested_untitled_document
+import com.checkit.data.NestedSyncOperation
 import com.checkit.data.NestedSyncStatus
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.toClockLabel
@@ -203,6 +219,12 @@ internal fun NestedDocumentsScreen(
                                     tint = if (activeEditor.filters.isVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                                 )
                             }
+                            NestedDocumentActionsMenu(
+                                enabled = !isSyncing,
+                                onSync = viewModel::syncOpenDocument,
+                                onForcePush = viewModel::requestForcePush,
+                                onForcePull = viewModel::requestForcePull,
+                            )
                         }
                     }
                 )
@@ -306,6 +328,82 @@ internal fun NestedDocumentsScreen(
             }
         )
     }
+
+    state.forceRequest?.let { request ->
+        val isPush = request.action == NestedForceAction.Push
+        val title = request.documentTitle.ifBlank {
+            stringResource(Res.string.nested_untitled_document)
+        }
+        AlertDialog(
+            onDismissRequest = viewModel::cancelForceRequest,
+            title = {
+                Text(stringResource(if (isPush) Res.string.nested_force_push else Res.string.nested_force_pull))
+            },
+            text = {
+                Text(
+                    stringResource(
+                        if (isPush) Res.string.nested_force_push_confirm else Res.string.nested_force_pull_confirm,
+                        title,
+                    )
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = viewModel::confirmForceRequest) {
+                    Text(stringResource(Res.string.nested_force_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = viewModel::cancelForceRequest) {
+                    Text(stringResource(Res.string.cancel))
+                }
+            }
+        )
+    }
+}
+
+/** Overflow menu for the open document: normal sync plus the two force directions. */
+@Composable
+private fun NestedDocumentActionsMenu(
+    enabled: Boolean,
+    onSync: () -> Unit,
+    onForcePush: () -> Unit,
+    onForcePull: () -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { expanded = true }) {
+            Icon(Icons.Default.MoreVert, contentDescription = "Document sync actions")
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(
+                text = { Text(stringResource(Res.string.nested_sync_now)) },
+                leadingIcon = { Icon(Icons.Default.Sync, contentDescription = null) },
+                enabled = enabled,
+                onClick = {
+                    expanded = false
+                    onSync()
+                }
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(Res.string.nested_force_push)) },
+                leadingIcon = { Icon(Icons.Default.CloudUpload, contentDescription = null) },
+                enabled = enabled,
+                onClick = {
+                    expanded = false
+                    onForcePush()
+                }
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(Res.string.nested_force_pull)) },
+                leadingIcon = { Icon(Icons.Default.CloudDownload, contentDescription = null) },
+                enabled = enabled,
+                onClick = {
+                    expanded = false
+                    onForcePull()
+                }
+            )
+        }
+    }
 }
 
 /**
@@ -322,9 +420,13 @@ private fun NestedSyncStatusLine(
     if (documentId == null || sync.documentId != documentId) return
     val text = when (sync.status) {
         NestedSyncStatus.IDLE -> return
-        NestedSyncStatus.SYNCING -> "Syncing…"
+        NestedSyncStatus.SYNCING -> when (sync.operation) {
+            NestedSyncOperation.FORCE_PUSH -> "Force pushing…"
+            NestedSyncOperation.FORCE_PULL -> "Force pulling…"
+            else -> "Syncing…"
+        }
         NestedSyncStatus.SYNCED ->
-            if (sync.lastSyncedAt != null) "Synced ${sync.lastSyncedAt.toClockLabel()}" else "Synced"
+            sync.message ?: if (sync.lastSyncedAt != null) "Synced ${sync.lastSyncedAt.toClockLabel()}" else "Synced"
         NestedSyncStatus.OFFLINE -> "You're offline. Changes are saved on this device."
         NestedSyncStatus.ERROR -> sync.message ?: "Sync failed. Try again."
     }

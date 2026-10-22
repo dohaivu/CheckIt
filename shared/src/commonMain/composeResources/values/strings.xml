@@ -173,6 +173,12 @@
     <string name="nested_rename_document">Rename document</string>
     <string name="nested_delete_document">Delete document</string>
     <string name="nested_delete_confirm">Delete “%1$s” and everything inside it?</string>
+    <string name="nested_sync_now">Sync now</string>
+    <string name="nested_force_push">Force push to cloud</string>
+    <string name="nested_force_pull">Force pull from cloud</string>
+    <string name="nested_force_confirm">Force sync</string>
+    <string name="nested_force_push_confirm">Replace the cloud copy of “%1$s” with the version on this device? Changes made on other devices will be overwritten.</string>
+    <string name="nested_force_pull_confirm">Delete the copy of “%1$s” on this device and download the cloud version? Local changes that have not been synced will be lost.</string>
     <string name="nested_delete_confirm_multiple">Delete %1$d selected items?</string>
     <string name="nested_untitled_document">Untitled</string>
     <string name="nested_root">Root</string>

@@ -16,6 +16,17 @@ import AppKit
 import Shared
 import UniformTypeIdentifiers
 
+/// Force-sync direction chosen from the sidebar context menu.
+private enum NestedSidebarForceAction {
+    case push
+    case pull
+}
+
+private struct NestedSidebarForceRequest {
+    let action: NestedSidebarForceAction
+    let document: NestedDocument
+}
+
 struct NestedListsWindowView: View {
     @StateObject private var state = NestedEditorState()
     @ObservedObject private var sync = NestedFirestoreSync.shared
@@ -30,6 +41,7 @@ struct NestedListsWindowView: View {
     @State private var showRename = false
     @State private var renameTitle = ""
     @State private var deleteDoc: NestedDocument? = nil
+    @State private var forceRequest: NestedSidebarForceRequest? = nil
     /// Row whose checked children are pending deletion (drives the alert;
     /// nil = no alert) plus the count captured when the alert opened, so the
     /// message survives the action resetting the id.
@@ -227,11 +239,51 @@ struct NestedListsWindowView: View {
                             Label("Export to JSON…", systemImage: "square.and.arrow.up")
                         }
                         Divider()
+                        Button {
+                            forceRequest = NestedSidebarForceRequest(action: .push, document: doc)
+                        } label: {
+                            Label("Force Push to Cloud", systemImage: "icloud.and.arrow.up")
+                        }
+                        .disabled(sync.uiState.status == .syncing)
+                        Button {
+                            forceRequest = NestedSidebarForceRequest(action: .pull, document: doc)
+                        } label: {
+                            Label("Force Pull from Cloud", systemImage: "icloud.and.arrow.down")
+                        }
+                        .disabled(sync.uiState.status == .syncing)
+                        Divider()
                         Button("Rename") { renameDoc = doc; showRename = true }
                         Button("Delete", role: .destructive) { deleteDoc = doc }
                     }
             }
             .listStyle(.sidebar)
+            .alert(
+                forceRequest?.action == .pull ? "Force pull from cloud?" : "Force push to cloud?",
+                isPresented: Binding(
+                    get: { forceRequest != nil },
+                    set: { if !$0 { forceRequest = nil } }
+                )
+            ) {
+                if let request = forceRequest {
+                    Button(request.action == .pull ? "Force Pull" : "Force Push", role: .destructive) {
+                        forceRequest = nil
+                        // Commit any open inline edit first: a force pull can
+                        // remove the row being edited.
+                        state.commitEditing()
+                        switch request.action {
+                        case .push:
+                            NestedFirestoreSync.shared.forcePush(documentId: request.document.id)
+                        case .pull:
+                            NestedFirestoreSync.shared.forcePull(documentId: request.document.id)
+                        }
+                    }
+                }
+                Button("Cancel", role: .cancel) { forceRequest = nil }
+            } message: {
+                if let request = forceRequest {
+                    Text(forceMessage(for: request))
+                }
+            }
             Divider()
             Divider()
             Button {
@@ -305,6 +357,18 @@ struct NestedListsWindowView: View {
         guard !t.isEmpty else { return }
         state.createDocument(title: t)
         showNewDoc = false
+    }
+
+    /// Confirmation copy for the sidebar force-sync actions. Both directions
+    /// are destructive on the side that loses.
+    private func forceMessage(for request: NestedSidebarForceRequest) -> String {
+        let title = request.document.title.isEmpty ? "Untitled document" : request.document.title
+        switch request.action {
+        case .push:
+            return "Replace the cloud copy of “\(title)” with this Mac's version? Changes made on other devices will be overwritten."
+        case .pull:
+            return "Delete the copy of “\(title)” on this Mac and download the cloud version? Local changes that have not been synced will be lost."
+        }
     }
 
     /// Manual sync row for the document list (no auto-sync).
@@ -503,9 +567,14 @@ struct NestedListsWindowView: View {
         Group {
             switch sync.uiState.status {
             case .syncing where sync.uiState.documentId == docId:
-                Text("Syncing…").font(.caption).foregroundStyle(.secondary)
+                Text(sync.uiState.operation == .forcePush ? "Force pushing…"
+                     : sync.uiState.operation == .forcePull ? "Force pulling…"
+                     : "Syncing…")
+                    .font(.caption).foregroundStyle(.secondary)
             case .synced where sync.uiState.documentId == docId:
-                if let at = sync.uiState.lastSyncedAt {
+                if let message = sync.uiState.message {
+                    Text(message).font(.caption).foregroundStyle(.secondary)
+                } else if let at = sync.uiState.lastSyncedAt {
                     Text("Synced \(at.formatted(date: .omitted, time: .shortened))")
                         .font(.caption).foregroundStyle(.secondary)
                 } else {

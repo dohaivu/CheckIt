@@ -98,6 +98,18 @@ enum class NestedDisplayType {
     }
 }
 
+/** Destructive force-sync direction awaiting confirmation. */
+enum class NestedForceAction {
+    Push,
+    Pull,
+}
+
+data class NestedForceRequest(
+    val action: NestedForceAction,
+    val documentId: String,
+    val documentTitle: String,
+)
+
 sealed interface NestedEditorOverlay {
     data object None : NestedEditorOverlay
     data class AddingItem(val draft: NewItemDraft) : NestedEditorOverlay
@@ -138,6 +150,8 @@ data class NestedUiState(
     val newDocumentTitle: String = "",
     val editor: NestedEditorState? = null,
     val syncState: NestedSyncState = NestedSyncState(),
+    /** Force push/pull awaiting confirmation; both overwrite one side. */
+    val forceRequest: NestedForceRequest? = null,
     /** Null while anonymous: sync stays on this device until Google sign-in. */
     val accountEmail: String? = null,
     val isAnonymous: Boolean = true
@@ -290,6 +304,54 @@ class NestedListsViewModel(
                 .onFailure { error ->
                     _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Sync failed"))
                 }
+        }
+    }
+
+    // --- Force sync (destructive, always confirmed) ---
+
+    fun requestForcePush() = requestForce(NestedForceAction.Push)
+
+    fun requestForcePull() = requestForce(NestedForceAction.Pull)
+
+    private fun requestForce(action: NestedForceAction) {
+        val active = getActiveEditor() ?: return
+        _uiState.update {
+            it.copy(
+                forceRequest = NestedForceRequest(
+                    action = action,
+                    documentId = active.documentId,
+                    documentTitle = active.tree.document.title,
+                )
+            )
+        }
+    }
+
+    fun cancelForceRequest() {
+        _uiState.update { it.copy(forceRequest = null) }
+    }
+
+    fun confirmForceRequest() {
+        val request = _uiState.value.forceRequest ?: return
+        _uiState.update { it.copy(forceRequest = null) }
+        viewModelScope.launch {
+            val ok = runCatching {
+                when (request.action) {
+                    NestedForceAction.Push -> syncManager.forcePush(request.documentId)
+                    NestedForceAction.Pull -> syncManager.forcePull(request.documentId)
+                }
+            }.getOrElse { error ->
+                _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Sync failed"))
+                return@launch
+            }
+            val message = if (ok) {
+                when (request.action) {
+                    NestedForceAction.Push -> "Force push complete"
+                    NestedForceAction.Pull -> "Force pull complete"
+                }
+            } else {
+                _uiState.value.syncState.message ?: "Sync failed. Try again."
+            }
+            _events.tryEmit(UiEvent.ShowSnackbar(message))
         }
     }
 
