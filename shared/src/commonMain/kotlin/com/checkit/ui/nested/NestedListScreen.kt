@@ -658,7 +658,8 @@ internal fun NestedListScreen(
                             onToggleNote = { viewModel.startEditNote(selectedItem.id) },
                             onToggleCheckbox = { viewModel.toggleCheckboxEnabled(selectedItem.id) },
                             onEnableCheckboxForChildren = { viewModel.enableCheckboxForChildren(selectedItem.id) },
-                            onSetChecked = { checked -> viewModel.setChecked(selectedItem.id, checked) }
+                            onSetChecked = { checked -> viewModel.setChecked(selectedItem.id, checked) },
+                            onManageDetails = { detailsItemId = selectedItem.id }
                         )
                     }
                 }
@@ -769,7 +770,7 @@ private fun NestedNoteEditorSheet(
     onSave: (String) -> Unit
 ) {
     var note by remember(itemId) { mutableStateOf(initialText) }
-    var preview by remember(itemId) { mutableStateOf(false) }
+    var preview by remember(itemId) { mutableStateOf(initialText.isNotEmpty()) }
     val scrollState = rememberScrollState()
     LaunchedEffect(preview) { scrollState.scrollTo(0) }
 
@@ -1060,7 +1061,8 @@ private fun NestedFormattingBar(
     onToggleNote: () -> Unit,
     onToggleCheckbox: () -> Unit,
     onEnableCheckboxForChildren: () -> Unit,
-    onSetChecked: (Boolean) -> Unit
+    onSetChecked: (Boolean) -> Unit,
+    onManageDetails: () -> Unit
 ) {
     var priorityExpanded by remember { mutableStateOf(false) }
     var styleExpanded by remember { mutableStateOf(false) }
@@ -1271,6 +1273,18 @@ private fun NestedFormattingBar(
                     imageVector = Icons.Default.Done,
                     contentDescription = if (item.checked) "Uncheck" else "Check off",
                     tint = if (item.checked) MaterialTheme.colorScheme.primary else subtleInactiveColor,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            IconButton(
+                onClick = onManageDetails,
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Info,
+                    contentDescription = "Details",
+                    tint = subtleInactiveColor,
                     modifier = Modifier.size(18.dp)
                 )
             }
@@ -2221,7 +2235,7 @@ private fun EditorToolbar(
                 .background(MaterialTheme.colorScheme.surfaceContainerLow)
                 .padding(horizontal = 6.dp, vertical = 2.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.Start)
+            horizontalArrangement = Arrangement.spacedBy(0.dp, Alignment.Start)
         ) {
             // Group 1: Zoom & Fold
             ToolbarButton(Icons.Default.ZoomIn, stringResource(Res.string.nested_zoom_in), canZoomIn, onZoomIn)
@@ -2783,7 +2797,7 @@ private fun NestedItemRow(
 
 @Composable
 private fun nestedTextStyle(style: NestedTextStyle) = when (style) {
-    NestedTextStyle.Body -> MaterialTheme.typography.bodyLarge
+    NestedTextStyle.Body -> MaterialTheme.typography.bodyMedium
     NestedTextStyle.Header -> MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold)
     NestedTextStyle.Subheader -> MaterialTheme.typography.titleMedium
 }
