@@ -2394,6 +2394,9 @@ private fun NestedItemRow(
     // min(), not multiplication: a filtered context row outside focus should
     // not stack 0.6 * 0.45 into unreadable 0.27 text.
     val itemTextColor = baseTextColor.copy(alpha = minOf(baseTextColor.alpha, focusAlpha))
+    // The 14.dp parent ring and the 7.dp leaf dot share the same center line.
+    // Leaves need extra top padding to make up for the smaller radius.
+    val dotTop = if (node.hasChildren) 12.dp else 15.5.dp
 
     AnimatedVisibility(
         visible = isVisible,
@@ -2409,13 +2412,14 @@ private fun NestedItemRow(
                             // Draw in the unpadded container so every depth shares the
                             // same x-coordinate across all rows.
                             // Dot geometry must match the composable below: parents always
-                            // use the 14.dp outer ring, leaves use the 7.dp solid dot,
-                            // so guides stay center-aligned and touch the outer edge.
+                            // use the 14.dp outer ring, leaves use the 7.dp solid dot, with
+                            // the leaf pushed down so both centers share one line. Guides
+                            // stay center-aligned and touch the outer edge.
                             val dotSize = if (node.hasChildren) 14.dp else 7.dp
-                            val dotTop = 12.dp.toPx()
+                            val dotTopPx = dotTop.toPx()
                             val dotSizePx = dotSize.toPx()
-                            val dotCenterY = dotTop + dotSizePx / 2
-                            val dotBottomY = dotTop + dotSizePx
+                            val dotCenterY = dotTopPx + dotSizePx / 2
+                            val dotBottomY = dotTopPx + dotSizePx
                             val strokeWidth = 1.dp.toPx()
                             val curveRadius = 6.dp.toPx()
                             val guideX: (Int) -> Float = { level -> level * 16.dp.toPx() + 8.dp.toPx() }
@@ -2499,7 +2503,7 @@ private fun NestedItemRow(
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .padding(top = 12.dp)
+                                    .padding(top = dotTop)
                                     .size(if (node.hasChildren) 14.dp else 7.dp)
                                     .clip(CircleShape)
                                     .then(
