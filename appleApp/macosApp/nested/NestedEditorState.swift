@@ -769,6 +769,27 @@ final class NestedEditorState: ObservableObject {
         editingId = nil
     }
 
+    /// Direct children of `id` that are checked off. Used by the outline's
+    /// "Delete checked children" action; each hit takes its own subtree with it.
+    func checkedChildren(of id: String) -> [NestedItemNode] {
+        (indexById[id]?.children ?? []).filter { $0.item.checkboxEnabled && $0.item.checked }
+    }
+
+    /// Deletes every checked direct child of `id` (subtree included). Clears
+    /// the selection/editor when they sat inside one of the removed branches,
+    /// so focus isn't stranded on an id that no longer exists.
+    func deleteCheckedChildren(of id: String) {
+        let ids = checkedChildren(of: id).map { $0.item.id }
+        guard !ids.isEmpty else { return }
+        helper.deleteItemList(itemIds: ids)
+        if let sel = selectedId, ids.contains(where: { isDescendant(itemId: sel, of: $0) }) {
+            selectedId = nil
+        }
+        if let editing = editingId, ids.contains(where: { isDescendant(itemId: editing, of: $0) }) {
+            editingId = nil
+        }
+    }
+
     // MARK: - Zoom
 
     func zoomInSelected() {

@@ -30,6 +30,11 @@ struct NestedListsWindowView: View {
     @State private var showRename = false
     @State private var renameTitle = ""
     @State private var deleteDoc: NestedDocument? = nil
+    /// Row whose checked children are pending deletion (drives the alert;
+    /// nil = no alert) plus the count captured when the alert opened, so the
+    /// message survives the action resetting the id.
+    @State private var deleteCheckedParentId: String? = nil
+    @State private var deleteCheckedCount = 0
 
     @State private var showMoveSheet = false
     @State private var moveDestinationId: String? = nil
@@ -360,6 +365,14 @@ struct NestedListsWindowView: View {
 
     // MARK: - Detail
 
+    /// Confirmation copy for the "Delete checked children" alert. Uses the
+    /// count captured when the alert opened, so the message doesn't blank out
+    /// as the action clears the pending row id.
+    private var deleteCheckedMessage: String {
+        let items = deleteCheckedCount == 1 ? "1 checked item" : "\(deleteCheckedCount) checked items"
+        return "This permanently deletes \(items) and everything nested under them."
+    }
+
     @ViewBuilder
     private var detail: some View {
         if state.selectedDocId.isEmpty {
@@ -377,6 +390,21 @@ struct NestedListsWindowView: View {
                 outlineList
                 Divider()
                 bottomBar
+            }
+            .alert(
+                "Delete checked children?",
+                isPresented: Binding(
+                    get: { deleteCheckedParentId != nil },
+                    set: { if !$0 { deleteCheckedParentId = nil } }
+                )
+            ) {
+                Button("Delete", role: .destructive) {
+                    if let id = deleteCheckedParentId { state.deleteCheckedChildren(of: id) }
+                    deleteCheckedParentId = nil
+                }
+                Button("Cancel", role: .cancel) { deleteCheckedParentId = nil }
+            } message: {
+                Text(deleteCheckedMessage)
             }
             .overlay(alignment: .bottom) {
                 if let toast = state.toastMessage {
@@ -856,6 +884,20 @@ struct NestedListsWindowView: View {
                                 } label: {
                                     Label("Zoom In", systemImage: "plus.magnifyingglass")
                                 }
+                                Divider()
+                                Button(role: .destructive) {
+                                    // Commit first: deleting a branch that is
+                                    // mid-edit would strand the inline editor.
+                                    if let editing = state.editingId,
+                                       state.isDescendant(itemId: editing, of: row.id) {
+                                        state.commitEditing()
+                                    }
+                                    deleteCheckedCount = state.checkedChildren(of: row.id).count
+                                    deleteCheckedParentId = row.id
+                                } label: {
+                                    Label("Delete Checked Children…", systemImage: "trash.slash")
+                                }
+                                .disabled(state.checkedChildren(of: row.id).isEmpty)
                             }
                             Button {
                                 state.toggleCheck(id: row.id, checked: !row.node.item.checked)
