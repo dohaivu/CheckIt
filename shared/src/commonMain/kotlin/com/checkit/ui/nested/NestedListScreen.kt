@@ -2498,9 +2498,7 @@ private fun NestedItemRow(
     // min(), not multiplication: a filtered context row outside focus should
     // not stack 0.6 * 0.45 into unreadable 0.27 text.
     val itemTextColor = baseTextColor.copy(alpha = minOf(baseTextColor.alpha, focusAlpha))
-    // The 14.dp parent ring and the 7.dp leaf dot share the same center line.
-    // Leaves need extra top padding to make up for the smaller radius.
-    val dotTop = if (node.hasChildren) 12.dp else 15.5.dp
+    val dotTop = if (node.hasChildren) 9.dp else 12.5.dp
 
     AnimatedVisibility(
         visible = isVisible,
@@ -2669,7 +2667,7 @@ private fun NestedItemRow(
                                     if (!state.selection.isActive) viewModel.startEditText(item.id)
                                 }
                             )
-                            .padding(horizontal = 4.dp, vertical = 6.dp),
+                            .padding(horizontal = 2.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         if (item.checkboxEnabled) {
@@ -2717,9 +2715,6 @@ private fun NestedItemRow(
                                         }
                                 )
                             } else {
-                                // Inline-only markdown (==highlight==, **bold**, …): line-based
-                                // constructs are never parsed, so a row starting with
-                                // `#tag` keeps its row style. Markers stay raw while editing.
                                 Text(
                                     text = remember(item.text) {
                                         renderInlineMarkdown(item.text)
