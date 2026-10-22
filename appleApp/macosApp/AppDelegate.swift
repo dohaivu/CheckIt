@@ -15,7 +15,7 @@ import Shared
 extension KeyboardShortcuts.Name {
     /// Global hotkey toggling the Quick Note menu. User-customizable via
     /// Settings (KeyboardShortcuts.Recorder).
-    static let toggleQuickNote = Self("toggleQuickNote", default: .init(.n, modifiers: [.control, .option, .command]))
+    static let toggleQuickNote = Self("toggleQuickNote", initial: .init(.n, modifiers: [.control, .option, .command]))
 }
 
 extension Notification.Name {
