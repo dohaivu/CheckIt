@@ -691,21 +691,7 @@ struct NestedListsWindowView: View {
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            HStack(spacing: 3) {
-                Image(systemName: system)
-                    .imageScale(.medium)
-                if let shortcut {
-                    Text(shortcut)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .frame(minWidth: 28, minHeight: 28)
-            .foregroundStyle(active ? Color.accentColor : Color.primary)
-            .background(
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(active ? Color.accentColor.opacity(0.14) : Color.clear)
-            )
+            EditorBarButtonLabel(system: system, shortcut: shortcut, active: active)
         }
         // Match macOS toolbar conventions: template icons, a predictable
         // hit target, and text exposed through help and accessibility rather
@@ -1409,6 +1395,39 @@ struct NestedListsWindowView: View {
             NestedFormattingBar(state: state, item: node.item)
                 .id("\(id)-\(node.item.updatedAtMillis)")
         }
+    }
+}
+
+// MARK: - Editor bar button
+
+/// Label for the editor-bar icon buttons. It reads `isEnabled` from the
+/// environment so the `.disabled(...)` callers apply actually shows: an
+/// explicit `foregroundStyle` inside a `Button` label overrides macOS's
+/// automatic disabled dimming, which left enabled and disabled buttons
+/// looking identical.
+private struct EditorBarButtonLabel: View {
+    let system: String
+    let shortcut: String?
+    let active: Bool
+    @Environment(\.isEnabled) private var isEnabled
+
+    var body: some View {
+        HStack(spacing: 3) {
+            Image(systemName: system)
+                .imageScale(.medium)
+            if let shortcut {
+                Text(shortcut)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(minWidth: 28, minHeight: 28)
+        .foregroundStyle(active ? Color.accentColor : Color.primary)
+        .opacity(isEnabled ? 1 : 0.35)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(active ? Color.accentColor.opacity(0.14) : Color.clear)
+        )
     }
 }
 
