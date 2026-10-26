@@ -92,15 +92,27 @@ private let nestedDateFormatter: DateFormatter = {
     return fmt
 }()
 
-func nestedDateLabel(startDays: Int64?, endDays: Int64?) -> String? {
+struct NestedDateLabel {
+    let text: String
+    let isOverdue: Bool
+}
+
+func nestedDateLabel(
+    startDays: Int64?,
+    endDays: Int64?,
+    todayDays: Int64 = DateExtensionsKt.today().toEpochDays()
+) -> NestedDateLabel? {
     guard startDays != nil || endDays != nil else { return nil }
     func s(_ d: Int64) -> String { nestedDateFormatter.string(from: nestedDate(fromEpochDays: d)) }
+    let text: String
     switch (startDays, endDays) {
-    case let (.some(a), .some(b)): return a == b ? s(a) : "\(s(a)) → \(s(b))"
-    case let (.some(a), nil): return "from \(s(a))"
-    case let (nil, .some(b)): return "until \(s(b))"
+    case let (.some(a), .some(b)): text = a == b ? s(a) : "\(s(a)) → \(s(b))"
+    case let (.some(a), nil): text = "from \(s(a))"
+    case let (nil, .some(b)): text = "until \(s(b))"
     default: return nil
     }
+    // The end date is inclusive: only a date before today is overdue.
+    return NestedDateLabel(text: text, isOverdue: endDays.map { $0 < todayDays } ?? false)
 }
 
 // MARK: - Row
@@ -405,7 +417,7 @@ struct NestedRowView: View {
         let summary = state.summary(for: item.id)
         let progress = item.progressPercent?.int32Value
         let note = item.note
-        let dateText = nestedDateLabel(
+        let dateLabel = nestedDateLabel(
             startDays: item.startDate?.toEpochDays(),
             endDays: item.endDate?.toEpochDays()
         )
@@ -416,7 +428,7 @@ struct NestedRowView: View {
         let visibleMetrics = item.manualMetrics.filter { $0.enabled && ($0.isCompleted || $0.isValidForSave()) }
         if progress != nil || (summary?.totalTaskCount ?? 0) > 0
             || (showTracked && (summary?.trackedMinutes ?? 0) > 0)
-            || (note != nil && !(note!.isEmpty)) || !item.tags.isEmpty || dateText != nil
+            || (note != nil && !(note!.isEmpty)) || !item.tags.isEmpty || dateLabel != nil
             || !visibleMetrics.isEmpty
         {
             VStack(alignment: .leading, spacing: 3) {
@@ -471,11 +483,12 @@ struct NestedRowView: View {
                         .font(.callout).foregroundStyle(.secondary)
                         .lineLimit(state.noteLineLimit > 0 ? state.noteLineLimit : nil)
                 }
-                if dateText != nil || !item.tags.isEmpty {
+                if dateLabel != nil || !item.tags.isEmpty {
                     HStack(spacing: 6) {
-                        if let d = dateText {
-                            Label(d, systemImage: "calendar")
-                                .font(.caption).foregroundStyle(.secondary)
+                        if let date = dateLabel {
+                            Label(date.text, systemImage: "calendar")
+                                .font(.caption)
+                                .foregroundStyle(date.isOverdue ? Color.red : Color.secondary)
                         }
                         let tags: [TagItem] = item.tags
                         ForEach(tags, id: \.id) { tag in
