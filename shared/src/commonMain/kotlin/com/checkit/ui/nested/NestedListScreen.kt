@@ -181,18 +181,20 @@ import com.checkit.domain.moveDestinations
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.CompactFlatTextField
+import com.checkit.ui.components.DatePicker
 import com.checkit.ui.components.DateRangePill
 import com.checkit.ui.components.FocusPeriodHeader
 import com.checkit.ui.components.MarkdownTextField
 import com.checkit.ui.components.MetricsSection
 import com.checkit.ui.components.MetricChip
-import com.checkit.ui.components.PeriodPicker
 import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TagPill
 import com.checkit.ui.components.asMarkdownAnnotatedString
 import com.checkit.ui.components.renderInlineMarkdown
 import com.checkit.ui.isValidForSave
 import com.checkit.ui.noRippleClickable
+import com.checkit.ui.orderedRangeForEnd
+import com.checkit.ui.orderedRangeForStart
 import com.checkit.ui.tasks.views.ViewOptionChip
 import com.checkit.ui.theme.parseHexColorOrNull
 import com.checkit.ui.toDateTimeLabel
@@ -1066,7 +1068,7 @@ private fun NestedFormattingBar(
 ) {
     var priorityExpanded by remember { mutableStateOf(false) }
     var styleExpanded by remember { mutableStateOf(false) }
-    var showPeriodPicker by remember { mutableStateOf(false) }
+    var showDateDialog by remember { mutableStateOf(false) }
     val colorTokens = listOf(
         NestedColorToken.Default, NestedColorToken.Red, NestedColorToken.Orange,
         NestedColorToken.Yellow, NestedColorToken.Green, NestedColorToken.Blue,
@@ -1200,12 +1202,12 @@ private fun NestedFormattingBar(
 
             val hasDateRange = item.startDate != null || item.endDate != null
             IconButton(
-                onClick = { showPeriodPicker = true },
+                onClick = { showDateDialog = true },
                 modifier = Modifier.size(32.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.DateRange,
-                    contentDescription = "Date range",
+                    contentDescription = "Start and end dates",
                     tint = if (hasDateRange) MaterialTheme.colorScheme.primary else subtleInactiveColor,
                     modifier = Modifier.size(18.dp)
                 )
@@ -1291,35 +1293,55 @@ private fun NestedFormattingBar(
         }
     }
 
-    if (showPeriodPicker) {
+    if (showDateDialog) {
         var startDate by remember { mutableStateOf(item.startDate) }
         var endDate by remember { mutableStateOf(item.endDate) }
         AlertDialog(
-            onDismissRequest = { showPeriodPicker = false },
+            onDismissRequest = { showDateDialog = false },
             properties = DialogProperties(usePlatformDefaultWidth = false),
             title = {
                 Text(
-                    text = "Date Period",
+                    text = "Dates",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
             },
             text = {
-                PeriodPicker(
-                    startDate = startDate,
-                    endDate = endDate,
-                    onRangeChange = { start, end ->
-                        startDate = start
-                        endDate = end
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    DatePicker(
+                        date = startDate,
+                        onDateChange = { picked ->
+                            // Inverted ranges are not allowed: a start after
+                            // the end drops that end.
+                            val (newStart, newEnd) = orderedRangeForStart(picked, endDate)
+                            startDate = newStart
+                            endDate = newEnd
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        emptyLabel = "Set start date"
+                    )
+                    DatePicker(
+                        date = endDate,
+                        onDateChange = { picked ->
+                            // Mirror rule: an end before the start drops the
+                            // start, so the latest pick always survives.
+                            val (newStart, newEnd) = orderedRangeForEnd(startDate, picked)
+                            startDate = newStart
+                            endDate = newEnd
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        emptyLabel = "Set end date"
+                    )
+                }
             },
             confirmButton = {
                 TextButton(
                     onClick = {
                         onDateRangeChange(startDate, endDate)
-                        showPeriodPicker = false
+                        showDateDialog = false
                     }
                 ) {
                     Text("Done")
@@ -1329,10 +1351,10 @@ private fun NestedFormattingBar(
                 TextButton(
                     onClick = {
                         onDateRangeChange(null, null)
-                        showPeriodPicker = false
+                        showDateDialog = false
                     }
                 ) {
-                    Text("Clear")
+                    Text("Clear both")
                 }
             }
         )

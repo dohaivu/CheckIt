@@ -180,7 +180,8 @@ internal fun DatePicker(
     onDateChange: (LocalDate?) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    isOverdue: Boolean = false
+    isOverdue: Boolean = false,
+    emptyLabel: String = "Pick due date"
 ) {
     var showPicker by remember { mutableStateOf(false) }
 
@@ -190,7 +191,7 @@ internal fun DatePicker(
     ) {
         DetailChip(
             icon = Icons.Default.Event,
-            label = date?.compact() ?: "Pick due date",
+            label = date?.compact() ?: emptyLabel,
             iconTint = if (date != null) MaterialTheme.colorScheme.primary else Color.Unspecified,
             isHighlighted = isOverdue,
             onClick = { if (enabled) showPicker = true },
