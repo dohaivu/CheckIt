@@ -17,13 +17,16 @@ class NestedOutlineProjectionTest {
         position: Int = 0,
         priority: TaskPriority = TaskPriority.None,
         checkboxEnabled: Boolean = false,
-        checked: Boolean = false
+        checked: Boolean = false,
+        text: String? = null,
+        note: String? = null
     ) = NestedListItem(
         id = id,
         documentId = "doc-1",
         parentId = parentId,
         position = position,
-        text = "item $id",
+        text = text ?: "item $id",
+        note = note,
         priority = priority,
         checkboxEnabled = checkboxEnabled,
         checked = checked,
@@ -122,6 +125,50 @@ class NestedOutlineProjectionTest {
         val projection = filterNestedTreeWithContext(roots, query = "milk")
         assertEquals(listOf("groceries"), projection.contextIds)
         assertEquals(listOf("groceries", "buy milk"), projection.roots.flatMapIds())
+    }
+
+    @Test
+    fun queryMatchesTitleWhenNotesAreExcluded() {
+        val roots = buildNestedTree(
+            listOf(
+                item("groceries", null, 0),
+                item("milk", "groceries", 0, text = "buy milk", note = "unrelated"),
+                item("other", null, 1),
+            )
+        )
+        val projection = filterNestedTreeWithContext(
+            roots, query = "milk", includeNotesInQuery = false
+        )
+        assertEquals(listOf("groceries"), projection.contextIds)
+        assertEquals(listOf("groceries", "milk"), projection.roots.flatMapIds())
+    }
+
+    @Test
+    fun queryIgnoresNotesWhenNotesAreExcluded() {
+        val roots = buildNestedTree(
+            listOf(
+                item("call", null, 0, text = "call mom", note = "buy milk"),
+                item("other", null, 1),
+            )
+        )
+        val projection = filterNestedTreeWithContext(
+            roots, query = "milk", includeNotesInQuery = false
+        )
+        assertTrue(projection.roots.isEmpty())
+        assertTrue(projection.contextIds.isEmpty())
+    }
+
+    @Test
+    fun queryMatchesNotesByDefault() {
+        val roots = buildNestedTree(
+            listOf(
+                item("call", null, 0, text = "call mom", note = "buy milk"),
+                item("other", null, 1),
+            )
+        )
+        val projection = filterNestedTreeWithContext(roots, query = "milk")
+        assertEquals(listOf("call"), projection.roots.flatMapIds())
+        assertTrue(projection.contextIds.isEmpty())
     }
 
     @Test

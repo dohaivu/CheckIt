@@ -44,6 +44,9 @@ fun filterNestedTree(
  * [filterNestedTree] plus the ancestor-context metadata described on
  * [NestedOutlineProjection].
  *
+ * @param includeNotesInQuery when true (default), [query] matches both item
+ *   text and notes; set false to match item titles only.
+ *
  * Iterative on purpose: nested lists have no depth limit, and this walk runs
  * on the UI filtering path. It also avoids copying the tree at all when no
  * criterion is active, so opening the filter bar stays free.
@@ -55,7 +58,8 @@ fun filterNestedTreeWithContext(
     query: String = "",
     hideChecked: Boolean = false,
     selectedTagIds: Set<String> = emptySet(),
-    workingOnly: Boolean = false
+    workingOnly: Boolean = false,
+    includeNotesInQuery: Boolean = true
 ): NestedOutlineProjection {
     val hasPositiveCriteria = (start != null && end != null) ||
         query.isNotBlank() ||
@@ -66,7 +70,8 @@ fun filterNestedTreeWithContext(
         workingOnly && !hasPositiveCriteria ->
             filterNestedTreePass(
                 roots, start = null, end = null, query = "", hideChecked = true,
-                selectedTagIds = emptySet(), workingOnly = true
+                selectedTagIds = emptySet(), workingOnly = true,
+                includeNotesInQuery = includeNotesInQuery
             )
         // Nothing narrows the tree: preserve identity so an idle filter bar
         // doesn't deep-copy the outline or invalidate the caller's cache.
@@ -74,7 +79,8 @@ fun filterNestedTreeWithContext(
             return NestedOutlineProjection(roots, emptyList())
         else -> {
             val firstPass = filterNestedTreePass(
-                roots, start, end, query, hideChecked, selectedTagIds, workingOnly = false
+                roots, start, end, query, hideChecked, selectedTagIds, workingOnly = false,
+                includeNotesInQuery = includeNotesInQuery
             )
             if (workingOnly) {
                 filterNestedTreePass(
@@ -84,7 +90,8 @@ fun filterNestedTreeWithContext(
                     query = "",
                     hideChecked = true,
                     selectedTagIds = emptySet(),
-                    workingOnly = true
+                    workingOnly = true,
+                    includeNotesInQuery = includeNotesInQuery
                 )
             } else {
                 firstPass
@@ -138,7 +145,8 @@ private fun filterNestedTreePass(
     query: String,
     hideChecked: Boolean,
     selectedTagIds: Set<String>,
-    workingOnly: Boolean
+    workingOnly: Boolean,
+    includeNotesInQuery: Boolean
 ): List<FilteredNestedNode> {
     if (roots.isEmpty()) return emptyList()
     val results = HashMap<String, FilteredNestedNode>(roots.size * 2)
@@ -147,7 +155,9 @@ private fun filterNestedTreePass(
     fun push(node: NestedItemNode, forceKeep: Boolean) {
         // Hide Checked prunes the item and its whole subtree.
         if (hideChecked && node.item.checked) return
-        val matchesSelf = matchesNestedFilter(node.item, start, end, query, selectedTagIds, workingOnly)
+        val matchesSelf = matchesNestedFilter(
+            node.item, start, end, query, selectedTagIds, workingOnly, includeNotesInQuery
+        )
         stack.addLast(
             FilterFrame(
                 node = node,
@@ -190,18 +200,19 @@ private fun matchesNestedFilter(
     end: LocalDate?,
     query: String,
     selectedTagIds: Set<String>,
-    workingOnly: Boolean
+    workingOnly: Boolean,
+    includeNotesInQuery: Boolean
 ): Boolean {
     if (start != null && end != null) {
         val itemStart = item.startDate
         val itemEnd = item.endDate
         if (itemStart == null || itemEnd == null || itemStart > end || itemEnd < start) return false
     }
-    if (query.isNotBlank() &&
-        !item.text.contains(query, ignoreCase = true) &&
-        item.note?.contains(query, ignoreCase = true) != true
-    ) {
-        return false
+    if (query.isNotBlank()) {
+        val titleMatches = item.text.contains(query, ignoreCase = true)
+        val noteMatches = includeNotesInQuery &&
+            item.note?.contains(query, ignoreCase = true) == true
+        if (!titleMatches && !noteMatches) return false
     }
     if (selectedTagIds.isNotEmpty() && item.tags.none { it.id in selectedTagIds }) return false
     if (workingOnly && !isWorkingItem(item)) return false
