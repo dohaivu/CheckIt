@@ -1199,11 +1199,6 @@ struct NestedListsWindowView: View {
                 searchFocused = true
                 return .handled
             }
-            .onKeyPress(keys: [KeyEquivalent("/")]) { press in
-                guard !press.modifiers.contains(.shift) else { return .ignored }
-                searchFocused = true
-                return .handled
-            }
             .onKeyPress(keys: [KeyEquivalent("i"), KeyEquivalent("I")]) { press in
                 guard press.modifiers.contains(.command), press.modifiers.contains(.option) else { return .ignored }
                 state.toggleInspector()
@@ -1297,7 +1292,7 @@ struct NestedListsWindowView: View {
                         (["Del"], "Delete"),
                     ])
                     cheatSection("View & actions", rows: [
-                        (["⌘F", "/"], "Search"),
+                        (["⌘F"], "Search"),
                         (["Esc"], "Blur search"),
                         (["N"], "Note"),
                         (["⌃N"], "Note preview"),
