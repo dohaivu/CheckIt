@@ -487,20 +487,15 @@ object NestedAppleBridge {
     /**
      * Swift-friendly outline projection for the macOS Working/search UI:
      * title query plus the Working filter, with the same ancestor-context keep
-     * semantics as the Compose editor. Notes are excluded from query matching
-     * so search only narrows by item titles. Avoids date/tag interop.
+     * semantics as the Compose editor. The shared filter matches item titles
+     * only (notes are excluded). Avoids date/tag interop.
      */
     fun filterOutlineProjection(
         roots: List<NestedItemNode>,
         query: String = "",
         workingOnly: Boolean = false
     ): NestedOutlineProjection =
-        filterNestedTreeWithContext(
-            roots,
-            query = query,
-            workingOnly = workingOnly,
-            includeNotesInQuery = false
-        )
+        filterNestedTreeWithContext(roots, query = query, workingOnly = workingOnly)
 
     fun syncBridge(): com.checkit.data.NestedSyncBridge =
         koinApp?.koin?.get() ?: KoinPlatform.getKoin().get()

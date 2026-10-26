@@ -159,7 +159,7 @@ class NestedOutlineProjectionTest {
     }
 
     @Test
-    fun queryMatchesNotesByDefault() {
+    fun queryIgnoresNotesByDefault() {
         val roots = buildNestedTree(
             listOf(
                 item("call", null, 0, text = "call mom", note = "buy milk"),
@@ -167,7 +167,7 @@ class NestedOutlineProjectionTest {
             )
         )
         val projection = filterNestedTreeWithContext(roots, query = "milk")
-        assertEquals(listOf("call"), projection.roots.flatMapIds())
+        assertTrue(projection.roots.isEmpty())
         assertTrue(projection.contextIds.isEmpty())
     }
 

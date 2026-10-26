@@ -44,8 +44,8 @@ fun filterNestedTree(
  * [filterNestedTree] plus the ancestor-context metadata described on
  * [NestedOutlineProjection].
  *
- * @param includeNotesInQuery when true (default), [query] matches both item
- *   text and notes; set false to match item titles only.
+ * @param includeNotesInQuery when true, [query] also matches notes; defaults
+ *   to false so search narrows by item titles only.
  *
  * Iterative on purpose: nested lists have no depth limit, and this walk runs
  * on the UI filtering path. It also avoids copying the tree at all when no
@@ -59,7 +59,7 @@ fun filterNestedTreeWithContext(
     hideChecked: Boolean = false,
     selectedTagIds: Set<String> = emptySet(),
     workingOnly: Boolean = false,
-    includeNotesInQuery: Boolean = true
+    includeNotesInQuery: Boolean = false
 ): NestedOutlineProjection {
     val hasPositiveCriteria = (start != null && end != null) ||
         query.isNotBlank() ||
