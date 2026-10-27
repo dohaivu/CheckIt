@@ -208,10 +208,12 @@ struct NestedRowView: View {
                         Text(label)
                             .font(.caption2.weight(.semibold))
                             .lineLimit(1)
-                            .frame(maxWidth: 160, alignment: .leading)
+                            .truncationMode(.tail)
                             .padding(.horizontal, 7)
                             .padding(.vertical, 2)
                             .background(Color.accentColor.opacity(0.15), in: Capsule())
+                            .frame(maxWidth: 160, alignment: .leading)
+                            .fixedSize(horizontal: true, vertical: false)
                             .opacity(focusOpacity)
                             .help("Label: \(label)")
                     }
