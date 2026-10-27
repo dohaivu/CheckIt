@@ -20,6 +20,7 @@ class NestedListJsonTest {
             position = 0,
             text = "Root Item",
             note = "Some notes",
+            label = "🔥 TOP 3",
             checkboxEnabled = true,
             checked = false,
             createdAtMillis = 1000L,
@@ -48,6 +49,7 @@ class NestedListJsonTest {
 
         assertTrue(json.contains("\"title\": \"My Document\""))
         assertTrue(json.contains("\"text\": \"Root Item\""))
+        assertTrue(json.contains("\"label\": \"🔥 TOP 3\""))
         assertTrue(json.contains("\"text\": \"Child Item\""))
 
         val decoded = NestedDocumentExport.fromJson(json)
@@ -55,6 +57,7 @@ class NestedListJsonTest {
         assertEquals("My Document", decoded.document.title)
         assertEquals(1, decoded.items.size)
         assertEquals("Root Item", decoded.items[0].text)
+        assertEquals("🔥 TOP 3", decoded.items[0].label)
         assertEquals(1, decoded.items[0].children.size)
         assertEquals("Child Item", decoded.items[0].children[0].text)
         assertTrue(decoded.items[0].children[0].checked)

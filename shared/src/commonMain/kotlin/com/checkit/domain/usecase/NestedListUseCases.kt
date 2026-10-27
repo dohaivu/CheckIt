@@ -96,6 +96,13 @@ class UpdateNestedItemNoteUseCase(
         repository.updateNestedItemNote(itemId, note)
 }
 
+class UpdateNestedItemLabelUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(itemId: String, label: String?) =
+        repository.updateNestedItemLabel(itemId, label)
+}
+
 class UpdateNestedItemFormattingUseCase(
     private val repository: CheckItRepository
 ) {

@@ -45,6 +45,7 @@ object NestedSyncDocument {
     const val FIELD_POSITION = "position"
     const val FIELD_TEXT = "text"
     const val FIELD_NOTE = "note"
+    const val FIELD_LABEL = "label"
     const val FIELD_CHECKBOX_ENABLED = "checkboxEnabled"
     const val FIELD_CHECKED = "checked"
     const val FIELD_COMPLETED_AT = "completedAtMillis"
@@ -84,6 +85,7 @@ object NestedSyncDocument {
         position: Int,
         text: String,
         note: String?,
+        label: String? = null,
         checkboxEnabled: Boolean,
         checked: Boolean,
         completedAtMillis: Long? = null,
@@ -109,6 +111,7 @@ object NestedSyncDocument {
         FIELD_POSITION to position,
         FIELD_TEXT to text,
         FIELD_NOTE to note,
+        FIELD_LABEL to label,
         FIELD_CHECKBOX_ENABLED to checkboxEnabled,
         FIELD_CHECKED to checked,
         FIELD_COMPLETED_AT to completedAtMillis,
@@ -157,6 +160,7 @@ object NestedSyncDocument {
             position = (map[FIELD_POSITION] as? Number)?.toInt() ?: 0,
             text = text,
             note = map[FIELD_NOTE] as? String,
+            label = map[FIELD_LABEL] as? String,
             checkboxEnabled = map[FIELD_CHECKBOX_ENABLED] as? Boolean ?: false,
             checked = map[FIELD_CHECKED] as? Boolean ?: false,
             completedAtMillis = (map[FIELD_COMPLETED_AT] as? Number)?.toLong(),
@@ -304,6 +308,7 @@ data class RemoteNestedItem(
     val position: Int,
     val text: String,
     val note: String?,
+    val label: String? = null,
     val checkboxEnabled: Boolean,
     val checked: Boolean,
     val completedAtMillis: Long? = null,

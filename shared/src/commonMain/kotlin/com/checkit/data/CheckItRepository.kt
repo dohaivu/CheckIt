@@ -177,6 +177,7 @@ interface CheckItRepository {
     suspend fun addNestedItem(documentId: String, parentId: String?, text: String, position: Int?): String
     suspend fun updateNestedItemText(itemId: String, text: String)
     suspend fun updateNestedItemNote(itemId: String, note: String?)
+    suspend fun updateNestedItemLabel(itemId: String, label: String?)
     suspend fun updateNestedItemFormatting(itemId: String, textStyle: NestedTextStyle, textColor: NestedColorToken, backgroundColor: NestedColorToken)
     suspend fun updateNestedItemPriority(itemId: String, priority: TaskPriority)
     suspend fun updateNestedItemDateRange(itemId: String, startDate: LocalDate?, endDate: LocalDate?)
@@ -1541,6 +1542,14 @@ class RoomCheckItRepository(
         )
     }
 
+    override suspend fun updateNestedItemLabel(itemId: String, label: String?) {
+        dao.updateNestedItemLabel(
+            itemId,
+            label?.trim()?.takeIf { it.isNotBlank() },
+            Clock.System.now().toEpochMilliseconds()
+        )
+    }
+
     override suspend fun updateNestedItemFormatting(
         itemId: String,
         textStyle: NestedTextStyle,
@@ -1712,6 +1721,7 @@ class RoomCheckItRepository(
                     position = item.position,
                     text = item.text,
                     note = item.note?.takeIf { it.isNotBlank() },
+                    label = item.label?.takeIf { it.isNotBlank() },
                     checkboxEnabled = item.checkboxEnabled,
                     checked = item.checked,
                     completedAtMillis = item.completedAtMillis,
@@ -2102,6 +2112,7 @@ private fun NestedListItemEntity.toNestedListItem(
     position = position,
     text = text,
     note = note,
+    label = label,
     checkboxEnabled = checkboxEnabled,
     checked = checked,
     completedAtMillis = completedAtMillis,

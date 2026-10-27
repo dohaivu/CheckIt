@@ -36,6 +36,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListLayoutInfo
@@ -55,6 +56,7 @@ import androidx.compose.material.icons.automirrored.filled.DriveFileMove
 import androidx.compose.material.icons.automirrored.filled.NoteAdd
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.CenterFocusStrong
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -180,6 +182,7 @@ import com.checkit.domain.filterNestedTreeWithContext
 import com.checkit.domain.moveDestinations
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
+import com.checkit.ui.tasks.PredefinedLabels
 import com.checkit.ui.components.CompactFlatTextField
 import com.checkit.ui.components.DatePicker
 import com.checkit.ui.components.DateRangePill
@@ -649,6 +652,9 @@ internal fun NestedListScreen(
                             onFormattingChange = { style, textColor, backgroundColor ->
                                 viewModel.updateItemFormatting(selectedItem.id, style, textColor, backgroundColor)
                             },
+                            onLabelChange = { label ->
+                                viewModel.updateItemLabel(selectedItem.id, label)
+                            },
                             onPriorityChange = { priority ->
                                 viewModel.updateItemPriority(selectedItem.id, priority)
                             },
@@ -1056,6 +1062,7 @@ private fun NestedFormattingBar(
     item: NestedListItem,
     hasChildren: Boolean,
     onFormattingChange: (NestedTextStyle, NestedColorToken, NestedColorToken) -> Unit,
+    onLabelChange: (String?) -> Unit,
     onPriorityChange: (TaskPriority) -> Unit,
     onDateRangeChange: (kotlinx.datetime.LocalDate?, kotlinx.datetime.LocalDate?) -> Unit,
     availableTags: List<TagItem>,
@@ -1069,6 +1076,7 @@ private fun NestedFormattingBar(
     var priorityExpanded by remember { mutableStateOf(false) }
     var styleExpanded by remember { mutableStateOf(false) }
     var showDateDialog by remember { mutableStateOf(false) }
+    var showLabelDialog by remember { mutableStateOf(false) }
     val colorTokens = listOf(
         NestedColorToken.Default, NestedColorToken.Red, NestedColorToken.Orange,
         NestedColorToken.Yellow, NestedColorToken.Green, NestedColorToken.Blue,
@@ -1198,6 +1206,19 @@ private fun NestedFormattingBar(
                         )
                     }
                 }
+            }
+
+            val hasLabel = !item.label.isNullOrBlank()
+            IconButton(
+                onClick = { showLabelDialog = true },
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Bookmark,
+                    contentDescription = "Label",
+                    tint = if (hasLabel) MaterialTheme.colorScheme.primary else subtleInactiveColor,
+                    modifier = Modifier.size(18.dp)
+                )
             }
 
             val hasDateRange = item.startDate != null || item.endDate != null
@@ -1359,6 +1380,96 @@ private fun NestedFormattingBar(
             }
         )
     }
+
+    if (showLabelDialog) {
+        NestedLabelDialog(
+            initialLabel = item.label,
+            onDismiss = { showLabelDialog = false },
+            onSave = { label ->
+                onLabelChange(label)
+                showLabelDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+private fun NestedLabelDialog(
+    initialLabel: String?,
+    onDismiss: () -> Unit,
+    onSave: (String?) -> Unit
+) {
+    var value by remember(initialLabel) { mutableStateOf(initialLabel.orEmpty()) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Label",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                AppOutlinedTextField(
+                    value = value,
+                    onValueChange = { value = it },
+                    placeholder = "Add a label",
+                    maxLines = 1
+                )
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    PredefinedLabels.forEach { predefined ->
+                        val selected = value.trim() == predefined
+                        Box(
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(
+                                    if (selected) {
+                                        MaterialTheme.colorScheme.primaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.surfaceVariant
+                                    }
+                                )
+                                .clickable { value = if (selected) "" else predefined }
+                        ) {
+                            Text(
+                                text = predefined,
+                                color = if (selected) {
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onSave(value.trim().takeIf { it.isNotBlank() }) }) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = {
+                    value = ""
+                    onSave(null)
+                }
+            ) {
+                Text("Clear")
+            }
+        }
+    )
 }
 
 @Composable
@@ -2770,6 +2881,31 @@ private fun NestedItemRow(
                                 tint = priorityColor(item.priority),
                                 modifier = Modifier.size(18.dp).alpha(focusAlpha)
                             )
+                        }
+
+                        if (!item.label.isNullOrBlank()) {
+                            Box(
+                                modifier = Modifier
+                                    .padding(start = 4.dp)
+                                    .widthIn(max = 140.dp)
+                                    .heightIn(max = 22.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        MaterialTheme.colorScheme.secondaryContainer.copy(
+                                            alpha = 0.85f * focusAlpha
+                                        )
+                                    )
+                            ) {
+                                Text(
+                                    text = item.label,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
                         }
 
                         if (state.selection.isActive) {

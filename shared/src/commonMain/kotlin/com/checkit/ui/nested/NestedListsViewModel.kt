@@ -38,6 +38,7 @@ import com.checkit.domain.usecase.ToggleNestedItemCollapsedUseCase
 import com.checkit.domain.usecase.resolveCollapseScopeRoots
 import com.checkit.domain.usecase.UpdateNestedItemDateRangeUseCase
 import com.checkit.domain.usecase.UpdateNestedItemFormattingUseCase
+import com.checkit.domain.usecase.UpdateNestedItemLabelUseCase
 import com.checkit.domain.usecase.UpdateNestedItemMetricSettingsUseCase
 import com.checkit.domain.usecase.UpdateNestedItemNoteUseCase
 import com.checkit.domain.usecase.UpdateNestedItemPriorityUseCase
@@ -170,6 +171,7 @@ class NestedListsViewModel(
     private val addItemUseCase: AddNestedItemUseCase,
     private val updateItemTextUseCase: UpdateNestedItemTextUseCase,
     private val updateItemNoteUseCase: UpdateNestedItemNoteUseCase,
+    private val updateItemLabelUseCase: UpdateNestedItemLabelUseCase,
     private val updateItemFormattingUseCase: UpdateNestedItemFormattingUseCase,
     private val updateItemDateRangeUseCase: UpdateNestedItemDateRangeUseCase,
     private val updateItemPriorityUseCase: UpdateNestedItemPriorityUseCase,
@@ -665,6 +667,10 @@ class NestedListsViewModel(
     }
 
     // --- Formatting & Metadata ---
+
+    fun updateItemLabel(itemId: String, label: String?) {
+        viewModelScope.launch { updateItemLabelUseCase(itemId, label) }
+    }
 
     fun updateItemFormatting(itemId: String, style: NestedTextStyle, text: NestedColorToken, bg: NestedColorToken) {
         viewModelScope.launch { updateItemFormattingUseCase(itemId, style, text, bg) }

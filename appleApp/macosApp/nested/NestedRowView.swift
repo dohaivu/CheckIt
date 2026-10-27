@@ -204,6 +204,17 @@ struct NestedRowView: View {
                             .padding(.top, 1)
                             .help("Priority: \(item.priority.name)")
                     }
+                    if let label = item.label, !label.isEmpty {
+                        Text(label)
+                            .font(.caption2.weight(.semibold))
+                            .lineLimit(1)
+                            .frame(maxWidth: 160, alignment: .leading)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 2)
+                            .background(Color.accentColor.opacity(0.15), in: Capsule())
+                            .opacity(focusOpacity)
+                            .help("Label: \(label)")
+                    }
                     // Direct field (not overlay): multiline growth needs a
                     // layout-defining field; the few-pt inset delta while
                     // editing is accepted. Edit stays raw; display parses.

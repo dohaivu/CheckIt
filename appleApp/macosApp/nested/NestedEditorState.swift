@@ -1007,6 +1007,14 @@ final class NestedEditorState: ObservableObject {
         helper.saveItemNote(itemId: id, note: t.isEmpty ? nil : t)
     }
 
+    func updateLabel(id: String, label: String?) {
+        let t = label?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        helper.saveItemLabel(itemId: id, label: t.isEmpty ? nil : t)
+    }
+
+    /// Shared predefined label choices, single-sourced in Kotlin.
+    var predefinedLabels: [String] { helper.predefinedLabels() }
+
     func updateFormatting(id: String, style: String, textColor: String, background: String) {
         helper.updateFormattingByName(itemId: id, styleName: style, textColorName: textColor, backgroundColorName: background)
     }

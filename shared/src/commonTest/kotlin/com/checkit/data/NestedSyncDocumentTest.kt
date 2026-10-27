@@ -68,6 +68,7 @@ class NestedSyncDocumentTest {
             position = 3,
             text = "Buy milk",
             note = "2%",
+            label = "🔥 TOP 3",
             checkboxEnabled = true,
             checked = false,
             completedAtMillis = 150L,
@@ -99,6 +100,7 @@ class NestedSyncDocumentTest {
         assertEquals(3, remote?.position)
         assertEquals("Buy milk", remote?.text)
         assertEquals("2%", remote?.note)
+        assertEquals("🔥 TOP 3", remote?.label)
         assertTrue(remote?.checkboxEnabled ?: false)
         assertEquals("Header", remote?.textStyle)
         assertEquals("High", remote?.priority)

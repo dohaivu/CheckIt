@@ -548,6 +548,7 @@ struct NestedFormattingBar: View {
     let item: NestedListItem
 
     @State private var showDates = false
+    @State private var showLabel = false
     @State private var startDate = Date()
     @State private var endDate = Date()
     @State private var hasStart = false
@@ -669,6 +670,14 @@ struct NestedFormattingBar: View {
             .frame(width: 28, height: 28)
             .accessibilityLabel("Priority")
             .help("Priority")
+            // Label
+            barBtn(
+                item.label?.isEmpty == false ? "tag.fill" : "tag",
+                tint: item.label?.isEmpty == false ? Color.accentColor : .secondary,
+                help: "Label"
+            ) {
+                showLabel = true
+            }
             // Dates
             barBtn(
                 "calendar",
@@ -733,5 +742,98 @@ struct NestedFormattingBar: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .background(Color(nsColor: .windowBackgroundColor))
+        .sheet(isPresented: $showLabel) {
+            NestedLabelSheet(
+                initialLabel: item.label,
+                predefined: state.predefinedLabels,
+                onSave: { label in
+                    state.updateLabel(id: item.id, label: label)
+                    showLabel = false
+                },
+                onClear: {
+                    state.updateLabel(id: item.id, label: nil)
+                    showLabel = false
+                },
+                onCancel: { showLabel = false }
+            )
+        }
+    }
+}
+
+// MARK: - Label sheet
+
+struct NestedLabelSheet: View {
+    let predefined: [String]
+    let onSave: (String?) -> Void
+    let onClear: () -> Void
+    let onCancel: () -> Void
+
+    @State private var text: String
+
+    init(
+        initialLabel: String?,
+        predefined: [String],
+        onSave: @escaping (String?) -> Void,
+        onClear: @escaping () -> Void,
+        onCancel: @escaping () -> Void
+    ) {
+        self.predefined = predefined
+        self.onSave = onSave
+        self.onClear = onClear
+        self.onCancel = onCancel
+        _text = State(initialValue: initialLabel ?? "")
+    }
+
+    private var trimmed: String {
+        text.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Label")
+                .font(.headline)
+            TextField("Add a label", text: $text)
+                .textFieldStyle(.roundedBorder)
+                .onSubmit { save() }
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 100), spacing: 6, alignment: .leading)],
+                alignment: .leading,
+                spacing: 6
+            ) {
+                ForEach(predefined, id: \.self) { label in
+                    let selected = trimmed == label
+                    Button {
+                        text = selected ? "" : label
+                    } label: {
+                        Text(label)
+                            .font(.caption.weight(.semibold))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(
+                                selected
+                                    ? Color.accentColor.opacity(0.20)
+                                    : Color.secondary.opacity(0.12),
+                                in: Capsule()
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            HStack {
+                Button("Clear") { onClear() }
+                    .foregroundStyle(.red)
+                Spacer()
+                Button("Cancel") { onCancel() }
+                    .keyboardShortcut(.cancelAction)
+                Button("Save") { save() }
+                    .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(20)
+        .frame(width: 380)
+    }
+
+    private func save() {
+        onSave(trimmed.isEmpty ? nil : trimmed)
     }
 }

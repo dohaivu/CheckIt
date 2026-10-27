@@ -33,6 +33,7 @@ class NestedForceSyncTest {
         parentId: String? = null,
         position: Int = 0,
         text: String = id,
+        label: String? = null,
         createdAt: Long = 1_100L,
         updatedAt: Long = 2_100L,
         dirty: Boolean = false,
@@ -43,6 +44,7 @@ class NestedForceSyncTest {
         parentId = parentId,
         position = position,
         text = text,
+        label = label,
         createdAtMillis = createdAt,
         updatedAtMillis = updatedAt,
         dirty = dirty,
@@ -55,6 +57,7 @@ class NestedForceSyncTest {
         parentId: String? = null,
         position: Int = 0,
         text: String = id,
+        label: String? = null,
         tagIds: List<String> = emptyList(),
         createdAt: Long = 3_000L,
         updatedAt: Long = 4_000L,
@@ -66,6 +69,7 @@ class NestedForceSyncTest {
         position = position,
         text = text,
         note = null,
+        label = label,
         checkboxEnabled = false,
         checked = false,
         textStyle = "Body",
@@ -100,7 +104,13 @@ class NestedForceSyncTest {
     @Test
     fun itemMapBumpsClockAndKeepsContentAndTags() {
         val map = NestedForceSync.itemMap(
-            item = itemEntity(id = "item-1", parentId = "parent", position = 4, text = "Buy milk"),
+            item = itemEntity(
+                id = "item-1",
+                parentId = "parent",
+                position = 4,
+                text = "Buy milk",
+                label = "🔥 TOP 3",
+            ),
             tagIds = listOf("tag-a", "tag-b"),
             nowMillis = now,
         )
@@ -110,6 +120,7 @@ class NestedForceSyncTest {
         assertEquals("parent", map[NestedSyncDocument.FIELD_PARENT_ID])
         assertEquals(4L, (map[NestedSyncDocument.FIELD_POSITION] as Number).toLong())
         assertEquals("Buy milk", map[NestedSyncDocument.FIELD_TEXT])
+        assertEquals("🔥 TOP 3", map[NestedSyncDocument.FIELD_LABEL])
         assertEquals(listOf("tag-a", "tag-b"), map[NestedSyncDocument.FIELD_TAG_IDS])
         assertEquals(1_100L, (map[NestedSyncDocument.FIELD_CREATED_AT] as Number).toLong())
         assertEquals(now, (map[NestedSyncDocument.FIELD_UPDATED_AT] as Number).toLong())
@@ -194,8 +205,7 @@ class NestedForceSyncTest {
     }
 
     @Test
-    fun pullItemsKeepsLocalCollapsedState() {
-        val pulled = NestedForceSync.pullItems(
+    fun pullItemsKeepsLocalCollapsedState() {        val pulled = NestedForceSync.pullItems(
             items = listOf(remoteItem(id = "collapsed"), remoteItem(id = "expanded")),
             documentId = "doc-1",
             knownTagIds = emptySet(),
@@ -209,8 +219,18 @@ class NestedForceSyncTest {
     }
 
     @Test
-    fun pullItemsDropsDeletedRowsAndUnknownTags() {
+    fun pullItemsKeepsRemoteLabel() {
         val pulled = NestedForceSync.pullItems(
+            items = listOf(remoteItem(id = "labelled", label = "⚡️URGENT")),
+            documentId = "doc-1",
+            knownTagIds = emptySet(),
+        )
+
+        assertEquals("⚡️URGENT", pulled.single().item.label)
+    }
+
+    @Test
+    fun pullItemsDropsDeletedRowsAndUnknownTags() {        val pulled = NestedForceSync.pullItems(
             items = listOf(
                 remoteItem(id = "live", tagIds = listOf("known", "unknown", "known")),
                 remoteItem(id = "gone", deleted = true),

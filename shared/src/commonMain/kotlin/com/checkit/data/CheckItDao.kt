@@ -1205,6 +1205,9 @@ interface CheckItDao {
     @Query("UPDATE nested_list_items SET note = :note, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
     suspend fun updateNestedItemNote(itemId: String, note: String?, updatedAtMillis: Long)
 
+    @Query("UPDATE nested_list_items SET label = :label, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
+    suspend fun updateNestedItemLabel(itemId: String, label: String?, updatedAtMillis: Long)
+
     @Query("UPDATE nested_list_items SET textStyle = :textStyle, textColor = :textColor, backgroundColor = :backgroundColor, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
     suspend fun updateNestedItemFormatting(
         itemId: String,

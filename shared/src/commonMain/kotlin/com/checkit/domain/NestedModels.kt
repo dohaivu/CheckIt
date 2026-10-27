@@ -62,6 +62,7 @@ data class NestedListItem(
     val position: Int,
     val text: String,
     val note: String? = null,
+    val label: String? = null,
     val checkboxEnabled: Boolean = false,
     val checked: Boolean = false,
     /** When the item was last checked; null when never checked or unchecked. */

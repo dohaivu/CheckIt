@@ -18,6 +18,7 @@ import com.checkit.domain.filterNestedTreeWithContext
 import com.checkit.domain.TagItem
 import com.checkit.domain.TaskPriority
 import com.checkit.ui.isValidForSave
+import com.checkit.ui.tasks.PredefinedLabels
 import com.checkit.domain.usecase.AddNestedDocumentUseCase
 import com.checkit.domain.usecase.AddNestedItemUseCase
 import com.checkit.domain.usecase.DeleteNestedDocumentUseCase
@@ -35,6 +36,7 @@ import com.checkit.domain.usecase.SetNestedItemsCollapsedUseCase
 import com.checkit.domain.usecase.ToggleNestedItemCollapsedUseCase
 import com.checkit.domain.usecase.UpdateNestedItemDateRangeUseCase
 import com.checkit.domain.usecase.UpdateNestedItemFormattingUseCase
+import com.checkit.domain.usecase.UpdateNestedItemLabelUseCase
 import com.checkit.domain.usecase.UpdateNestedItemMetricSettingsUseCase
 import com.checkit.domain.usecase.UpdateNestedItemNoteUseCase
 import com.checkit.domain.usecase.UpdateNestedItemPriorityUseCase
@@ -98,6 +100,7 @@ class NestedAppleHelper(
     private val addItem: AddNestedItemUseCase,
     private val updateItemText: UpdateNestedItemTextUseCase,
     private val updateItemNote: UpdateNestedItemNoteUseCase,
+    private val updateItemLabel: UpdateNestedItemLabelUseCase,
     private val updateItemFormatting: UpdateNestedItemFormattingUseCase,
     private val updateItemDateRange: UpdateNestedItemDateRangeUseCase,
     private val updateItemPriority: UpdateNestedItemPriorityUseCase,
@@ -203,6 +206,13 @@ class NestedAppleHelper(
     fun saveItemNote(itemId: String, note: String?) {
         scope.launch { runCatching { updateItemNote(itemId, note?.take(NESTED_NOTE_MAX_LENGTH)) } }
     }
+
+    fun saveItemLabel(itemId: String, label: String?) {
+        scope.launch { runCatching { updateItemLabel(itemId, label) } }
+    }
+
+    /** Shared predefined labels so Swift and Android offer the same choices. */
+    fun predefinedLabels(): List<String> = PredefinedLabels
 
     // --- Formatting & metadata (same use cases as Android) ---
 
