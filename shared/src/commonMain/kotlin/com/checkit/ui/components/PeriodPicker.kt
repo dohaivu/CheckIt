@@ -19,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import com.checkit.ui.nestedDateRangeLabel
 import com.checkit.ui.today
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
@@ -244,24 +245,13 @@ internal fun DateRangePill(
     endDate: LocalDate?,
     modifier: Modifier = Modifier
 ) {
-    if (startDate == null && endDate == null) return
-
-    val period = remember(startDate, endDate) { Period.fromRange(startDate, endDate) }
-    val label = if (period is Period.Custom) {
-        when {
-            startDate != null && endDate != null && startDate == endDate -> "${startDate.month.name.take(3)} ${startDate.day}"
-            startDate != null && endDate != null -> "${startDate.month.name.take(3)} ${startDate.day} - ${endDate.month.name.take(3)} ${endDate.day}"
-            startDate != null -> "${startDate.month.name.take(3)} ${startDate.day}"
-            else -> ""
-        }
-    } else {
-        period.label.uppercase()
-    }
+    val range = nestedDateRangeLabel(startDate, endDate) ?: return
 
     CompactDetailChip(
         icon = Icons.Default.DateRange,
-        label = label,
-        modifier = modifier
+        label = range.text,
+        modifier = modifier,
+        isHighlighted = range.isOverdue
     )
 }
 

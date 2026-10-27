@@ -154,6 +154,128 @@ class FirestoreNestedSyncManager(
     }
 
     /**
+     * Force push: overwrites the cloud document with this device's rows and
+     * makes the cloud item set mirror local (remote-only items are deleted).
+     *
+     * Local clocks are bumped to the staging time first, so the pushed
+     * versions win last-write-wins on other devices. A failed push leaves
+     * the rows dirty, so the next regular sync uploads them anyway.
+     */
+    override suspend fun forcePush(documentId: String): Boolean = syncMutex.withLock {
+        writePreSyncSnapshot(documentId)
+        val prepared = prepareSync(documentId, NestedSyncOperation.FORCE_PUSH) ?: return@withLock false
+        val (userId, firestore) = prepared
+        val docRef = nestedDocRef(firestore, userId, documentId)
+        val itemsRef = docRef.collection(NestedSyncConfig.ITEMS_COLLECTION)
+        try {
+            val pushedAt = Clock.System.now().toEpochMilliseconds()
+            val payload = bridge.stageForcePush(documentId, pushedAt) ?: run {
+                recordFailure(
+                    documentId,
+                    "This document is not available on this device.",
+                    NestedSyncOperation.FORCE_PUSH,
+                )
+                return@withLock false
+            }
+            val docMap = NestedSyncDocument.mapFromJson(payload.documentJson) ?: run {
+                recordFailure(
+                    documentId,
+                    "Force push failed (invalid local document).",
+                    NestedSyncOperation.FORCE_PUSH,
+                )
+                return@withLock false
+            }
+            docRef.set(docMap).awaitTask()
+            val itemMaps = payload.itemJsons.mapNotNull { NestedSyncDocument.mapFromJson(it) }
+            val pushed = 1 + pushMaps(firestore, itemsRef, itemMaps) { ids, max ->
+                bridge.markItemsClean(ids, max)
+            }
+
+            // Mirror: anything in the cloud collection that is not local is removed.
+            val remoteItemIds = itemsRef.get().awaitTask().documents.map { it.id }
+            val extras = NestedForceSync.remoteExtrasToDelete(payload.itemIds, remoteItemIds)
+            deleteRemoteDocuments(firestore, itemsRef, extras)
+
+            bridge.markDocumentClean(documentId, pushedAt)
+            setLastSyncedAt(documentId, pushedAt)
+            _syncState.value = NestedSyncState(
+                status = NestedSyncStatus.SYNCED,
+                documentId = documentId,
+                lastSyncedAt = pushedAt,
+                message = "Force push complete",
+                operation = NestedSyncOperation.FORCE_PUSH,
+            )
+            Log.i(
+                TAG,
+                "Nested force push succeeded doc=$documentId pushed=$pushed removedRemote=${extras.size}",
+            )
+            true
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            recordSyncFailure(documentId, e, NestedSyncOperation.FORCE_PUSH)
+            false
+        }
+    }
+
+    /**
+     * Force pull: replaces this device's copy of the document with the cloud
+     * copy (remote clocks kept, unknown tag ids dropped). Aborts without
+     * touching local data when the cloud has no live copy.
+     */
+    override suspend fun forcePull(documentId: String): Boolean = syncMutex.withLock {
+        writePreSyncSnapshot(documentId)
+        val prepared = prepareSync(documentId, NestedSyncOperation.FORCE_PULL) ?: return@withLock false
+        val (userId, firestore) = prepared
+        val docRef = nestedDocRef(firestore, userId, documentId)
+        val itemsRef = docRef.collection(NestedSyncConfig.ITEMS_COLLECTION)
+        try {
+            val pullStart = Clock.System.now().toEpochMilliseconds()
+            val snapshot = docRef.get().awaitTask()
+            if (!snapshot.exists()) {
+                recordFailure(documentId, "No cloud copy to pull.", NestedSyncOperation.FORCE_PULL)
+                return@withLock false
+            }
+            val data = sanitizeFirestoreMap(snapshot.data.orEmpty()) +
+                (NestedSyncDocument.FIELD_ID to snapshot.id)
+            val remoteDocument = NestedSyncDocument.docFromMap(documentId, data)
+            if (remoteDocument == null || remoteDocument.deleted) {
+                recordFailure(documentId, "No cloud copy to pull.", NestedSyncOperation.FORCE_PULL)
+                return@withLock false
+            }
+            val itemJsons = itemsRef.get().awaitTask().documents.map { doc ->
+                val itemData = sanitizeFirestoreMap(doc.data.orEmpty()) +
+                    (NestedSyncDocument.FIELD_ID to doc.id)
+                NestedSyncDocument.toJson(itemData)
+            }
+            if (!bridge.replaceDocumentFromRemote(NestedSyncDocument.toJson(data), itemJsons)) {
+                recordFailure(
+                    documentId,
+                    "Force pull failed (invalid cloud copy).",
+                    NestedSyncOperation.FORCE_PULL,
+                )
+                return@withLock false
+            }
+            setLastSyncedAt(documentId, pullStart)
+            _syncState.value = NestedSyncState(
+                status = NestedSyncStatus.SYNCED,
+                documentId = documentId,
+                lastSyncedAt = pullStart,
+                message = "Force pull complete",
+                operation = NestedSyncOperation.FORCE_PULL,
+            )
+            Log.i(
+                TAG,
+                "Nested force pull succeeded doc=$documentId items=${itemJsons.size}",
+            )
+            true
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            recordSyncFailure(documentId, e, NestedSyncOperation.FORCE_PULL)
+            false
+        }
+    }
+
+    /**
      * Manual sync of the document list: pulls full document set first,
      * pushes remaining dirty documents plus dirty items second, and purges
      * uploaded document tombstones last.
@@ -161,7 +283,7 @@ class FirestoreNestedSyncManager(
     override suspend fun syncDocuments() {
         syncMutex.withLock {
             writePreSyncSnapshot(null)
-            val prepared = prepareSync(null) ?: return
+            val prepared = prepareSync(null, NestedSyncOperation.LIST_SYNC) ?: return
             val (userId, firestore) = prepared
             Log.d(TAG, "Nested docs sync started uid=$userId")
             val docsRef = firestore
@@ -205,7 +327,12 @@ class FirestoreNestedSyncManager(
                 }
 
                 setLastSyncedDocsAt(pullStart)
-                _syncState.value = NestedSyncState(NestedSyncStatus.SYNCED, null, pullStart)
+                _syncState.value = NestedSyncState(
+                    status = NestedSyncStatus.SYNCED,
+                    documentId = null,
+                    lastSyncedAt = pullStart,
+                    operation = NestedSyncOperation.LIST_SYNC,
+                )
                 Log.i(
                     TAG,
                     "Nested docs sync succeeded pulled=${docJsons.size} " +
@@ -213,7 +340,7 @@ class FirestoreNestedSyncManager(
                 )
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
-                recordSyncFailure(null, e)
+                recordSyncFailure(null, e, NestedSyncOperation.LIST_SYNC)
             }
         }
     }
@@ -270,16 +397,19 @@ class FirestoreNestedSyncManager(
      * Shared online/config/sign-in prologue. Sets [syncState] and returns
      * null when a terminal state was already set (offline or sign-in fail).
      */
-    private suspend fun prepareSync(documentId: String?): PreparedSync? {
+    private suspend fun prepareSync(
+        documentId: String?,
+        operation: NestedSyncOperation = NestedSyncOperation.SYNC,
+    ): PreparedSync? {
         val last = if (documentId != null) lastSyncedAt(documentId) else lastSyncedDocsAt()
         if (!isOnline()) {
-            _syncState.value = NestedSyncState(NestedSyncStatus.OFFLINE, documentId, last)
+            _syncState.value = NestedSyncState(NestedSyncStatus.OFFLINE, documentId, last, operation = operation)
             return null
         }
-        _syncState.value = NestedSyncState(NestedSyncStatus.SYNCING, documentId, last)
+        _syncState.value = NestedSyncState(NestedSyncStatus.SYNCING, documentId, last, operation = operation)
         val userId = ensureUserId()
         if (userId == null) {
-            recordFailure(documentId, "Sign-in failed. Try again.")
+            recordFailure(documentId, "Sign-in failed. Try again.", operation)
             return null
         }
         // Account switch (link, sign-in/out, reinstall-side): clean rows
@@ -328,6 +458,33 @@ class FirestoreNestedSyncManager(
                 value
             }
         }
+
+    /** One nested document reference under the signed-in user. */
+    private fun nestedDocRef(
+        firestore: FirebaseFirestore,
+        userId: String,
+        documentId: String,
+    ): DocumentReference = firestore
+        .collection(NestedSyncConfig.USERS_COLLECTION)
+        .document(userId)
+        .collection(NestedSyncConfig.DOCUMENTS_COLLECTION)
+        .document(documentId)
+
+    /**
+     * Deletes remote rows a force push found only in the cloud. Batched like
+     * pushes so a large mirror never exceeds the commit limit.
+     */
+    private suspend fun deleteRemoteDocuments(
+        firestore: FirebaseFirestore,
+        collection: CollectionReference,
+        ids: List<String>,
+    ) {
+        ids.chunked(NestedSyncConfig.PUSH_BATCH_SIZE).forEach { chunk ->
+            val batch = firestore.batch()
+            chunk.forEach { id -> batch.delete(collection.document(id)) }
+            batch.commit().awaitTask()
+        }
+    }
 
     /** Ids of bridge JSON rows for delete detection. */
     private fun remoteIds(jsons: List<String>): List<String> =
@@ -396,23 +553,33 @@ class FirestoreNestedSyncManager(
         dataStore.edit { prefs -> prefs[KEY_LAST_SYNCED_DOCS] = value }
     }
 
-    private suspend fun recordFailure(documentId: String?, message: String) {
+    private suspend fun recordFailure(
+        documentId: String?,
+        message: String,
+        operation: NestedSyncOperation = NestedSyncOperation.SYNC,
+    ) {
         _syncState.value = NestedSyncState(
             NestedSyncStatus.ERROR,
             documentId,
             documentId?.let { lastSyncedAt(it) } ?: lastSyncedDocsAt(),
             message,
+            operation,
         )
         Log.w(TAG, "Nested sync failed for $documentId: $message")
     }
 
     /** Shared catch-block mapping: offline vs failed, surfaced via state. */
-    private suspend fun recordSyncFailure(documentId: String?, e: Exception) {
+    private suspend fun recordSyncFailure(
+        documentId: String?,
+        e: Exception,
+        operation: NestedSyncOperation = NestedSyncOperation.SYNC,
+    ) {
         val offline = !isOnline()
         recordFailure(
             documentId,
             if (offline) "You're offline. Changes are saved on this device."
             else "Sync failed (${e.message ?: "unknown error"}). Try again.",
+            operation,
         )
     }
 

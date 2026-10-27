@@ -193,20 +193,25 @@ fun BadgedActionIcon(
     }
 }
 
-internal fun LocalDate.compact(): String {
-    val today = today()
+internal fun LocalDate.compact(): String = compact(today())
+
+/**
+ * [compact] relative to [reference], so callers that need a deterministic
+ * "today" (metadata labels, tests) don't have to read the clock twice.
+ */
+internal fun LocalDate.compact(reference: LocalDate): String {
     val monthDay = "${shortMonthName()} $day"
     return when (this) {
-        today -> "Today"
-        today.plus(1, DateTimeUnit.DAY) -> "Tomorrow"
-        today.plus(-1, DateTimeUnit.DAY) -> "Yesterday"
-        today.plus(2, DateTimeUnit.DAY),
-        today.plus(3, DateTimeUnit.DAY),
-        today.plus(4, DateTimeUnit.DAY),
-        today.plus(5, DateTimeUnit.DAY),
-        today.plus(6, DateTimeUnit.DAY) -> dayOfWeek.shortName()
+        reference -> "Today"
+        reference.plus(1, DateTimeUnit.DAY) -> "Tomorrow"
+        reference.plus(-1, DateTimeUnit.DAY) -> "Yesterday"
+        reference.plus(2, DateTimeUnit.DAY),
+        reference.plus(3, DateTimeUnit.DAY),
+        reference.plus(4, DateTimeUnit.DAY),
+        reference.plus(5, DateTimeUnit.DAY),
+        reference.plus(6, DateTimeUnit.DAY) -> dayOfWeek.shortName()
         else -> {
-            if (year == today.year) monthDay else "$monthDay, $year"
+            if (year == reference.year) monthDay else "$monthDay, $year"
         }
     }
 }

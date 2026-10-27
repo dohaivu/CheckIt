@@ -65,6 +65,9 @@ import com.checkit.ui.today
 
 // --- State Hierarchy ---
 
+/** Maximum characters kept for one outline item note; matches the macOS note sheet. */
+const val NESTED_NOTE_MAX_LENGTH = 5_000
+
 data class NewItemDraft(
     val anchorId: String? = null,
     val parentId: String? = null,
@@ -98,6 +101,18 @@ enum class NestedDisplayType {
     }
 }
 
+/** Destructive force-sync direction awaiting confirmation. */
+enum class NestedForceAction {
+    Push,
+    Pull,
+}
+
+data class NestedForceRequest(
+    val action: NestedForceAction,
+    val documentId: String,
+    val documentTitle: String,
+)
+
 sealed interface NestedEditorOverlay {
     data object None : NestedEditorOverlay
     data class AddingItem(val draft: NewItemDraft) : NestedEditorOverlay
@@ -117,7 +132,12 @@ sealed interface NestedEditorState {
         val selectedItemId: String? = null,
         val editingTextItemId: String? = null,
         val availableTags: List<TagItem> = emptyList(),
-        val filters: NestedFilterState = NestedFilterState()
+        val filters: NestedFilterState = NestedFilterState(),
+        /**
+         * Transient view mode: dim everything outside the selection branch.
+         * Reset per document; never persisted or written to data.
+         */
+        val focusSelectionEnabled: Boolean = false
     ) : NestedEditorState {
         val focusedItem: NestedItemNode? get() = tree.nodeById[zoomPath.lastOrNull()]
         val selectedItem: NestedItemNode? get() = tree.nodeById[selectedItemId]
@@ -133,6 +153,8 @@ data class NestedUiState(
     val newDocumentTitle: String = "",
     val editor: NestedEditorState? = null,
     val syncState: NestedSyncState = NestedSyncState(),
+    /** Force push/pull awaiting confirmation; both overwrite one side. */
+    val forceRequest: NestedForceRequest? = null,
     /** Null while anonymous: sync stays on this device until Google sign-in. */
     val accountEmail: String? = null,
     val isAnonymous: Boolean = true
@@ -285,6 +307,54 @@ class NestedListsViewModel(
                 .onFailure { error ->
                     _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Sync failed"))
                 }
+        }
+    }
+
+    // --- Force sync (destructive, always confirmed) ---
+
+    fun requestForcePush() = requestForce(NestedForceAction.Push)
+
+    fun requestForcePull() = requestForce(NestedForceAction.Pull)
+
+    private fun requestForce(action: NestedForceAction) {
+        val active = getActiveEditor() ?: return
+        _uiState.update {
+            it.copy(
+                forceRequest = NestedForceRequest(
+                    action = action,
+                    documentId = active.documentId,
+                    documentTitle = active.tree.document.title,
+                )
+            )
+        }
+    }
+
+    fun cancelForceRequest() {
+        _uiState.update { it.copy(forceRequest = null) }
+    }
+
+    fun confirmForceRequest() {
+        val request = _uiState.value.forceRequest ?: return
+        _uiState.update { it.copy(forceRequest = null) }
+        viewModelScope.launch {
+            val ok = runCatching {
+                when (request.action) {
+                    NestedForceAction.Push -> syncManager.forcePush(request.documentId)
+                    NestedForceAction.Pull -> syncManager.forcePull(request.documentId)
+                }
+            }.getOrElse { error ->
+                _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Sync failed"))
+                return@launch
+            }
+            val message = if (ok) {
+                when (request.action) {
+                    NestedForceAction.Push -> "Force push complete"
+                    NestedForceAction.Pull -> "Force pull complete"
+                }
+            } else {
+                _uiState.value.syncState.message ?: "Sync failed. Try again."
+            }
+            _events.tryEmit(UiEvent.ShowSnackbar(message))
         }
     }
 
@@ -561,6 +631,11 @@ class NestedListsViewModel(
         }
     }
 
+    /** Toggles the transient "dim outside the selection branch" view mode. */
+    fun toggleFocusSelection() {
+        updateActiveEditor { it.copy(focusSelectionEnabled = !it.focusSelectionEnabled) }
+    }
+
     fun stopEditText() {
         updateActiveEditor { it.copy(editingTextItemId = null) }
     }
@@ -585,7 +660,7 @@ class NestedListsViewModel(
     fun saveItemNote(itemId: String, note: String?) {
         stopEditNote()
         viewModelScope.launch {
-            updateItemNoteUseCase(itemId, note?.take(2_000))
+            updateItemNoteUseCase(itemId, note?.take(NESTED_NOTE_MAX_LENGTH))
         }
     }
 
@@ -624,6 +699,16 @@ class NestedListsViewModel(
     fun toggleCheckboxEnabled(itemId: String) {
         val item = getActiveEditor()?.tree?.itemById?.get(itemId) ?: return
         viewModelScope.launch { setCheckboxEnabledUseCase(itemId, !item.checkboxEnabled) }
+    }
+
+    /** Enables checkboxes on every direct child that does not already have one. */
+    fun enableCheckboxForChildren(itemId: String) {
+        val children = getActiveEditor()?.tree?.nodeById?.get(itemId)?.children ?: return
+        val ids = children.map { it.item }.filter { !it.checkboxEnabled }.map { it.id }
+        if (ids.isEmpty()) return
+        viewModelScope.launch {
+            ids.forEach { setCheckboxEnabledUseCase(it, true) }
+        }
     }
 
     fun toggleChecked(itemId: String) {

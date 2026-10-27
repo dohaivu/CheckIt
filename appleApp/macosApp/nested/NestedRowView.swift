@@ -48,7 +48,8 @@ extension Color {
 // Warm paper canvas instead of near-white: it cuts blue-light glare while
 // keeping dark-ink contrast, which fatigues less over hours. Guides cycle
 // one muted color per depth; the toggle ring/dot uses the same depth color
-// so the eye can follow nesting by hue.
+// so the eye can follow nesting by hue. Both stay faint by default and only
+// the active row (see `isEmphasized`) draws them at full strength.
 
 let nestedDepthSolids: [Color] = [
     Color(red: 0xD9 / 255.0, green: 0x7F / 255.0, blue: 0x5F / 255.0), // 0 terracotta
@@ -63,12 +64,25 @@ let nestedSelectedColor = Color(red: 0xF9 / 255.0, green: 0xEC / 255.0, blue: 0x
 let nestedEditingColor = Color.accentColor.opacity(0.18)
 let nestedInkColor = Color(red: 0x2E / 255.0, green: 0x2A / 255.0, blue: 0x26 / 255.0)
 
-func nestedGuideColor(_ level: Int) -> Color {
-    nestedDepthSolids[level % nestedDepthSolids.count].opacity(0.5)
+// Guides and dots are quiet by default: the depth hue is a hint, not a
+// statement. The active row (selected or editing) promotes its own guides
+// and spine to full strength so the eye can follow the branch, without
+// repainting the whole outline.
+let nestedGuideSubtleOpacity = 0.18
+let nestedGuideStrongOpacity = 0.92
+let nestedDotSubtleOpacity = 0.5
+
+func nestedDepthColor(_ depth: Int) -> Color {
+    nestedDepthSolids[depth % nestedDepthSolids.count]
 }
 
-func nestedDotForDepth(_ depth: Int) -> Color {
-    nestedDepthSolids[depth % nestedDepthSolids.count]
+func nestedGuideColor(_ level: Int, emphasized: Bool = false) -> Color {
+    nestedDepthColor(level).opacity(emphasized ? nestedGuideStrongOpacity : nestedGuideSubtleOpacity)
+}
+
+/// Quiet by default; `emphasized` restores the solid depth color.
+func nestedDotForDepth(_ depth: Int, emphasized: Bool = false) -> Color {
+    nestedDepthColor(depth).opacity(emphasized ? 1.0 : nestedDotSubtleOpacity)
 }
 
 private let nestedDateFormatter: DateFormatter = {
@@ -78,15 +92,27 @@ private let nestedDateFormatter: DateFormatter = {
     return fmt
 }()
 
-func nestedDateLabel(startDays: Int64?, endDays: Int64?) -> String? {
+struct NestedDateLabel {
+    let text: String
+    let isOverdue: Bool
+}
+
+func nestedDateLabel(
+    startDays: Int64?,
+    endDays: Int64?,
+    todayDays: Int64 = DateExtensionsKt.today().toEpochDays()
+) -> NestedDateLabel? {
     guard startDays != nil || endDays != nil else { return nil }
     func s(_ d: Int64) -> String { nestedDateFormatter.string(from: nestedDate(fromEpochDays: d)) }
+    let text: String
     switch (startDays, endDays) {
-    case let (.some(a), .some(b)): return a == b ? s(a) : "\(s(a)) → \(s(b))"
-    case let (.some(a), nil): return "from \(s(a))"
-    case let (nil, .some(b)): return "until \(s(b))"
+    case let (.some(a), .some(b)): text = a == b ? s(a) : "\(s(a)) → \(s(b))"
+    case let (.some(a), nil): text = "from \(s(a))"
+    case let (nil, .some(b)): text = "until \(s(b))"
     default: return nil
     }
+    // The end date is inclusive: only a date before today is overdue.
+    return NestedDateLabel(text: text, isOverdue: endDays.map { $0 < todayDays } ?? false)
 }
 
 // MARK: - Row
@@ -95,6 +121,8 @@ struct NestedRowView: View {
     @ObservedObject var state: NestedEditorState
     let row: NestedRow
     let isEditing: Bool
+    let focusTier: NestedFocusTier
+    let selectionBranch: NestedSelectionBranch?
 
     @State private var editText = ""
     @State private var rowHeight: CGFloat = 32
@@ -103,15 +131,22 @@ struct NestedRowView: View {
     private var item: NestedListItem { row.node.item }
 
     var body: some View {
+        // Ancestor guides stay quiet always: the emphasis is the selection
+        // branch's dot/ring plus its spine running down through its children.
+        // Descendant rows carry that spine at the root's level.
+        let spineLevel = selectedSpineLevel
+        let dotEmphasis = isEmphasized || isSpineRoot
         HStack(alignment: .top, spacing: 0) {
             // Indent guides, sharing one x per depth (slightly right of
             // cell center) — the toggle column below uses the same grid.
             ForEach(0..<row.depth, id: \.self) { level in
                 Rectangle()
-                    .fill(nestedGuideColor(level))
+                    .fill(nestedGuideColor(level, emphasized: level == spineLevel))
                     .frame(width: 1)
                     .padding(.leading, 10)
                     .frame(width: 16, alignment: .leading)
+                    .opacity(focusOpacity)
+                    .animation(.easeOut(duration: 0.15), value: level == spineLevel)
             }
             // Collapse toggle: chevron wrapped in an outside circle (parents)
             // or a small filled dot (leaves), matching the attachment where
@@ -125,20 +160,22 @@ struct NestedRowView: View {
                     if row.node.hasChildren {
                         ZStack {
                             Circle()
-                                .stroke(nestedDotForDepth(row.depth), lineWidth: 1.5)
+                                .stroke(nestedDotForDepth(row.depth, emphasized: dotEmphasis), lineWidth: dotEmphasis ? 2 : 1.5)
                                 .frame(width: 12, height: 12)
                             Image(systemName: item.collapsed ? "chevron.right" : "chevron.down")
                                 .font(.system(size: 8, weight: .semibold))
-                                .foregroundStyle(nestedDotForDepth(row.depth))
+                                .foregroundStyle(nestedDotForDepth(row.depth, emphasized: dotEmphasis))
                         }
                     } else {
                         Circle()
-                            .fill(nestedDotForDepth(row.depth))
+                            .fill(nestedDotForDepth(row.depth, emphasized: dotEmphasis))
                             .frame(width: 7, height: 7)
                     }
                 }
                 .frame(width: 16, height: 24)
                 .contentShape(Rectangle())
+                .opacity(focusOpacity)
+                .animation(.easeOut(duration: 0.15), value: dotEmphasis)
             }
             .buttonStyle(.plain)
             .padding(.top, 2).padding(.leading, 3)
@@ -153,6 +190,7 @@ struct NestedRowView: View {
                         } label: {
                             Image(systemName: item.checked ? "checkmark.square.fill" : "square")
                                 .foregroundStyle(item.checked ? Color.accentColor : .secondary)
+                                .opacity(focusOpacity)
                         }
                         .buttonStyle(.plain)
                         .help(item.checked ? "Uncheck" : "Check off")
@@ -162,6 +200,7 @@ struct NestedRowView: View {
                         Image(systemName: "flag.fill")
                             .imageScale(.small)
                             .foregroundStyle(color)
+                            .opacity(focusOpacity)
                             .padding(.top, 1)
                             .help("Priority: \(item.priority.name)")
                     }
@@ -244,7 +283,7 @@ struct NestedRowView: View {
                             .onTapGesture(count: 2) { state.startEdit(id: item.id) }
                     }
                 }
-                metadata
+                metadata.opacity(focusOpacity)
             }
             .padding(.vertical, 5)
             .padding(.horizontal, 6)
@@ -259,11 +298,13 @@ struct NestedRowView: View {
             // at 20pt — start the line there so it touches the ring.
             if row.node.hasChildren && !item.collapsed {
                 Rectangle()
-                    .fill(nestedGuideColor(row.depth))
+                    .fill(nestedGuideColor(row.depth, emphasized: isEmphasized || isSpineRoot))
                     .frame(width: 1)
                     .padding(.top, 20)
                     .padding(.leading, CGFloat(row.depth * 16) + 10)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .opacity(focusOpacity)
+                    .animation(.easeOut(duration: 0.15), value: isEmphasized || isSpineRoot)
             }
         }
         .background(nestedCanvasColor)
@@ -296,7 +337,7 @@ struct NestedRowView: View {
     private var dragPreview: some View {
         HStack(spacing: 6) {
             Circle()
-                .fill(nestedDotForDepth(row.depth))
+                .fill(nestedDepthColor(row.depth))
                 .frame(width: 7, height: 7)
             Text(item.text.isEmpty ? AttributedString("Untitled item") : renderInlineMarkdown(item.text))
                 .font(nestedRowFont(item.textStyle.name))
@@ -311,22 +352,62 @@ struct NestedRowView: View {
     }
 
     private var nestedTextColor: Color {
+        // Context rows (kept only to hold matches under their ancestors)
+        // recede so working rows carry the eye; selecting one restores ink.
+        if row.isContext && !isEmphasized {
+            return Color.secondary.opacity(min(0.6, focusOpacity))
+        }
         // Android parity (NestedListScreen): rows in a checked branch (self
         // or any ancestor checked) fade to onSurfaceVariant at 0.68 alpha.
-        if row.isInCheckedBranch { return Color.secondary.opacity(0.68) }
+        if row.isInCheckedBranch {
+            return Color.secondary.opacity(min(0.68, focusOpacity))
+        }
         // Explicit light-theme ink: .primary would turn white in dark mode
         // and vanish on the paper canvas. Warm charcoal is softer than pure
         // black for long sessions.
-        return item.textColor.name == "Default" ? nestedInkColor : nestedTokenColor(item.textColor.name)
+        let base = item.textColor.name == "Default"
+            ? nestedInkColor
+            : nestedTokenColor(item.textColor.name)
+        return base.opacity(focusOpacity)
+    }
+
+    /// Focus selection dims everything outside the selection branch. Path
+    /// rows keep a little more ink than unrelated branches so the way back
+    /// to the root stays legible. `min()` in `nestedTextColor` avoids
+    /// stacking context/checked-branch alpha into unreadable text.
+    private var focusOpacity: Double {
+        switch focusTier {
+        case .none, .focused: return 1
+        case .path: return 0.72
+        case .outside: return 0.45
+        }
     }
 
     private var isSelected: Bool { state.selectedId == item.id }
+
+    /// The active row gets full-strength ink and selection chrome.
+    private var isEmphasized: Bool { isSelected || isEditing }
+
+    /// True for the effective branch root. A selected leaf promotes to its
+    /// parent, whose downward guide should still read as the spine.
+    private var isSpineRoot: Bool { selectionBranch?.rootId == item.id }
+
+    /// Depth column carrying the selection branch's spine through its
+    /// subtree. Nil on the root row itself (its own guides point up at
+    /// ancestors, which stay quiet) and on rows outside the branch.
+    private var selectedSpineLevel: Int? {
+        guard let branch = selectionBranch,
+              branch.rootId != item.id,
+              branch.range.contains(row.index)
+        else { return nil }
+        return branch.depth
+    }
 
     private var rowBackground: Color {
         if isEditing { return nestedEditingColor }
         if isSelected { return nestedSelectedColor }
         if item.backgroundColor.name != "Default" {
-            return nestedTokenColor(item.backgroundColor.name).opacity(0.20)
+            return nestedTokenColor(item.backgroundColor.name).opacity(0.20 * focusOpacity)
         }
         return .clear
     }
@@ -336,7 +417,7 @@ struct NestedRowView: View {
         let summary = state.summary(for: item.id)
         let progress = item.progressPercent?.int32Value
         let note = item.note
-        let dateText = nestedDateLabel(
+        let dateLabel = nestedDateLabel(
             startDays: item.startDate?.toEpochDays(),
             endDays: item.endDate?.toEpochDays()
         )
@@ -345,9 +426,9 @@ struct NestedRowView: View {
         let isLeaf = !row.node.hasChildren
         let showTracked = isLeaf || item.showTrackedMinutes
         let visibleMetrics = item.manualMetrics.filter { $0.enabled && ($0.isCompleted || $0.isValidForSave()) }
-        if progress != nil || (summary?.doneItemCount ?? 0) > 0
+        if progress != nil || (summary?.totalTaskCount ?? 0) > 0
             || (showTracked && (summary?.trackedMinutes ?? 0) > 0)
-            || (note != nil && !(note!.isEmpty)) || !item.tags.isEmpty || dateText != nil
+            || (note != nil && !(note!.isEmpty)) || !item.tags.isEmpty || dateLabel != nil
             || !visibleMetrics.isEmpty
         {
             VStack(alignment: .leading, spacing: 3) {
@@ -361,7 +442,7 @@ struct NestedRowView: View {
                                 RoundedRectangle(cornerRadius: 2)
                                     .fill(Color.black.opacity(0.08))
                                 RoundedRectangle(cornerRadius: 2)
-                                    .fill(nestedDotForDepth(row.depth).opacity(0.65))
+                                    .fill(nestedDepthColor(row.depth).opacity(0.65))
                                     .frame(width: geo.size.width * ratio)
                             }
                         }
@@ -372,8 +453,8 @@ struct NestedRowView: View {
                     }
                 }
                 HStack(spacing: 6) {
-                    if let s = summary, s.doneItemCount > 0 {
-                        Text("\(s.doneItemCount) done")
+                    if let s = summary, s.totalTaskCount > 0 {
+                        Text("\(s.doneTaskCount)/\(s.totalTaskCount) done")
                             .font(.caption)
                             .padding(.horizontal, 6).padding(.vertical, 1)
                             .background(Color.secondary.opacity(0.15), in: RoundedRectangle(cornerRadius: 5))
@@ -402,11 +483,12 @@ struct NestedRowView: View {
                         .font(.callout).foregroundStyle(.secondary)
                         .lineLimit(state.noteLineLimit > 0 ? state.noteLineLimit : nil)
                 }
-                if dateText != nil || !item.tags.isEmpty {
+                if dateLabel != nil || !item.tags.isEmpty {
                     HStack(spacing: 6) {
-                        if let d = dateText {
-                            Label(d, systemImage: "calendar")
-                                .font(.caption).foregroundStyle(.secondary)
+                        if let date = dateLabel {
+                            Label(date.text, systemImage: "calendar")
+                                .font(.caption)
+                                .foregroundStyle(date.isOverdue ? Color.red : Color.secondary)
                         }
                         let tags: [TagItem] = item.tags
                         ForEach(tags, id: \.id) { tag in

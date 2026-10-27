@@ -16,6 +16,17 @@ import AppKit
 import Shared
 import UniformTypeIdentifiers
 
+/// Force-sync direction chosen from the sidebar context menu.
+private enum NestedSidebarForceAction {
+    case push
+    case pull
+}
+
+private struct NestedSidebarForceRequest {
+    let action: NestedSidebarForceAction
+    let document: NestedDocument
+}
+
 struct NestedListsWindowView: View {
     @StateObject private var state = NestedEditorState()
     @ObservedObject private var sync = NestedFirestoreSync.shared
@@ -30,12 +41,20 @@ struct NestedListsWindowView: View {
     @State private var showRename = false
     @State private var renameTitle = ""
     @State private var deleteDoc: NestedDocument? = nil
+    @State private var forceRequest: NestedSidebarForceRequest? = nil
+    /// Row whose checked children are pending deletion (drives the alert;
+    /// nil = no alert) plus the count captured when the alert opened, so the
+    /// message survives the action resetting the id.
+    @State private var deleteCheckedParentId: String? = nil
+    @State private var deleteCheckedCount = 0
 
     @State private var showMoveSheet = false
     @State private var moveDestinationId: String? = nil
     @State private var showSortMenu = false
     @State private var showCheatsheet = false
     @State private var draftText = ""
+    /// Ctrl+N opens the note sheet read-only; reset whenever the sheet closes.
+    @State private var noteStartsInPreview = false
 
     // MARK: - Window sizing
 
@@ -140,8 +159,11 @@ struct NestedListsWindowView: View {
         // ⌥N/⌥D and the row context menu.
         .sheet(isPresented: $state.showNoteSheet) {
             if let item = state.selectedItem {
-                NestedNoteSheet(state: state, item: item)
+                NestedNoteSheet(state: state, item: item, startsInPreview: noteStartsInPreview)
             }
+        }
+        .onChange(of: state.showNoteSheet) { _, showing in
+            if !showing { noteStartsInPreview = false }
         }
         .sheet(isPresented: $state.showDetailsSheet) {
             if let item = state.selectedItem {
@@ -217,11 +239,51 @@ struct NestedListsWindowView: View {
                             Label("Export to JSON…", systemImage: "square.and.arrow.up")
                         }
                         Divider()
+                        Button {
+                            forceRequest = NestedSidebarForceRequest(action: .push, document: doc)
+                        } label: {
+                            Label("Force Push to Cloud", systemImage: "icloud.and.arrow.up")
+                        }
+                        .disabled(sync.uiState.status == .syncing)
+                        Button {
+                            forceRequest = NestedSidebarForceRequest(action: .pull, document: doc)
+                        } label: {
+                            Label("Force Pull from Cloud", systemImage: "icloud.and.arrow.down")
+                        }
+                        .disabled(sync.uiState.status == .syncing)
+                        Divider()
                         Button("Rename") { renameDoc = doc; showRename = true }
                         Button("Delete", role: .destructive) { deleteDoc = doc }
                     }
             }
             .listStyle(.sidebar)
+            .alert(
+                forceRequest?.action == .pull ? "Force pull from cloud?" : "Force push to cloud?",
+                isPresented: Binding(
+                    get: { forceRequest != nil },
+                    set: { if !$0 { forceRequest = nil } }
+                )
+            ) {
+                if let request = forceRequest {
+                    Button(request.action == .pull ? "Force Pull" : "Force Push", role: .destructive) {
+                        forceRequest = nil
+                        // Commit any open inline edit first: a force pull can
+                        // remove the row being edited.
+                        state.commitEditing()
+                        switch request.action {
+                        case .push:
+                            NestedFirestoreSync.shared.forcePush(documentId: request.document.id)
+                        case .pull:
+                            NestedFirestoreSync.shared.forcePull(documentId: request.document.id)
+                        }
+                    }
+                }
+                Button("Cancel", role: .cancel) { forceRequest = nil }
+            } message: {
+                if let request = forceRequest {
+                    Text(forceMessage(for: request))
+                }
+            }
             Divider()
             Divider()
             Button {
@@ -297,6 +359,18 @@ struct NestedListsWindowView: View {
         showNewDoc = false
     }
 
+    /// Confirmation copy for the sidebar force-sync actions. Both directions
+    /// are destructive on the side that loses.
+    private func forceMessage(for request: NestedSidebarForceRequest) -> String {
+        let title = request.document.title.isEmpty ? "Untitled document" : request.document.title
+        switch request.action {
+        case .push:
+            return "Replace the cloud copy of “\(title)” with this Mac's version? Changes made on other devices will be overwritten."
+        case .pull:
+            return "Delete the copy of “\(title)” on this Mac and download the cloud version? Local changes that have not been synced will be lost."
+        }
+    }
+
     /// Manual sync row for the document list (no auto-sync).
     /// List sync reports `documentId == nil`, so open-document status
     /// never leaks into this row.
@@ -355,6 +429,14 @@ struct NestedListsWindowView: View {
 
     // MARK: - Detail
 
+    /// Confirmation copy for the "Delete checked children" alert. Uses the
+    /// count captured when the alert opened, so the message doesn't blank out
+    /// as the action clears the pending row id.
+    private var deleteCheckedMessage: String {
+        let items = deleteCheckedCount == 1 ? "1 checked item" : "\(deleteCheckedCount) checked items"
+        return "This permanently deletes \(items) and everything nested under them."
+    }
+
     @ViewBuilder
     private var detail: some View {
         if state.selectedDocId.isEmpty {
@@ -372,6 +454,21 @@ struct NestedListsWindowView: View {
                 outlineList
                 Divider()
                 bottomBar
+            }
+            .alert(
+                "Delete checked children?",
+                isPresented: Binding(
+                    get: { deleteCheckedParentId != nil },
+                    set: { if !$0 { deleteCheckedParentId = nil } }
+                )
+            ) {
+                Button("Delete", role: .destructive) {
+                    if let id = deleteCheckedParentId { state.deleteCheckedChildren(of: id) }
+                    deleteCheckedParentId = nil
+                }
+                Button("Cancel", role: .cancel) { deleteCheckedParentId = nil }
+            } message: {
+                Text(deleteCheckedMessage)
             }
             .overlay(alignment: .bottom) {
                 if let toast = state.toastMessage {
@@ -470,9 +567,14 @@ struct NestedListsWindowView: View {
         Group {
             switch sync.uiState.status {
             case .syncing where sync.uiState.documentId == docId:
-                Text("Syncing…").font(.caption).foregroundStyle(.secondary)
+                Text(sync.uiState.operation == .forcePush ? "Force pushing…"
+                     : sync.uiState.operation == .forcePull ? "Force pulling…"
+                     : "Syncing…")
+                    .font(.caption).foregroundStyle(.secondary)
             case .synced where sync.uiState.documentId == docId:
-                if let at = sync.uiState.lastSyncedAt {
+                if let message = sync.uiState.message {
+                    Text(message).font(.caption).foregroundStyle(.secondary)
+                } else if let at = sync.uiState.lastSyncedAt {
                     Text("Synced \(at.formatted(date: .omitted, time: .shortened))")
                         .font(.caption).foregroundStyle(.secondary)
                 } else {
@@ -551,6 +653,16 @@ struct NestedListsWindowView: View {
                     state.zoomOut()
                 }
                 .disabled(state.zoomPath.isEmpty)
+                editorBtn(
+                    "Focus Selection",
+                    system: "scope",
+                    help: "Focus the selected branch (dim the rest)",
+                    active: state.focusSelectionEnabled
+                ) {
+                    state.focusSelectionEnabled.toggle()
+                }
+                .disabled(sel == nil && !state.focusSelectionEnabled)
+                .accessibilityValue(state.focusSelectionEnabled ? "On" : "Off")
                 editorBtn("Expand All", system: "chevron.down.2", help: "Expand all (ShiftCtrl→)") {
                     state.expandAll()
                 }
@@ -672,19 +784,11 @@ struct NestedListsWindowView: View {
         system: String,
         help: String,
         shortcut: String? = nil,
+        active: Bool = false,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            HStack(spacing: 3) {
-                Image(systemName: system)
-                    .imageScale(.medium)
-                if let shortcut {
-                    Text(shortcut)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .frame(minWidth: 28, minHeight: 28)
+            EditorBarButtonLabel(system: system, shortcut: shortcut, active: active)
         }
         // Match macOS toolbar conventions: template icons, a predictable
         // hit target, and text exposed through help and accessibility rather
@@ -736,7 +840,7 @@ struct NestedListsWindowView: View {
             ("NameAsc", "Name (A–Z)"),
             ("AddedDesc", "Newest first"),
             ("CompletedDesc", "Recently completed"),
-            ("IncompleteFirst", "Incomplete on top"),
+            ("UncheckedFirst", "Unchecked first"),
             ("PriorityDesc", "Priority (high first)"),
         ]
     }
@@ -784,7 +888,9 @@ struct NestedListsWindowView: View {
                             NestedRowView(
                                 state: state,
                                 row: row,
-                                isEditing: state.editingId == row.id
+                                isEditing: state.editingId == row.id,
+                                focusTier: state.focusSnapshot.tier(for: row),
+                                selectionBranch: state.selectionBranch
                             )
                             if state.dropTarget?.displayRowId == row.id && state.dropTarget!.below {
                                 DropIndicatorLine(depth: state.dropTarget!.depth)
@@ -847,6 +953,20 @@ struct NestedListsWindowView: View {
                                 } label: {
                                     Label("Zoom In", systemImage: "plus.magnifyingglass")
                                 }
+                                Divider()
+                                Button(role: .destructive) {
+                                    // Commit first: deleting a branch that is
+                                    // mid-edit would strand the inline editor.
+                                    if let editing = state.editingId,
+                                       state.isDescendant(itemId: editing, of: row.id) {
+                                        state.commitEditing()
+                                    }
+                                    deleteCheckedCount = state.checkedChildren(of: row.id).count
+                                    deleteCheckedParentId = row.id
+                                } label: {
+                                    Label("Delete Checked Children…", systemImage: "trash.slash")
+                                }
+                                .disabled(state.checkedChildren(of: row.id).isEmpty)
                             }
                             Button {
                                 state.toggleCheck(id: row.id, checked: !row.node.item.checked)
@@ -869,6 +989,7 @@ struct NestedListsWindowView: View {
                             Divider()
                             Button {
                                 state.selectedId = row.id
+                                noteStartsInPreview = false
                                 state.showNoteSheet = true
                             } label: {
                                 Label("Note", systemImage: "note.text")
@@ -995,8 +1116,12 @@ struct NestedListsWindowView: View {
                 }
                 return .ignored
             }
-            .onKeyPress(keys: [KeyEquivalent("n"), KeyEquivalent("N")]) { _ in
+            .onKeyPress(keys: [KeyEquivalent("n"), KeyEquivalent("N")]) { press in
                 guard state.editingId == nil, state.draft == nil, state.selectedId != nil else { return .ignored }
+                // ⌘N stays free for the standard New command; ⌃N opens the
+                // sheet straight into the read-only preview.
+                guard !press.modifiers.contains(.command) else { return .ignored }
+                noteStartsInPreview = press.modifiers.contains(.control)
                 state.showNoteSheet = true
                 return .handled
             }
@@ -1071,11 +1196,6 @@ struct NestedListsWindowView: View {
             }
             .onKeyPress(keys: [KeyEquivalent("f")]) { press in
                 guard press.modifiers.contains(.command) else { return .ignored }
-                searchFocused = true
-                return .handled
-            }
-            .onKeyPress(keys: [KeyEquivalent("/")]) { press in
-                guard !press.modifiers.contains(.shift) else { return .ignored }
                 searchFocused = true
                 return .handled
             }
@@ -1172,9 +1292,10 @@ struct NestedListsWindowView: View {
                         (["Del"], "Delete"),
                     ])
                     cheatSection("View & actions", rows: [
-                        (["⌘F", "/"], "Search"),
+                        (["⌘F"], "Search"),
                         (["Esc"], "Blur search"),
                         (["N"], "Note"),
+                        (["⌃N"], "Note preview"),
                         (["D"], "Item details"),
                         (["⌘⇧P"], "Preview note (note editor)"),
                         (["⌘⌥I"], "Toggle inspector"),
@@ -1380,6 +1501,39 @@ struct NestedListsWindowView: View {
             NestedFormattingBar(state: state, item: node.item)
                 .id("\(id)-\(node.item.updatedAtMillis)")
         }
+    }
+}
+
+// MARK: - Editor bar button
+
+/// Label for the editor-bar icon buttons. It reads `isEnabled` from the
+/// environment so the `.disabled(...)` callers apply actually shows: an
+/// explicit `foregroundStyle` inside a `Button` label overrides macOS's
+/// automatic disabled dimming, which left enabled and disabled buttons
+/// looking identical.
+private struct EditorBarButtonLabel: View {
+    let system: String
+    let shortcut: String?
+    let active: Bool
+    @Environment(\.isEnabled) private var isEnabled
+
+    var body: some View {
+        HStack(spacing: 3) {
+            Image(systemName: system)
+                .imageScale(.medium)
+            if let shortcut {
+                Text(shortcut)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(minWidth: 28, minHeight: 28)
+        .foregroundStyle(active ? Color.accentColor : Color.primary)
+        .opacity(isEnabled ? 1 : 0.35)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(active ? Color.accentColor.opacity(0.14) : Color.clear)
+        )
     }
 }
 

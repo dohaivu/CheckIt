@@ -71,7 +71,6 @@ class NestedSyncDocumentTest {
             checkboxEnabled = true,
             checked = false,
             completedAtMillis = 150L,
-            collapsed = true,
             textStyle = "Header",
             textColor = "Blue",
             backgroundColor = "Default",
@@ -88,6 +87,7 @@ class NestedSyncDocumentTest {
             updatedAtMillis = 200L,
             deleted = false,
         )
+        assertFalse(map.containsKey("collapsed"))
         val json = NestedSyncDocument.toJson(map)
         val remote = NestedSyncDocument.itemFromMap(
             "doc-1",
@@ -100,7 +100,6 @@ class NestedSyncDocumentTest {
         assertEquals("Buy milk", remote?.text)
         assertEquals("2%", remote?.note)
         assertTrue(remote?.checkboxEnabled ?: false)
-        assertTrue(remote?.collapsed ?: false)
         assertEquals("Header", remote?.textStyle)
         assertEquals("High", remote?.priority)
         assertEquals(25, remote?.actualMinutes)
@@ -121,7 +120,6 @@ class NestedSyncDocumentTest {
             note = null,
             checkboxEnabled = false,
             checked = false,
-            collapsed = false,
             textStyle = "Body",
             textColor = "Default",
             backgroundColor = "Default",
@@ -217,7 +215,6 @@ class NestedSyncDocumentTest {
         note = null,
         checkboxEnabled = false,
         checked = false,
-        collapsed = false,
         textStyle = "Body",
         textColor = "Default",
         backgroundColor = "Default",

@@ -64,6 +64,82 @@ class NestedSyncBridge(
     suspend fun dirtyAllItemJsons(): List<String> =
         itemJsons(dao.getDirtyNestedItems())
 
+    /**
+     * Stages a force push: bumps the document and every live item clock to
+     * [nowMillis] (so the pushed rows win last-write-wins on other devices),
+     * then returns the full local document plus all live items as JSON.
+     * Returns null when the document is missing or already a tombstone.
+     *
+     * The bump is persisted before the upload, so a failed force push leaves
+     * dirty rows that the next regular sync uploads anyway.
+     */
+    suspend fun stageForcePush(documentId: String, nowMillis: Long): NestedForcePushPayload? {
+        val existing = dao.nestedDocumentById(documentId)?.takeIf { !it.deleted } ?: return null
+        dao.touchNestedDocumentForForcePush(existing.id, nowMillis)
+        dao.touchNestedItemsForForcePush(existing.id, nowMillis)
+        val document = dao.nestedDocumentById(existing.id) ?: return null
+        val items = dao.getLiveNestedItemsForDocument(existing.id)
+        val tagsByItem = if (items.isEmpty()) {
+            emptyMap()
+        } else {
+            dao.nestedItemTagsForItems(items.map { it.id })
+                .groupBy { it.itemId }
+                .mapValues { entry -> entry.value.map { it.tagId } }
+        }
+        return NestedForcePushPayload(
+            documentJson = NestedSyncDocument.toJson(
+                NestedForceSync.documentMap(document, nowMillis)
+            ),
+            itemJsons = items.map { item ->
+                NestedSyncDocument.toJson(
+                    NestedForceSync.itemMap(item, tagsByItem[item.id].orEmpty(), nowMillis)
+                )
+            },
+            itemIds = items.map { it.id },
+        )
+    }
+
+    /**
+     * Applies a force pull: replaces the local document and items with the
+     * remote rows verbatim (remote clocks kept, clean, unknown tag ids
+     * dropped) in one transaction. Returns false for an invalid or
+     * tombstoned remote document.
+     */
+    suspend fun replaceDocumentFromRemote(
+        documentJson: String,
+        itemJsons: List<String>,
+    ): Boolean {
+        val map = NestedSyncDocument.mapFromJson(documentJson) ?: return false
+        val documentId = map[NestedSyncDocument.FIELD_ID] as? String ?: return false
+        val document = NestedForceSync.pullDocument(map, documentId) ?: return false
+        val remotes = itemJsons.mapNotNull { json ->
+            NestedSyncDocument.mapFromJson(json)?.let { itemMap ->
+                NestedSyncDocument.itemFromMap(document.id, itemMap)
+            }
+        }
+        val referencedTagIds = remotes.flatMap { it.tagIds }.distinct()
+        val knownTagIds = if (referencedTagIds.isEmpty()) {
+            emptySet()
+        } else {
+            dao.tagsByIds(referencedTagIds).map { it.id }.toSet()
+        }
+        val pulled = NestedForceSync.pullItems(
+            items = remotes,
+            documentId = document.id,
+            knownTagIds = knownTagIds,
+            localCollapsedById = dao.getLiveNestedItemsForDocument(document.id)
+                .associate { it.id to it.collapsed },
+        )
+        dao.replaceNestedDocumentFromSync(
+            document = document,
+            items = pulled.map { it.item },
+            tagLinks = pulled.flatMap { row ->
+                row.tagIds.map { tagId -> NestedItemTagEntity(itemId = row.item.id, tagId = tagId) }
+            },
+        )
+        return true
+    }
+
     private suspend fun itemJsons(items: List<NestedListItemEntity>): List<String> {
         if (items.isEmpty()) return emptyList()
         val tagsByItem = dao.nestedItemTagsForItems(items.map { it.id })
@@ -80,7 +156,6 @@ class NestedSyncBridge(
                     checkboxEnabled = entity.checkboxEnabled,
                     checked = entity.checked,
                     completedAtMillis = entity.completedAtMillis,
-                    collapsed = entity.collapsed,
                     textStyle = entity.textStyle,
                     textColor = entity.textColor,
                     backgroundColor = entity.backgroundColor,
@@ -335,7 +410,8 @@ class NestedSyncBridge(
                 checkboxEnabled = remote.checkboxEnabled,
                 checked = remote.checked,
                 completedAtMillis = remote.completedAtMillis,
-                collapsed = remote.collapsed,
+                // Collapsed is local view state; never take it from the cloud.
+                collapsed = existing?.collapsed ?: false,
                 textStyle = remote.textStyle,
                 textColor = remote.textColor,
                 backgroundColor = remote.backgroundColor,
@@ -372,7 +448,6 @@ class NestedSyncBridge(
             checkboxEnabled = entity.checkboxEnabled,
             checked = entity.checked,
             completedAtMillis = entity.completedAtMillis,
-            collapsed = entity.collapsed,
             textStyle = entity.textStyle,
             textColor = entity.textColor,
             backgroundColor = entity.backgroundColor,
@@ -401,7 +476,6 @@ class NestedSyncBridge(
             checkboxEnabled = remote.checkboxEnabled,
             checked = remote.checked,
             completedAtMillis = remote.completedAtMillis,
-            collapsed = remote.collapsed,
             textStyle = remote.textStyle,
             textColor = remote.textColor,
             backgroundColor = remote.backgroundColor,
@@ -465,6 +539,16 @@ data class NestedSyncSnapshot(
     val documents: List<NestedDocumentEntity>,
     val items: List<NestedListItemEntity>,
     val itemTags: List<NestedItemTagEntity>,
+)
+
+/**
+ * Staged force-push upload: the local document plus every live item, all
+ * clock-bumped to the staging time. Swift receives this across the bridge.
+ */
+data class NestedForcePushPayload(
+    val documentJson: String,
+    val itemJsons: List<String>,
+    val itemIds: List<String>,
 )
 
 private val snapshotJson = Json {

@@ -1136,6 +1136,25 @@ interface CheckItDao {
         return document.id
     }
 
+    /**
+     * Force-pull replacement: hard-deletes the local document (cascading to
+     * its items and tag links) and inserts the cloud rows in one transaction
+     * so observers never see an empty intermediate tree.
+     *
+     * Rows must arrive parents-before-children (see [NestedForceSync.pullItems]).
+     */
+    @Transaction
+    suspend fun replaceNestedDocumentFromSync(
+        document: NestedDocumentEntity,
+        items: List<NestedListItemEntity>,
+        tagLinks: List<NestedItemTagEntity>,
+    ) {
+        hardDeleteNestedDocuments(listOf(document.id))
+        insertNestedDocument(document)
+        if (items.isNotEmpty()) insertNestedListItems(items)
+        if (tagLinks.isNotEmpty()) insertNestedItemTags(tagLinks)
+    }
+
     @Query("SELECT * FROM nested_documents WHERE deleted = 0 ORDER BY sortOrder ASC, updatedAtMillis DESC, id ASC")
     fun observeNestedDocuments(): Flow<List<NestedDocumentEntity>>
 
@@ -1234,14 +1253,19 @@ interface CheckItDao {
     @Query("UPDATE nested_list_items SET checked = :checked, completedAtMillis = CASE WHEN :checked THEN :updatedAtMillis ELSE NULL END, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id IN (:itemIds)")
     suspend fun setNestedItemsChecked(itemIds: List<String>, checked: Boolean, updatedAtMillis: Long)
 
-    @Query("UPDATE nested_list_items SET collapsed = :collapsed, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
-    suspend fun setNestedItemCollapsed(itemId: String, collapsed: Boolean, updatedAtMillis: Long)
+    /**
+     * Collapsed is a per-device viewing property: it must not bump the sync
+     * clock or mark the row dirty, otherwise expanding/collapsing would be
+     * uploaded and overwrite other devices' view state.
+     */
+    @Query("UPDATE nested_list_items SET collapsed = :collapsed WHERE id = :itemId")
+    suspend fun setNestedItemCollapsed(itemId: String, collapsed: Boolean)
 
-    @Query("UPDATE nested_list_items SET collapsed = :collapsed, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id IN (:itemIds)")
-    suspend fun setNestedItemsCollapsed(itemIds: List<String>, collapsed: Boolean, updatedAtMillis: Long)
+    @Query("UPDATE nested_list_items SET collapsed = :collapsed WHERE id IN (:itemIds)")
+    suspend fun setNestedItemsCollapsed(itemIds: List<String>, collapsed: Boolean)
 
-    @Query("UPDATE nested_list_items SET collapsed = NOT collapsed, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
-    suspend fun toggleNestedItemCollapsed(itemId: String, updatedAtMillis: Long)
+    @Query("UPDATE nested_list_items SET collapsed = NOT collapsed WHERE id = :itemId")
+    suspend fun toggleNestedItemCollapsed(itemId: String)
 
     @Query("UPDATE nested_list_items SET parentId = :parentId, position = :position, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
     suspend fun updateNestedItemPosition(
@@ -1333,6 +1357,18 @@ interface CheckItDao {
 
     @Query("SELECT * FROM nested_list_items WHERE documentId = :documentId AND dirty = 1 ORDER BY updatedAtMillis ASC")
     suspend fun getDirtyNestedItemsForDocument(documentId: String): List<NestedListItemEntity>
+
+    /** Every live item of one document, pushed wholesale by a force push. */
+    @Query("SELECT * FROM nested_list_items WHERE documentId = :documentId AND deleted = 0 ORDER BY position ASC, id ASC")
+    suspend fun getLiveNestedItemsForDocument(documentId: String): List<NestedListItemEntity>
+
+    /** Bumps the document clock so a force push wins last-write-wins elsewhere. */
+    @Query("UPDATE nested_documents SET updatedAtMillis = :nowMillis, dirty = 1 WHERE id = :documentId AND deleted = 0")
+    suspend fun touchNestedDocumentForForcePush(documentId: String, nowMillis: Long)
+
+    /** Bumps every live item clock so a force push wins last-write-wins elsewhere. */
+    @Query("UPDATE nested_list_items SET updatedAtMillis = :nowMillis, dirty = 1 WHERE documentId = :documentId AND deleted = 0")
+    suspend fun touchNestedItemsForForcePush(documentId: String, nowMillis: Long)
 
     @Query("SELECT id FROM nested_list_items WHERE documentId = :documentId AND deleted = 1 AND dirty = 0 AND updatedAtMillis <= :cutoff ORDER BY updatedAtMillis ASC")
     suspend fun getPurgeableNestedItemIdsForDocument(documentId: String, cutoff: Long): List<String>

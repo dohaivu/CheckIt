@@ -11,8 +11,10 @@ import com.checkit.domain.NestedSortOrder
 import com.checkit.domain.MoveDestinations
 import com.checkit.domain.moveDestinations
 import com.checkit.domain.NestedMetricSummary
+import com.checkit.domain.NestedOutlineProjection
 import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.computeNestedInsertPosition
+import com.checkit.domain.filterNestedTreeWithContext
 import com.checkit.domain.TagItem
 import com.checkit.domain.TaskPriority
 import com.checkit.ui.isValidForSave
@@ -199,7 +201,7 @@ class NestedAppleHelper(
     }
 
     fun saveItemNote(itemId: String, note: String?) {
-        scope.launch { runCatching { updateItemNote(itemId, note?.take(2_000)) } }
+        scope.launch { runCatching { updateItemNote(itemId, note?.take(NESTED_NOTE_MAX_LENGTH)) } }
     }
 
     // --- Formatting & metadata (same use cases as Android) ---
@@ -310,6 +312,20 @@ class NestedAppleHelper(
 
     fun toggleCheckboxEnabled(itemId: String, enabled: Boolean) {
         scope.launch { runCatching { setCheckboxEnabled(itemId, enabled) } }
+    }
+
+    /** Enables checkboxes on every direct child that does not already have one. */
+    fun enableCheckboxForChildren(itemId: String) {
+        scope.launch {
+            val ids = latestTrees.values
+                .firstNotNullOfOrNull { it.nodeById[itemId] }
+                ?.children
+                .orEmpty()
+                .map { it.item }
+                .filter { !it.checkboxEnabled }
+                .map { it.id }
+            ids.forEach { runCatching { setCheckboxEnabled(it, true) } }
+        }
     }
 
     fun setChecked(itemIds: List<String>, checked: Boolean) {
@@ -467,6 +483,19 @@ object NestedAppleBridge {
 
     fun helper(): NestedAppleHelper =
         koinApp?.koin?.get() ?: KoinPlatform.getKoin().get()
+
+    /**
+     * Swift-friendly outline projection for the macOS Working/search UI:
+     * title query plus the Working filter, with the same ancestor-context keep
+     * semantics as the Compose editor. The shared filter matches item titles
+     * only (notes are excluded). Avoids date/tag interop.
+     */
+    fun filterOutlineProjection(
+        roots: List<NestedItemNode>,
+        query: String = "",
+        workingOnly: Boolean = false
+    ): NestedOutlineProjection =
+        filterNestedTreeWithContext(roots, query = query, workingOnly = workingOnly)
 
     fun syncBridge(): com.checkit.data.NestedSyncBridge =
         koinApp?.koin?.get() ?: KoinPlatform.getKoin().get()

@@ -33,10 +33,12 @@ import FirebaseFirestore
 /// Compact sync state for the nested editor, mirroring NestedSyncState.
 struct NestedSyncUiState {
     enum Status { case idle, syncing, synced, offline, error }
+    enum Operation { case sync, listSync, forcePush, forcePull }
     var status: Status = .idle
     var documentId: String?
     var lastSyncedAt: Date?
     var message: String?
+    var operation: Operation = .sync
 }
 
 @MainActor
@@ -88,18 +90,22 @@ final class NestedFirestoreSync: ObservableObject {
     /// Performs a full pull/reconcile when explicitly requested by user tap.
     func syncNow(documentId: String) {
         guard !documentId.isEmpty else { return }
-        Task { await sync(documentId: documentId, isFullPull: true) }
+        Task { await sync(documentId: documentId, isFullPull: true, operation: .sync) }
     }
 
     // MARK: - Sync
 
-    func sync(documentId: String, isFullPull: Bool = false) async {
+    func sync(
+        documentId: String,
+        isFullPull: Bool = false,
+        operation: NestedSyncUiState.Operation = .sync
+    ) async {
         guard !isSyncing else { return }
         isSyncing = true
         defer { isSyncing = false }
 
         await writePreSyncSnapshot(documentId: documentId)
-        guard let prepared = await prepareSync(documentId: documentId) else { return }
+        guard let prepared = await prepareSync(documentId: documentId, operation: operation) else { return }
         let (userId, db) = prepared
         do {
             print("[NestedSync] started uid=\(userId) doc=\(documentId) (isFullPull=\(isFullPull))")
@@ -166,10 +172,145 @@ final class NestedFirestoreSync: ObservableObject {
             let purged = purgedItems + purgedDoc
 
             UserDefaults.standard.set(Double(pullStart), forKey: Self.lastSyncedAtKey(documentId))
-            uiState = NestedSyncUiState(status: .synced, documentId: documentId, lastSyncedAt: Date(timeIntervalSince1970: Double(pullStart) / 1000.0))
+            uiState = NestedSyncUiState(
+                status: .synced,
+                documentId: documentId,
+                lastSyncedAt: Date(timeIntervalSince1970: Double(pullStart) / 1000.0),
+                operation: operation
+            )
             print("[NestedSync] doc=\(documentId) pulled=\(itemJsons.count) applied=\(applied) reconciled=\(reconciled) pushed=\(pushed) purged=\(purged)")
         } catch {
-            recordSyncFailure(documentId: documentId, error: error)
+            recordSyncFailure(documentId: documentId, error: error, operation: operation)
+        }
+    }
+
+    // MARK: - Force sync
+
+    /// Overwrites the cloud copy with this device's document and items.
+    /// Destructive to other devices' copies, so the UI confirms first.
+    func forcePush(documentId: String) {
+        guard !documentId.isEmpty else { return }
+        Task { await performForcePush(documentId: documentId) }
+    }
+
+    private func performForcePush(documentId: String) async {
+        guard !isSyncing else { return }
+        isSyncing = true
+        defer { isSyncing = false }
+
+        await writePreSyncSnapshot(documentId: documentId)
+        guard let prepared = await prepareSync(documentId: documentId, operation: .forcePush) else { return }
+        let (userId, db) = prepared
+        do {
+            let docRef = db.collection(Self.config.USERS_COLLECTION).document(userId)
+                .collection(Self.config.DOCUMENTS_COLLECTION).document(documentId)
+            let itemsRef = docRef.collection(Self.config.ITEMS_COLLECTION)
+            let pushedAt = Self.nowMillis()
+            guard let payload = try await bridgeStageForcePush(documentId: documentId, now: pushedAt) else {
+                recordFailure(
+                    documentId: documentId,
+                    message: "This document is not available on this device.",
+                    operation: .forcePush
+                )
+                return
+            }
+            guard let docMap = Self.documentDict(json: payload.documentJson) else {
+                recordFailure(
+                    documentId: documentId,
+                    message: "Force push failed (invalid local document).",
+                    operation: .forcePush
+                )
+                return
+            }
+            try await docRef.setData(docMap)
+            let itemMaps = payload.itemJsons.compactMap { Self.documentDict(json: $0) }
+            let pushed = 1 + (try await pushJsons(itemMaps, into: itemsRef, db: db) { ids, maxUpdated in
+                try await bridgeMarkItemsClean(ids: ids, maxUpdatedAt: maxUpdated)
+            })
+
+            // Mirror: anything in the cloud collection that is not local is removed.
+            let remoteSnapshot = try await itemsRef.getDocuments()
+            let extras = NestedForceSync.shared.remoteExtrasToDelete(
+                localIds: payload.itemIds,
+                remoteIds: remoteSnapshot.documents.map(\.documentID)
+            )
+            try await deleteDocuments(extras, in: itemsRef, db: db)
+
+            try await bridgeMarkDocumentClean(id: documentId, maxUpdatedAt: pushedAt)
+            UserDefaults.standard.set(Double(pushedAt), forKey: Self.lastSyncedAtKey(documentId))
+            uiState = NestedSyncUiState(
+                status: .synced,
+                documentId: documentId,
+                lastSyncedAt: Date(timeIntervalSince1970: Double(pushedAt) / 1000.0),
+                message: "Force push complete",
+                operation: .forcePush
+            )
+            print("[NestedSync] force push doc=\(documentId) pushed=\(pushed) removedRemote=\(extras.count)")
+        } catch {
+            recordSyncFailure(documentId: documentId, error: error, operation: .forcePush)
+        }
+    }
+
+    /// Replaces this device's document and items with the cloud copy.
+    /// Aborts without touching local data when the cloud has no live copy.
+    func forcePull(documentId: String) {
+        guard !documentId.isEmpty else { return }
+        Task { await performForcePull(documentId: documentId) }
+    }
+
+    private func performForcePull(documentId: String) async {
+        guard !isSyncing else { return }
+        isSyncing = true
+        defer { isSyncing = false }
+
+        await writePreSyncSnapshot(documentId: documentId)
+        guard let prepared = await prepareSync(documentId: documentId, operation: .forcePull) else { return }
+        let (userId, db) = prepared
+        do {
+            let docRef = db.collection(Self.config.USERS_COLLECTION).document(userId)
+                .collection(Self.config.DOCUMENTS_COLLECTION).document(documentId)
+            let itemsRef = docRef.collection(Self.config.ITEMS_COLLECTION)
+            let pullStart = Self.nowMillis()
+
+            let docSnapshot = try await docRef.getDocument()
+            guard docSnapshot.exists,
+                  let data = docSnapshot.data(),
+                  (data["deleted"] as? Bool) != true,
+                  let docJson = Self.jsonString(for: data, documentId: docSnapshot.documentID)
+            else {
+                recordFailure(
+                    documentId: documentId,
+                    message: "No cloud copy to pull.",
+                    operation: .forcePull
+                )
+                return
+            }
+
+            let itemSnapshot = try await itemsRef.getDocuments()
+            var itemJsons: [String] = []
+            for doc in itemSnapshot.documents {
+                guard let json = Self.jsonString(for: doc.data(), documentId: doc.documentID) else { continue }
+                itemJsons.append(json)
+            }
+            guard try await bridgeReplaceDocumentFromRemote(documentJson: docJson, itemJsons: itemJsons) else {
+                recordFailure(
+                    documentId: documentId,
+                    message: "Force pull failed (invalid cloud copy).",
+                    operation: .forcePull
+                )
+                return
+            }
+            UserDefaults.standard.set(Double(pullStart), forKey: Self.lastSyncedAtKey(documentId))
+            uiState = NestedSyncUiState(
+                status: .synced,
+                documentId: documentId,
+                lastSyncedAt: Date(timeIntervalSince1970: Double(pullStart) / 1000.0),
+                message: "Force pull complete",
+                operation: .forcePull
+            )
+            print("[NestedSync] force pull doc=\(documentId) items=\(itemJsons.count)")
+        } catch {
+            recordSyncFailure(documentId: documentId, error: error, operation: .forcePull)
         }
     }
 
@@ -188,7 +329,7 @@ final class NestedFirestoreSync: ObservableObject {
         defer { isSyncing = false }
 
         await writePreSyncSnapshot(documentId: nil)
-        guard let prepared = await prepareSync(documentId: nil) else { return }
+        guard let prepared = await prepareSync(documentId: nil, operation: .listSync) else { return }
         let (userId, db) = prepared
         do {
             print("[NestedSync] docs started uid=\(userId)")
@@ -240,10 +381,15 @@ final class NestedFirestoreSync: ObservableObject {
             }
 
             UserDefaults.standard.set(Double(pullStart), forKey: Self.lastSyncedDocsKey)
-            uiState = NestedSyncUiState(status: .synced, documentId: nil, lastSyncedAt: Date(timeIntervalSince1970: Double(pullStart) / 1000.0))
+            uiState = NestedSyncUiState(
+                status: .synced,
+                documentId: nil,
+                lastSyncedAt: Date(timeIntervalSince1970: Double(pullStart) / 1000.0),
+                operation: .listSync
+            )
             print("[NestedSync] docs pulled=\(docJsons.count) applied=\(applied) reconciled=\(reconciled) pushed=\(pushed) purged=\(purged)")
         } catch {
-            recordSyncFailure(documentId: nil, error: error)
+            recordSyncFailure(documentId: nil, error: error, operation: .listSync)
         }
     }
 
@@ -278,23 +424,37 @@ final class NestedFirestoreSync: ObservableObject {
 
     /// Shared online/config/sign-in prologue. Sets uiState and returns nil
     /// when a terminal state was already set (offline or sign-in fail).
-    private func prepareSync(documentId: String?) async -> (String, Firestore)? {
+    private func prepareSync(
+        documentId: String?,
+        operation: NestedSyncUiState.Operation = .sync
+    ) async -> (String, Firestore)? {
         let last = documentId.map { lastSyncedAt(documentId: $0) } ?? lastSyncedDocsAt()
         online = monitor.currentPath.status == .satisfied
         guard isFirebaseConfigured() else {
             uiState = NestedSyncUiState(
                 status: .error, documentId: documentId, lastSyncedAt: last,
-                message: "Firebase not configured. Add GoogleService-Info.plist."
+                message: "Firebase not configured. Add GoogleService-Info.plist.",
+                operation: operation
             )
             return nil
         }
         guard online else {
-            uiState = NestedSyncUiState(status: .offline, documentId: documentId, lastSyncedAt: last)
+            uiState = NestedSyncUiState(
+                status: .offline, documentId: documentId, lastSyncedAt: last,
+                operation: operation
+            )
             return nil
         }
-        uiState = NestedSyncUiState(status: .syncing, documentId: documentId, lastSyncedAt: last)
+        uiState = NestedSyncUiState(
+            status: .syncing, documentId: documentId, lastSyncedAt: last,
+            operation: operation
+        )
         guard let userId = try? await ensureUserId() else {
-            recordFailure(documentId: documentId, message: "Sign-in failed. Try again.")
+            recordFailure(
+                documentId: documentId,
+                message: "Sign-in failed. Try again.",
+                operation: operation
+            )
             return nil
         }
         // Account switch (link, sign-in/out): clean rows would never upload
@@ -360,6 +520,23 @@ final class NestedFirestoreSync: ObservableObject {
         return rows.count
     }
 
+    /// Deletes remote rows a force push found only in the cloud. Batched like
+    /// pushes so a large mirror never exceeds the commit limit.
+    private func deleteDocuments(
+        _ ids: [String],
+        in collection: CollectionReference,
+        db: Firestore
+    ) async throws {
+        guard !ids.isEmpty else { return }
+        for chunk in ids.chunked(into: Int(Self.config.PUSH_BATCH_SIZE)) {
+            let batch = db.batch()
+            for id in chunk {
+                batch.deleteDocument(collection.document(id))
+            }
+            try await batch.commit()
+        }
+    }
+
     /// Purges uploaded item tombstones of one document. Returns the count.
     private func purgeItems(itemsRef: CollectionReference, documentId: String, cutoff: Int64) async -> Int {
         var purged = 0
@@ -402,26 +579,40 @@ final class NestedFirestoreSync: ObservableObject {
         return result.user.uid
     }
 
-    private func recordFailure(documentId: String?, message: String) {
+    private func recordFailure(
+        documentId: String?,
+        message: String,
+        operation: NestedSyncUiState.Operation = .sync
+    ) {
         let last: Date?
         if let documentId {
             last = lastSyncedAt(documentId: documentId)
         } else {
             last = lastSyncedDocsAt()
         }
-        uiState = NestedSyncUiState(status: .error, documentId: documentId, lastSyncedAt: last, message: message)
+        uiState = NestedSyncUiState(
+            status: .error,
+            documentId: documentId,
+            lastSyncedAt: last,
+            message: message,
+            operation: operation
+        )
         print("[NestedSync] \(message)")
     }
 
     /// Shared catch-block mapping: offline vs failed, surfaced via state.
-    private func recordSyncFailure(documentId: String?, error: Error) {
+    private func recordSyncFailure(
+        documentId: String?,
+        error: Error,
+        operation: NestedSyncUiState.Operation = .sync
+    ) {
         let message: String
         if !online {
             message = "You're offline. Changes are saved on this device."
         } else {
             message = "Sync failed (\(error.localizedDescription)). Try again."
         }
-        recordFailure(documentId: documentId, message: message)
+        recordFailure(documentId: documentId, message: message, operation: operation)
     }
 
     private func lastSyncedDate(key: String) -> Date? {
@@ -498,6 +689,24 @@ final class NestedFirestoreSync: ObservableObject {
             bridge().dirtyDocumentJsons { jsons, error in
                 if let error { cont.resume(throwing: error) }
                 else { cont.resume(returning: jsons ?? []) }
+            }
+        }
+    }
+
+    private func bridgeStageForcePush(documentId: String, now: Int64) async throws -> NestedForcePushPayload? {
+        try await withCheckedThrowingContinuation { cont in
+            bridge().stageForcePush(documentId: documentId, nowMillis: now) { payload, error in
+                if let error { cont.resume(throwing: error) }
+                else { cont.resume(returning: payload) }
+            }
+        }
+    }
+
+    private func bridgeReplaceDocumentFromRemote(documentJson: String, itemJsons: [String]) async throws -> Bool {
+        try await withCheckedThrowingContinuation { cont in
+            bridge().replaceDocumentFromRemote(documentJson: documentJson, itemJsons: itemJsons) { replaced, error in
+                if let error { cont.resume(throwing: error) }
+                else { cont.resume(returning: replaced?.boolValue ?? false) }
             }
         }
     }

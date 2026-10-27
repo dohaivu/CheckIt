@@ -37,14 +37,14 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		71EAA4C03052F31000B51246 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+		71EAA4C03052F31000B51246 /* Exceptions for "macosApp" folder in "macosApp" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
 			target = 71EAA46A3052D84100B51246 /* macosApp */;
 		};
-		F94DCACA613C9367D60C7A1A /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+		F94DCACA613C9367D60C7A1A /* Exceptions for "iosApp" folder in "iosApp" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -57,11 +57,7 @@
 		2BC5D7696153CB0DFC4B6B4F /* iosApp */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				F94DCACA613C9367D60C7A1A /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
-			);
-			explicitFileTypes = {
-			};
-			explicitFolders = (
+				F94DCACA613C9367D60C7A1A /* Exceptions for "iosApp" folder in "iosApp" target */,
 			);
 			path = iosApp;
 			sourceTree = "<group>";
@@ -69,21 +65,13 @@
 		71EAA46C3052D84100B51246 /* macosApp */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				71EAA4C03052F31000B51246 /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
-			);
-			explicitFileTypes = {
-			};
-			explicitFolders = (
+				71EAA4C03052F31000B51246 /* Exceptions for "macosApp" folder in "macosApp" target */,
 			);
 			path = macosApp;
 			sourceTree = "<group>";
 		};
 		FC96EE3B9F525CF6769329B5 /* Configuration */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			explicitFileTypes = {
-			};
-			explicitFolders = (
-			);
 			path = Configuration;
 			sourceTree = "<group>";
 		};
@@ -621,7 +609,7 @@
 			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 12.19.1;
+				minimumVersion = 12.19.2;
 			};
 		};
 		71EAA4B13052F30000B51246 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
@@ -629,7 +617,7 @@
 			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 8.0.0;
+				minimumVersion = 10.0.0;
 			};
 		};
 		71EAA4C13052F31000B51246 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */ = {
@@ -637,7 +625,7 @@
 			repositoryURL = "https://github.com/sindresorhus/KeyboardShortcuts";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 2.0.0;
+				minimumVersion = 3.1.0;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */

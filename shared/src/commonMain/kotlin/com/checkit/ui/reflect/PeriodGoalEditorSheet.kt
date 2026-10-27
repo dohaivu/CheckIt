@@ -141,7 +141,7 @@ internal fun PeriodGoalEditorSheet(
             if (editor.mode == ReflectGoalEditorMode.Full) {
                 Text(
                     text = ReflectionPrompts.get(editor.focus.period).reviewText,
-                    style = MaterialTheme.typography.labelMedium,
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary
                 )
                 MarkdownTextField(
@@ -251,7 +251,7 @@ internal fun PeriodGoalEditorSheet(
 
             Text(
                 text = ReflectionPrompts.get(editor.focus.period).goalText,
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.primary,
             )
             MarkdownTextField(
@@ -312,12 +312,16 @@ internal object ReflectionPrompts {
     fun get(period: Period): ReflectionPrompt = when (period) {
         Period.Day -> ReflectionPrompt(
             reviewSections = listOf(
-                "What were your wins?",
-                "Where did you feel friction? What distracted you? How can I prevent it tomorrow?",
+                "1. What actually happened?",
+                "2. Did I move anything important?",
+                "3. If not, what was the obstacle?",
+                "4. What will I change tomorrow?"
             ),
             goalPrompts = listOf(
-                "What can I make slightly better today? Why? If/When-Then",
-                "How you want to be?"
+                "1. What matters today?",
+                "2. What is the next observable action?",
+                "3. What will probably stop me?",
+                "4. If it happens → Then what will I do?",
             )
         )
         Period.Week -> ReflectionPrompt(

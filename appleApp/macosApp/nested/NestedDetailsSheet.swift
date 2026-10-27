@@ -75,7 +75,9 @@ struct NestedNoteEditor: View {
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
-                Text("\(text.count)/2,000")
+                // Character budget shown next to the note; shared by the sheet
+                // and the inspector, which display the same note.
+                Text("\(text.count)/5,000")
                     .font(.caption).foregroundStyle(.secondary)
                 Button {
                     if showPreview {
@@ -111,6 +113,8 @@ struct NestedNoteEditor: View {
 struct NestedNoteSheet: View {
     @ObservedObject var state: NestedEditorState
     let item: NestedListItem
+    /// ⌃N opens the sheet in read-only preview instead of the editor.
+    var startsInPreview: Bool = false
     @Environment(\.dismiss) private var dismiss
     @State private var text: String = ""
     @State private var focused = false
@@ -118,7 +122,12 @@ struct NestedNoteSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Note").font(.headline)
-            NestedNoteEditor(text: $text, isDirty: isDirty, focused: $focused)
+            NestedNoteEditor(
+                text: $text,
+                isDirty: isDirty,
+                focused: $focused,
+                startsInPreview: startsInPreview
+            )
             HStack {
                 Spacer()
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
@@ -129,13 +138,16 @@ struct NestedNoteSheet: View {
             }
         }
         .padding()
-        .frame(minWidth: 760, idealWidth: 920, maxWidth: .infinity, minHeight: 460, idealHeight: 620, maxHeight: .infinity)
+        .frame(minWidth: 900, idealWidth: 1120, maxWidth: .infinity, minHeight: 560, idealHeight: 760, maxHeight: .infinity)
         .onAppear {
             text = item.note ?? ""
             // Focus once the sheet's window exists: the AppKit editor can only
             // take first responder once it is in a window, and the user should
-            // be able to start typing immediately.
-            DispatchQueue.main.async { focused = true }
+            // be able to start typing immediately. Preview mode is read-only,
+            // so it never grabs focus.
+            if !startsInPreview {
+                DispatchQueue.main.async { focused = true }
+            }
         }
     }
 
@@ -295,7 +307,8 @@ struct NestedDetailsForm: View {
         let directChildCount = children.count
         let totalChildCount = totalDescendants(of: node)
         let summary = state.summary(for: item.id)
-        let doneChildCount = summary?.doneItemCount ?? 0
+        let doneTaskCount = summary?.doneTaskCount ?? 0
+        let totalTaskCount = summary?.totalTaskCount ?? 0
         let totalTrackedMinutes = summary?.trackedMinutes ?? 0
         return ScrollView {
             VStack(alignment: .leading, spacing: 10) {
@@ -305,7 +318,9 @@ struct NestedDetailsForm: View {
                         title: "Children",
                         value: directChildCount == totalChildCount
                             ? "\(totalChildCount)" : "\(directChildCount) (\(totalChildCount))",
-                        subtitle: totalChildCount > 0 ? "\(doneChildCount) done" : "Leaf item"
+                        subtitle: totalChildCount > 0
+                            ? (totalTaskCount > 0 ? "\(doneTaskCount)/\(totalTaskCount) done" : "No checkboxes")
+                            : "Leaf item"
                     )
                     statCard(
                         title: "Actual time",
@@ -573,6 +588,7 @@ struct NestedFormattingBar: View {
     }
 
     var body: some View {
+        let hasChildren = !(state.indexById[item.id]?.children.isEmpty ?? true)
         HStack(spacing: 6) {
             // Text style (flat rows; Toggle renders a native checkmark on
             // the current value — custom row views don't paint in Menus).
@@ -587,6 +603,10 @@ struct NestedFormattingBar: View {
                 Button(item.checkboxEnabled ? "Hide checkbox" : "Show checkbox") {
                     state.setCheckboxEnabled(id: item.id, enabled: !item.checkboxEnabled)
                 }
+                Button("Add checkbox for children") {
+                    state.enableCheckboxForChildren(id: item.id)
+                }
+                .disabled(!hasChildren)
             } label: {
                 Image(systemName: "textformat.size")
             }

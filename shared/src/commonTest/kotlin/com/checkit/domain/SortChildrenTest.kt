@@ -96,7 +96,7 @@ class SortChildrenTest {
     }
 
     @Test
-    fun incompleteFirstKeepsStableOrderWithinGroups() {
+    fun uncheckedFirstKeepsStableOrderWithinGroups() {
         val items = listOf(
             item("a", "p", 0, checked = true),
             item("b", "p", 1, checked = false),
@@ -111,7 +111,7 @@ class SortChildrenTest {
                 NestedItemMove("a", "p", 2),
                 NestedItemMove("c", "p", 3),
             ),
-            moves.sortChildren(items, "p", NestedSortOrder.IncompleteFirst)
+            moves.sortChildren(items, "p", NestedSortOrder.UncheckedFirst)
         )
     }
 
