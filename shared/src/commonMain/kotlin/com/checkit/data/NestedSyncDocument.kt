@@ -28,6 +28,9 @@ import kotlinx.serialization.json.put
  * Tag membership syncs embedded as [FIELD_TAG_IDS]; the join rows stay
  * local-only and are rebuilt from the ids on apply (unknown ids are
  * dropped to satisfy the tags foreign key).
+ *
+ * `collapsed` is deliberately not synced: it is per-device view state, so
+ * it is neither uploaded nor applied from remote rows.
  */
 object NestedSyncDocument {
     const val FIELD_ID = "id"
@@ -45,7 +48,6 @@ object NestedSyncDocument {
     const val FIELD_CHECKBOX_ENABLED = "checkboxEnabled"
     const val FIELD_CHECKED = "checked"
     const val FIELD_COMPLETED_AT = "completedAtMillis"
-    const val FIELD_COLLAPSED = "collapsed"
     const val FIELD_TEXT_STYLE = "textStyle"
     const val FIELD_TEXT_COLOR = "textColor"
     const val FIELD_BACKGROUND_COLOR = "backgroundColor"
@@ -85,7 +87,6 @@ object NestedSyncDocument {
         checkboxEnabled: Boolean,
         checked: Boolean,
         completedAtMillis: Long? = null,
-        collapsed: Boolean,
         textStyle: String,
         textColor: String,
         backgroundColor: String,
@@ -111,7 +112,6 @@ object NestedSyncDocument {
         FIELD_CHECKBOX_ENABLED to checkboxEnabled,
         FIELD_CHECKED to checked,
         FIELD_COMPLETED_AT to completedAtMillis,
-        FIELD_COLLAPSED to collapsed,
         FIELD_TEXT_STYLE to textStyle,
         FIELD_TEXT_COLOR to textColor,
         FIELD_BACKGROUND_COLOR to backgroundColor,
@@ -160,7 +160,6 @@ object NestedSyncDocument {
             checkboxEnabled = map[FIELD_CHECKBOX_ENABLED] as? Boolean ?: false,
             checked = map[FIELD_CHECKED] as? Boolean ?: false,
             completedAtMillis = (map[FIELD_COMPLETED_AT] as? Number)?.toLong(),
-            collapsed = map[FIELD_COLLAPSED] as? Boolean ?: false,
             textStyle = map[FIELD_TEXT_STYLE] as? String ?: "Body",
             textColor = map[FIELD_TEXT_COLOR] as? String ?: "Default",
             backgroundColor = map[FIELD_BACKGROUND_COLOR] as? String ?: "Default",
@@ -308,7 +307,6 @@ data class RemoteNestedItem(
     val checkboxEnabled: Boolean,
     val checked: Boolean,
     val completedAtMillis: Long? = null,
-    val collapsed: Boolean,
     val textStyle: String,
     val textColor: String,
     val backgroundColor: String,

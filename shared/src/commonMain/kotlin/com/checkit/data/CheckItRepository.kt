@@ -1612,12 +1612,12 @@ class RoomCheckItRepository(
     }
 
     override suspend fun toggleNestedItemCollapsed(itemId: String) {
-        dao.toggleNestedItemCollapsed(itemId, Clock.System.now().toEpochMilliseconds())
+        dao.toggleNestedItemCollapsed(itemId)
     }
 
     override suspend fun setNestedItemsCollapsed(itemIds: List<String>, collapsed: Boolean) {
         if (itemIds.isEmpty()) return
-        dao.setNestedItemsCollapsed(itemIds, collapsed, Clock.System.now().toEpochMilliseconds())
+        dao.setNestedItemsCollapsed(itemIds, collapsed)
     }
 
     override suspend fun moveNestedItems(moves: List<NestedItemMove>) {

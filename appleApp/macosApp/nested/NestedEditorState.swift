@@ -48,6 +48,7 @@ struct NestedRow: Identifiable, Equatable {
             && lhs.depth == rhs.depth
             && lhs.isInCheckedBranch == rhs.isInCheckedBranch
             && lhs.isContext == rhs.isContext
+            && lhs.node.item.collapsed == rhs.node.item.collapsed
             && lhs.node.item.updatedAtMillis == rhs.node.item.updatedAtMillis
     }
 }

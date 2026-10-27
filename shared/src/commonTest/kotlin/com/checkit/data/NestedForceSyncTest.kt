@@ -2,6 +2,7 @@ package com.checkit.data
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -67,7 +68,6 @@ class NestedForceSyncTest {
         note = null,
         checkboxEnabled = false,
         checked = false,
-        collapsed = false,
         textStyle = "Body",
         textColor = "Default",
         backgroundColor = "Default",
@@ -113,6 +113,7 @@ class NestedForceSyncTest {
         assertEquals(listOf("tag-a", "tag-b"), map[NestedSyncDocument.FIELD_TAG_IDS])
         assertEquals(1_100L, (map[NestedSyncDocument.FIELD_CREATED_AT] as Number).toLong())
         assertEquals(now, (map[NestedSyncDocument.FIELD_UPDATED_AT] as Number).toLong())
+        assertFalse(map.containsKey("collapsed"))
     }
 
     @Test
@@ -190,6 +191,21 @@ class NestedForceSyncTest {
         )
 
         assertNull(pulled.single().item.parentId)
+    }
+
+    @Test
+    fun pullItemsKeepsLocalCollapsedState() {
+        val pulled = NestedForceSync.pullItems(
+            items = listOf(remoteItem(id = "collapsed"), remoteItem(id = "expanded")),
+            documentId = "doc-1",
+            knownTagIds = emptySet(),
+            localCollapsedById = mapOf("collapsed" to true),
+        )
+
+        assertEquals(
+            mapOf("collapsed" to true, "expanded" to false),
+            pulled.associate { it.item.id to it.item.collapsed },
+        )
     }
 
     @Test

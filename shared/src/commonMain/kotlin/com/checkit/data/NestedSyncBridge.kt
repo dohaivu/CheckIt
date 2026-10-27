@@ -123,7 +123,13 @@ class NestedSyncBridge(
         } else {
             dao.tagsByIds(referencedTagIds).map { it.id }.toSet()
         }
-        val pulled = NestedForceSync.pullItems(remotes, document.id, knownTagIds)
+        val pulled = NestedForceSync.pullItems(
+            items = remotes,
+            documentId = document.id,
+            knownTagIds = knownTagIds,
+            localCollapsedById = dao.getLiveNestedItemsForDocument(document.id)
+                .associate { it.id to it.collapsed },
+        )
         dao.replaceNestedDocumentFromSync(
             document = document,
             items = pulled.map { it.item },
@@ -150,7 +156,6 @@ class NestedSyncBridge(
                     checkboxEnabled = entity.checkboxEnabled,
                     checked = entity.checked,
                     completedAtMillis = entity.completedAtMillis,
-                    collapsed = entity.collapsed,
                     textStyle = entity.textStyle,
                     textColor = entity.textColor,
                     backgroundColor = entity.backgroundColor,
@@ -405,7 +410,8 @@ class NestedSyncBridge(
                 checkboxEnabled = remote.checkboxEnabled,
                 checked = remote.checked,
                 completedAtMillis = remote.completedAtMillis,
-                collapsed = remote.collapsed,
+                // Collapsed is local view state; never take it from the cloud.
+                collapsed = existing?.collapsed ?: false,
                 textStyle = remote.textStyle,
                 textColor = remote.textColor,
                 backgroundColor = remote.backgroundColor,
@@ -442,7 +448,6 @@ class NestedSyncBridge(
             checkboxEnabled = entity.checkboxEnabled,
             checked = entity.checked,
             completedAtMillis = entity.completedAtMillis,
-            collapsed = entity.collapsed,
             textStyle = entity.textStyle,
             textColor = entity.textColor,
             backgroundColor = entity.backgroundColor,
@@ -471,7 +476,6 @@ class NestedSyncBridge(
             checkboxEnabled = remote.checkboxEnabled,
             checked = remote.checked,
             completedAtMillis = remote.completedAtMillis,
-            collapsed = remote.collapsed,
             textStyle = remote.textStyle,
             textColor = remote.textColor,
             backgroundColor = remote.backgroundColor,

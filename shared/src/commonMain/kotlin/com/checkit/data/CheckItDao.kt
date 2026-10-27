@@ -1253,14 +1253,19 @@ interface CheckItDao {
     @Query("UPDATE nested_list_items SET checked = :checked, completedAtMillis = CASE WHEN :checked THEN :updatedAtMillis ELSE NULL END, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id IN (:itemIds)")
     suspend fun setNestedItemsChecked(itemIds: List<String>, checked: Boolean, updatedAtMillis: Long)
 
-    @Query("UPDATE nested_list_items SET collapsed = :collapsed, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
-    suspend fun setNestedItemCollapsed(itemId: String, collapsed: Boolean, updatedAtMillis: Long)
+    /**
+     * Collapsed is a per-device viewing property: it must not bump the sync
+     * clock or mark the row dirty, otherwise expanding/collapsing would be
+     * uploaded and overwrite other devices' view state.
+     */
+    @Query("UPDATE nested_list_items SET collapsed = :collapsed WHERE id = :itemId")
+    suspend fun setNestedItemCollapsed(itemId: String, collapsed: Boolean)
 
-    @Query("UPDATE nested_list_items SET collapsed = :collapsed, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id IN (:itemIds)")
-    suspend fun setNestedItemsCollapsed(itemIds: List<String>, collapsed: Boolean, updatedAtMillis: Long)
+    @Query("UPDATE nested_list_items SET collapsed = :collapsed WHERE id IN (:itemIds)")
+    suspend fun setNestedItemsCollapsed(itemIds: List<String>, collapsed: Boolean)
 
-    @Query("UPDATE nested_list_items SET collapsed = NOT collapsed, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
-    suspend fun toggleNestedItemCollapsed(itemId: String, updatedAtMillis: Long)
+    @Query("UPDATE nested_list_items SET collapsed = NOT collapsed WHERE id = :itemId")
+    suspend fun toggleNestedItemCollapsed(itemId: String)
 
     @Query("UPDATE nested_list_items SET parentId = :parentId, position = :position, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
     suspend fun updateNestedItemPosition(

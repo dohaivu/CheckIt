@@ -39,7 +39,6 @@ object NestedForceSync {
             checkboxEnabled = item.checkboxEnabled,
             checked = item.checked,
             completedAtMillis = item.completedAtMillis,
-            collapsed = item.collapsed,
             textStyle = item.textStyle,
             textColor = item.textColor,
             backgroundColor = item.backgroundColor,
@@ -93,11 +92,15 @@ object NestedForceSync {
      * orphans reparented to the root, unknown tag ids dropped (tags foreign
      * key), remote clocks kept and rows clean. Deleted remote rows are
      * skipped so the local copy holds only live cloud content.
+     *
+     * [localCollapsedById] preserves each device's expand/collapse state,
+     * which is local view state and intentionally not synced.
      */
     fun pullItems(
         items: List<RemoteNestedItem>,
         documentId: String,
         knownTagIds: Set<String>,
+        localCollapsedById: Map<String, Boolean> = emptyMap(),
     ): List<PulledNestedItem> {
         val live = items.filter { !it.deleted }.map { it.copy(documentId = documentId) }
         if (live.isEmpty()) return emptyList()
@@ -113,7 +116,7 @@ object NestedForceSync {
                     checkboxEnabled = remote.checkboxEnabled,
                     checked = remote.checked,
                     completedAtMillis = remote.completedAtMillis,
-                    collapsed = remote.collapsed,
+                    collapsed = localCollapsedById[remote.id] ?: false,
                     textStyle = remote.textStyle,
                     textColor = remote.textColor,
                     backgroundColor = remote.backgroundColor,
