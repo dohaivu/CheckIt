@@ -3,6 +3,8 @@ package com.checkit.ui.nested
 import com.checkit.domain.MetricItem
 import com.checkit.domain.MetricRollupPolicy
 import com.checkit.domain.NestedColorToken
+import com.checkit.domain.NestedBorderShape
+import com.checkit.domain.NestedBorderStyle
 import com.checkit.domain.NestedDocument
 import com.checkit.domain.NestedDocumentTree
 import com.checkit.domain.NestedItemNode
@@ -36,6 +38,7 @@ import com.checkit.domain.usecase.SetNestedItemsCollapsedUseCase
 import com.checkit.domain.usecase.ToggleNestedItemCollapsedUseCase
 import com.checkit.domain.usecase.UpdateNestedItemDateRangeUseCase
 import com.checkit.domain.usecase.UpdateNestedItemFormattingUseCase
+import com.checkit.domain.usecase.UpdateNestedItemBorderUseCase
 import com.checkit.domain.usecase.UpdateNestedItemLabelUseCase
 import com.checkit.domain.usecase.UpdateNestedItemMetricSettingsUseCase
 import com.checkit.domain.usecase.UpdateNestedItemNoteUseCase
@@ -102,6 +105,7 @@ class NestedAppleHelper(
     private val updateItemNote: UpdateNestedItemNoteUseCase,
     private val updateItemLabel: UpdateNestedItemLabelUseCase,
     private val updateItemFormatting: UpdateNestedItemFormattingUseCase,
+    private val updateItemBorder: UpdateNestedItemBorderUseCase,
     private val updateItemDateRange: UpdateNestedItemDateRangeUseCase,
     private val updateItemPriority: UpdateNestedItemPriorityUseCase,
     private val updateItemTags: UpdateNestedItemTagsUseCase,
@@ -229,6 +233,20 @@ class NestedAppleHelper(
                     NestedTextStyle.valueOf(styleName),
                     NestedColorToken.valueOf(textColorName),
                     NestedColorToken.valueOf(backgroundColorName)
+                )
+            }
+        }
+    }
+
+    /** Border shape/style/color, string-based for the SwiftUI editor. */
+    fun updateBorderByName(itemId: String, shapeName: String, styleName: String, borderColorName: String) {
+        scope.launch {
+            runCatching {
+                updateItemBorder(
+                    itemId,
+                    NestedBorderShape.valueOf(shapeName),
+                    NestedBorderStyle.valueOf(styleName),
+                    NestedColorToken.valueOf(borderColorName)
                 )
             }
         }

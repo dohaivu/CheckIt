@@ -52,6 +52,9 @@ object NestedSyncDocument {
     const val FIELD_TEXT_STYLE = "textStyle"
     const val FIELD_TEXT_COLOR = "textColor"
     const val FIELD_BACKGROUND_COLOR = "backgroundColor"
+    const val FIELD_BORDER_SHAPE = "borderShape"
+    const val FIELD_BORDER_STYLE = "borderStyle"
+    const val FIELD_BORDER_COLOR = "borderColor"
     const val FIELD_START_DATE = "startDateEpochDays"
     const val FIELD_END_DATE = "endDateEpochDays"
     const val FIELD_PRIORITY = "priority"
@@ -92,6 +95,9 @@ object NestedSyncDocument {
         textStyle: String,
         textColor: String,
         backgroundColor: String,
+        borderShape: String = "Rounded",
+        borderStyle: String = "None",
+        borderColor: String = "Default",
         startDateEpochDays: Int?,
         endDateEpochDays: Int?,
         priority: String,
@@ -118,6 +124,9 @@ object NestedSyncDocument {
         FIELD_TEXT_STYLE to textStyle,
         FIELD_TEXT_COLOR to textColor,
         FIELD_BACKGROUND_COLOR to backgroundColor,
+        FIELD_BORDER_SHAPE to borderShape,
+        FIELD_BORDER_STYLE to borderStyle,
+        FIELD_BORDER_COLOR to borderColor,
         FIELD_START_DATE to startDateEpochDays,
         FIELD_END_DATE to endDateEpochDays,
         FIELD_PRIORITY to priority,
@@ -167,6 +176,9 @@ object NestedSyncDocument {
             textStyle = map[FIELD_TEXT_STYLE] as? String ?: "Body",
             textColor = map[FIELD_TEXT_COLOR] as? String ?: "Default",
             backgroundColor = map[FIELD_BACKGROUND_COLOR] as? String ?: "Default",
+            borderShape = map[FIELD_BORDER_SHAPE] as? String ?: "Rounded",
+            borderStyle = map[FIELD_BORDER_STYLE] as? String ?: "None",
+            borderColor = map[FIELD_BORDER_COLOR] as? String ?: "Default",
             startDateEpochDays = (map[FIELD_START_DATE] as? Number)?.toInt(),
             endDateEpochDays = (map[FIELD_END_DATE] as? Number)?.toInt(),
             priority = map[FIELD_PRIORITY] as? String ?: "None",
@@ -315,6 +327,9 @@ data class RemoteNestedItem(
     val textStyle: String,
     val textColor: String,
     val backgroundColor: String,
+    val borderShape: String = "Rounded",
+    val borderStyle: String = "None",
+    val borderColor: String = "Default",
     val startDateEpochDays: Int?,
     val endDateEpochDays: Int?,
     val priority: String,

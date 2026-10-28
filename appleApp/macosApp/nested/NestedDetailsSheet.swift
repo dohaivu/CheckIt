@@ -555,6 +555,8 @@ struct NestedFormattingBar: View {
     @State private var hasEnd = false
 
     private let tokens = ["Default", "Red", "Orange", "Yellow", "Green", "Blue", "Purple", "Pink"]
+    private let shapes = ["Rectangle", "Rounded", "Pill", "Cloud", "Ticket", "CutCorner", "Hexagon", "Leaf"]
+    private let borderStyles = ["None", "Solid", "Dashed", "Dotted"]
 
     /// Filled-flag tint from the shared TaskPriority palette (None → secondary).
     private func priorityTint(_ name: String) -> Color {
@@ -647,6 +649,46 @@ struct NestedFormattingBar: View {
             .frame(width: 28, height: 28)
             .accessibilityLabel("Background color")
             .help("Background color")
+            // Border: shape + line style + color in one menu.
+            Menu {
+                Section {
+                    ForEach(borderStyles, id: \.self) { s in
+                        Toggle(s, isOn: Binding(
+                            get: { s == item.borderStyle.name },
+                            set: { if $0 { state.updateBorder(id: item.id, shape: item.borderShape.name, style: s, color: item.borderColor.name) } }
+                        ))
+                    }
+                } header: {
+                    Text("Style")
+                }
+                Section {
+                    ForEach(shapes, id: \.self) { s in
+                        Toggle(s, isOn: Binding(
+                            get: { s == item.borderShape.name },
+                            set: { if $0 { state.updateBorder(id: item.id, shape: s, style: item.borderStyle.name, color: item.borderColor.name) } }
+                        ))
+                    }
+                } header: {
+                    Text("Shape")
+                }
+                Section {
+                    ForEach(tokens, id: \.self) { t in
+                        Toggle(t, isOn: Binding(
+                            get: { t == item.borderColor.name },
+                            set: { if $0 { state.updateBorder(id: item.id, shape: item.borderShape.name, style: item.borderStyle.name, color: t) } }
+                        ))
+                    }
+                } header: {
+                    Text("Color")
+                }
+            } label: {
+                Image(systemName: "square.dashed")
+                    .tint(item.borderStyle.name == "None" ? .secondary : Color.accentColor)
+            }
+            .menuStyle(.borderlessButton)
+            .frame(width: 28, height: 28)
+            .accessibilityLabel("Border")
+            .help("Border")
             // Priority
             Menu {
                 ForEach(["None", "Low", "Medium", "High"], id: \.self) { p in

@@ -27,6 +27,29 @@ enum class NestedColorToken {
     Pink
 }
 
+/**
+ * Shape of a nested row's card. `None` is not needed: [NestedBorderStyle.None]
+ * hides the stroke while the shape still defines the background fill.
+ */
+enum class NestedBorderShape {
+    Rectangle,
+    Rounded,
+    Pill,
+    Cloud,
+    Ticket,
+    CutCorner,
+    Hexagon,
+    Leaf
+}
+
+/** Stroke style for a nested row's border. `None` keeps the card unstroked. */
+enum class NestedBorderStyle {
+    None,
+    Solid,
+    Dashed,
+    Dotted
+}
+
 enum class MetricRollupPolicy {
     IncludeChildren,
     OwnOnly,
@@ -71,6 +94,9 @@ data class NestedListItem(
     val textStyle: NestedTextStyle = NestedTextStyle.Body,
     val textColor: NestedColorToken = NestedColorToken.Default,
     val backgroundColor: NestedColorToken = NestedColorToken.Default,
+    val borderShape: NestedBorderShape = NestedBorderShape.Rounded,
+    val borderStyle: NestedBorderStyle = NestedBorderStyle.None,
+    val borderColor: NestedColorToken = NestedColorToken.Default,
     val startDate: LocalDate? = null,
     val endDate: LocalDate? = null,
     val priority: TaskPriority = TaskPriority.None,

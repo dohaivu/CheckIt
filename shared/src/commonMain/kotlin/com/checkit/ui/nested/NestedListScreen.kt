@@ -57,6 +57,7 @@ import androidx.compose.material.icons.automirrored.filled.NoteAdd
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BorderStyle
 import androidx.compose.material.icons.filled.CenterFocusStrong
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -169,6 +170,8 @@ import com.checkit.domain.FocusPeriod
 import com.checkit.domain.MetricItem
 import com.checkit.domain.MetricRollupPolicy
 import com.checkit.domain.MoveDestinations
+import com.checkit.domain.NestedBorderShape
+import com.checkit.domain.NestedBorderStyle
 import com.checkit.domain.NestedColorToken
 import com.checkit.domain.NestedDocumentTree
 import com.checkit.domain.NestedItemNode
@@ -652,6 +655,9 @@ internal fun NestedListScreen(
                             onFormattingChange = { style, textColor, backgroundColor ->
                                 viewModel.updateItemFormatting(selectedItem.id, style, textColor, backgroundColor)
                             },
+                            onBorderChange = { shape, style, color ->
+                                viewModel.updateItemBorder(selectedItem.id, shape, style, color)
+                            },
                             onLabelChange = { label ->
                                 viewModel.updateItemLabel(selectedItem.id, label)
                             },
@@ -1062,6 +1068,7 @@ private fun NestedFormattingBar(
     item: NestedListItem,
     hasChildren: Boolean,
     onFormattingChange: (NestedTextStyle, NestedColorToken, NestedColorToken) -> Unit,
+    onBorderChange: (NestedBorderShape, NestedBorderStyle, NestedColorToken) -> Unit,
     onLabelChange: (String?) -> Unit,
     onPriorityChange: (TaskPriority) -> Unit,
     onDateRangeChange: (kotlinx.datetime.LocalDate?, kotlinx.datetime.LocalDate?) -> Unit,
@@ -1165,6 +1172,13 @@ private fun NestedFormattingBar(
                 tokens = colorTokens,
                 filled = true
             ) { token -> onFormattingChange(item.textStyle, item.textColor, token) }
+
+            BorderMenu(
+                shape = item.borderShape,
+                style = item.borderStyle,
+                color = item.borderColor,
+                tokens = colorTokens
+            ) { shape, style, color -> onBorderChange(shape, style, color) }
 
             VerticalDivider(
                 modifier = Modifier
@@ -1496,51 +1510,164 @@ private fun ColorTokenMenu(
             )
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            Row(
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically
+            ColorTokenSwatches(selected = selected, tokens = tokens) {
+                expanded = false
+                onSelected(it)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ColorTokenSwatches(
+    selected: NestedColorToken,
+    tokens: List<NestedColorToken>,
+    modifier: Modifier = Modifier,
+    onSelected: (NestedColorToken) -> Unit
+) {
+    Row(
+        modifier = modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        tokens.forEach { token ->
+            val color = nestedColor(token)
+            val isSelected = token == selected
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if (token == NestedColorToken.Default) MaterialTheme.colorScheme.surfaceVariant else color
+                    )
+                    .border(
+                        width = if (isSelected) 2.dp else 1.dp,
+                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                        shape = CircleShape
+                    )
+                    .clickable { onSelected(token) },
+                contentAlignment = Alignment.Center
             ) {
-                tokens.forEach { token ->
-                    val color = nestedColor(token)
-                    val isSelected = token == selected
-                    Box(
-                        modifier = Modifier
-                            .size(24.dp)
-                            .clip(CircleShape)
-                            .background(
-                                if (token == NestedColorToken.Default) MaterialTheme.colorScheme.surfaceVariant else color
-                            )
-                            .border(
-                                width = if (isSelected) 2.dp else 1.dp,
-                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                                shape = CircleShape
-                            )
-                            .clickable {
-                                expanded = false
-                                onSelected(token)
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (isSelected) {
-                            Icon(
-                                imageVector = Icons.Default.Check,
-                                contentDescription = token.name,
-                                tint = if (token == NestedColorToken.Default) MaterialTheme.colorScheme.onSurfaceVariant else Color.White,
-                                modifier = Modifier.size(14.dp)
-                            )
-                        } else if (token == NestedColorToken.Default) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Default",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                                modifier = Modifier.size(12.dp)
-                            )
-                        }
-                    }
+                if (isSelected) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = token.name,
+                        tint = if (token == NestedColorToken.Default) MaterialTheme.colorScheme.onSurfaceVariant else Color.White,
+                        modifier = Modifier.size(14.dp)
+                    )
+                } else if (token == NestedColorToken.Default) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Default",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        modifier = Modifier.size(12.dp)
+                    )
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun BorderMenu(
+    shape: NestedBorderShape,
+    style: NestedBorderStyle,
+    color: NestedColorToken,
+    tokens: List<NestedColorToken>,
+    onSelected: (NestedBorderShape, NestedBorderStyle, NestedColorToken) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val active = style != NestedBorderStyle.None
+    val subtleInactiveColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f)
+    Box {
+        IconButton(
+            onClick = { expanded = true },
+            modifier = Modifier.size(32.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.BorderStyle,
+                contentDescription = "Border",
+                tint = if (active) MaterialTheme.colorScheme.primary else subtleInactiveColor,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            Column(
+                modifier = Modifier
+                    .widthIn(max = 320.dp)
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Text(
+                    text = "Border style",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    NestedBorderStyle.entries.forEach { option ->
+                        SelectableChip(
+                            label = option.name,
+                            selected = option == style
+                        ) {
+                            expanded = false
+                            onSelected(shape, option, color)
+                        }
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = "Shape",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    NestedBorderShape.entries.forEach { option ->
+                        SelectableChip(
+                            label = option.name,
+                            selected = option == shape
+                        ) {
+                            expanded = false
+                            onSelected(option, style, color)
+                        }
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = "Border color",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                ColorTokenSwatches(selected = color, tokens = tokens) {
+                    expanded = false
+                    onSelected(shape, style, it)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SelectableChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(7.dp))
+            .background(
+                if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 5.dp)
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = if (selected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
@@ -2632,6 +2759,16 @@ private fun NestedItemRow(
     // not stack 0.6 * 0.45 into unreadable 0.27 text.
     val itemTextColor = baseTextColor.copy(alpha = minOf(baseTextColor.alpha, focusAlpha))
     val dotTop = if (node.hasChildren) 9.dp else 12.5.dp
+    val cardShape = remember(item.borderShape) { NestedCardShape(item.borderShape) }
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val borderStroke = remember(item.borderStyle, density) {
+        item.borderStyle.toStroke(with(density) { 1.5.dp.toPx() })
+    }
+    val baseBorderColor = when (item.borderColor) {
+        NestedColorToken.Default -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
+        else -> nestedColor(item.borderColor)
+    }
+    val borderColor = baseBorderColor.copy(alpha = baseBorderColor.alpha * focusAlpha)
 
     AnimatedVisibility(
         visible = isVisible,
@@ -2770,7 +2907,7 @@ private fun NestedItemRow(
                         modifier = Modifier
                             .weight(1f)
                             .offset(x = (-8).dp)
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(cardShape)
                             .background(
                                 when {
                                     isEditing -> MaterialTheme.colorScheme.primaryContainer.copy(
@@ -2787,6 +2924,7 @@ private fun NestedItemRow(
                                     else -> Color.Transparent
                                 }
                             )
+                            .nestedCardBorder(cardShape, borderStroke, borderColor)
                             .combinedClickable(
                                 onClick = {
                                     if (state.selection.isActive) {
@@ -2800,7 +2938,10 @@ private fun NestedItemRow(
                                     if (!state.selection.isActive) viewModel.startEditText(item.id)
                                 }
                             )
-                            .padding(horizontal = 2.dp, vertical = 6.dp),
+                            .padding(
+                                horizontal = 2.dp + item.borderShape.horizontalContentPadding(),
+                                vertical = 6.dp + item.borderShape.verticalContentPadding()
+                            ),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         if (item.checkboxEnabled) {

@@ -298,10 +298,11 @@ struct NestedRowView: View {
                 }
                 metadata.opacity(focusOpacity)
             }
-            .padding(.vertical, 5)
-            .padding(.horizontal, 6)
-            .background(rowBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .padding(.vertical, 5 + shapeExtraVerticalPadding)
+            .padding(.horizontal, 6 + shapeExtraHorizontalPadding)
+            .background(rowBackground, in: rowShape)
+            .clipShape(rowShape)
+            .overlay { rowBorderOverlay }
             .contentShape(Rectangle())
         }
         .background(alignment: .topLeading) {
@@ -423,6 +424,54 @@ struct NestedRowView: View {
             return nestedTokenColor(item.backgroundColor.name).opacity(0.20 * focusOpacity)
         }
         return .clear
+    }
+
+    private var rowShape: NestedCardShape {
+        NestedCardShape(kind: item.borderShape.name)
+    }
+
+    /// Shape-specific breathing room: scallops/notches would otherwise run
+    /// into the checkbox, text, and labels.
+    private var shapeExtraHorizontalPadding: CGFloat {
+        switch item.borderShape.name {
+        case "Cloud", "Ticket": return 8
+        case "Hexagon": return 6
+        case "CutCorner", "Leaf": return 3
+        default: return 0
+        }
+    }
+
+    private var shapeExtraVerticalPadding: CGFloat {
+        switch item.borderShape.name {
+        case "Cloud": return 5
+        case "Ticket": return 2
+        default: return 0
+        }
+    }
+
+    private var rowBorderColor: Color {
+        let base = item.borderColor.name == "Default"
+            ? Color.secondary.opacity(0.55)
+            : nestedTokenColor(item.borderColor.name)
+        return base.opacity(focusOpacity)
+    }
+
+    private var rowBorderDash: [CGFloat] {
+        switch item.borderStyle.name {
+        case "Dashed": return [4.5, 3]
+        case "Dotted": return [0.5, 2.8]
+        default: return []
+        }
+    }
+
+    @ViewBuilder
+    private var rowBorderOverlay: some View {
+        if item.borderStyle.name != "None" {
+            rowShape.strokeBorder(
+                rowBorderColor,
+                style: StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: rowBorderDash)
+            )
+        }
     }
 
     @ViewBuilder
@@ -744,4 +793,224 @@ struct OutlineBottomDropDelegate: DropDelegate {
             draggedItemId: nil
         )
     }
+}
+
+// MARK: - Row card shapes
+//
+// Mirrors NestedBorderShape / NestedBorderStyle in the shared domain. The
+// geometry is authored against the row card bounds, so the same shape drives
+// both the background fill and the inset border.
+
+struct NestedCardShape: InsettableShape {
+    let kind: String
+    var insetAmount: CGFloat = 0
+
+    func inset(by amount: CGFloat) -> NestedCardShape {
+        var copy = self
+        copy.insetAmount += amount
+        return copy
+    }
+
+    func path(in rect: CGRect) -> Path {
+        let r = rect.insetBy(dx: insetAmount, dy: insetAmount)
+        guard r.width > 0, r.height > 0 else { return Path() }
+        switch kind {
+        case "Rectangle":
+            var p = Path()
+            p.addRect(r)
+            return p
+        case "Pill":
+            return Path(roundedRect: r, cornerRadius: min(r.width, r.height) / 2)
+        case "Cloud":
+            return cloudCardPath(r)
+        case "Ticket":
+            return ticketCardPath(r)
+        case "CutCorner":
+            return cutCornerCardPath(r)
+        case "Hexagon":
+            return hexagonCardPath(r)
+        case "Leaf":
+            return leafCardPath(r)
+        default:
+            return Path(roundedRect: r, cornerRadius: min(6, min(r.width, r.height) / 2))
+        }
+    }
+}
+
+private func ticketCardPath(_ r: CGRect) -> Path {
+    let radius = min(min(r.width, r.height) * 0.32, 12)
+    let notch = min(r.height * 0.18, 9)
+    let cy = r.midY
+    let c = notch * 0.66
+    var p = Path()
+    p.move(to: CGPoint(x: r.minX + radius, y: r.minY))
+    p.addLine(to: CGPoint(x: r.maxX - radius, y: r.minY))
+    p.addQuadCurve(
+        to: CGPoint(x: r.maxX, y: r.minY + radius),
+        control: CGPoint(x: r.maxX, y: r.minY)
+    )
+    p.addLine(to: CGPoint(x: r.maxX, y: cy - notch))
+    p.addCurve(
+        to: CGPoint(x: r.maxX, y: cy + notch),
+        control1: CGPoint(x: r.maxX - c, y: cy - c),
+        control2: CGPoint(x: r.maxX - c, y: cy + c)
+    )
+    p.addLine(to: CGPoint(x: r.maxX, y: r.maxY - radius))
+    p.addQuadCurve(
+        to: CGPoint(x: r.maxX - radius, y: r.maxY),
+        control: CGPoint(x: r.maxX, y: r.maxY)
+    )
+    p.addLine(to: CGPoint(x: r.minX + radius, y: r.maxY))
+    p.addQuadCurve(
+        to: CGPoint(x: r.minX, y: r.maxY - radius),
+        control: CGPoint(x: r.minX, y: r.maxY)
+    )
+    p.addLine(to: CGPoint(x: r.minX, y: cy + notch))
+    p.addCurve(
+        to: CGPoint(x: r.minX, y: cy - notch),
+        control1: CGPoint(x: r.minX + c, y: cy + c),
+        control2: CGPoint(x: r.minX + c, y: cy - c)
+    )
+    p.addLine(to: CGPoint(x: r.minX, y: r.minY + radius))
+    p.addQuadCurve(
+        to: CGPoint(x: r.minX + radius, y: r.minY),
+        control: CGPoint(x: r.minX, y: r.minY)
+    )
+    p.closeSubpath()
+    return p
+}
+
+private func cutCornerCardPath(_ r: CGRect) -> Path {
+    let cut = max(min(r.height * 0.36, r.width * 0.10), 2)
+    var p = Path()
+    p.move(to: CGPoint(x: r.minX, y: r.minY))
+    p.addLine(to: CGPoint(x: r.maxX - cut, y: r.minY))
+    p.addLine(to: CGPoint(x: r.maxX, y: r.minY + cut))
+    p.addLine(to: CGPoint(x: r.maxX, y: r.maxY))
+    p.addLine(to: CGPoint(x: r.minX, y: r.maxY))
+    p.closeSubpath()
+    return p
+}
+
+private func hexagonCardPath(_ r: CGRect) -> Path {
+    let slant = max(min(r.height * 0.45, r.width * 0.09), 2)
+    var p = Path()
+    p.move(to: CGPoint(x: r.minX, y: r.midY))
+    p.addLine(to: CGPoint(x: r.minX + slant, y: r.minY))
+    p.addLine(to: CGPoint(x: r.maxX - slant, y: r.minY))
+    p.addLine(to: CGPoint(x: r.maxX, y: r.midY))
+    p.addLine(to: CGPoint(x: r.maxX - slant, y: r.maxY))
+    p.addLine(to: CGPoint(x: r.minX + slant, y: r.maxY))
+    p.closeSubpath()
+    return p
+}
+
+private func leafCardPath(_ r: CGRect) -> Path {
+    let big = min(r.width, r.height) / 2
+    let small = min(6, min(r.width, r.height) / 2)
+    var p = Path()
+    p.move(to: CGPoint(x: r.minX + big, y: r.minY))
+    p.addLine(to: CGPoint(x: r.maxX - small, y: r.minY))
+    p.addQuadCurve(
+        to: CGPoint(x: r.maxX, y: r.minY + small),
+        control: CGPoint(x: r.maxX, y: r.minY)
+    )
+    p.addLine(to: CGPoint(x: r.maxX, y: r.maxY - big))
+    p.addQuadCurve(
+        to: CGPoint(x: r.maxX - big, y: r.maxY),
+        control: CGPoint(x: r.maxX, y: r.maxY)
+    )
+    p.addLine(to: CGPoint(x: r.minX + small, y: r.maxY))
+    p.addQuadCurve(
+        to: CGPoint(x: r.minX, y: r.maxY - small),
+        control: CGPoint(x: r.minX, y: r.maxY)
+    )
+    p.addLine(to: CGPoint(x: r.minX, y: r.minY + big))
+    p.addQuadCurve(
+        to: CGPoint(x: r.minX + big, y: r.minY),
+        control: CGPoint(x: r.minX, y: r.minY)
+    )
+    p.closeSubpath()
+    return p
+}
+
+private func cloudCardPath(_ r: CGRect) -> Path {
+    let depth = max(min(11, r.height * 0.20), 1.5)
+    let left = r.minX + depth
+    let top = r.minY + depth
+    let right = r.maxX - depth
+    let bottom = r.maxY - depth
+    guard right - left > depth * 3, bottom - top > depth * 3 else {
+        return Path(roundedRect: r, cornerRadius: min(r.width, r.height) * 0.2)
+    }
+
+    let corner = min(14, min(right - left, bottom - top) * 0.28)
+    let horizontal = right - left - corner * 2
+    let vertical = bottom - top - corner * 2
+    let horizontalBumps = max(2, min(14, Int((horizontal / (depth * 3)).rounded())))
+    let verticalBumps = max(1, min(5, Int((vertical / (depth * 3)).rounded())))
+    let bumpW = horizontal / CGFloat(horizontalBumps)
+    let bumpH = vertical / CGFloat(verticalBumps)
+    let bulge = depth / 3
+
+    var p = Path()
+    p.move(to: CGPoint(x: left + corner, y: top))
+
+    var x = left + corner
+    for _ in 0..<horizontalBumps {
+        p.addCurve(
+            to: CGPoint(x: x + bumpW, y: top),
+            control1: CGPoint(x: x + bumpW * 0.25, y: top - bulge),
+            control2: CGPoint(x: x + bumpW * 0.75, y: top - bulge)
+        )
+        x += bumpW
+    }
+    p.addQuadCurve(
+        to: CGPoint(x: right, y: top + corner),
+        control: CGPoint(x: right, y: top)
+    )
+
+    var y = top + corner
+    for _ in 0..<verticalBumps {
+        p.addCurve(
+            to: CGPoint(x: right, y: y + bumpH),
+            control1: CGPoint(x: right + bulge, y: y + bumpH * 0.25),
+            control2: CGPoint(x: right + bulge, y: y + bumpH * 0.75)
+        )
+        y += bumpH
+    }
+    p.addQuadCurve(
+        to: CGPoint(x: right - corner, y: bottom),
+        control: CGPoint(x: right, y: bottom)
+    )
+
+    x = right - corner
+    for _ in 0..<horizontalBumps {
+        p.addCurve(
+            to: CGPoint(x: x - bumpW, y: bottom),
+            control1: CGPoint(x: x - bumpW * 0.25, y: bottom + bulge),
+            control2: CGPoint(x: x - bumpW * 0.75, y: bottom + bulge)
+        )
+        x -= bumpW
+    }
+    p.addQuadCurve(
+        to: CGPoint(x: left, y: bottom - corner),
+        control: CGPoint(x: left, y: bottom)
+    )
+
+    y = bottom - corner
+    for _ in 0..<verticalBumps {
+        p.addCurve(
+            to: CGPoint(x: left, y: y - bumpH),
+            control1: CGPoint(x: left - bulge, y: y - bumpH * 0.25),
+            control2: CGPoint(x: left - bulge, y: y - bumpH * 0.75)
+        )
+        y -= bumpH
+    }
+    p.addQuadCurve(
+        to: CGPoint(x: left + corner, y: top),
+        control: CGPoint(x: left, y: top)
+    )
+    p.closeSubpath()
+    return p
 }

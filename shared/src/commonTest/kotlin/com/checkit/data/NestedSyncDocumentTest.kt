@@ -75,6 +75,9 @@ class NestedSyncDocumentTest {
             textStyle = "Header",
             textColor = "Blue",
             backgroundColor = "Default",
+            borderShape = "Cloud",
+            borderStyle = "Dashed",
+            borderColor = "Pink",
             startDateEpochDays = 20000,
             endDateEpochDays = 20001,
             priority = "High",
@@ -103,6 +106,9 @@ class NestedSyncDocumentTest {
         assertEquals("🔥 TOP 3", remote?.label)
         assertTrue(remote?.checkboxEnabled ?: false)
         assertEquals("Header", remote?.textStyle)
+        assertEquals("Cloud", remote?.borderShape)
+        assertEquals("Dashed", remote?.borderStyle)
+        assertEquals("Pink", remote?.borderColor)
         assertEquals("High", remote?.priority)
         assertEquals(25, remote?.actualMinutes)
         assertEquals(150L, remote?.completedAtMillis)

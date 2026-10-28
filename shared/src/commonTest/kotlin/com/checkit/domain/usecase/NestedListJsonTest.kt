@@ -23,6 +23,9 @@ class NestedListJsonTest {
             label = "🔥 TOP 3",
             checkboxEnabled = true,
             checked = false,
+            borderShape = com.checkit.domain.NestedBorderShape.Ticket,
+            borderStyle = com.checkit.domain.NestedBorderStyle.Dotted,
+            borderColor = com.checkit.domain.NestedColorToken.Green,
             createdAtMillis = 1000L,
             updatedAtMillis = 2000L
         )
@@ -58,6 +61,9 @@ class NestedListJsonTest {
         assertEquals(1, decoded.items.size)
         assertEquals("Root Item", decoded.items[0].text)
         assertEquals("🔥 TOP 3", decoded.items[0].label)
+        assertEquals("Ticket", decoded.items[0].borderShape)
+        assertEquals("Dotted", decoded.items[0].borderStyle)
+        assertEquals("Green", decoded.items[0].borderColor)
         assertEquals(1, decoded.items[0].children.size)
         assertEquals("Child Item", decoded.items[0].children[0].text)
         assertTrue(decoded.items[0].children[0].checked)

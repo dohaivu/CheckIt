@@ -9,6 +9,8 @@ import com.checkit.data.SettingsRepository
 import com.checkit.domain.MetricItem
 import com.checkit.domain.MetricRollupPolicy
 import com.checkit.domain.NestedColorToken
+import com.checkit.domain.NestedBorderShape
+import com.checkit.domain.NestedBorderStyle
 import com.checkit.domain.NestedDocument
 import com.checkit.domain.NestedDocumentTree
 import com.checkit.domain.NestedItemNode
@@ -38,6 +40,7 @@ import com.checkit.domain.usecase.ToggleNestedItemCollapsedUseCase
 import com.checkit.domain.usecase.resolveCollapseScopeRoots
 import com.checkit.domain.usecase.UpdateNestedItemDateRangeUseCase
 import com.checkit.domain.usecase.UpdateNestedItemFormattingUseCase
+import com.checkit.domain.usecase.UpdateNestedItemBorderUseCase
 import com.checkit.domain.usecase.UpdateNestedItemLabelUseCase
 import com.checkit.domain.usecase.UpdateNestedItemMetricSettingsUseCase
 import com.checkit.domain.usecase.UpdateNestedItemNoteUseCase
@@ -173,6 +176,7 @@ class NestedListsViewModel(
     private val updateItemNoteUseCase: UpdateNestedItemNoteUseCase,
     private val updateItemLabelUseCase: UpdateNestedItemLabelUseCase,
     private val updateItemFormattingUseCase: UpdateNestedItemFormattingUseCase,
+    private val updateItemBorderUseCase: UpdateNestedItemBorderUseCase,
     private val updateItemDateRangeUseCase: UpdateNestedItemDateRangeUseCase,
     private val updateItemPriorityUseCase: UpdateNestedItemPriorityUseCase,
     private val updateItemTagsUseCase: UpdateNestedItemTagsUseCase,
@@ -674,6 +678,10 @@ class NestedListsViewModel(
 
     fun updateItemFormatting(itemId: String, style: NestedTextStyle, text: NestedColorToken, bg: NestedColorToken) {
         viewModelScope.launch { updateItemFormattingUseCase(itemId, style, text, bg) }
+    }
+
+    fun updateItemBorder(itemId: String, shape: NestedBorderShape, style: NestedBorderStyle, color: NestedColorToken) {
+        viewModelScope.launch { updateItemBorderUseCase(itemId, shape, style, color) }
     }
 
     fun updateItemDateRange(itemId: String, start: LocalDate?, end: LocalDate?) {

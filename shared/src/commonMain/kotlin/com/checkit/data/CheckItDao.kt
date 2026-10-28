@@ -1217,6 +1217,15 @@ interface CheckItDao {
         updatedAtMillis: Long
     )
 
+    @Query("UPDATE nested_list_items SET borderShape = :borderShape, borderStyle = :borderStyle, borderColor = :borderColor, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
+    suspend fun updateNestedItemBorder(
+        itemId: String,
+        borderShape: String,
+        borderStyle: String,
+        borderColor: String,
+        updatedAtMillis: Long
+    )
+
     @Query("UPDATE nested_list_items SET priority = :priority, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
     suspend fun updateNestedItemPriority(
         itemId: String,

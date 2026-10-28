@@ -22,6 +22,8 @@ import com.checkit.domain.ListSection
 import com.checkit.domain.NoteItem
 import com.checkit.domain.NestedDocument
 import com.checkit.domain.NestedDocumentTree
+import com.checkit.domain.NestedBorderShape
+import com.checkit.domain.NestedBorderStyle
 import com.checkit.domain.NestedItemMove
 import com.checkit.domain.NestedListItem
 import com.checkit.domain.NestedTextStyle
@@ -179,6 +181,7 @@ interface CheckItRepository {
     suspend fun updateNestedItemNote(itemId: String, note: String?)
     suspend fun updateNestedItemLabel(itemId: String, label: String?)
     suspend fun updateNestedItemFormatting(itemId: String, textStyle: NestedTextStyle, textColor: NestedColorToken, backgroundColor: NestedColorToken)
+    suspend fun updateNestedItemBorder(itemId: String, borderShape: NestedBorderShape, borderStyle: NestedBorderStyle, borderColor: NestedColorToken)
     suspend fun updateNestedItemPriority(itemId: String, priority: TaskPriority)
     suspend fun updateNestedItemDateRange(itemId: String, startDate: LocalDate?, endDate: LocalDate?)
     suspend fun updateNestedItemTags(itemId: String, tagIds: List<String>)
@@ -1559,6 +1562,15 @@ class RoomCheckItRepository(
         dao.updateNestedItemFormatting(itemId, textStyle.name, textColor.name, backgroundColor.name, Clock.System.now().toEpochMilliseconds())
     }
 
+    override suspend fun updateNestedItemBorder(
+        itemId: String,
+        borderShape: NestedBorderShape,
+        borderStyle: NestedBorderStyle,
+        borderColor: NestedColorToken
+    ) {
+        dao.updateNestedItemBorder(itemId, borderShape.name, borderStyle.name, borderColor.name, Clock.System.now().toEpochMilliseconds())
+    }
+
     override suspend fun updateNestedItemPriority(itemId: String, priority: TaskPriority) {
         dao.updateNestedItemPriority(itemId, priority.name, Clock.System.now().toEpochMilliseconds())
     }
@@ -1729,6 +1741,9 @@ class RoomCheckItRepository(
                     textStyle = runCatching { NestedTextStyle.valueOf(item.textStyle) }.getOrDefault(NestedTextStyle.Body).name,
                     textColor = runCatching { NestedColorToken.valueOf(item.textColor) }.getOrDefault(NestedColorToken.Default).name,
                     backgroundColor = runCatching { NestedColorToken.valueOf(item.backgroundColor) }.getOrDefault(NestedColorToken.Default).name,
+                    borderShape = runCatching { NestedBorderShape.valueOf(item.borderShape) }.getOrDefault(NestedBorderShape.Rounded).name,
+                    borderStyle = runCatching { NestedBorderStyle.valueOf(item.borderStyle) }.getOrDefault(NestedBorderStyle.None).name,
+                    borderColor = runCatching { NestedColorToken.valueOf(item.borderColor) }.getOrDefault(NestedColorToken.Default).name,
                     startDateEpochDays = item.startDate?.let { runCatching { LocalDate.parse(it).toEpochDays().toInt() }.getOrNull() },
                     endDateEpochDays = item.endDate?.let { runCatching { LocalDate.parse(it).toEpochDays().toInt() }.getOrNull() },
                     priority = runCatching { TaskPriority.valueOf(item.priority) }.getOrDefault(TaskPriority.None).name,
@@ -2120,6 +2135,9 @@ private fun NestedListItemEntity.toNestedListItem(
     textStyle = runCatching { com.checkit.domain.NestedTextStyle.valueOf(textStyle) }.getOrDefault(com.checkit.domain.NestedTextStyle.Body),
     textColor = runCatching { com.checkit.domain.NestedColorToken.valueOf(textColor) }.getOrDefault(com.checkit.domain.NestedColorToken.Default),
     backgroundColor = runCatching { com.checkit.domain.NestedColorToken.valueOf(backgroundColor) }.getOrDefault(com.checkit.domain.NestedColorToken.Default),
+    borderShape = runCatching { com.checkit.domain.NestedBorderShape.valueOf(borderShape) }.getOrDefault(com.checkit.domain.NestedBorderShape.Rounded),
+    borderStyle = runCatching { com.checkit.domain.NestedBorderStyle.valueOf(borderStyle) }.getOrDefault(com.checkit.domain.NestedBorderStyle.None),
+    borderColor = runCatching { com.checkit.domain.NestedColorToken.valueOf(borderColor) }.getOrDefault(com.checkit.domain.NestedColorToken.Default),
     startDate = startDateEpochDays?.let { LocalDate.fromEpochDays(it) },
     endDate = endDateEpochDays?.let { LocalDate.fromEpochDays(it) },
     priority = runCatching { TaskPriority.valueOf(priority) }.getOrDefault(TaskPriority.None),

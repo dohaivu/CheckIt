@@ -1019,6 +1019,10 @@ final class NestedEditorState: ObservableObject {
         helper.updateFormattingByName(itemId: id, styleName: style, textColorName: textColor, backgroundColorName: background)
     }
 
+    func updateBorder(id: String, shape: String, style: String, color: String) {
+        helper.updateBorderByName(itemId: id, shapeName: shape, styleName: style, borderColorName: color)
+    }
+
     func updatePriority(id: String, name: String) {
         helper.updatePriorityByName(itemId: id, priorityName: name)
     }
