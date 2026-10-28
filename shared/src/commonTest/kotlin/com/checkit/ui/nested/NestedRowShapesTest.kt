@@ -72,9 +72,9 @@ class NestedRowShapesTest {
 
     @Test
     fun borderStylesMapToExpectedStrokes() {
-        assertNull(NestedBorderStyle.None.toStroke(4f))
-        assertEquals(4f, NestedBorderStyle.Solid.toStroke(4f)?.width)
-        assertNotNull(NestedBorderStyle.Dashed.toStroke(4f)?.pathEffect)
-        assertNotNull(NestedBorderStyle.Dotted.toStroke(4f)?.pathEffect)
+        assertNull(NestedBorderStyle.None.toStroke(4f, density))
+        assertEquals(4f, NestedBorderStyle.Solid.toStroke(4f, density)?.width)
+        assertNotNull(NestedBorderStyle.Dashed.toStroke(4f, density)?.pathEffect)
+        assertNotNull(NestedBorderStyle.Dotted.toStroke(4f, density)?.pathEffect)
     }
 }

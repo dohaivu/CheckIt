@@ -22,9 +22,35 @@ enum class NestedColorToken {
     Orange,
     Yellow,
     Green,
+    Teal,
+    Cyan,
     Blue,
+    Indigo,
     Purple,
-    Pink
+    Pink,
+    Brown,
+    Gray;
+
+    /**
+     * Hex RGB for concrete tokens; null for [Default], which follows the
+     * theme. Single source of truth so the Compose and macOS SwiftUI palettes
+     * cannot drift.
+     */
+    fun hex(): String? = when (this) {
+        Default -> null
+        Red -> "#E57373"
+        Orange -> "#FFB74D"
+        Yellow -> "#FFD54F"
+        Green -> "#66BB6A"
+        Teal -> "#26A69A"
+        Cyan -> "#26C6DA"
+        Blue -> "#42A5F5"
+        Indigo -> "#5C6BC0"
+        Purple -> "#AB47BC"
+        Pink -> "#EC407A"
+        Brown -> "#8D6E63"
+        Gray -> "#78909C"
+    }
 }
 
 /**
@@ -39,7 +65,16 @@ enum class NestedBorderShape {
     Ticket,
     CutCorner,
     Hexagon,
-    Leaf
+    Leaf;
+
+    /**
+     * Menu label. The enum name is the persisted value, so this is
+     * presentational only and shared by both platforms.
+     */
+    fun displayName(): String = when (this) {
+        CutCorner -> "Cut corner"
+        else -> name
+    }
 }
 
 /** Stroke style for a nested row's border. `None` keeps the card unstroked. */

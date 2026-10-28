@@ -1084,11 +1084,6 @@ private fun NestedFormattingBar(
     var styleExpanded by remember { mutableStateOf(false) }
     var showDateDialog by remember { mutableStateOf(false) }
     var showLabelDialog by remember { mutableStateOf(false) }
-    val colorTokens = listOf(
-        NestedColorToken.Default, NestedColorToken.Red, NestedColorToken.Orange,
-        NestedColorToken.Yellow, NestedColorToken.Green, NestedColorToken.Blue,
-        NestedColorToken.Purple, NestedColorToken.Pink
-    )
     val subtleInactiveColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f)
 
     Surface(
@@ -1162,22 +1157,19 @@ private fun NestedFormattingBar(
 
             ColorTokenMenu(
                 icon = Icons.Default.FormatColorText,
-                selected = item.textColor,
-                tokens = colorTokens
+                selected = item.textColor
             ) { token -> onFormattingChange(item.textStyle, token, item.backgroundColor) }
 
             ColorTokenMenu(
                 icon = Icons.Default.FormatColorFill,
                 selected = item.backgroundColor,
-                tokens = colorTokens,
                 filled = true
             ) { token -> onFormattingChange(item.textStyle, item.textColor, token) }
 
             BorderMenu(
                 shape = item.borderShape,
                 style = item.borderStyle,
-                color = item.borderColor,
-                tokens = colorTokens
+                color = item.borderColor
             ) { shape, style, color -> onBorderChange(shape, style, color) }
 
             VerticalDivider(
@@ -1490,7 +1482,6 @@ private fun NestedLabelDialog(
 private fun ColorTokenMenu(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     selected: NestedColorToken,
-    tokens: List<NestedColorToken>,
     filled: Boolean = false,
     onSelected: (NestedColorToken) -> Unit
 ) {
@@ -1510,7 +1501,7 @@ private fun ColorTokenMenu(
             )
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            ColorTokenSwatches(selected = selected, tokens = tokens) {
+            ColorTokenSwatches(selected = selected) {
                 expanded = false
                 onSelected(it)
             }
@@ -1521,16 +1512,18 @@ private fun ColorTokenMenu(
 @Composable
 private fun ColorTokenSwatches(
     selected: NestedColorToken,
-    tokens: List<NestedColorToken>,
     modifier: Modifier = Modifier,
     onSelected: (NestedColorToken) -> Unit
 ) {
-    Row(
+    // Wrap at 7 swatches so the growing palette stays inside a phone-width
+    // menu instead of running off screen.
+    FlowRow(
         modifier = modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+        maxItemsInEachRow = 7,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        tokens.forEach { token ->
+        NestedColorToken.entries.forEach { token ->
             val color = nestedColor(token)
             val isSelected = token == selected
             Box(
@@ -1573,7 +1566,6 @@ private fun BorderMenu(
     shape: NestedBorderShape,
     style: NestedBorderStyle,
     color: NestedColorToken,
-    tokens: List<NestedColorToken>,
     onSelected: (NestedBorderShape, NestedBorderStyle, NestedColorToken) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -1625,7 +1617,7 @@ private fun BorderMenu(
                 ) {
                     NestedBorderShape.entries.forEach { option ->
                         SelectableChip(
-                            label = option.name,
+                            label = option.displayName(),
                             selected = option == shape
                         ) {
                             expanded = false
@@ -1639,7 +1631,7 @@ private fun BorderMenu(
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                ColorTokenSwatches(selected = color, tokens = tokens) {
+                ColorTokenSwatches(selected = color) {
                     expanded = false
                     onSelected(shape, style, it)
                 }
@@ -2761,8 +2753,8 @@ private fun NestedItemRow(
     val dotTop = if (node.hasChildren) 9.dp else 12.5.dp
     val cardShape = remember(item.borderShape) { NestedCardShape(item.borderShape) }
     val density = androidx.compose.ui.platform.LocalDensity.current
-    val borderStroke = remember(item.borderStyle, density) {
-        item.borderStyle.toStroke(with(density) { 1.5.dp.toPx() })
+    val borderStroke = remember(item.borderStyle, density.density) {
+        item.borderStyle.toStroke(with(density) { 1.5.dp.toPx() }, density)
     }
     val baseBorderColor = when (item.borderColor) {
         NestedColorToken.Default -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
@@ -3101,15 +3093,15 @@ private fun nestedTextColor(token: NestedColorToken) =
     if (token == NestedColorToken.Default) MaterialTheme.colorScheme.onSurface else nestedColor(token)
 
 @Composable
-private fun nestedColor(token: NestedColorToken) = when (token) {
-    NestedColorToken.Default -> MaterialTheme.colorScheme.onSurfaceVariant
-    NestedColorToken.Red -> Color(0xFFE57373)
-    NestedColorToken.Orange -> Color(0xFFFFB74D)
-    NestedColorToken.Yellow -> Color(0xFFFFD54F)
-    NestedColorToken.Green -> Color(0xFF66BB6A)
-    NestedColorToken.Blue -> Color(0xFF42A5F5)
-    NestedColorToken.Purple -> Color(0xFFAB47BC)
-    NestedColorToken.Pink -> Color(0xFFEC407A)
+private fun nestedColor(token: NestedColorToken): Color {
+    // Palette lives on the shared enum so macOS renders identical RGB values.
+    val hex = token.hex() ?: return MaterialTheme.colorScheme.onSurfaceVariant
+    val rgb = hex.removePrefix("#").toInt(16)
+    return Color(
+        red = ((rgb shr 16) and 0xFF) / 255f,
+        green = ((rgb shr 8) and 0xFF) / 255f,
+        blue = (rgb and 0xFF) / 255f
+    )
 }
 
 internal data class VisibleNestedRow(

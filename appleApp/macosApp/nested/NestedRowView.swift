@@ -10,16 +10,10 @@ import UniformTypeIdentifiers
 // MARK: - Display mappings (mirror NestedListScreen.kt)
 
 func nestedTokenColor(_ token: NestedColorToken) -> Color {
-    switch token {
-    case NestedColorToken.red: Color(red: 0xE5 / 255.0, green: 0x73 / 255.0, blue: 0x73 / 255.0)
-    case NestedColorToken.orange: Color(red: 1.0, green: 0xB7 / 255.0, blue: 0x4D / 255.0)
-    case NestedColorToken.yellow: Color(red: 1.0, green: 0xD5 / 255.0, blue: 0x4F / 255.0)
-    case NestedColorToken.green: Color(red: 0x66 / 255.0, green: 0xBB / 255.0, blue: 0x6A / 255.0)
-    case NestedColorToken.blue: Color(red: 0x42 / 255.0, green: 0xA5 / 255.0, blue: 0xF5 / 255.0)
-    case NestedColorToken.purple: Color(red: 0xAB / 255.0, green: 0x47 / 255.0, blue: 0xBC / 255.0)
-    case NestedColorToken.pink: Color(red: 0xEC / 255.0, green: 0x40 / 255.0, blue: 0x7A / 255.0)
-    default: Color.secondary
+    guard let hex = token.hex(), let color = Color(nestedHex: hex) else {
+        return .secondary
     }
+    return color
 }
 
 func nestedRowFont(_ styleName: String) -> Font {
@@ -431,7 +425,8 @@ struct NestedRowView: View {
     }
 
     /// Shape-specific breathing room: scallops/notches would otherwise run
-    /// into the checkbox, text, and labels.
+    /// into the checkbox, text, and labels. Mirrors
+    /// `NestedBorderShape.horizontalContentPadding()` in NestedRowShapes.kt.
     private var shapeExtraHorizontalPadding: CGFloat {
         switch item.borderShape {
         case NestedBorderShape.cloud, NestedBorderShape.ticket: return 8
@@ -441,6 +436,8 @@ struct NestedRowView: View {
         }
     }
 
+    /// Mirrors `NestedBorderShape.verticalContentPadding()` in
+    /// NestedRowShapes.kt.
     private var shapeExtraVerticalPadding: CGFloat {
         switch item.borderShape {
         case NestedBorderShape.cloud: return 5
@@ -456,6 +453,8 @@ struct NestedRowView: View {
         return base.opacity(focusOpacity)
     }
 
+    /// Dash lengths in points, matching `NestedBorderStyle.toStroke` in
+    /// NestedRowShapes.kt (which converts the same dp values by density).
     private var rowBorderDash: [CGFloat] {
         switch item.borderStyle {
         case NestedBorderStyle.dashed: return [4.5, 3]

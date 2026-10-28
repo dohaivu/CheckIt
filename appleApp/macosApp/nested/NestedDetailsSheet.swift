@@ -558,15 +558,8 @@ struct NestedFormattingBar: View {
     private let textStyles: [NestedTextStyle] = [.header, .subheader, .body]
 
     /// Filled-flag tint from the shared TaskPriority palette (None → secondary).
-    private func priorityTint(_ name: String) -> Color {
-        let entry: TaskPriority?
-        switch name {
-        case "Low": entry = TaskPriority.low
-        case "Medium": entry = TaskPriority.medium
-        case "High": entry = TaskPriority.high
-        default: entry = nil
-        }
-        if let hex = entry?.priorityHex(), let color = Color(nestedHex: hex) {
+    private func priorityTint(_ priority: TaskPriority) -> Color {
+        if let hex = priority.priorityHex(), let color = Color(nestedHex: hex) {
             return color
         }
         return .secondary
@@ -662,7 +655,7 @@ struct NestedFormattingBar: View {
                 }
                 Section {
                     ForEach(NestedBorderShape.entries, id: \.self) { s in
-                        Toggle(s.name, isOn: Binding(
+                        Toggle(s.displayName(), isOn: Binding(
                             get: { s == item.borderShape },
                             set: { if $0 { state.updateBorder(id: item.id, shape: s, style: item.borderStyle, color: item.borderColor) } }
                         ))
@@ -690,13 +683,13 @@ struct NestedFormattingBar: View {
             .help("Border")
             // Priority
             Menu {
-                ForEach(["None", "Low", "Medium", "High"], id: \.self) { p in
+                ForEach(TaskPriority.entries, id: \.self) { p in
                     Toggle(isOn: Binding(
-                        get: { p == item.priority.name },
-                        set: { if $0 { state.updatePriority(id: item.id, name: p) } }
+                        get: { p == item.priority },
+                        set: { if $0 { state.updatePriority(id: item.id, priority: p) } }
                     )) {
                         Label {
-                            Text(p)
+                            Text(p.name)
                         } icon: {
                             Image(systemName: "flag.fill")
                                 .foregroundStyle(priorityTint(p))
@@ -704,8 +697,8 @@ struct NestedFormattingBar: View {
                     }
                 }
             } label: {
-                Image(systemName: item.priority.name == "None" ? "flag" : "flag.fill")
-                    .tint(priorityTint(item.priority.name))
+                Image(systemName: item.priority == TaskPriority.none ? "flag" : "flag.fill")
+                    .tint(priorityTint(item.priority))
             }
             .menuStyle(.borderlessButton)
             .frame(width: 28, height: 28)

@@ -1033,8 +1033,8 @@ final class NestedEditorState: ObservableObject {
         )
     }
 
-    func updatePriority(id: String, name: String) {
-        helper.updatePriorityByName(itemId: id, priorityName: name)
+    func updatePriority(id: String, priority: TaskPriority) {
+        helper.updatePriorityByName(itemId: id, priorityName: priority.name)
     }
 
     func setTag(id: String, tagId: String, enabled: Bool) {

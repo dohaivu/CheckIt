@@ -237,14 +237,21 @@ private fun cloudPath(w: Float, h: Float, density: Density): Path {
     return path
 }
 
-/** Solid/dashed/dotted stroke; null means "no border". */
-fun NestedBorderStyle.toStroke(widthPx: Float): Stroke? = when (this) {
+/**
+ * Solid/dashed/dotted stroke; null means "no border". Dash lengths are in dp,
+ * matching the macOS `StrokeStyle` metrics so both platforms draw the same
+ * pattern at any density.
+ */
+fun NestedBorderStyle.toStroke(widthPx: Float, density: Density): Stroke? = when (this) {
     NestedBorderStyle.None -> null
     NestedBorderStyle.Solid -> Stroke(width = widthPx)
     NestedBorderStyle.Dashed -> Stroke(
         width = widthPx,
         pathEffect = PathEffect.dashPathEffect(
-            floatArrayOf(widthPx * 4f, widthPx * 3f),
+            floatArrayOf(
+                with(density) { 4.5.dp.toPx() },
+                with(density) { 3.dp.toPx() }
+            ),
             0f
         ),
         cap = StrokeCap.Round
@@ -253,7 +260,10 @@ fun NestedBorderStyle.toStroke(widthPx: Float): Stroke? = when (this) {
     NestedBorderStyle.Dotted -> Stroke(
         width = widthPx,
         pathEffect = PathEffect.dashPathEffect(
-            floatArrayOf(widthPx * 0.1f, widthPx * 2.6f),
+            floatArrayOf(
+                with(density) { 0.5.dp.toPx() },
+                with(density) { 2.8.dp.toPx() }
+            ),
             0f
         ),
         cap = StrokeCap.Round
