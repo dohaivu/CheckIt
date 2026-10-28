@@ -1533,11 +1533,6 @@ private fun ColorTokenSwatches(
                     .background(
                         if (token == NestedColorToken.Default) MaterialTheme.colorScheme.surfaceVariant else color
                     )
-                    .border(
-                        width = if (isSelected) 2.dp else 1.dp,
-                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                        shape = CircleShape
-                    )
                     .clickable { onSelected(token) },
                 contentAlignment = Alignment.Center
             ) {
@@ -1579,7 +1574,12 @@ private fun BorderMenu(
             Icon(
                 imageVector = Icons.Default.BorderStyle,
                 contentDescription = "Border",
-                tint = if (active) MaterialTheme.colorScheme.primary else subtleInactiveColor,
+                tint = if (active) {
+                    if (color != NestedColorToken.Default) nestedColor(color)
+                    else MaterialTheme.colorScheme.primary
+                } else {
+                    subtleInactiveColor
+                },
                 modifier = Modifier.size(18.dp)
             )
         }
@@ -1592,6 +1592,7 @@ private fun BorderMenu(
                 Text(
                     text = "Border style",
                     style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -1609,6 +1610,7 @@ private fun BorderMenu(
                 Text(
                     text = "Shape",
                     style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 FlowRow(
@@ -1629,6 +1631,7 @@ private fun BorderMenu(
                 Text(
                     text = "Border color",
                     style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 ColorTokenSwatches(selected = color) {
