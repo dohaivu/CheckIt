@@ -166,7 +166,11 @@ private fun cloudPath(w: Float, h: Float, density: Density): Path {
     val top = depth
     val right = w - depth
     val bottom = h - depth
-    if (right - left < depth * 3f || bottom - top < depth * 3f) {
+    // Only slivers with no room for a body fall back to a plain card. The
+    // scaled threshold that used to live here changed between the fill rect
+    // and the half-stroke-inset border rect, so a Cloud fill could pair with
+    // a non-cloud stroke on the same row.
+    if (right - left <= 1f || bottom - top <= 1f) {
         return Path().apply { addRoundRect(RoundRect(Rect(0f, 0f, w, h), CornerRadius(min(w, h) * 0.2f))) }
     }
 

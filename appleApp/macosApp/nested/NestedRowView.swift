@@ -9,15 +9,15 @@ import UniformTypeIdentifiers
 
 // MARK: - Display mappings (mirror NestedListScreen.kt)
 
-func nestedTokenColor(_ name: String) -> Color {
-    switch name {
-    case "Red": Color(red: 0xE5 / 255.0, green: 0x73 / 255.0, blue: 0x73 / 255.0)
-    case "Orange": Color(red: 1.0, green: 0xB7 / 255.0, blue: 0x4D / 255.0)
-    case "Yellow": Color(red: 1.0, green: 0xD5 / 255.0, blue: 0x4F / 255.0)
-    case "Green": Color(red: 0x66 / 255.0, green: 0xBB / 255.0, blue: 0x6A / 255.0)
-    case "Blue": Color(red: 0x42 / 255.0, green: 0xA5 / 255.0, blue: 0xF5 / 255.0)
-    case "Purple": Color(red: 0xAB / 255.0, green: 0x47 / 255.0, blue: 0xBC / 255.0)
-    case "Pink": Color(red: 0xEC / 255.0, green: 0x40 / 255.0, blue: 0x7A / 255.0)
+func nestedTokenColor(_ token: NestedColorToken) -> Color {
+    switch token {
+    case NestedColorToken.red: Color(red: 0xE5 / 255.0, green: 0x73 / 255.0, blue: 0x73 / 255.0)
+    case NestedColorToken.orange: Color(red: 1.0, green: 0xB7 / 255.0, blue: 0x4D / 255.0)
+    case NestedColorToken.yellow: Color(red: 1.0, green: 0xD5 / 255.0, blue: 0x4F / 255.0)
+    case NestedColorToken.green: Color(red: 0x66 / 255.0, green: 0xBB / 255.0, blue: 0x6A / 255.0)
+    case NestedColorToken.blue: Color(red: 0x42 / 255.0, green: 0xA5 / 255.0, blue: 0xF5 / 255.0)
+    case NestedColorToken.purple: Color(red: 0xAB / 255.0, green: 0x47 / 255.0, blue: 0xBC / 255.0)
+    case NestedColorToken.pink: Color(red: 0xEC / 255.0, green: 0x40 / 255.0, blue: 0x7A / 255.0)
     default: Color.secondary
     }
 }
@@ -379,9 +379,9 @@ struct NestedRowView: View {
         // Explicit light-theme ink: .primary would turn white in dark mode
         // and vanish on the paper canvas. Warm charcoal is softer than pure
         // black for long sessions.
-        let base = item.textColor.name == "Default"
+        let base = item.textColor == NestedColorToken.default_
             ? nestedInkColor
-            : nestedTokenColor(item.textColor.name)
+            : nestedTokenColor(item.textColor)
         return base.opacity(focusOpacity)
     }
 
@@ -420,53 +420,53 @@ struct NestedRowView: View {
     private var rowBackground: Color {
         if isEditing { return nestedEditingColor }
         if isSelected { return nestedSelectedColor }
-        if item.backgroundColor.name != "Default" {
-            return nestedTokenColor(item.backgroundColor.name).opacity(0.20 * focusOpacity)
+        if item.backgroundColor != NestedColorToken.default_ {
+            return nestedTokenColor(item.backgroundColor).opacity(0.20 * focusOpacity)
         }
         return .clear
     }
 
     private var rowShape: NestedCardShape {
-        NestedCardShape(kind: item.borderShape.name)
+        NestedCardShape(kind: item.borderShape)
     }
 
     /// Shape-specific breathing room: scallops/notches would otherwise run
     /// into the checkbox, text, and labels.
     private var shapeExtraHorizontalPadding: CGFloat {
-        switch item.borderShape.name {
-        case "Cloud", "Ticket": return 8
-        case "Hexagon": return 6
-        case "CutCorner", "Leaf": return 3
+        switch item.borderShape {
+        case NestedBorderShape.cloud, NestedBorderShape.ticket: return 8
+        case NestedBorderShape.hexagon: return 6
+        case NestedBorderShape.cutcorner, NestedBorderShape.leaf: return 3
         default: return 0
         }
     }
 
     private var shapeExtraVerticalPadding: CGFloat {
-        switch item.borderShape.name {
-        case "Cloud": return 5
-        case "Ticket": return 2
+        switch item.borderShape {
+        case NestedBorderShape.cloud: return 5
+        case NestedBorderShape.ticket: return 2
         default: return 0
         }
     }
 
     private var rowBorderColor: Color {
-        let base = item.borderColor.name == "Default"
+        let base = item.borderColor == NestedColorToken.default_
             ? Color.secondary.opacity(0.55)
-            : nestedTokenColor(item.borderColor.name)
+            : nestedTokenColor(item.borderColor)
         return base.opacity(focusOpacity)
     }
 
     private var rowBorderDash: [CGFloat] {
-        switch item.borderStyle.name {
-        case "Dashed": return [4.5, 3]
-        case "Dotted": return [0.5, 2.8]
+        switch item.borderStyle {
+        case NestedBorderStyle.dashed: return [4.5, 3]
+        case NestedBorderStyle.dotted: return [0.5, 2.8]
         default: return []
         }
     }
 
     @ViewBuilder
     private var rowBorderOverlay: some View {
-        if item.borderStyle.name != "None" {
+        if item.borderStyle != NestedBorderStyle.none {
             rowShape.strokeBorder(
                 rowBorderColor,
                 style: StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: rowBorderDash)
@@ -802,7 +802,7 @@ struct OutlineBottomDropDelegate: DropDelegate {
 // both the background fill and the inset border.
 
 struct NestedCardShape: InsettableShape {
-    let kind: String
+    let kind: NestedBorderShape
     var insetAmount: CGFloat = 0
 
     func inset(by amount: CGFloat) -> NestedCardShape {
@@ -815,21 +815,21 @@ struct NestedCardShape: InsettableShape {
         let r = rect.insetBy(dx: insetAmount, dy: insetAmount)
         guard r.width > 0, r.height > 0 else { return Path() }
         switch kind {
-        case "Rectangle":
+        case NestedBorderShape.rectangle:
             var p = Path()
             p.addRect(r)
             return p
-        case "Pill":
+        case NestedBorderShape.pill:
             return Path(roundedRect: r, cornerRadius: min(r.width, r.height) / 2)
-        case "Cloud":
+        case NestedBorderShape.cloud:
             return cloudCardPath(r)
-        case "Ticket":
+        case NestedBorderShape.ticket:
             return ticketCardPath(r)
-        case "CutCorner":
+        case NestedBorderShape.cutcorner:
             return cutCornerCardPath(r)
-        case "Hexagon":
+        case NestedBorderShape.hexagon:
             return hexagonCardPath(r)
-        case "Leaf":
+        case NestedBorderShape.leaf:
             return leafCardPath(r)
         default:
             return Path(roundedRect: r, cornerRadius: min(6, min(r.width, r.height) / 2))
@@ -940,7 +940,11 @@ private func cloudCardPath(_ r: CGRect) -> Path {
     let top = r.minY + depth
     let right = r.maxX - depth
     let bottom = r.maxY - depth
-    guard right - left > depth * 3, bottom - top > depth * 3 else {
+    // Only slivers with no room for a body fall back to a plain card. The
+    // scaled threshold that used to live here changed between the fill rect
+    // and the half-stroke-inset border rect, so a Cloud fill could pair with
+    // a non-cloud stroke on the same row.
+    guard right - left > 1, bottom - top > 1 else {
         return Path(roundedRect: r, cornerRadius: min(r.width, r.height) * 0.2)
     }
 

@@ -554,9 +554,8 @@ struct NestedFormattingBar: View {
     @State private var hasStart = false
     @State private var hasEnd = false
 
-    private let tokens = ["Default", "Red", "Orange", "Yellow", "Green", "Blue", "Purple", "Pink"]
-    private let shapes = ["Rectangle", "Rounded", "Pill", "Cloud", "Ticket", "CutCorner", "Hexagon", "Leaf"]
-    private let borderStyles = ["None", "Solid", "Dashed", "Dotted"]
+    /// Menu order for text styles (the shared enum lists Body first).
+    private let textStyles: [NestedTextStyle] = [.header, .subheader, .body]
 
     /// Filled-flag tint from the shared TaskPriority palette (None → secondary).
     private func priorityTint(_ name: String) -> Color {
@@ -596,10 +595,10 @@ struct NestedFormattingBar: View {
             // Text style (flat rows; Toggle renders a native checkmark on
             // the current value — custom row views don't paint in Menus).
             Menu {
-                ForEach(["Header", "Subheader", "Body"], id: \.self) { s in
-                    Toggle(s, isOn: Binding(
-                        get: { s == item.textStyle.name },
-                        set: { if $0 { state.updateFormatting(id: item.id, style: s, textColor: item.textColor.name, background: item.backgroundColor.name) } }
+                ForEach(textStyles, id: \.self) { s in
+                    Toggle(s.name, isOn: Binding(
+                        get: { s == item.textStyle },
+                        set: { if $0 { state.updateFormatting(id: item.id, style: s, textColor: item.textColor, background: item.backgroundColor) } }
                     ))
                 }
                 Divider()
@@ -619,15 +618,15 @@ struct NestedFormattingBar: View {
             .help("Text style")
             // Text color
             Menu {
-                ForEach(tokens, id: \.self) { t in
-                    Toggle(t, isOn: Binding(
-                        get: { t == item.textColor.name },
-                        set: { if $0 { state.updateFormatting(id: item.id, style: item.textStyle.name, textColor: t, background: item.backgroundColor.name) } }
+                ForEach(NestedColorToken.entries, id: \.self) { t in
+                    Toggle(t.name, isOn: Binding(
+                        get: { t == item.textColor },
+                        set: { if $0 { state.updateFormatting(id: item.id, style: item.textStyle, textColor: t, background: item.backgroundColor) } }
                     ))
                 }
             } label: {
                 Image(systemName: "paintbrush")
-                    .tint(item.textColor.name == "Default" ? .secondary : Color.accentColor)
+                    .tint(item.textColor == NestedColorToken.default_ ? .secondary : Color.accentColor)
             }
             .menuStyle(.borderlessButton)
             .frame(width: 28, height: 28)
@@ -635,15 +634,15 @@ struct NestedFormattingBar: View {
             .help("Text color")
             // Background
             Menu {
-                ForEach(tokens, id: \.self) { t in
-                    Toggle(t, isOn: Binding(
-                        get: { t == item.backgroundColor.name },
-                        set: { if $0 { state.updateFormatting(id: item.id, style: item.textStyle.name, textColor: item.textColor.name, background: t) } }
+                ForEach(NestedColorToken.entries, id: \.self) { t in
+                    Toggle(t.name, isOn: Binding(
+                        get: { t == item.backgroundColor },
+                        set: { if $0 { state.updateFormatting(id: item.id, style: item.textStyle, textColor: item.textColor, background: t) } }
                     ))
                 }
             } label: {
                 Image(systemName: "paintpalette")
-                    .tint(item.backgroundColor.name == "Default" ? .secondary : Color.accentColor)
+                    .tint(item.backgroundColor == NestedColorToken.default_ ? .secondary : Color.accentColor)
             }
             .menuStyle(.borderlessButton)
             .frame(width: 28, height: 28)
@@ -652,30 +651,30 @@ struct NestedFormattingBar: View {
             // Border: shape + line style + color in one menu.
             Menu {
                 Section {
-                    ForEach(borderStyles, id: \.self) { s in
-                        Toggle(s, isOn: Binding(
-                            get: { s == item.borderStyle.name },
-                            set: { if $0 { state.updateBorder(id: item.id, shape: item.borderShape.name, style: s, color: item.borderColor.name) } }
+                    ForEach(NestedBorderStyle.entries, id: \.self) { s in
+                        Toggle(s.name, isOn: Binding(
+                            get: { s == item.borderStyle },
+                            set: { if $0 { state.updateBorder(id: item.id, shape: item.borderShape, style: s, color: item.borderColor) } }
                         ))
                     }
                 } header: {
                     Text("Style")
                 }
                 Section {
-                    ForEach(shapes, id: \.self) { s in
-                        Toggle(s, isOn: Binding(
-                            get: { s == item.borderShape.name },
-                            set: { if $0 { state.updateBorder(id: item.id, shape: s, style: item.borderStyle.name, color: item.borderColor.name) } }
+                    ForEach(NestedBorderShape.entries, id: \.self) { s in
+                        Toggle(s.name, isOn: Binding(
+                            get: { s == item.borderShape },
+                            set: { if $0 { state.updateBorder(id: item.id, shape: s, style: item.borderStyle, color: item.borderColor) } }
                         ))
                     }
                 } header: {
                     Text("Shape")
                 }
                 Section {
-                    ForEach(tokens, id: \.self) { t in
-                        Toggle(t, isOn: Binding(
-                            get: { t == item.borderColor.name },
-                            set: { if $0 { state.updateBorder(id: item.id, shape: item.borderShape.name, style: item.borderStyle.name, color: t) } }
+                    ForEach(NestedColorToken.entries, id: \.self) { t in
+                        Toggle(t.name, isOn: Binding(
+                            get: { t == item.borderColor },
+                            set: { if $0 { state.updateBorder(id: item.id, shape: item.borderShape, style: item.borderStyle, color: t) } }
                         ))
                     }
                 } header: {
@@ -683,7 +682,7 @@ struct NestedFormattingBar: View {
                 }
             } label: {
                 Image(systemName: "square.dashed")
-                    .tint(item.borderStyle.name == "None" ? .secondary : Color.accentColor)
+                    .tint(item.borderStyle == NestedBorderStyle.none ? .secondary : Color.accentColor)
             }
             .menuStyle(.borderlessButton)
             .frame(width: 28, height: 28)

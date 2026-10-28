@@ -1015,12 +1015,22 @@ final class NestedEditorState: ObservableObject {
     /// Shared predefined label choices, single-sourced in Kotlin.
     var predefinedLabels: [String] { helper.predefinedLabels() }
 
-    func updateFormatting(id: String, style: String, textColor: String, background: String) {
-        helper.updateFormattingByName(itemId: id, styleName: style, textColorName: textColor, backgroundColorName: background)
+    func updateFormatting(id: String, style: NestedTextStyle, textColor: NestedColorToken, background: NestedColorToken) {
+        helper.updateFormattingByName(
+            itemId: id,
+            styleName: style.name,
+            textColorName: textColor.name,
+            backgroundColorName: background.name
+        )
     }
 
-    func updateBorder(id: String, shape: String, style: String, color: String) {
-        helper.updateBorderByName(itemId: id, shapeName: shape, styleName: style, borderColorName: color)
+    func updateBorder(id: String, shape: NestedBorderShape, style: NestedBorderStyle, color: NestedColorToken) {
+        helper.updateBorderByName(
+            itemId: id,
+            shapeName: shape.name,
+            styleName: style.name,
+            borderColorName: color.name
+        )
     }
 
     func updatePriority(id: String, name: String) {
