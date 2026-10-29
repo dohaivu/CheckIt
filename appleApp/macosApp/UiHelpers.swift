@@ -68,6 +68,28 @@ func nestedArrowKeys(_ press: KeyPress) -> KeyPress.Result {
     return .handled
 }
 
+private final class InlineMarkdownCache: @unchecked Sendable {
+    static let shared = InlineMarkdownCache()
+    private var cache = [String: AttributedString]()
+    private let lock = NSLock()
+    private let maxEntries = 500
+
+    func get(_ key: String) -> AttributedString? {
+        lock.lock()
+        defer { lock.unlock() }
+        return cache[key]
+    }
+
+    func set(_ key: String, value: AttributedString) {
+        lock.lock()
+        defer { lock.unlock() }
+        if cache.count >= maxEntries {
+            cache.removeAll(keepingCapacity: true)
+        }
+        cache[key] = value
+    }
+}
+
 /// Builds display text from the shared markdown spans (bold/italic/strike/
 /// highlight/code). Presentation intents keep the caller's base font; only
 /// highlight carries an explicit color (bold + accent, or the span's `{cN}`
@@ -75,8 +97,16 @@ func nestedArrowKeys(_ press: KeyPress) -> KeyPress.Result {
 /// via `String.Index(utf16Offset:in:)` — never integer subscripting, which
 /// breaks on emoji.
 func renderInlineMarkdown(_ raw: String, highlight: Color = Color.orange) -> AttributedString {
+    guard !raw.isEmpty else { return AttributedString("") }
+    if highlight == Color.orange, let cached = InlineMarkdownCache.shared.get(raw) {
+        return cached
+    }
     let parsed = RichTextKt.parseRichText(input: raw)
-    return applyingRichSpans(parsed, to: AttributedString(parsed.text), highlight: highlight)
+    let rendered = applyingRichSpans(parsed, to: AttributedString(parsed.text), highlight: highlight)
+    if highlight == Color.orange {
+        InlineMarkdownCache.shared.set(raw, value: rendered)
+    }
+    return rendered
 }
 
 /// Multi-line counterpart of [renderInlineMarkdown], mirroring the shared
