@@ -131,24 +131,11 @@ internal fun nestedTextColor(token: NestedColorToken) =
     if (token == NestedColorToken.Default) MaterialTheme.colorScheme.onSurface else nestedColor(token)
 
 @Composable
-internal fun nestedColor(token: NestedColorToken): Color {
-    val hex = token.hex() ?: return MaterialTheme.colorScheme.onSurfaceVariant
-    val rgb = hex.removePrefix("#").toInt(16)
-    return Color(
-        red = ((rgb shr 16) and 0xFF) / 255f,
-        green = ((rgb shr 8) and 0xFF) / 255f,
-        blue = (rgb and 0xFF) / 255f
-    )
-}
+internal fun nestedColor(token: NestedColorToken): Color =
+    token.hex()?.parseHexColorOrNull() ?: MaterialTheme.colorScheme.onSurfaceVariant
 
-private fun nestedPaletteColor(token: NestedColorToken): Color {
-    val rgb = token.hex()?.removePrefix("#")?.toInt(16) ?: return Color.Unspecified
-    return Color(
-        red = ((rgb shr 16) and 0xFF) / 255f,
-        green = ((rgb shr 8) and 0xFF) / 255f,
-        blue = (rgb and 0xFF) / 255f
-    )
-}
+private fun nestedPaletteColor(token: NestedColorToken): Color =
+    token.hex()?.parseHexColorOrNull() ?: Color.Unspecified
 
 /**
  * Guide-emoji text style. Emoji fonts ship a tall line box; trimming keeps the glyph optically centred.
