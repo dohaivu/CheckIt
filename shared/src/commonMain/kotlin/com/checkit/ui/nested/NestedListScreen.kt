@@ -2958,7 +2958,14 @@ private fun NestedItemRow(
                             focusAlpha = focusAlpha
                         )
                         val hasChildren = node.hasChildren
-                        val ringStroke = if (isEmphasized || isSpineRoot) 2.dp else 1.5.dp
+                        // A ring holding an emoji is larger, so it takes a
+                        // thinner stroke to keep the plain ring's visual weight.
+                        val ringStroke = when {
+                            guideEmoji != null && (isEmphasized || isSpineRoot) -> 1.25.dp
+                            guideEmoji != null -> 1.dp
+                            isEmphasized || isSpineRoot -> 2.dp
+                            else -> 1.5.dp
+                        }
                         Box(
                             modifier = Modifier
                                 .width(16.dp)
@@ -2999,7 +3006,7 @@ private fun NestedItemRow(
                                 when {
                                     guideEmoji != null -> Text(
                                         text = guideEmoji,
-                                        style = nestedGuideEmojiStyle(11.sp),
+                                        style = nestedGuideEmojiStyle(12.sp),
                                         modifier = Modifier.alpha(focusAlpha)
                                     )
                                     item.collapsed && hasChildren -> Box(

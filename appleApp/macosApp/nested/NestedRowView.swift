@@ -129,7 +129,6 @@ struct NestedRowView: View {
         // branch's dot/ring plus its spine running down through its children.
         // Descendant rows carry that spine at the root's level.
         let spineLevel = selectedSpineLevel
-        let dotEmphasis = isEmphasized || isSpineRoot
         HStack(alignment: .top, spacing: 0) {
             // Indent guides, sharing one x per depth (slightly right of
             // cell center) — the toggle column below uses the same grid.
@@ -145,56 +144,25 @@ struct NestedRowView: View {
             // Collapse toggle: chevron wrapped in an outside circle (parents)
             // or a small filled dot (leaves), matching the attachment where
             // a collapsed parent shows a dot inside an outer ring.
-            // 2pt top offset puts the 13pt ring on the text's visual
-            // center (content starts 5pt down), whatever the row height.
-            Button {
-                state.toggleCollapse(id: item.id)
-            } label: {
-                Group {
-                    if let emoji = item.guideDot, !emoji.isEmpty {
-                        // Emoji guide: leaves let the emoji be the dot, parents
-                        // keep the ring (it is the collapse cue) and read as
-                        // filled while collapsed.
-                        if row.node.hasChildren {
-                            ZStack {
-                                Circle()
-                                    .fill(item.collapsed
-                                          ? nestedDotForDepth(row.depth, emphasized: dotEmphasis).opacity(0.22)
-                                          : Color.clear)
-                                Circle()
-                                    .stroke(nestedDotForDepth(row.depth, emphasized: dotEmphasis), lineWidth: dotEmphasis ? 2 : 1.5)
-                                Text(emoji)
-                                    .font(.system(size: 11))
-                            }
-                            .frame(width: guideRingDiameter, height: guideRingDiameter)
-                        } else {
-                            Text(emoji)
-                                .font(.system(size: 11))
-                        }
-                    } else if row.node.hasChildren {
-                        ZStack {
-                            Circle()
-                                .stroke(nestedDotForDepth(row.depth, emphasized: dotEmphasis), lineWidth: dotEmphasis ? 2 : 1.5)
-                                .frame(width: 12, height: 12)
-                            Image(systemName: item.collapsed ? "chevron.right" : "chevron.down")
-                                .font(.system(size: 8, weight: .semibold))
-                                .foregroundStyle(nestedDotForDepth(row.depth, emphasized: dotEmphasis))
-                        }
-                    } else {
-                        Circle()
-                            .fill(nestedDotForDepth(row.depth, emphasized: dotEmphasis))
-                            .frame(width: 7, height: 7)
+            // 2pt top offset puts the 12pt ring on the text's visual
+            // center (content starts 5pt down), whatever the row height; a
+            // ring holding an emoji is larger but keeps the same center.
+            // Leaves get the bare glyph instead of a disabled Button: a
+            // disabled control dims its label, which washed out leaf emoji.
+            Group {
+                if row.node.hasChildren {
+                    Button {
+                        state.toggleCollapse(id: item.id)
+                    } label: {
+                        guideDotGlyph
                     }
+                    .buttonStyle(.plain)
+                    .help(item.collapsed ? "Expand" : "Collapse")
+                } else {
+                    guideDotGlyph
                 }
-                .frame(width: 16, height: 24)
-                .contentShape(Rectangle())
-                .opacity(focusOpacity)
-                .animation(.easeOut(duration: 0.15), value: dotEmphasis)
             }
-            .buttonStyle(.plain)
             .padding(.top, 2).padding(.leading, 3)
-            .disabled(!row.node.hasChildren)
-            .help(row.node.hasChildren ? (item.collapsed ? "Expand" : "Collapse") : "")
 
             VStack(alignment: .leading, spacing: 2) {
                 HStack(alignment: .center, spacing: 6) {
@@ -422,12 +390,65 @@ struct NestedRowView: View {
         return 12
     }
 
+    /// A ring holding an emoji is larger, so it takes a thinner stroke to keep
+    /// the same visual weight as the plain ring.
+    private var guideRingLineWidth: CGFloat { dotEmphasis ? 1.25 : 1 }
+
+    /// The guide dot / collapse glyph: a ring with a chevron or emoji inside for
+    /// parents, the bare emoji or a small filled dot for leaves.
+    private var guideDotGlyph: some View {
+        Group {
+            if let emoji = item.guideDot, !emoji.isEmpty {
+                if row.node.hasChildren {
+                    // Parents keep the ring (it is the collapse cue) and read
+                    // as filled while collapsed.
+                    ZStack {
+                        Circle()
+                            .fill(item.collapsed
+                                  ? nestedDotForDepth(row.depth, emphasized: dotEmphasis).opacity(0.22)
+                                  : Color.clear)
+                        Circle()
+                            .stroke(nestedDotForDepth(row.depth, emphasized: dotEmphasis),
+                                    lineWidth: guideRingLineWidth)
+                        Text(emoji)
+                            .font(.system(size: 11))
+                    }
+                    .frame(width: guideRingDiameter, height: guideRingDiameter)
+                } else {
+                    Text(emoji)
+                        .font(.system(size: 11))
+                }
+            } else if row.node.hasChildren {
+                ZStack {
+                    Circle()
+                        .stroke(nestedDotForDepth(row.depth, emphasized: dotEmphasis), lineWidth: dotEmphasis ? 2 : 1.5)
+                        .frame(width: 12, height: 12)
+                    Image(systemName: item.collapsed ? "chevron.right" : "chevron.down")
+                        .font(.system(size: 8, weight: .semibold))
+                        .foregroundStyle(nestedDotForDepth(row.depth, emphasized: dotEmphasis))
+                }
+            } else {
+                Circle()
+                    .fill(nestedDotForDepth(row.depth, emphasized: dotEmphasis))
+                    .frame(width: 7, height: 7)
+            }
+        }
+        .frame(width: 16, height: 24)
+        .contentShape(Rectangle())
+        .opacity(focusOpacity)
+        .animation(.easeOut(duration: 0.15), value: dotEmphasis)
+    }
+
     /// Bottom edge of the toggle cell (16pt slot, 2pt top padding, centred
     /// content), where the downward spine starts so it touches the ring.
     private var guideRingBottom: CGFloat { 14 + guideRingDiameter / 2 }
 
     /// The active row gets full-strength ink and selection chrome.
     private var isEmphasized: Bool { isSelected || isEditing }
+
+    /// The row's dot/ring is drawn at full strength: selected, being edited, or
+    /// the root of the selection's spine.
+    private var dotEmphasis: Bool { isEmphasized || isSpineRoot }
 
     /// True for the effective branch root. A selected leaf promotes to its
     /// parent, whose downward guide should still read as the spine.
