@@ -115,13 +115,7 @@ struct NestedMenuTrigger: View {
     let emoji: String?
     let tint: Color
 
-    init(symbol: String, tint: Color) {
-        self.symbol = symbol
-        self.emoji = nil
-        self.tint = tint
-    }
-
-    init(symbol: String, emoji: String?, tint: Color) {
+    init(symbol: String, emoji: String? = nil, tint: Color) {
         self.symbol = symbol
         self.emoji = emoji
         self.tint = tint

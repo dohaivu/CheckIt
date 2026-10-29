@@ -1037,10 +1037,10 @@ final class NestedEditorState: ObservableObject {
         helper.updatePriorityByName(itemId: id, priorityName: priority.name)
     }
 
-    /// Emoji for the row's guide dot; nil restores the default dot.
+    /// Emoji for the row's guide dot; nil restores the default dot. Blank input
+    /// is normalized to nil by the shared sanitizer behind the bridge.
     func updateGuideDot(id: String, emoji: String?) {
-        let trimmed = emoji?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        helper.updateGuideDot(itemId: id, guideDot: trimmed.isEmpty ? nil : trimmed)
+        helper.updateGuideDot(itemId: id, guideDot: emoji)
     }
 
     func setTag(id: String, tagId: String, enabled: Bool) {

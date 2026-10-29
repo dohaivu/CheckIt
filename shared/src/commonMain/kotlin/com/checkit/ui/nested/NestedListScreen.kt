@@ -148,7 +148,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
@@ -2780,11 +2779,12 @@ private fun EmptyNestedList(onAddItem: () -> Unit) {
 /**
  * Guide-emoji text style. Emoji fonts ship a tall line box (Android also adds
  * legacy font padding), which pushed the glyph low enough to be clipped by the
- * dot's circle; trimming both keeps the glyph optically centred.
+ * dot's circle; trimming both keeps the glyph optically centred. Sized once for
+ * both guide variants so a parent's emoji matches its leaf siblings.
  */
-private fun nestedGuideEmojiStyle(size: TextUnit) = TextStyle(
-    fontSize = size,
-    lineHeight = size,
+private val nestedGuideEmojiStyle = TextStyle(
+    fontSize = 12.sp,
+    lineHeight = 12.sp,
     textAlign = TextAlign.Center,
     lineHeightStyle = LineHeightStyle(
         alignment = LineHeightStyle.Alignment.Center,
@@ -2978,27 +2978,32 @@ private fun NestedItemRow(
                                     // requiredSize: a parent ring holding an
                                     // emoji is wider than the 16.dp slot and
                                     // must overflow it evenly, not squeeze into
-                                    // an oval.
+                                    // an oval. No clip either: a 12.sp glyph is
+                                    // taller than a leaf's cell and must not be
+                                    // shaved by it, so filled shapes are drawn
+                                    // as circles instead.
                                     .requiredSize(dotSize)
-                                    .clip(CircleShape)
                                     .then(
                                         when {
                                             // Parents keep the ring: it is also the
                                             // collapse cue, and an emoji sits inside it.
                                             hasChildren -> Modifier
-                                                .border(ringStroke, dotColor, CircleShape)
                                                 .then(
                                                     // Collapsed + emoji reads as a filled
                                                     // ring, replacing the centre dot.
                                                     if (guideEmoji != null && item.collapsed) {
-                                                        Modifier.background(dotColor.copy(alpha = 0.22f))
+                                                        Modifier.background(
+                                                            dotColor.copy(alpha = 0.22f),
+                                                            CircleShape
+                                                        )
                                                     } else {
                                                         Modifier
                                                     }
                                                 )
+                                                .border(ringStroke, dotColor, CircleShape)
                                             // Leaf emoji replaces the solid dot.
                                             guideEmoji != null -> Modifier
-                                            else -> Modifier.background(dotColor)
+                                            else -> Modifier.background(dotColor, CircleShape)
                                         }
                                     ),
                                 contentAlignment = Alignment.Center
@@ -3006,7 +3011,7 @@ private fun NestedItemRow(
                                 when {
                                     guideEmoji != null -> Text(
                                         text = guideEmoji,
-                                        style = nestedGuideEmojiStyle(12.sp),
+                                        style = nestedGuideEmojiStyle,
                                         modifier = Modifier.alpha(focusAlpha)
                                     )
                                     item.collapsed && hasChildren -> Box(
