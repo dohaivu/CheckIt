@@ -51,6 +51,7 @@ import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.FormatColorFill
 import androidx.compose.material.icons.filled.FormatColorText
 import androidx.compose.material.icons.filled.FormatSize
+import androidx.compose.material.icons.filled.InvertColors
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
@@ -241,6 +242,7 @@ internal fun NestedFormattingBar(
     onLabelChange: (String?) -> Unit,
     onPriorityChange: (TaskPriority) -> Unit,
     onGuideDotChange: (String?) -> Unit,
+    onGuideDotColorChange: (NestedColorToken?) -> Unit,
     onDateRangeChange: (LocalDate?, LocalDate?) -> Unit,
     availableTags: List<TagItem>,
     onTagsChange: (List<String>) -> Unit,
@@ -253,6 +255,7 @@ internal fun NestedFormattingBar(
     var priorityExpanded by remember { mutableStateOf(false) }
     var styleExpanded by remember { mutableStateOf(false) }
     var guideDotExpanded by remember { mutableStateOf(false) }
+    var guideDotColorExpanded by remember { mutableStateOf(false) }
     var showEmojiPicker by remember { mutableStateOf(false) }
     var showDateDialog by remember { mutableStateOf(false) }
     var showLabelDialog by remember { mutableStateOf(false) }
@@ -343,6 +346,30 @@ internal fun NestedFormattingBar(
                 style = item.borderStyle,
                 color = item.borderColor
             ) { shape, style, color -> onBorderChange(shape, style, color) }
+
+            // Dot color also owns the connector into this row and its descendant spine.
+            Box {
+                IconButton(
+                    onClick = { guideDotColorExpanded = true },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.InvertColors,
+                        contentDescription = "Dot and guide color",
+                        tint = item.guideDotColor?.let { nestedColor(it) } ?: subtleInactiveColor,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                DropdownMenu(
+                    expanded = guideDotColorExpanded,
+                    onDismissRequest = { guideDotColorExpanded = false }
+                ) {
+                    ColorTokenSwatches(selected = item.guideDotColor ?: NestedColorToken.Default) { token ->
+                        guideDotColorExpanded = false
+                        onGuideDotColorChange(token.takeIf { it != NestedColorToken.Default })
+                    }
+                }
+            }
 
             // Guide dot: an emoji replaces the row's dot (parents keep the ring).
             Box {

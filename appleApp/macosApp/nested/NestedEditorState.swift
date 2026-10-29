@@ -37,6 +37,8 @@ struct NestedRow: Identifiable, Equatable {
     /// pre-order range of the selection branch.
     let index: Int
     let depth: Int
+    /// Palette overrides owned by ancestor spines, indexed by their depth.
+    let ancestorGuideColors: [NestedColorToken?]
     let node: NestedItemNode
     /// Self or any ancestor checked (Android `isInCheckedBranch` parity).
     let isInCheckedBranch: Bool
@@ -52,6 +54,7 @@ struct NestedRow: Identifiable, Equatable {
     static func == (lhs: NestedRow, rhs: NestedRow) -> Bool {
         lhs.id == rhs.id
             && lhs.depth == rhs.depth
+            && lhs.ancestorGuideColors == rhs.ancestorGuideColors
             && lhs.isInCheckedBranch == rhs.isInCheckedBranch
             && lhs.isContext == rhs.isContext
             && lhs.summaryRenderKey == rhs.summaryRenderKey
@@ -456,8 +459,8 @@ final class NestedEditorState: ObservableObject {
         let contextIds = Set(projection?.contextIds ?? [])
         let roots: [NestedItemNode] = projection?.roots ?? zoomRoots
         var out: [NestedRow] = []
-        var stack = roots.reversed().map { ($0, 0, false) }
-        while let (node, depth, ancestorChecked) = stack.popLast() {
+        var stack = roots.reversed().map { ($0, 0, false, [NestedColorToken?]()) }
+        while let (node, depth, ancestorChecked, ancestorGuideColors) = stack.popLast() {
             let inCheckedBranch = ancestorChecked || node.item.checked
             let summary = helper.summaryFor(tree: tree, itemId: node.item.id)
             out.append(
@@ -465,6 +468,7 @@ final class NestedEditorState: ObservableObject {
                     id: node.item.id,
                     index: out.count,
                     depth: depth,
+                    ancestorGuideColors: ancestorGuideColors,
                     node: node,
                     isInCheckedBranch: inCheckedBranch,
                     isContext: contextIds.contains(node.item.id),
@@ -474,7 +478,7 @@ final class NestedEditorState: ObservableObject {
             )
             if !node.item.collapsed {
                 for child in node.children.reversed() {
-                    stack.append((child, depth + 1, inCheckedBranch))
+                    stack.append((child, depth + 1, inCheckedBranch, ancestorGuideColors + [node.item.guideDotColor]))
                 }
             }
         }
@@ -1054,6 +1058,10 @@ final class NestedEditorState: ObservableObject {
     /// is normalized to nil by the shared sanitizer behind the bridge.
     func updateGuideDot(id: String, emoji: String?) {
         helper.updateGuideDot(itemId: id, guideDot: emoji)
+    }
+
+    func updateGuideDotColor(id: String, color: NestedColorToken?) {
+        helper.updateGuideDotColorByName(itemId: id, guideDotColorName: color?.name)
     }
 
     func setTag(id: String, tagId: String, enabled: Bool) {

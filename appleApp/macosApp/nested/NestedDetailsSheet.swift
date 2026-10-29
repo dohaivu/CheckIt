@@ -706,6 +706,21 @@ struct NestedFormattingBar: View {
                 )
                 .frame(width: 340, height: 420)
             }
+            // Dot color owns this row's connector and its descendant spine.
+            NestedMenuButton(rows: {
+                NestedColorToken.entries.map { t in
+                    NestedMenuRow.color(t, selected: t == (item.guideDotColor ?? NestedColorToken.default_)) {
+                        state.updateGuideDotColor(id: item.id, color: t == NestedColorToken.default_ ? nil : t)
+                    }
+                }
+            }, label: {
+                NestedMenuTrigger(
+                    symbol: "circle.lefthalf.filled",
+                    tint: item.guideDotColor == nil ? .secondary : nestedTokenColor(item.guideDotColor!)
+                )
+            })
+            .accessibilityLabel("Dot and guide color")
+            .help("Dot and guide color")
             // Priority
             NestedMenuButton(rows: {
                 TaskPriority.entries.map { p in

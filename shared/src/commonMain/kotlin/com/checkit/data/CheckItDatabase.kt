@@ -627,6 +627,8 @@ data class NestedListItemEntity(
     val borderShape: String = "Rounded",
     val borderStyle: String = "None",
     val borderColor: String = "Default",
+    /** Nullable palette token; null inherits the depth palette. */
+    val guideDotColor: String? = null,
     /** Emoji rendered in place of the guide dot; null keeps the default. */
     val guideDot: String? = null,
     val startDateEpochDays: Int? = null,
@@ -747,7 +749,7 @@ data class RoutineLogEntity(
         RoutineLogEntity::class,
         QuickNoteEntity::class
     ],
-    version = 10,
+    version = 11,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)
@@ -847,13 +849,20 @@ private val NestedItemGuideDotMigration9To10 = object : Migration(9, 10) {
     }
 }
 
+/** v10 -> v11: adds the per-row dot/guide palette override. */
+private val NestedItemGuideDotColorMigration10To11 = object : Migration(10, 11) {
+    override suspend fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("ALTER TABLE nested_list_items ADD COLUMN guideDotColor TEXT")
+    }
+}
+
 fun buildCheckItDatabase(
     builder: RoomDatabase.Builder<CheckItDatabase>
 ): CheckItDatabase {
     return builder
         .fallbackToDestructiveMigration(false)
         .fallbackToDestructiveMigrationOnDowngrade(false)
-        .addMigrations(RoutineColorMigration1To2, TaskMetricsMigration2To3, NestedCompletedAtMigration3To4, DropTaskRemindersMigration4To5, RepeatRuleMigration5To6, NestedDocumentSortOrderMigration6To7, NestedItemLabelMigration7To8, NestedItemBorderMigration8To9, NestedItemGuideDotMigration9To10)
+        .addMigrations(RoutineColorMigration1To2, TaskMetricsMigration2To3, NestedCompletedAtMigration3To4, DropTaskRemindersMigration4To5, RepeatRuleMigration5To6, NestedDocumentSortOrderMigration6To7, NestedItemLabelMigration7To8, NestedItemBorderMigration8To9, NestedItemGuideDotMigration9To10, NestedItemGuideDotColorMigration10To11)
         .setQueryCoroutineContext(Dispatchers.IO)
         .setDriver(BundledSQLiteDriver())
         .addCallback(object : RoomDatabase.Callback() {

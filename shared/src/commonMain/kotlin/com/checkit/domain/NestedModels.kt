@@ -132,6 +132,8 @@ data class NestedListItem(
     val borderShape: NestedBorderShape = NestedBorderShape.Rounded,
     val borderStyle: NestedBorderStyle = NestedBorderStyle.None,
     val borderColor: NestedColorToken = NestedColorToken.Default,
+    /** Optional palette override for this row's dot and owned guide segments. */
+    val guideDotColor: NestedColorToken? = null,
     /**
      * Emoji drawn in the row's guide dot instead of the default ring/dot.
      * Null keeps the standard guide. Normalize writes with

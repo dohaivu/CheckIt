@@ -42,6 +42,7 @@ import com.checkit.domain.usecase.UpdateNestedItemDateRangeUseCase
 import com.checkit.domain.usecase.UpdateNestedItemFormattingUseCase
 import com.checkit.domain.usecase.UpdateNestedItemBorderUseCase
 import com.checkit.domain.usecase.UpdateNestedItemGuideDotUseCase
+import com.checkit.domain.usecase.UpdateNestedItemGuideDotColorUseCase
 import com.checkit.domain.usecase.UpdateNestedItemLabelUseCase
 import com.checkit.domain.usecase.UpdateNestedItemMetricSettingsUseCase
 import com.checkit.domain.usecase.UpdateNestedItemNoteUseCase
@@ -181,6 +182,7 @@ class NestedListsViewModel(
     private val updateItemDateRangeUseCase: UpdateNestedItemDateRangeUseCase,
     private val updateItemPriorityUseCase: UpdateNestedItemPriorityUseCase,
     private val updateItemGuideDotUseCase: UpdateNestedItemGuideDotUseCase,
+    private val updateItemGuideDotColorUseCase: UpdateNestedItemGuideDotColorUseCase,
     private val updateItemTagsUseCase: UpdateNestedItemTagsUseCase,
     private val updateItemMetricSettingsUseCase: UpdateNestedItemMetricSettingsUseCase,
     private val updateItemProgressUseCase: UpdateNestedItemProgressUseCase,
@@ -696,6 +698,10 @@ class NestedListsViewModel(
 
     fun updateItemGuideDot(itemId: String, guideDot: String?) {
         viewModelScope.launch { updateItemGuideDotUseCase(itemId, guideDot) }
+    }
+
+    fun updateItemGuideDotColor(itemId: String, guideDotColor: NestedColorToken?) {
+        viewModelScope.launch { updateItemGuideDotColorUseCase(itemId, guideDotColor) }
     }
 
     fun updateItemTags(itemId: String, tagIds: List<String>) {

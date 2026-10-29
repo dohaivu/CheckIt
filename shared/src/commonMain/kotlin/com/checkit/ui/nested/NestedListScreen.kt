@@ -403,6 +403,8 @@ internal fun NestedListScreen(
                                         depth = row.depth,
                                         isInCheckedBranch = row.isInCheckedBranch,
                                         continuingLevels = row.continuingLevels,
+                                        continuingGuideOwners = row.continuingGuideOwners,
+                                        ancestorGuideOwners = row.ancestorGuideOwners,
                                         isContext = row.isContext,
                                         spineLevel = selectionBranch
                                             ?.takeIf { branch ->
@@ -466,6 +468,9 @@ internal fun NestedListScreen(
                             },
                             onGuideDotChange = { emoji ->
                                 viewModel.updateItemGuideDot(selectedItem.id, emoji)
+                            },
+                            onGuideDotColorChange = { color ->
+                                viewModel.updateItemGuideDotColor(selectedItem.id, color)
                             },
                             onDateRangeChange = { startDate, endDate ->
                                 viewModel.updateItemDateRange(selectedItem.id, startDate, endDate)

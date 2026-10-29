@@ -141,6 +141,13 @@ class UpdateNestedItemGuideDotUseCase(
         repository.updateNestedItemGuideDot(itemId, guideDot)
 }
 
+class UpdateNestedItemGuideDotColorUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(itemId: String, guideDotColor: NestedColorToken?) =
+        repository.updateNestedItemGuideDotColor(itemId, guideDotColor)
+}
+
 class UpdateNestedItemDateRangeUseCase(
     private val repository: CheckItRepository
 ) {

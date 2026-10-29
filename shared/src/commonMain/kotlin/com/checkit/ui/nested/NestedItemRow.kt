@@ -102,12 +102,15 @@ internal fun nestedDepthColor(depth: Int): Color =
     nestedDepthSolids[depth % nestedDepthSolids.size]
 
 internal fun nestedGuideColor(level: Int, emphasized: Boolean = false, focusAlpha: Float = 1f): Color =
-    nestedDepthColor(level).copy(
+    nestedGuideColor(nestedDepthColor(level), emphasized, focusAlpha)
+
+private fun nestedGuideColor(color: Color, emphasized: Boolean = false, focusAlpha: Float = 1f): Color =
+    color.copy(
         alpha = (if (emphasized) nestedGuideStrongAlpha else nestedGuideSubtleAlpha) * focusAlpha
     )
 
-internal fun nestedDotColor(depth: Int, emphasized: Boolean = false, focusAlpha: Float = 1f): Color =
-    nestedDepthColor(depth).copy(
+internal fun nestedDotColor(color: Color, emphasized: Boolean = false, focusAlpha: Float = 1f): Color =
+    color.copy(
         alpha = (if (emphasized) 1f else 0.5f) * focusAlpha
     )
 
@@ -138,6 +141,15 @@ internal fun nestedColor(token: NestedColorToken): Color {
     )
 }
 
+private fun nestedPaletteColor(token: NestedColorToken): Color {
+    val rgb = token.hex()?.removePrefix("#")?.toInt(16) ?: return Color.Unspecified
+    return Color(
+        red = ((rgb shr 16) and 0xFF) / 255f,
+        green = ((rgb shr 8) and 0xFF) / 255f,
+        blue = (rgb and 0xFF) / 255f
+    )
+}
+
 /**
  * Guide-emoji text style. Emoji fonts ship a tall line box; trimming keeps the glyph optically centred.
  */
@@ -158,6 +170,8 @@ internal fun NestedItemRow(
     depth: Int,
     isInCheckedBranch: Boolean,
     continuingLevels: Set<Int>,
+    continuingGuideOwners: Map<Int, String>,
+    ancestorGuideOwners: Map<Int, String> = emptyMap(),
     state: NestedEditorState.Active,
     viewModel: NestedListsViewModel,
     spineLevel: Int?,
@@ -168,6 +182,22 @@ internal fun NestedItemRow(
     isDragged: Boolean = false
 ) {
     val item = node.item
+    val guideBaseColor = remember(item.guideDotColor, depth) {
+        item.guideDotColor?.let(::nestedPaletteColor) ?: nestedDepthColor(depth)
+    }
+    val branchBaseColor = remember(depth, ancestorGuideOwners, state.tree) {
+        (depth - 1).takeIf { it >= 0 }?.let { parentDepth ->
+            ancestorGuideOwners[parentDepth]?.let { parentId ->
+                state.tree.itemById[parentId]?.guideDotColor?.let(::nestedPaletteColor)
+            } ?: nestedDepthColor(parentDepth)
+        } ?: nestedDepthColor(0)
+    }
+    val continuingGuideColors = remember(continuingGuideOwners, state.tree) {
+        continuingGuideOwners.mapValues { (level, ownerId) ->
+            state.tree.itemById[ownerId]?.guideDotColor?.let(::nestedPaletteColor)
+                ?: nestedDepthColor(level)
+        }
+    }
     val isSelected = item.id in state.selection.selectedIds ||
             (!state.selection.isActive && state.selectedItemId == item.id)
     val isEditing = state.editingTextItemId == item.id
@@ -227,7 +257,11 @@ internal fun NestedItemRow(
                         continuingLevels.forEach { level ->
                             val x = guideX(level)
                             drawLine(
-                                color = nestedGuideColor(level, emphasized = level == spineLevel, focusAlpha = focusAlpha),
+                                color = nestedGuideColor(
+                                    continuingGuideColors.getValue(level),
+                                    emphasized = level == spineLevel,
+                                    focusAlpha = focusAlpha
+                                ),
                                 start = Offset(x, 0f),
                                 end = Offset(x, size.height),
                                 strokeWidth = strokeWidth,
@@ -251,7 +285,7 @@ internal fun NestedItemRow(
                             drawPath(
                                 path = branchPath,
                                 color = nestedGuideColor(
-                                    depth - 1,
+                                    branchBaseColor,
                                     emphasized = depth - 1 == spineLevel,
                                     focusAlpha = focusAlpha
                                 ),
@@ -262,7 +296,7 @@ internal fun NestedItemRow(
                         if (node.hasChildren && !item.collapsed) {
                             val x = guideX(depth)
                             drawLine(
-                                color = nestedGuideColor(depth, emphasized = isEmphasized || isSpineRoot, focusAlpha = focusAlpha),
+                                color = nestedGuideColor(guideBaseColor, emphasized = isEmphasized || isSpineRoot, focusAlpha = focusAlpha),
                                 start = Offset(x, dotBottomY),
                                 end = Offset(x, size.height),
                                 strokeWidth = strokeWidth,
@@ -290,7 +324,7 @@ internal fun NestedItemRow(
                     contentAlignment = Alignment.TopStart
                 ) {
                     val dotColor = nestedDotColor(
-                        depth,
+                        guideBaseColor,
                         emphasized = isEmphasized || isSpineRoot,
                         focusAlpha = focusAlpha
                     )

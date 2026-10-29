@@ -16,6 +16,10 @@ internal data class VisibleNestedRow(
     val isVisible: Boolean,
     val isInCheckedBranch: Boolean,
     val continuingLevels: Set<Int> = emptySet(),
+    /** Item ids that own the continuing guide spine at each depth. */
+    val continuingGuideOwners: Map<Int, String> = emptyMap(),
+    /** Item ids of ancestors at each depth 0..<depth. */
+    val ancestorGuideOwners: Map<Int, String> = emptyMap(),
     /** Kept only as ancestor scaffolding for a filtered match. */
     val isContext: Boolean = false
 )
@@ -114,7 +118,9 @@ private data class NestedTraversalEntry(
     val depth: Int,
     val isVisible: Boolean,
     val ancestorChecked: Boolean,
-    val continuingLevels: Set<Int>
+    val continuingLevels: Set<Int>,
+    val continuingGuideOwners: Map<Int, String>,
+    val ancestorGuideOwners: Map<Int, String>
 )
 
 internal fun flattenVisibleNodes(
@@ -132,7 +138,9 @@ internal fun flattenVisibleNodes(
                 depth = 0,
                 isVisible = true,
                 ancestorChecked = false,
-                continuingLevels = emptySet()
+                continuingLevels = emptySet(),
+                continuingGuideOwners = emptyMap(),
+                ancestorGuideOwners = emptyMap()
             )
         )
     }
@@ -147,6 +155,8 @@ internal fun flattenVisibleNodes(
             isVisible = entry.isVisible,
             isInCheckedBranch = isInCheckedBranch,
             continuingLevels = entry.continuingLevels,
+            continuingGuideOwners = entry.continuingGuideOwners,
+            ancestorGuideOwners = entry.ancestorGuideOwners,
             isContext = node.item.id in contextIds
         )
 
@@ -156,11 +166,15 @@ internal fun flattenVisibleNodes(
         children.asReversed().forEachIndexed { index, child ->
             val isLast = (index == 0) // asReversed: index 0 is the last child
             val nextContinuing = entry.continuingLevels.toMutableSet()
+            val nextGuideOwners = entry.continuingGuideOwners.toMutableMap()
             if (!isLast) {
                 nextContinuing.add(entry.depth)
+                nextGuideOwners[entry.depth] = node.item.id
             } else {
                 nextContinuing.remove(entry.depth)
+                nextGuideOwners.remove(entry.depth)
             }
+            val nextAncestorGuideOwners = entry.ancestorGuideOwners + (entry.depth to node.item.id)
 
             stack.addLast(
                 NestedTraversalEntry(
@@ -168,7 +182,9 @@ internal fun flattenVisibleNodes(
                     depth = entry.depth + 1,
                     isVisible = true,
                     ancestorChecked = isInCheckedBranch,
-                    continuingLevels = nextContinuing
+                    continuingLevels = nextContinuing,
+                    continuingGuideOwners = nextGuideOwners,
+                    ancestorGuideOwners = nextAncestorGuideOwners
                 )
             )
         }

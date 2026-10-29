@@ -40,6 +40,7 @@ import com.checkit.domain.usecase.UpdateNestedItemDateRangeUseCase
 import com.checkit.domain.usecase.UpdateNestedItemFormattingUseCase
 import com.checkit.domain.usecase.UpdateNestedItemBorderUseCase
 import com.checkit.domain.usecase.UpdateNestedItemGuideDotUseCase
+import com.checkit.domain.usecase.UpdateNestedItemGuideDotColorUseCase
 import com.checkit.domain.usecase.UpdateNestedItemLabelUseCase
 import com.checkit.domain.usecase.UpdateNestedItemMetricSettingsUseCase
 import com.checkit.domain.usecase.UpdateNestedItemNoteUseCase
@@ -110,6 +111,7 @@ class NestedAppleHelper(
     private val updateItemDateRange: UpdateNestedItemDateRangeUseCase,
     private val updateItemPriority: UpdateNestedItemPriorityUseCase,
     private val updateItemGuideDot: UpdateNestedItemGuideDotUseCase,
+    private val updateItemGuideDotColor: UpdateNestedItemGuideDotColorUseCase,
     private val updateItemTags: UpdateNestedItemTagsUseCase,
     private val updateItemMetricSettings: UpdateNestedItemMetricSettingsUseCase,
     private val updateItemProgress: UpdateNestedItemProgressUseCase,
@@ -281,6 +283,18 @@ class NestedAppleHelper(
     /** Guide-dot emoji; pass null (or blank) to restore the default dot. */
     fun updateGuideDot(itemId: String, guideDot: String?) {
         scope.launch { runCatching { updateItemGuideDot(itemId, guideDot) } }
+    }
+
+    /** Nullable token override for the row's dot and guide segments. */
+    fun updateGuideDotColorByName(itemId: String, guideDotColorName: String?) {
+        scope.launch {
+            runCatching {
+                updateItemGuideDotColor(
+                    itemId,
+                    guideDotColorName?.let { NestedColorToken.valueOf(it) }?.takeIf { it != NestedColorToken.Default }
+                )
+            }
+        }
     }
 
     fun updateTags(itemId: String, tagIds: List<String>) {

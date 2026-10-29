@@ -71,12 +71,27 @@ func nestedDepthColor(_ depth: Int) -> Color {
 }
 
 func nestedGuideColor(_ level: Int, emphasized: Bool = false) -> Color {
-    nestedDepthColor(level).opacity(emphasized ? nestedGuideStrongOpacity : nestedGuideSubtleOpacity)
+    nestedGuideColor(nestedDepthColor(level), emphasized: emphasized)
+}
+
+func nestedGuideColor(_ color: Color, emphasized: Bool = false) -> Color {
+    color.opacity(emphasized ? nestedGuideStrongOpacity : nestedGuideSubtleOpacity)
 }
 
 /// Quiet by default; `emphasized` restores the solid depth color.
 func nestedDotForDepth(_ depth: Int, emphasized: Bool = false) -> Color {
-    nestedDepthColor(depth).opacity(emphasized ? 1.0 : nestedDotSubtleOpacity)
+    nestedDotColor(nestedDepthColor(depth), emphasized: emphasized)
+}
+
+func nestedDotColor(_ color: Color, emphasized: Bool = false) -> Color {
+    color.opacity(emphasized ? 1.0 : nestedDotSubtleOpacity)
+}
+
+func nestedGuideBaseColor(_ depth: Int, override: NestedColorToken?) -> Color {
+    guard let token = override, token != .default_, let hex = token.hex(), let color = Color(nestedHex: hex) else {
+        return nestedDepthColor(depth)
+    }
+    return color
 }
 
 private let nestedDateFormatter: DateFormatter = {
@@ -140,7 +155,10 @@ struct NestedRowView: View, Equatable {
             // cell center) — the toggle column below uses the same grid.
             ForEach(0..<row.depth, id: \.self) { level in
                 Rectangle()
-                    .fill(nestedGuideColor(level, emphasized: level == spineLevel))
+                    .fill(nestedGuideColor(
+                        nestedGuideBaseColor(level, override: row.ancestorGuideColors[level]),
+                        emphasized: level == spineLevel
+                    ))
                     .frame(width: 1)
                     .padding(.leading, 10)
                     .frame(width: 16, alignment: .leading)
@@ -300,7 +318,7 @@ struct NestedRowView: View, Equatable {
             // (which drops as the ring grows to hold an emoji) to touch it.
             if row.node.hasChildren && !item.collapsed {
                 Rectangle()
-                    .fill(nestedGuideColor(row.depth, emphasized: isEmphasized || isSpineRoot))
+                    .fill(nestedGuideColor(guideBaseColor, emphasized: isEmphasized || isSpineRoot))
                     .frame(width: 1)
                     .padding(.top, guideRingBottom)
                     .padding(.leading, CGFloat(row.depth * 16) + 10)
@@ -394,6 +412,10 @@ struct NestedRowView: View, Equatable {
         return 12
     }
 
+    private var guideBaseColor: Color {
+        nestedGuideBaseColor(row.depth, override: item.guideDotColor)
+    }
+
     /// A ring holding an emoji is larger, so it takes a thinner stroke to keep
     /// the same visual weight as the plain ring.
     private var guideRingLineWidth: CGFloat { dotEmphasis ? 1.25 : 1 }
@@ -409,10 +431,10 @@ struct NestedRowView: View, Equatable {
                     ZStack {
                         Circle()
                             .fill(item.collapsed
-                                  ? nestedDotForDepth(row.depth, emphasized: dotEmphasis).opacity(0.22)
+                                  ? nestedDotColor(guideBaseColor, emphasized: dotEmphasis).opacity(0.22)
                                   : Color.clear)
                         Circle()
-                            .stroke(nestedDotForDepth(row.depth, emphasized: dotEmphasis),
+                            .stroke(nestedDotColor(guideBaseColor, emphasized: dotEmphasis),
                                     lineWidth: guideRingLineWidth)
                         Text(emoji)
                             .font(.system(size: 11))
@@ -425,15 +447,15 @@ struct NestedRowView: View, Equatable {
             } else if row.node.hasChildren {
                 ZStack {
                     Circle()
-                        .stroke(nestedDotForDepth(row.depth, emphasized: dotEmphasis), lineWidth: dotEmphasis ? 2 : 1.5)
+                    .stroke(nestedDotColor(guideBaseColor, emphasized: dotEmphasis), lineWidth: dotEmphasis ? 2 : 1.5)
                         .frame(width: 12, height: 12)
                     Image(systemName: item.collapsed ? "chevron.right" : "chevron.down")
                         .font(.system(size: 8, weight: .semibold))
-                        .foregroundStyle(nestedDotForDepth(row.depth, emphasized: dotEmphasis))
+                        .foregroundStyle(nestedDotColor(guideBaseColor, emphasized: dotEmphasis))
                 }
             } else {
                 Circle()
-                    .fill(nestedDotForDepth(row.depth, emphasized: dotEmphasis))
+                    .fill(nestedDotColor(guideBaseColor, emphasized: dotEmphasis))
                     .frame(width: 7, height: 7)
             }
         }
