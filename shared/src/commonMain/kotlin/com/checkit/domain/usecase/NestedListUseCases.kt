@@ -134,6 +134,13 @@ class UpdateNestedItemPriorityUseCase(
         repository.updateNestedItemPriority(itemId, priority)
 }
 
+class UpdateNestedItemGuideDotUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(itemId: String, guideDot: String?) =
+        repository.updateNestedItemGuideDot(itemId, guideDot)
+}
+
 class UpdateNestedItemDateRangeUseCase(
     private val repository: CheckItRepository
 ) {

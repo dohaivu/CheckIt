@@ -39,6 +39,7 @@ import com.checkit.domain.usecase.ToggleNestedItemCollapsedUseCase
 import com.checkit.domain.usecase.UpdateNestedItemDateRangeUseCase
 import com.checkit.domain.usecase.UpdateNestedItemFormattingUseCase
 import com.checkit.domain.usecase.UpdateNestedItemBorderUseCase
+import com.checkit.domain.usecase.UpdateNestedItemGuideDotUseCase
 import com.checkit.domain.usecase.UpdateNestedItemLabelUseCase
 import com.checkit.domain.usecase.UpdateNestedItemMetricSettingsUseCase
 import com.checkit.domain.usecase.UpdateNestedItemNoteUseCase
@@ -108,6 +109,7 @@ class NestedAppleHelper(
     private val updateItemBorder: UpdateNestedItemBorderUseCase,
     private val updateItemDateRange: UpdateNestedItemDateRangeUseCase,
     private val updateItemPriority: UpdateNestedItemPriorityUseCase,
+    private val updateItemGuideDot: UpdateNestedItemGuideDotUseCase,
     private val updateItemTags: UpdateNestedItemTagsUseCase,
     private val updateItemMetricSettings: UpdateNestedItemMetricSettingsUseCase,
     private val updateItemProgress: UpdateNestedItemProgressUseCase,
@@ -274,6 +276,11 @@ class NestedAppleHelper(
 
     fun updatePriorityByName(itemId: String, priorityName: String) {
         scope.launch { runCatching { updateItemPriority(itemId, TaskPriority.valueOf(priorityName)) } }
+    }
+
+    /** Guide-dot emoji; pass null (or blank) to restore the default dot. */
+    fun updateGuideDot(itemId: String, guideDot: String?) {
+        scope.launch { runCatching { updateItemGuideDot(itemId, guideDot) } }
     }
 
     fun updateTags(itemId: String, tagIds: List<String>) {

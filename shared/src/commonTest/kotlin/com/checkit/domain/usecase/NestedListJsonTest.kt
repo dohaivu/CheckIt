@@ -26,6 +26,7 @@ class NestedListJsonTest {
             borderShape = com.checkit.domain.NestedBorderShape.Ticket,
             borderStyle = com.checkit.domain.NestedBorderStyle.Dotted,
             borderColor = com.checkit.domain.NestedColorToken.Green,
+            guideDot = "🔥",
             createdAtMillis = 1000L,
             updatedAtMillis = 2000L
         )
@@ -54,7 +55,6 @@ class NestedListJsonTest {
         assertTrue(json.contains("\"text\": \"Root Item\""))
         assertTrue(json.contains("\"label\": \"🔥 TOP 3\""))
         assertTrue(json.contains("\"text\": \"Child Item\""))
-
         val decoded = NestedDocumentExport.fromJson(json)
         assertEquals("doc-1", decoded.document.id)
         assertEquals("My Document", decoded.document.title)
@@ -64,9 +64,27 @@ class NestedListJsonTest {
         assertEquals("Ticket", decoded.items[0].borderShape)
         assertEquals("Dotted", decoded.items[0].borderStyle)
         assertEquals("Green", decoded.items[0].borderColor)
+        assertEquals("🔥", decoded.items[0].guideDot)
         assertEquals(1, decoded.items[0].children.size)
         assertEquals("Child Item", decoded.items[0].children[0].text)
         assertTrue(decoded.items[0].children[0].checked)
+    }
+
+    @Test
+    fun testJsonWithoutGuideDotDecodesToNull() {
+        val json = """
+            {
+              "version": 1,
+              "exportedAtMillis": 0,
+              "document": { "id": "doc-1", "title": "Legacy" },
+              "items": [ { "id": "item-1", "text": "Old row", "position": 0 } ]
+            }
+        """.trimIndent()
+
+        val decoded = NestedDocumentExport.fromJson(json)
+
+        assertEquals("Old row", decoded.items[0].text)
+        assertEquals(null, decoded.items[0].guideDot)
     }
 
     @Test

@@ -132,6 +132,12 @@ data class NestedListItem(
     val borderShape: NestedBorderShape = NestedBorderShape.Rounded,
     val borderStyle: NestedBorderStyle = NestedBorderStyle.None,
     val borderColor: NestedColorToken = NestedColorToken.Default,
+    /**
+     * Emoji drawn in the row's guide dot instead of the default ring/dot.
+     * Null keeps the standard guide. Normalize writes with
+     * [sanitizeGuideDot] so a row cannot be used as a free-text field.
+     */
+    val guideDot: String? = null,
     val startDate: LocalDate? = null,
     val endDate: LocalDate? = null,
     val priority: TaskPriority = TaskPriority.None,
@@ -175,3 +181,21 @@ class NestedDocumentTree(
     val flatItems: List<NestedListItem> by lazy { flattenNestedNodes(rootNodes) }
     val metricSummaryById: Map<String, NestedMetricSummary> by lazy { calculateNestedMetricSummaries(rootNodes) }
 }
+
+/** Longest guide emoji accepted, in UTF-16 units. */
+const val NESTED_GUIDE_DOT_MAX_LENGTH = 16
+
+/**
+ * Normalizes a picked guide emoji: trims surrounding whitespace, maps blank to
+ * null (so the row falls back to the default dot), and rejects values that are
+ * clearly not a single emoji rather than storing arbitrary text.
+ *
+ * Emojis with skin tones or zero-width joiners need several code points, hence
+ * the generous cap; anything longer is treated as invalid input.
+ */
+fun sanitizeGuideDot(raw: String?): String? {
+    val trimmed = raw?.trim().orEmpty()
+    if (trimmed.isEmpty()) return null
+    return trimmed.takeIf { it.length <= NESTED_GUIDE_DOT_MAX_LENGTH }
+}
+

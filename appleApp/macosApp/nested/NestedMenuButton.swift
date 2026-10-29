@@ -108,14 +108,33 @@ struct NestedMenuButton<Label: View>: View {
 }
 
 /// Button label matching a native `Menu` trigger: icon plus disclosure chevron.
+/// Pass `emoji` to show the current pick (for the guide-dot menu) in place of
+/// the symbol.
 struct NestedMenuTrigger: View {
     let symbol: String
+    let emoji: String?
     let tint: Color
+
+    init(symbol: String, tint: Color) {
+        self.symbol = symbol
+        self.emoji = nil
+        self.tint = tint
+    }
+
+    init(symbol: String, emoji: String?, tint: Color) {
+        self.symbol = symbol
+        self.emoji = emoji
+        self.tint = tint
+    }
 
     var body: some View {
         HStack(spacing: 1) {
-            Image(systemName: symbol)
-                .foregroundStyle(tint)
+            if let emoji, !emoji.isEmpty {
+                Text(emoji).font(.system(size: 13))
+            } else {
+                Image(systemName: symbol)
+                    .foregroundStyle(tint)
+            }
             Image(systemName: "chevron.compact.down")
                 .font(.system(size: 9, weight: .semibold))
                 .foregroundStyle(.secondary)

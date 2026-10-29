@@ -1233,6 +1233,13 @@ interface CheckItDao {
         updatedAtMillis: Long
     )
 
+    @Query("UPDATE nested_list_items SET guideDot = :guideDot, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
+    suspend fun updateNestedItemGuideDot(
+        itemId: String,
+        guideDot: String?,
+        updatedAtMillis: Long
+    )
+
     @Query("UPDATE nested_list_items SET startDateEpochDays = :startDateEpochDays, endDateEpochDays = :endDateEpochDays, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
     suspend fun updateNestedItemDateRange(
         itemId: String,

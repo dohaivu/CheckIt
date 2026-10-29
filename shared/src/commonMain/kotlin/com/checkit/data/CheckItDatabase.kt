@@ -627,6 +627,8 @@ data class NestedListItemEntity(
     val borderShape: String = "Rounded",
     val borderStyle: String = "None",
     val borderColor: String = "Default",
+    /** Emoji rendered in place of the guide dot; null keeps the default. */
+    val guideDot: String? = null,
     val startDateEpochDays: Int? = null,
     val endDateEpochDays: Int? = null,
     val priority: String = "None",
@@ -745,7 +747,7 @@ data class RoutineLogEntity(
         RoutineLogEntity::class,
         QuickNoteEntity::class
     ],
-    version = 9,
+    version = 10,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)
@@ -836,13 +838,22 @@ private val NestedItemBorderMigration8To9 = object : Migration(8, 9) {
     }
 }
 
+/** v9 -> v10: adds the per-row guide emoji; existing rows keep the default dot. */
+private val NestedItemGuideDotMigration9To10 = object : Migration(9, 10) {
+    override suspend fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            "ALTER TABLE nested_list_items ADD COLUMN guideDot TEXT"
+        )
+    }
+}
+
 fun buildCheckItDatabase(
     builder: RoomDatabase.Builder<CheckItDatabase>
 ): CheckItDatabase {
     return builder
         .fallbackToDestructiveMigration(false)
         .fallbackToDestructiveMigrationOnDowngrade(false)
-        .addMigrations(RoutineColorMigration1To2, TaskMetricsMigration2To3, NestedCompletedAtMigration3To4, DropTaskRemindersMigration4To5, RepeatRuleMigration5To6, NestedDocumentSortOrderMigration6To7, NestedItemLabelMigration7To8, NestedItemBorderMigration8To9)
+        .addMigrations(RoutineColorMigration1To2, TaskMetricsMigration2To3, NestedCompletedAtMigration3To4, DropTaskRemindersMigration4To5, RepeatRuleMigration5To6, NestedDocumentSortOrderMigration6To7, NestedItemLabelMigration7To8, NestedItemBorderMigration8To9, NestedItemGuideDotMigration9To10)
         .setQueryCoroutineContext(Dispatchers.IO)
         .setDriver(BundledSQLiteDriver())
         .addCallback(object : RoomDatabase.Callback() {

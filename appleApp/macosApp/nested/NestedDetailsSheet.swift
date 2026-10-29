@@ -7,6 +7,7 @@ import SwiftUI
 import AppKit
 import Combine
 import Shared
+import SwiftEmojiPicker
 
 // MARK: - Note editor (shared by sheet + inspector)
 
@@ -549,6 +550,7 @@ struct NestedFormattingBar: View {
 
     @State private var showDates = false
     @State private var showLabel = false
+    @State private var showEmojiPicker = false
     @State private var startDate = Date()
     @State private var endDate = Date()
     @State private var hasStart = false
@@ -563,6 +565,15 @@ struct NestedFormattingBar: View {
             return color
         }
         return .secondary
+    }
+
+    /// Writes straight through to the shared use case, so the picker's
+    /// binding is the source of truth (no draft state to commit).
+    private var guideEmojiBinding: Binding<String> {
+        Binding(
+            get: { item.guideDot ?? "" },
+            set: { state.updateGuideDot(id: item.id, emoji: $0) }
+        )
     }
 
     private func barBtn(
@@ -668,6 +679,33 @@ struct NestedFormattingBar: View {
             })
             .accessibilityLabel("Border")
             .help("Border")
+            // Guide dot: emoji inside the row's dot (parents keep the ring).
+            NestedMenuButton(rows: {
+                [
+                    .item(title: "Default dot", selected: item.guideDot == nil) {
+                        state.updateGuideDot(id: item.id, emoji: nil)
+                    },
+                    .item(title: item.guideDot == nil ? "Choose emoji…" : "Change emoji…") {
+                        // Let the menu finish dismissing before the popover opens.
+                        DispatchQueue.main.async { showEmojiPicker = true }
+                    },
+                ]
+            }, label: {
+                NestedMenuTrigger(
+                    symbol: "circle.dotted",
+                    emoji: item.guideDot,
+                    tint: item.guideDot == nil ? .secondary : .accentColor
+                )
+            })
+            .accessibilityLabel("Guide dot")
+            .help("Guide dot")
+            .popover(isPresented: $showEmojiPicker, arrowEdge: .bottom) {
+                EmojiPickerView(
+                    selectedEmoji: guideEmojiBinding,
+                    selectedEmojiCategoryTintColor: .accentColor
+                )
+                .frame(width: 340, height: 420)
+            }
             // Priority
             NestedMenuButton(rows: {
                 TaskPriority.entries.map { p in

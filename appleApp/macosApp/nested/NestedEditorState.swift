@@ -1037,6 +1037,12 @@ final class NestedEditorState: ObservableObject {
         helper.updatePriorityByName(itemId: id, priorityName: priority.name)
     }
 
+    /// Emoji for the row's guide dot; nil restores the default dot.
+    func updateGuideDot(id: String, emoji: String?) {
+        let trimmed = emoji?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        helper.updateGuideDot(itemId: id, guideDot: trimmed.isEmpty ? nil : trimmed)
+    }
+
     func setTag(id: String, tagId: String, enabled: Bool) {
         helper.setTagEnabled(itemId: id, tagId: tagId, enabled: enabled)
     }

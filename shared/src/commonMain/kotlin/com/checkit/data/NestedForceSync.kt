@@ -1,5 +1,7 @@
 package com.checkit.data
 
+import com.checkit.domain.sanitizeGuideDot
+
 /**
  * Pure decision logic for the manual "force push" / "force pull" actions,
  * kept out of the Firestore orchestration so both platforms share it and it
@@ -46,6 +48,7 @@ object NestedForceSync {
             borderShape = item.borderShape,
             borderStyle = item.borderStyle,
             borderColor = item.borderColor,
+            guideDot = item.guideDot,
             startDateEpochDays = item.startDateEpochDays,
             endDateEpochDays = item.endDateEpochDays,
             priority = item.priority,
@@ -128,6 +131,7 @@ object NestedForceSync {
                     borderShape = remote.borderShape,
                     borderStyle = remote.borderStyle,
                     borderColor = remote.borderColor,
+                    guideDot = sanitizeGuideDot(remote.guideDot),
                     startDateEpochDays = remote.startDateEpochDays,
                     endDateEpochDays = remote.endDateEpochDays,
                     priority = remote.priority,

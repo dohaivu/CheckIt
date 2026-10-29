@@ -1,5 +1,7 @@
 package com.checkit.data
 
+import com.checkit.domain.sanitizeGuideDot
+
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -163,6 +165,7 @@ class NestedSyncBridge(
                     borderShape = entity.borderShape,
                     borderStyle = entity.borderStyle,
                     borderColor = entity.borderColor,
+                    guideDot = entity.guideDot,
                     startDateEpochDays = entity.startDateEpochDays,
                     endDateEpochDays = entity.endDateEpochDays,
                     priority = entity.priority,
@@ -423,6 +426,7 @@ class NestedSyncBridge(
                 borderShape = remote.borderShape,
                 borderStyle = remote.borderStyle,
                 borderColor = remote.borderColor,
+                guideDot = sanitizeGuideDot(remote.guideDot),
                 startDateEpochDays = remote.startDateEpochDays,
                 endDateEpochDays = remote.endDateEpochDays,
                 priority = remote.priority,
@@ -463,6 +467,7 @@ class NestedSyncBridge(
             borderShape = entity.borderShape,
             borderStyle = entity.borderStyle,
             borderColor = entity.borderColor,
+            guideDot = entity.guideDot,
             startDateEpochDays = entity.startDateEpochDays,
             endDateEpochDays = entity.endDateEpochDays,
             priority = entity.priority,
@@ -495,6 +500,7 @@ class NestedSyncBridge(
             borderShape = remote.borderShape,
             borderStyle = remote.borderStyle,
             borderColor = remote.borderColor,
+            guideDot = sanitizeGuideDot(remote.guideDot),
             startDateEpochDays = remote.startDateEpochDays,
             endDateEpochDays = remote.endDateEpochDays,
             priority = remote.priority,

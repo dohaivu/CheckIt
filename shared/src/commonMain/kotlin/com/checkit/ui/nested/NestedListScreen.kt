@@ -35,6 +35,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentSize
@@ -82,6 +83,7 @@ import androidx.compose.material.icons.filled.Today
 import androidx.compose.material.icons.filled.Work
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material.icons.filled.ZoomOut
+import androidx.compose.material.icons.outlined.EmojiEmotions
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.LocalOffer
 import androidx.compose.material.icons.rounded.CheckBox
@@ -134,15 +136,21 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.LineHeightStyle
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
@@ -189,6 +197,7 @@ import com.checkit.ui.tasks.PredefinedLabels
 import com.checkit.ui.components.CompactFlatTextField
 import com.checkit.ui.components.DatePicker
 import com.checkit.ui.components.DateRangePill
+import com.checkit.ui.components.EmojiPicker
 import com.checkit.ui.components.FocusPeriodHeader
 import com.checkit.ui.components.MarkdownTextField
 import com.checkit.ui.components.MetricsSection
@@ -664,6 +673,9 @@ internal fun NestedListScreen(
                             onPriorityChange = { priority ->
                                 viewModel.updateItemPriority(selectedItem.id, priority)
                             },
+                            onGuideDotChange = { emoji ->
+                                viewModel.updateItemGuideDot(selectedItem.id, emoji)
+                            },
                             onDateRangeChange = { startDate, endDate ->
                                 viewModel.updateItemDateRange(selectedItem.id, startDate, endDate)
                             },
@@ -1071,6 +1083,7 @@ private fun NestedFormattingBar(
     onBorderChange: (NestedBorderShape, NestedBorderStyle, NestedColorToken) -> Unit,
     onLabelChange: (String?) -> Unit,
     onPriorityChange: (TaskPriority) -> Unit,
+    onGuideDotChange: (String?) -> Unit,
     onDateRangeChange: (kotlinx.datetime.LocalDate?, kotlinx.datetime.LocalDate?) -> Unit,
     availableTags: List<TagItem>,
     onTagsChange: (List<String>) -> Unit,
@@ -1082,6 +1095,8 @@ private fun NestedFormattingBar(
 ) {
     var priorityExpanded by remember { mutableStateOf(false) }
     var styleExpanded by remember { mutableStateOf(false) }
+    var guideDotExpanded by remember { mutableStateOf(false) }
+    var showEmojiPicker by remember { mutableStateOf(false) }
     var showDateDialog by remember { mutableStateOf(false) }
     var showLabelDialog by remember { mutableStateOf(false) }
     val subtleInactiveColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f)
@@ -1171,6 +1186,54 @@ private fun NestedFormattingBar(
                 style = item.borderStyle,
                 color = item.borderColor
             ) { shape, style, color -> onBorderChange(shape, style, color) }
+
+            // Guide dot: an emoji replaces the row's dot (parents keep the ring).
+            Box {
+                IconButton(
+                    onClick = { guideDotExpanded = true },
+                    // The trigger shows the emoji itself, which carries no text
+                    // label of its own, so name the control explicitly.
+                    modifier = Modifier
+                        .size(32.dp)
+                        .semantics { contentDescription = "Guide dot" }
+                ) {
+                    val emoji = item.guideDot
+                    if (emoji != null) {
+                        Text(text = emoji, fontSize = 15.sp)
+                    } else {
+                        Icon(
+                            imageVector = Icons.Outlined.EmojiEmotions,
+                            contentDescription = "Guide dot",
+                            tint = subtleInactiveColor,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+                DropdownMenu(
+                    expanded = guideDotExpanded,
+                    onDismissRequest = { guideDotExpanded = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Default dot") },
+                        trailingIcon = if (item.guideDot == null) {
+                            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                        } else {
+                            null
+                        },
+                        onClick = {
+                            guideDotExpanded = false
+                            onGuideDotChange(null)
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(if (item.guideDot == null) "Choose emoji…" else "Change emoji…") },
+                        onClick = {
+                            guideDotExpanded = false
+                            showEmojiPicker = true
+                        }
+                    )
+                }
+            }
 
             VerticalDivider(
                 modifier = Modifier
@@ -1318,6 +1381,13 @@ private fun NestedFormattingBar(
                 )
             }
         }
+    }
+
+    if (showEmojiPicker) {
+        EmojiPicker(
+            onDismiss = { showEmojiPicker = false },
+            onEmojiSelect = { emoji -> onGuideDotChange(emoji.details.string) }
+        )
     }
 
     if (showDateDialog) {
@@ -2707,6 +2777,22 @@ private fun EmptyNestedList(onAddItem: () -> Unit) {
     }
 }
 
+/**
+ * Guide-emoji text style. Emoji fonts ship a tall line box (Android also adds
+ * legacy font padding), which pushed the glyph low enough to be clipped by the
+ * dot's circle; trimming both keeps the glyph optically centred.
+ */
+private fun nestedGuideEmojiStyle(size: TextUnit) = TextStyle(
+    fontSize = size,
+    lineHeight = size,
+    textAlign = TextAlign.Center,
+    lineHeightStyle = LineHeightStyle(
+        alignment = LineHeightStyle.Alignment.Center,
+        trim = LineHeightStyle.Trim.Both
+    ),
+    platformStyle = guideEmojiPlatformStyle()
+)
+
 @Composable
 private fun NestedItemRow(
     node: NestedItemNode,
@@ -2753,7 +2839,18 @@ private fun NestedItemRow(
     // min(), not multiplication: a filtered context row outside focus should
     // not stack 0.6 * 0.45 into unreadable 0.27 text.
     val itemTextColor = baseTextColor.copy(alpha = minOf(baseTextColor.alpha, focusAlpha))
-    val dotTop = if (node.hasChildren) 9.dp else 12.5.dp
+    // Guide geometry. An emoji needs a full cell even on leaves, and a parent
+    // ring grows to hold one at the same glyph size without squeezing it
+    // against the stroke, so size and offset are resolved once here and shared
+    // by the spine drawing and the dot composable below; every variant keeps
+    // the same 16.dp centre line.
+    val guideEmoji = item.guideDot
+    val dotSize = when {
+        node.hasChildren && guideEmoji != null -> 22.dp
+        node.hasChildren || guideEmoji != null -> 14.dp
+        else -> 7.dp
+    }
+    val dotTop = 16.dp - dotSize / 2
     val cardShape = remember(item.borderShape) { NestedCardShape(item.borderShape) }
     val density = androidx.compose.ui.platform.LocalDensity.current
     val borderStroke = remember(item.borderStyle, density.density) {
@@ -2782,11 +2879,9 @@ private fun NestedItemRow(
                             // use the 14.dp outer ring, leaves use the 7.dp solid dot, with
                             // the leaf pushed down so both centers share one line. Guides
                             // stay center-aligned and touch the outer edge.
-                            val dotSize = if (node.hasChildren) 14.dp else 7.dp
-                            val dotTopPx = dotTop.toPx()
                             val dotSizePx = dotSize.toPx()
-                            val dotCenterY = dotTopPx + dotSizePx / 2
-                            val dotBottomY = dotTopPx + dotSizePx
+                            val dotCenterY = dotTop.toPx() + dotSizePx / 2
+                            val dotBottomY = dotTop.toPx() + dotSizePx
                             val strokeWidth = 1.dp.toPx()
                             val curveRadius = 6.dp.toPx()
                             val guideX: (Int) -> Float = { level -> level * 16.dp.toPx() + 8.dp.toPx() }
@@ -2862,6 +2957,8 @@ private fun NestedItemRow(
                             emphasized = isEmphasized || isSpineRoot,
                             focusAlpha = focusAlpha
                         )
+                        val hasChildren = node.hasChildren
+                        val ringStroke = if (isEmphasized || isSpineRoot) 2.dp else 1.5.dp
                         Box(
                             modifier = Modifier
                                 .width(16.dp)
@@ -2871,23 +2968,41 @@ private fun NestedItemRow(
                             Box(
                                 modifier = Modifier
                                     .padding(top = dotTop)
-                                    .size(if (node.hasChildren) 14.dp else 7.dp)
+                                    // requiredSize: a parent ring holding an
+                                    // emoji is wider than the 16.dp slot and
+                                    // must overflow it evenly, not squeeze into
+                                    // an oval.
+                                    .requiredSize(dotSize)
                                     .clip(CircleShape)
                                     .then(
-                                        if (node.hasChildren) {
-                                            Modifier.border(
-                                                if (isEmphasized || isSpineRoot) 2.dp else 1.5.dp,
-                                                dotColor,
-                                                CircleShape
-                                            )
-                                        } else {
-                                            Modifier.background(dotColor)
+                                        when {
+                                            // Parents keep the ring: it is also the
+                                            // collapse cue, and an emoji sits inside it.
+                                            hasChildren -> Modifier
+                                                .border(ringStroke, dotColor, CircleShape)
+                                                .then(
+                                                    // Collapsed + emoji reads as a filled
+                                                    // ring, replacing the centre dot.
+                                                    if (guideEmoji != null && item.collapsed) {
+                                                        Modifier.background(dotColor.copy(alpha = 0.22f))
+                                                    } else {
+                                                        Modifier
+                                                    }
+                                                )
+                                            // Leaf emoji replaces the solid dot.
+                                            guideEmoji != null -> Modifier
+                                            else -> Modifier.background(dotColor)
                                         }
                                     ),
                                 contentAlignment = Alignment.Center
                             ) {
-                                if (item.collapsed && node.hasChildren) {
-                                    Box(
+                                when {
+                                    guideEmoji != null -> Text(
+                                        text = guideEmoji,
+                                        style = nestedGuideEmojiStyle(11.sp),
+                                        modifier = Modifier.alpha(focusAlpha)
+                                    )
+                                    item.collapsed && hasChildren -> Box(
                                         modifier = Modifier
                                             .size(6.dp)
                                             .clip(CircleShape)

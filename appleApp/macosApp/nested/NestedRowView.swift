@@ -151,7 +151,27 @@ struct NestedRowView: View {
                 state.toggleCollapse(id: item.id)
             } label: {
                 Group {
-                    if row.node.hasChildren {
+                    if let emoji = item.guideDot, !emoji.isEmpty {
+                        // Emoji guide: leaves let the emoji be the dot, parents
+                        // keep the ring (it is the collapse cue) and read as
+                        // filled while collapsed.
+                        if row.node.hasChildren {
+                            ZStack {
+                                Circle()
+                                    .fill(item.collapsed
+                                          ? nestedDotForDepth(row.depth, emphasized: dotEmphasis).opacity(0.22)
+                                          : Color.clear)
+                                Circle()
+                                    .stroke(nestedDotForDepth(row.depth, emphasized: dotEmphasis), lineWidth: dotEmphasis ? 2 : 1.5)
+                                Text(emoji)
+                                    .font(.system(size: 11))
+                            }
+                            .frame(width: guideRingDiameter, height: guideRingDiameter)
+                        } else {
+                            Text(emoji)
+                                .font(.system(size: 11))
+                        }
+                    } else if row.node.hasChildren {
                         ZStack {
                             Circle()
                                 .stroke(nestedDotForDepth(row.depth, emphasized: dotEmphasis), lineWidth: dotEmphasis ? 2 : 1.5)
@@ -301,14 +321,14 @@ struct NestedRowView: View {
         }
         .background(alignment: .topLeading) {
             // Guide continuation from the toggle down through the children.
-            // Same 16pt grid x as the guides. The toggle is a 13pt circle
-            // in a 16pt slot with 2pt top padding, so its bottom edge sits
-            // at 20pt — start the line there so it touches the ring.
+            // Same 16pt grid x as the guides. The toggle is a circle in a 16pt
+            // slot with 2pt top padding, so start the line at its bottom edge
+            // (which drops as the ring grows to hold an emoji) to touch it.
             if row.node.hasChildren && !item.collapsed {
                 Rectangle()
                     .fill(nestedGuideColor(row.depth, emphasized: isEmphasized || isSpineRoot))
                     .frame(width: 1)
-                    .padding(.top, 20)
+                    .padding(.top, guideRingBottom)
                     .padding(.leading, CGFloat(row.depth * 16) + 10)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     .opacity(focusOpacity)
@@ -392,6 +412,19 @@ struct NestedRowView: View {
     }
 
     private var isSelected: Bool { state.selectedId == item.id }
+
+    /// Guide dot diameter. A parent ring grows to hold its emoji at the same
+    /// glyph size as a leaf dot without squeezing it against the stroke; plain
+    /// parents keep the ring leaves never show.
+    private var guideRingDiameter: CGFloat {
+        guard row.node.hasChildren else { return 12 }
+        if let emoji = item.guideDot, !emoji.isEmpty { return 20 }
+        return 12
+    }
+
+    /// Bottom edge of the toggle cell (16pt slot, 2pt top padding, centred
+    /// content), where the downward spine starts so it touches the ring.
+    private var guideRingBottom: CGFloat { 14 + guideRingDiameter / 2 }
 
     /// The active row gets full-strength ink and selection chrome.
     private var isEmphasized: Bool { isSelected || isEditing }

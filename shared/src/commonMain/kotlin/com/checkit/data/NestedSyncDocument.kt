@@ -1,5 +1,7 @@
 package com.checkit.data
 
+import com.checkit.domain.sanitizeGuideDot
+
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -55,6 +57,7 @@ object NestedSyncDocument {
     const val FIELD_BORDER_SHAPE = "borderShape"
     const val FIELD_BORDER_STYLE = "borderStyle"
     const val FIELD_BORDER_COLOR = "borderColor"
+    const val FIELD_GUIDE_DOT = "guideDot"
     const val FIELD_START_DATE = "startDateEpochDays"
     const val FIELD_END_DATE = "endDateEpochDays"
     const val FIELD_PRIORITY = "priority"
@@ -98,6 +101,7 @@ object NestedSyncDocument {
         borderShape: String = "Rounded",
         borderStyle: String = "None",
         borderColor: String = "Default",
+        guideDot: String? = null,
         startDateEpochDays: Int?,
         endDateEpochDays: Int?,
         priority: String,
@@ -127,6 +131,7 @@ object NestedSyncDocument {
         FIELD_BORDER_SHAPE to borderShape,
         FIELD_BORDER_STYLE to borderStyle,
         FIELD_BORDER_COLOR to borderColor,
+        FIELD_GUIDE_DOT to guideDot,
         FIELD_START_DATE to startDateEpochDays,
         FIELD_END_DATE to endDateEpochDays,
         FIELD_PRIORITY to priority,
@@ -179,6 +184,7 @@ object NestedSyncDocument {
             borderShape = map[FIELD_BORDER_SHAPE] as? String ?: "Rounded",
             borderStyle = map[FIELD_BORDER_STYLE] as? String ?: "None",
             borderColor = map[FIELD_BORDER_COLOR] as? String ?: "Default",
+            guideDot = sanitizeGuideDot(map[FIELD_GUIDE_DOT] as? String),
             startDateEpochDays = (map[FIELD_START_DATE] as? Number)?.toInt(),
             endDateEpochDays = (map[FIELD_END_DATE] as? Number)?.toInt(),
             priority = map[FIELD_PRIORITY] as? String ?: "None",
@@ -330,6 +336,7 @@ data class RemoteNestedItem(
     val borderShape: String = "Rounded",
     val borderStyle: String = "None",
     val borderColor: String = "Default",
+    val guideDot: String? = null,
     val startDateEpochDays: Int?,
     val endDateEpochDays: Int?,
     val priority: String,

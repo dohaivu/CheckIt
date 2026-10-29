@@ -78,6 +78,7 @@ class NestedSyncDocumentTest {
             borderShape = "Cloud",
             borderStyle = "Dashed",
             borderColor = "Pink",
+            guideDot = "🚀",
             startDateEpochDays = 20000,
             endDateEpochDays = 20001,
             priority = "High",
@@ -109,6 +110,7 @@ class NestedSyncDocumentTest {
         assertEquals("Cloud", remote?.borderShape)
         assertEquals("Dashed", remote?.borderStyle)
         assertEquals("Pink", remote?.borderColor)
+        assertEquals("🚀", remote?.guideDot)
         assertEquals("High", remote?.priority)
         assertEquals(25, remote?.actualMinutes)
         assertEquals(150L, remote?.completedAtMillis)
@@ -157,6 +159,42 @@ class NestedSyncDocumentTest {
                 (base - NestedSyncDocument.FIELD_ID) + (NestedSyncDocument.FIELD_ID to ""),
             )
         )
+    }
+
+    @Test
+    fun itemFromMapDefaultsGuideDotWhenMissing() {
+        val base = NestedSyncDocument.itemToMap(
+            id = "item-1",
+            documentId = "doc-1",
+            parentId = null,
+            position = 0,
+            text = "x",
+            note = null,
+            checkboxEnabled = false,
+            checked = false,
+            textStyle = "Body",
+            textColor = "Default",
+            backgroundColor = "Default",
+            startDateEpochDays = null,
+            endDateEpochDays = null,
+            priority = "None",
+            actualMinutes = 0,
+            metricRollupPolicy = "IncludeChildren",
+            showTrackedMinutes = false,
+            progressPercent = null,
+            manualMetricsJson = "[]",
+            tagIds = emptyList(),
+            createdAtMillis = 100L,
+            updatedAtMillis = 200L,
+            deleted = false,
+        )
+
+        val legacy = NestedSyncDocument.itemFromMap(
+            "doc-1",
+            base - NestedSyncDocument.FIELD_GUIDE_DOT,
+        )
+
+        assertNull(legacy?.guideDot)
     }
 
     @Test
