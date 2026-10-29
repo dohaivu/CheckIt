@@ -603,7 +603,7 @@ struct NestedListsWindowView: View {
     private var editorBar: some View {
         let sel = state.selectedId
         let node = sel.flatMap { state.indexById[$0] }
-        let hasCollapsible = state.indexById.values.contains(where: { $0.hasChildren })
+        let hasCollapsible = state.hasCollapsibleItems
         // Plain centered row (no ScrollView): the ~12 buttons fit the 760pt
         // detail minimum, and a scroll view would pin content left.
         return HStack(spacing: 6) {
@@ -889,9 +889,13 @@ struct NestedListsWindowView: View {
                                 state: state,
                                 row: row,
                                 isEditing: state.editingId == row.id,
+                                isSelected: state.selectedId == row.id,
+                                isDragged: state.draggedId == row.id,
+                                noteLineLimit: state.noteLineLimit,
                                 focusTier: state.focusSnapshot.tier(for: row),
                                 selectionBranch: state.selectionBranch
                             )
+                            .equatable()
                             if state.dropTarget?.displayRowId == row.id && state.dropTarget!.below {
                                 DropIndicatorLine(depth: state.dropTarget!.depth)
                                     .transition(.opacity)

@@ -1,16 +1,13 @@
 package com.checkit.ui.nested
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -608,7 +605,6 @@ internal fun NestedListScreen(
                                     NestedItemRow(
                                         node = row.node,
                                         depth = row.depth,
-                                        isVisible = row.isVisible,
                                         isInCheckedBranch = row.isInCheckedBranch,
                                         continuingLevels = row.continuingLevels,
                                         isContext = row.isContext,
@@ -2797,7 +2793,6 @@ private val nestedGuideEmojiStyle = TextStyle(
 private fun NestedItemRow(
     node: NestedItemNode,
     depth: Int,
-    isVisible: Boolean,
     isInCheckedBranch: Boolean,
     continuingLevels: Set<Int>,
     state: NestedEditorState.Active,
@@ -2862,12 +2857,7 @@ private fun NestedItemRow(
     }
     val borderColor = baseBorderColor.copy(alpha = baseBorderColor.alpha * focusAlpha)
 
-    AnimatedVisibility(
-        visible = isVisible,
-        enter = expandVertically(),
-        exit = shrinkVertically()
-    ) {
-        Column(modifier = Modifier.fillMaxWidth().animateContentSize()) {
+    Column(modifier = Modifier.fillMaxWidth()) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -3207,7 +3197,6 @@ private fun NestedItemRow(
                 }
 
             }
-        }
     }
 }
 
@@ -3341,7 +3330,7 @@ private data class NestedTraversalEntry(
     val continuingLevels: Set<Int>
 )
 
-/** Iterative traversal keeps stable rows available for expand/collapse animation. */
+/** One row per currently visible node. Collapsed descendants are not emitted. */
 // ---------------- drag & drop ----------------
 
 /** Mutable state for an in-progress row drag; lives across gesture callbacks. */
@@ -3507,7 +3496,7 @@ private fun DropIndicatorLine(depth: Int) {
     }
 }
 
-private fun flattenVisibleNodes(
+internal fun flattenVisibleNodes(
     roots: List<NestedItemNode>,
     contextIds: Set<String> = emptySet()
 ): List<VisibleNestedRow> {
@@ -3540,7 +3529,8 @@ private fun flattenVisibleNodes(
             isContext = node.item.id in contextIds
         )
         
-        val childrenVisible = entry.isVisible && !node.item.collapsed
+        if (node.item.collapsed) continue
+
         val children = node.children
         children.asReversed().forEachIndexed { index, child ->
             val isLast = (index == 0) // asReversed: index 0 is the last child
@@ -3555,7 +3545,7 @@ private fun flattenVisibleNodes(
                 NestedTraversalEntry(
                     node = child,
                     depth = entry.depth + 1,
-                    isVisible = childrenVisible,
+                    isVisible = true,
                     ancestorChecked = isInCheckedBranch,
                     continuingLevels = nextContinuing
                 )

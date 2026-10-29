@@ -42,19 +42,26 @@ struct NestedRow: Identifiable, Equatable {
     let isInCheckedBranch: Bool
     /// Kept only as ancestor scaffolding for a filtered match.
     var isContext: Bool = false
+    /// Summary is prepared when the tree changes, rather than crossing the
+    /// Kotlin bridge during every SwiftUI row update.
+    let summary: NestedMetricSummary?
+    /// Equatable rendering key for the summary. Parent summaries may change
+    /// when a descendant changes without altering the parent's item timestamp.
+    let summaryRenderKey: String
 
     static func == (lhs: NestedRow, rhs: NestedRow) -> Bool {
         lhs.id == rhs.id
             && lhs.depth == rhs.depth
             && lhs.isInCheckedBranch == rhs.isInCheckedBranch
             && lhs.isContext == rhs.isContext
+            && lhs.summaryRenderKey == rhs.summaryRenderKey
             && lhs.node.item.collapsed == rhs.node.item.collapsed
             && lhs.node.item.updatedAtMillis == rhs.node.item.updatedAtMillis
     }
 }
 
 /// Render-time emphasis tier for the transient focus-selection mode.
-enum NestedFocusTier {
+enum NestedFocusTier: Equatable {
     case none
     case focused
     case path
@@ -190,6 +197,7 @@ final class NestedEditorState: ObservableObject {
     @Published var docDropTargetId: String? = nil
     @Published var docDropBelow: Bool = false
     @Published private(set) var visibleRows: [NestedRow] = []
+    @Published private(set) var hasCollapsibleItems = false
     @Published var toastMessage: String? = nil
 
     private let helper: NestedAppleHelper
@@ -451,6 +459,7 @@ final class NestedEditorState: ObservableObject {
         var stack = roots.reversed().map { ($0, 0, false) }
         while let (node, depth, ancestorChecked) = stack.popLast() {
             let inCheckedBranch = ancestorChecked || node.item.checked
+            let summary = helper.summaryFor(tree: tree, itemId: node.item.id)
             out.append(
                 NestedRow(
                     id: node.item.id,
@@ -458,7 +467,9 @@ final class NestedEditorState: ObservableObject {
                     depth: depth,
                     node: node,
                     isInCheckedBranch: inCheckedBranch,
-                    isContext: contextIds.contains(node.item.id)
+                    isContext: contextIds.contains(node.item.id),
+                    summary: summary,
+                    summaryRenderKey: "\(summary.doneTaskCount)|\(summary.totalTaskCount)|\(summary.trackedMinutes)"
                 )
             )
             if !node.item.collapsed {
@@ -551,6 +562,7 @@ final class NestedEditorState: ObservableObject {
             stack.append(contentsOf: node.children)
         }
         nodeIndex = map
+        hasCollapsibleItems = map.values.contains(where: { $0.hasChildren })
         tree = newTree
         recomputeVisibleRows()
     }
@@ -559,6 +571,7 @@ final class NestedEditorState: ObservableObject {
         // Focus mode is per open document; switching or closing clears it.
         focusSelectionEnabled = false
         nodeIndex = [:]
+        hasCollapsibleItems = false
         tree = nil
         recomputeVisibleRows()
     }

@@ -111,10 +111,16 @@ func nestedDateLabel(
 
 // MARK: - Row
 
-struct NestedRowView: View {
-    @ObservedObject var state: NestedEditorState
+struct NestedRowView: View, Equatable {
+    /// Intentionally not observed here. The outline passes the small render
+    /// snapshot this row needs, so a state change elsewhere does not rebuild
+    /// every visible row.
+    let state: NestedEditorState
     let row: NestedRow
     let isEditing: Bool
+    let isSelected: Bool
+    let isDragged: Bool
+    let noteLineLimit: Int
     let focusTier: NestedFocusTier
     let selectionBranch: NestedSelectionBranch?
 
@@ -304,7 +310,7 @@ struct NestedRowView: View {
             }
         }
         .background(nestedCanvasColor)
-        .opacity(state.draggedId == item.id ? 0.35 : 1.0)
+        .opacity(isDragged ? 0.35 : 1.0)
         .background(
             GeometryReader { geo in
                 Color.clear
@@ -378,8 +384,6 @@ struct NestedRowView: View {
         case .outside: return 0.45
         }
     }
-
-    private var isSelected: Bool { state.selectedId == item.id }
 
     /// Guide dot diameter. A parent ring grows to hold its emoji at the same
     /// glyph size as a leaf dot without squeezing it against the stroke; plain
@@ -529,7 +533,7 @@ struct NestedRowView: View {
 
     @ViewBuilder
     private var metadata: some View {
-        let summary = state.summary(for: item.id)
+        let summary = row.summary
         let progress = item.progressPercent?.int32Value
         let note = item.note
         let dateLabel = nestedDateLabel(
@@ -596,7 +600,7 @@ struct NestedRowView: View {
                 if let n = note, !n.isEmpty {
                     Text(renderInlineMarkdown(n))
                         .font(.callout).foregroundStyle(.secondary)
-                        .lineLimit(state.noteLineLimit > 0 ? state.noteLineLimit : nil)
+                        .lineLimit(noteLineLimit > 0 ? noteLineLimit : nil)
                 }
                 if dateLabel != nil || !item.tags.isEmpty {
                     HStack(spacing: 6) {
@@ -666,6 +670,17 @@ struct NestedRowView: View {
             }
         }
         return result
+    }
+
+    static func == (lhs: NestedRowView, rhs: NestedRowView) -> Bool {
+        lhs.state === rhs.state
+            && lhs.row == rhs.row
+            && lhs.isEditing == rhs.isEditing
+            && lhs.isSelected == rhs.isSelected
+            && lhs.isDragged == rhs.isDragged
+            && lhs.noteLineLimit == rhs.noteLineLimit
+            && lhs.focusTier == rhs.focusTier
+            && lhs.selectionBranch == rhs.selectionBranch
     }
 }
 
