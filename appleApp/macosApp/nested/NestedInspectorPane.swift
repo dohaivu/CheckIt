@@ -105,9 +105,10 @@ struct NestedInspectorPane: View {
 
     private func itemHeader(_ item: NestedListItem) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(item.text.isEmpty ? "Untitled item" : item.text)
-                .font(.headline)
-                .lineLimit(2)
+            Text(item.text.isEmpty ? "Untitled item" : renderFullMarkdown(item.text))
+                .font(.body)
+                .textSelection(.enabled)
+                .lineLimit(10)
             if let ms = item.completedAtMillis?.int64Value {
                 Text("Completed · \(Date(timeIntervalSince1970: TimeInterval(ms) / 1000).formatted(date: .abbreviated, time: .shortened))")
                     .font(.caption)

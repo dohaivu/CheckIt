@@ -610,98 +610,81 @@ struct NestedFormattingBar: View {
             .accessibilityLabel("Text style")
             .help("Text style")
             // Text color
-            Menu {
-                ForEach(NestedColorToken.entries, id: \.self) { t in
-                    Toggle(t.name, isOn: Binding(
-                        get: { t == item.textColor },
-                        set: { if $0 { state.updateFormatting(id: item.id, style: item.textStyle, textColor: t, background: item.backgroundColor) } }
-                    ))
+            NestedMenuButton(rows: {
+                NestedColorToken.entries.map { t in
+                    NestedMenuRow.color(t, selected: t == item.textColor) {
+                        state.updateFormatting(id: item.id, style: item.textStyle, textColor: t, background: item.backgroundColor)
+                    }
                 }
-            } label: {
-                Image(systemName: "paintbrush")
-                    .tint(item.textColor == NestedColorToken.default_ ? .secondary : Color.accentColor)
-            }
-            .menuStyle(.borderlessButton)
-            .frame(width: 28, height: 28)
+            }, label: {
+                NestedMenuTrigger(
+                    symbol: "paintbrush",
+                    tint: item.textColor == NestedColorToken.default_ ? .secondary : .accentColor
+                )
+            })
             .accessibilityLabel("Text color")
             .help("Text color")
             // Background
-            Menu {
-                ForEach(NestedColorToken.entries, id: \.self) { t in
-                    Toggle(t.name, isOn: Binding(
-                        get: { t == item.backgroundColor },
-                        set: { if $0 { state.updateFormatting(id: item.id, style: item.textStyle, textColor: item.textColor, background: t) } }
-                    ))
+            NestedMenuButton(rows: {
+                NestedColorToken.entries.map { t in
+                    NestedMenuRow.color(t, selected: t == item.backgroundColor) {
+                        state.updateFormatting(id: item.id, style: item.textStyle, textColor: item.textColor, background: t)
+                    }
                 }
-            } label: {
-                Image(systemName: "paintpalette")
-                    .tint(item.backgroundColor == NestedColorToken.default_ ? .secondary : Color.accentColor)
-            }
-            .menuStyle(.borderlessButton)
-            .frame(width: 28, height: 28)
+            }, label: {
+                NestedMenuTrigger(
+                    symbol: "paintpalette",
+                    tint: item.backgroundColor == NestedColorToken.default_ ? .secondary : .accentColor
+                )
+            })
             .accessibilityLabel("Background color")
             .help("Background color")
             // Border: shape + line style + color in one menu.
-            Menu {
-                Section {
-                    ForEach(NestedBorderStyle.entries, id: \.self) { s in
-                        Toggle(s.name, isOn: Binding(
-                            get: { s == item.borderStyle },
-                            set: { if $0 { state.updateBorder(id: item.id, shape: item.borderShape, style: s, color: item.borderColor) } }
-                        ))
-                    }
-                } header: {
-                    Text("Style")
+            NestedMenuButton(rows: {
+                var rows: [NestedMenuRow] = [.header("Style")]
+                for s in NestedBorderStyle.entries {
+                    rows.append(.item(title: s.name, selected: s == item.borderStyle) {
+                        state.updateBorder(id: item.id, shape: item.borderShape, style: s, color: item.borderColor)
+                    })
                 }
-                Section {
-                    ForEach(NestedBorderShape.entries, id: \.self) { s in
-                        Toggle(s.displayName(), isOn: Binding(
-                            get: { s == item.borderShape },
-                            set: { if $0 { state.updateBorder(id: item.id, shape: s, style: item.borderStyle, color: item.borderColor) } }
-                        ))
-                    }
-                } header: {
-                    Text("Shape")
+                rows.append(.header("Shape"))
+                for s in NestedBorderShape.entries {
+                    rows.append(.item(title: s.displayName(), selected: s == item.borderShape) {
+                        state.updateBorder(id: item.id, shape: s, style: item.borderStyle, color: item.borderColor)
+                    })
                 }
-                Section {
-                    ForEach(NestedColorToken.entries, id: \.self) { t in
-                        Toggle(t.name, isOn: Binding(
-                            get: { t == item.borderColor },
-                            set: { if $0 { state.updateBorder(id: item.id, shape: item.borderShape, style: item.borderStyle, color: t) } }
-                        ))
-                    }
-                } header: {
-                    Text("Color")
+                rows.append(.header("Color"))
+                for t in NestedColorToken.entries {
+                    rows.append(.color(t, selected: t == item.borderColor) {
+                        state.updateBorder(id: item.id, shape: item.borderShape, style: item.borderStyle, color: t)
+                    })
                 }
-            } label: {
-                Image(systemName: "square.dashed")
-                    .tint(item.borderStyle == NestedBorderStyle.none ? .secondary : Color.accentColor)
-            }
-            .menuStyle(.borderlessButton)
-            .frame(width: 28, height: 28)
+                return rows
+            }, label: {
+                NestedMenuTrigger(
+                    symbol: "square.dashed",
+                    tint: item.borderStyle == NestedBorderStyle.none ? .secondary : .accentColor
+                )
+            })
             .accessibilityLabel("Border")
             .help("Border")
             // Priority
-            Menu {
-                ForEach(TaskPriority.entries, id: \.self) { p in
-                    Toggle(isOn: Binding(
-                        get: { p == item.priority },
-                        set: { if $0 { state.updatePriority(id: item.id, priority: p) } }
-                    )) {
-                        Label {
-                            Text(p.name)
-                        } icon: {
-                            Image(systemName: "flag.fill")
-                                .foregroundStyle(priorityTint(p))
-                        }
+            NestedMenuButton(rows: {
+                TaskPriority.entries.map { p in
+                    NestedMenuRow.item(
+                        title: p.name,
+                        icon: nestedPriorityFlag(p),
+                        selected: p == item.priority
+                    ) {
+                        state.updatePriority(id: item.id, priority: p)
                     }
                 }
-            } label: {
-                Image(systemName: item.priority == TaskPriority.none ? "flag" : "flag.fill")
-                    .tint(priorityTint(item.priority))
-            }
-            .menuStyle(.borderlessButton)
-            .frame(width: 28, height: 28)
+            }, label: {
+                NestedMenuTrigger(
+                    symbol: item.priority == TaskPriority.none ? "flag" : "flag.fill",
+                    tint: priorityTint(item.priority)
+                )
+            })
             .accessibilityLabel("Priority")
             .help("Priority")
             // Label
