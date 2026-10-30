@@ -65,7 +65,8 @@ enum class NestedBorderShape {
     Ticket,
     CutCorner,
     Hexagon,
-    Leaf;
+    Leaf,
+    Ribbon;
 
     /**
      * Menu label. The enum name is the persisted value, so this is

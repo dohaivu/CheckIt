@@ -212,10 +212,10 @@ struct NestedRowView: View, Equatable {
                     }
                     if let label = item.label, !label.isEmpty {
                         Text(label)
-                            .font(.caption2.weight(.semibold))
+                            .font(.caption2.weight(.medium))
                             .lineLimit(1)
                             .truncationMode(.tail)
-                            .padding(.horizontal, 7)
+                            .padding(.horizontal, 5)
                             .padding(.vertical, 2)
                             .background(Color.accentColor.opacity(0.15), in: Capsule())
                             .frame(maxWidth: 160, alignment: .leading)
@@ -509,7 +509,7 @@ struct NestedRowView: View, Equatable {
     /// `NestedBorderShape.horizontalContentPadding()` in NestedRowShapes.kt.
     private var shapeExtraHorizontalPadding: CGFloat {
         switch item.borderShape {
-        case NestedBorderShape.cloud, NestedBorderShape.ticket: return 8
+        case NestedBorderShape.cloud, NestedBorderShape.ticket, NestedBorderShape.ribbon: return 8
         case NestedBorderShape.hexagon: return 6
         case NestedBorderShape.cutcorner, NestedBorderShape.leaf: return 3
         default: return 0
@@ -921,6 +921,8 @@ struct NestedCardShape: InsettableShape {
             return hexagonCardPath(r)
         case NestedBorderShape.leaf:
             return leafCardPath(r)
+        case NestedBorderShape.ribbon:
+            return ribbonCardPath(r)
         default:
             return Path(roundedRect: r, cornerRadius: min(6, min(r.width, r.height) / 2))
         }
@@ -1018,6 +1020,29 @@ private func leafCardPath(_ r: CGRect) -> Path {
     p.addLine(to: CGPoint(x: r.minX, y: r.minY + big))
     p.addQuadCurve(
         to: CGPoint(x: r.minX + big, y: r.minY),
+        control: CGPoint(x: r.minX, y: r.minY)
+    )
+    p.closeSubpath()
+    return p
+}
+
+private func ribbonCardPath(_ r: CGRect) -> Path {
+    let radius = min(6, min(r.width, r.height) / 2)
+    let notch = max(min(r.width * 0.12, 10), 4)
+    let cy = r.midY
+    var p = Path()
+    p.move(to: CGPoint(x: r.minX + radius, y: r.minY))
+    p.addLine(to: CGPoint(x: r.maxX, y: r.minY))
+    p.addLine(to: CGPoint(x: r.maxX - notch, y: cy))
+    p.addLine(to: CGPoint(x: r.maxX, y: r.maxY))
+    p.addLine(to: CGPoint(x: r.minX + radius, y: r.maxY))
+    p.addQuadCurve(
+        to: CGPoint(x: r.minX, y: r.maxY - radius),
+        control: CGPoint(x: r.minX, y: r.maxY)
+    )
+    p.addLine(to: CGPoint(x: r.minX, y: r.minY + radius))
+    p.addQuadCurve(
+        to: CGPoint(x: r.minX + radius, y: r.minY),
         control: CGPoint(x: r.minX, y: r.minY)
     )
     p.closeSubpath()

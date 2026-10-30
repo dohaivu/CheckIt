@@ -54,7 +54,8 @@ class NestedCardShape(
             NestedBorderShape.Cloud,
             NestedBorderShape.Ticket,
             NestedBorderShape.CutCorner,
-            NestedBorderShape.Hexagon -> Outline.Generic(
+            NestedBorderShape.Hexagon,
+            NestedBorderShape.Ribbon -> Outline.Generic(
                 customPath(kind, w, h, radius, density)
             )
         }
@@ -101,7 +102,26 @@ private fun customPath(
     NestedBorderShape.Ticket -> ticketPath(w, h, radius, density)
     NestedBorderShape.CutCorner -> cutCornerPath(w, h)
     NestedBorderShape.Hexagon -> hexagonPath(w, h)
+    NestedBorderShape.Ribbon -> ribbonPath(w, h, radius, density)
     else -> Path()
+}
+
+/** Rounded rectangle with a v-notch cut inward on its right edge. */
+private fun ribbonPath(w: Float, h: Float, radius: Float, density: Density): Path {
+    val r = min(radius, min(w, h) / 2f)
+    val notch = min(with(density) { 10.dp.toPx() }, w * 0.12f).coerceAtLeast(4f)
+    val cy = h / 2f
+    return Path().apply {
+        moveTo(r, 0f)
+        lineTo(w, 0f)
+        lineTo(w - notch, cy)
+        lineTo(w, h)
+        lineTo(r, h)
+        quadraticTo(0f, h, 0f, h - r)
+        lineTo(0f, r)
+        quadraticTo(0f, 0f, r, 0f)
+        close()
+    }
 }
 
 /** Rounded rectangle with semicircular notches on both short sides. */
@@ -296,7 +316,8 @@ fun Modifier.nestedCardBorder(
 /** Extra inside padding so content clears notches and scallops. */
 fun NestedBorderShape.horizontalContentPadding(): Dp = when (this) {
     NestedBorderShape.Cloud,
-    NestedBorderShape.Ticket -> 8.dp
+    NestedBorderShape.Ticket,
+    NestedBorderShape.Ribbon -> 8.dp
 
     NestedBorderShape.Hexagon -> 6.dp
     NestedBorderShape.CutCorner,

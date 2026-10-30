@@ -276,7 +276,7 @@ internal fun NestedFormattingBar(
                 .horizontalScroll(rememberScrollState())
                 .padding(horizontal = 6.dp, vertical = 2.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterHorizontally)
+            horizontalArrangement = Arrangement.spacedBy(0.dp, Alignment.CenterHorizontally)
         ) {
             // Group 1: Typography & Style
             val hasCustomStyle = item.textStyle != NestedTextStyle.Body || item.checkboxEnabled

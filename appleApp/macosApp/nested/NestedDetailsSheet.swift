@@ -742,7 +742,7 @@ struct NestedFormattingBar: View {
             .help("Priority")
             // Label
             barBtn(
-                item.label?.isEmpty == false ? "tag.fill" : "tag",
+                item.label?.isEmpty == false ? "bookmark.fill" : "bookmark",
                 tint: item.label?.isEmpty == false ? Color.accentColor : .secondary,
                 help: "Label"
             ) {
