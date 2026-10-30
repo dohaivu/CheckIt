@@ -48,6 +48,7 @@ import com.checkit.domain.moveDestinations
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 internal fun NestedListScreen(
@@ -123,12 +124,12 @@ internal fun NestedListScreen(
                 )
             }
 
-            androidx.compose.foundation.layout.Row(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(MaterialTheme.colorScheme.surface)
                     .padding(horizontal = 12.dp, vertical = 2.dp),
-                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 BreadcrumbBar(
@@ -295,13 +296,13 @@ internal fun NestedListScreen(
                     if (scrolled) {
                         updateDropTarget(active)
                     }
-                    delay(16)
+                    delay(16.milliseconds)
                 }
             }
 
             LazyColumn(
                 state = listState,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp)
             ) {
                 if (addingItem != null && addingItem.draft.anchorId == null) {
                     item(key = "new-root") {
