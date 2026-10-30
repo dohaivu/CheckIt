@@ -991,7 +991,11 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
     override suspend fun addNestedItem(documentId: String, parentId: String?, text: String, position: Int?): String = Uuid.random().toString()
     override suspend fun updateNestedItemText(itemId: String, text: String) {}
     override suspend fun updateNestedItemNote(itemId: String, note: String?) {}
+    override suspend fun updateNestedItemLabel(itemId: String, label: String?) {}
     override suspend fun updateNestedItemFormatting(itemId: String, textStyle: NestedTextStyle, textColor: NestedColorToken, backgroundColor: NestedColorToken) {}
+    override suspend fun updateNestedItemBorder(itemId: String, borderShape: com.checkit.domain.NestedBorderShape, borderStyle: com.checkit.domain.NestedBorderStyle, borderColor: NestedColorToken) {}
+    override suspend fun updateNestedItemGuideDot(itemId: String, guideDot: String?) {}
+    override suspend fun updateNestedItemGuideDotColor(itemId: String, guideDotColor: NestedColorToken?) {}
     override suspend fun updateNestedItemPriority(itemId: String, priority: TaskPriority) {}
     override suspend fun updateNestedItemDateRange(itemId: String, startDate: LocalDate?, endDate: LocalDate?) {}
     override suspend fun updateNestedItemTags(itemId: String, tagIds: List<String>) {}

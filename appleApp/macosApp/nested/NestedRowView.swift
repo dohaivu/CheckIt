@@ -9,17 +9,11 @@ import UniformTypeIdentifiers
 
 // MARK: - Display mappings (mirror NestedListScreen.kt)
 
-func nestedTokenColor(_ name: String) -> Color {
-    switch name {
-    case "Red": Color(red: 0xE5 / 255.0, green: 0x73 / 255.0, blue: 0x73 / 255.0)
-    case "Orange": Color(red: 1.0, green: 0xB7 / 255.0, blue: 0x4D / 255.0)
-    case "Yellow": Color(red: 1.0, green: 0xD5 / 255.0, blue: 0x4F / 255.0)
-    case "Green": Color(red: 0x66 / 255.0, green: 0xBB / 255.0, blue: 0x6A / 255.0)
-    case "Blue": Color(red: 0x42 / 255.0, green: 0xA5 / 255.0, blue: 0xF5 / 255.0)
-    case "Purple": Color(red: 0xAB / 255.0, green: 0x47 / 255.0, blue: 0xBC / 255.0)
-    case "Pink": Color(red: 0xEC / 255.0, green: 0x40 / 255.0, blue: 0x7A / 255.0)
-    default: Color.secondary
+func nestedTokenColor(_ token: NestedColorToken) -> Color {
+    guard let hex = token.hex(), let color = Color(nestedHex: hex) else {
+        return .secondary
     }
+    return color
 }
 
 func nestedRowFont(_ styleName: String) -> Font {
@@ -77,12 +71,27 @@ func nestedDepthColor(_ depth: Int) -> Color {
 }
 
 func nestedGuideColor(_ level: Int, emphasized: Bool = false) -> Color {
-    nestedDepthColor(level).opacity(emphasized ? nestedGuideStrongOpacity : nestedGuideSubtleOpacity)
+    nestedGuideColor(nestedDepthColor(level), emphasized: emphasized)
+}
+
+func nestedGuideColor(_ color: Color, emphasized: Bool = false) -> Color {
+    color.opacity(emphasized ? nestedGuideStrongOpacity : nestedGuideSubtleOpacity)
 }
 
 /// Quiet by default; `emphasized` restores the solid depth color.
 func nestedDotForDepth(_ depth: Int, emphasized: Bool = false) -> Color {
-    nestedDepthColor(depth).opacity(emphasized ? 1.0 : nestedDotSubtleOpacity)
+    nestedDotColor(nestedDepthColor(depth), emphasized: emphasized)
+}
+
+func nestedDotColor(_ color: Color, emphasized: Bool = false) -> Color {
+    color.opacity(emphasized ? 1.0 : nestedDotSubtleOpacity)
+}
+
+func nestedGuideBaseColor(_ depth: Int, override: NestedColorToken?) -> Color {
+    guard let token = override, token != .default_, let hex = token.hex(), let color = Color(nestedHex: hex) else {
+        return nestedDepthColor(depth)
+    }
+    return color
 }
 
 private let nestedDateFormatter: DateFormatter = {
@@ -117,10 +126,16 @@ func nestedDateLabel(
 
 // MARK: - Row
 
-struct NestedRowView: View {
-    @ObservedObject var state: NestedEditorState
+struct NestedRowView: View, Equatable {
+    /// Intentionally not observed here. The outline passes the small render
+    /// snapshot this row needs, so a state change elsewhere does not rebuild
+    /// every visible row.
+    let state: NestedEditorState
     let row: NestedRow
     let isEditing: Bool
+    let isSelected: Bool
+    let isDragged: Bool
+    let noteLineLimit: Int
     let focusTier: NestedFocusTier
     let selectionBranch: NestedSelectionBranch?
 
@@ -135,13 +150,15 @@ struct NestedRowView: View {
         // branch's dot/ring plus its spine running down through its children.
         // Descendant rows carry that spine at the root's level.
         let spineLevel = selectedSpineLevel
-        let dotEmphasis = isEmphasized || isSpineRoot
         HStack(alignment: .top, spacing: 0) {
             // Indent guides, sharing one x per depth (slightly right of
             // cell center) — the toggle column below uses the same grid.
             ForEach(0..<row.depth, id: \.self) { level in
                 Rectangle()
-                    .fill(nestedGuideColor(level, emphasized: level == spineLevel))
+                    .fill(nestedGuideColor(
+                        nestedGuideBaseColor(level, override: row.ancestorGuideColors[level]),
+                        emphasized: level == spineLevel
+                    ))
                     .frame(width: 1)
                     .padding(.leading, 10)
                     .frame(width: 16, alignment: .leading)
@@ -151,36 +168,25 @@ struct NestedRowView: View {
             // Collapse toggle: chevron wrapped in an outside circle (parents)
             // or a small filled dot (leaves), matching the attachment where
             // a collapsed parent shows a dot inside an outer ring.
-            // 2pt top offset puts the 13pt ring on the text's visual
-            // center (content starts 5pt down), whatever the row height.
-            Button {
-                state.toggleCollapse(id: item.id)
-            } label: {
-                Group {
-                    if row.node.hasChildren {
-                        ZStack {
-                            Circle()
-                                .stroke(nestedDotForDepth(row.depth, emphasized: dotEmphasis), lineWidth: dotEmphasis ? 2 : 1.5)
-                                .frame(width: 12, height: 12)
-                            Image(systemName: item.collapsed ? "chevron.right" : "chevron.down")
-                                .font(.system(size: 8, weight: .semibold))
-                                .foregroundStyle(nestedDotForDepth(row.depth, emphasized: dotEmphasis))
-                        }
-                    } else {
-                        Circle()
-                            .fill(nestedDotForDepth(row.depth, emphasized: dotEmphasis))
-                            .frame(width: 7, height: 7)
+            // 2pt top offset puts the 12pt ring on the text's visual
+            // center (content starts 5pt down), whatever the row height; a
+            // ring holding an emoji is larger but keeps the same center.
+            // Leaves get the bare glyph instead of a disabled Button: a
+            // disabled control dims its label, which washed out leaf emoji.
+            Group {
+                if row.node.hasChildren {
+                    Button {
+                        state.toggleCollapse(id: item.id)
+                    } label: {
+                        guideDotGlyph
                     }
+                    .buttonStyle(.plain)
+                    .help(item.collapsed ? "Expand" : "Collapse")
+                } else {
+                    guideDotGlyph
                 }
-                .frame(width: 16, height: 24)
-                .contentShape(Rectangle())
-                .opacity(focusOpacity)
-                .animation(.easeOut(duration: 0.15), value: dotEmphasis)
             }
-            .buttonStyle(.plain)
             .padding(.top, 2).padding(.leading, 3)
-            .disabled(!row.node.hasChildren)
-            .help(row.node.hasChildren ? (item.collapsed ? "Expand" : "Collapse") : "")
 
             VStack(alignment: .leading, spacing: 2) {
                 HStack(alignment: .center, spacing: 6) {
@@ -203,6 +209,19 @@ struct NestedRowView: View {
                             .opacity(focusOpacity)
                             .padding(.top, 1)
                             .help("Priority: \(item.priority.name)")
+                    }
+                    if let label = item.label, !label.isEmpty {
+                        Text(label)
+                            .font(.caption2.weight(.medium))
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(Color.accentColor.opacity(0.15), in: Capsule())
+                            .frame(maxWidth: 160, alignment: .leading)
+                            .fixedSize(horizontal: true, vertical: false)
+                            .opacity(focusOpacity)
+                            .help("Label: \(label)")
                     }
                     // Direct field (not overlay): multiline growth needs a
                     // layout-defining field; the few-pt inset delta while
@@ -285,22 +304,23 @@ struct NestedRowView: View {
                 }
                 metadata.opacity(focusOpacity)
             }
-            .padding(.vertical, 5)
-            .padding(.horizontal, 6)
-            .background(rowBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .padding(.vertical, 5 + shapeExtraVerticalPadding)
+            .padding(.horizontal, 6 + shapeExtraHorizontalPadding)
+            .background(rowBackground, in: rowShape)
+            .clipShape(rowShape)
+            .overlay { rowBorderOverlay }
             .contentShape(Rectangle())
         }
         .background(alignment: .topLeading) {
             // Guide continuation from the toggle down through the children.
-            // Same 16pt grid x as the guides. The toggle is a 13pt circle
-            // in a 16pt slot with 2pt top padding, so its bottom edge sits
-            // at 20pt — start the line there so it touches the ring.
+            // Same 16pt grid x as the guides. The toggle is a circle in a 16pt
+            // slot with 2pt top padding, so start the line at its bottom edge
+            // (which drops as the ring grows to hold an emoji) to touch it.
             if row.node.hasChildren && !item.collapsed {
                 Rectangle()
-                    .fill(nestedGuideColor(row.depth, emphasized: isEmphasized || isSpineRoot))
+                    .fill(nestedGuideColor(guideBaseColor, emphasized: isEmphasized || isSpineRoot))
                     .frame(width: 1)
-                    .padding(.top, 20)
+                    .padding(.top, guideRingBottom)
                     .padding(.leading, CGFloat(row.depth * 16) + 10)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     .opacity(focusOpacity)
@@ -308,7 +328,7 @@ struct NestedRowView: View {
             }
         }
         .background(nestedCanvasColor)
-        .opacity(state.draggedId == item.id ? 0.35 : 1.0)
+        .opacity(isDragged ? 0.35 : 1.0)
         .background(
             GeometryReader { geo in
                 Color.clear
@@ -365,9 +385,9 @@ struct NestedRowView: View {
         // Explicit light-theme ink: .primary would turn white in dark mode
         // and vanish on the paper canvas. Warm charcoal is softer than pure
         // black for long sessions.
-        let base = item.textColor.name == "Default"
+        let base = item.textColor == NestedColorToken.default_
             ? nestedInkColor
-            : nestedTokenColor(item.textColor.name)
+            : nestedTokenColor(item.textColor)
         return base.opacity(focusOpacity)
     }
 
@@ -383,10 +403,78 @@ struct NestedRowView: View {
         }
     }
 
-    private var isSelected: Bool { state.selectedId == item.id }
+    /// Guide dot diameter. A parent ring grows to hold its emoji at the same
+    /// glyph size as a leaf dot without squeezing it against the stroke; plain
+    /// parents keep the ring leaves never show.
+    private var guideRingDiameter: CGFloat {
+        guard row.node.hasChildren else { return 12 }
+        if let emoji = item.guideDot, !emoji.isEmpty { return 20 }
+        return 12
+    }
+
+    private var guideBaseColor: Color {
+        nestedGuideBaseColor(row.depth, override: item.guideDotColor)
+    }
+
+    /// A ring holding an emoji is larger, so it takes a thinner stroke to keep
+    /// the same visual weight as the plain ring.
+    private var guideRingLineWidth: CGFloat { dotEmphasis ? 1.25 : 1 }
+
+    /// The guide dot / collapse glyph: a ring with a chevron or emoji inside for
+    /// parents, the bare emoji or a small filled dot for leaves.
+    private var guideDotGlyph: some View {
+        Group {
+            if let emoji = item.guideDot, !emoji.isEmpty {
+                if row.node.hasChildren {
+                    // Parents keep the ring (it is the collapse cue) and read
+                    // as filled while collapsed.
+                    ZStack {
+                        Circle()
+                            .fill(item.collapsed
+                                  ? nestedDotColor(guideBaseColor, emphasized: dotEmphasis).opacity(0.22)
+                                  : Color.clear)
+                        Circle()
+                            .stroke(nestedDotColor(guideBaseColor, emphasized: dotEmphasis),
+                                    lineWidth: guideRingLineWidth)
+                        Text(emoji)
+                            .font(.system(size: 11))
+                    }
+                    .frame(width: guideRingDiameter, height: guideRingDiameter)
+                } else {
+                    Text(emoji)
+                        .font(.system(size: 11))
+                }
+            } else if row.node.hasChildren {
+                ZStack {
+                    Circle()
+                    .stroke(nestedDotColor(guideBaseColor, emphasized: dotEmphasis), lineWidth: dotEmphasis ? 2 : 1.5)
+                        .frame(width: 12, height: 12)
+                    Image(systemName: item.collapsed ? "chevron.right" : "chevron.down")
+                        .font(.system(size: 8, weight: .semibold))
+                        .foregroundStyle(nestedDotColor(guideBaseColor, emphasized: dotEmphasis))
+                }
+            } else {
+                Circle()
+                    .fill(nestedDotColor(guideBaseColor, emphasized: dotEmphasis))
+                    .frame(width: 7, height: 7)
+            }
+        }
+        .frame(width: 16, height: 24)
+        .contentShape(Rectangle())
+        .opacity(focusOpacity)
+        .animation(.easeOut(duration: 0.15), value: dotEmphasis)
+    }
+
+    /// Bottom edge of the toggle cell (16pt slot, 2pt top padding, centred
+    /// content), where the downward spine starts so it touches the ring.
+    private var guideRingBottom: CGFloat { 14 + guideRingDiameter / 2 }
 
     /// The active row gets full-strength ink and selection chrome.
     private var isEmphasized: Bool { isSelected || isEditing }
+
+    /// The row's dot/ring is drawn at full strength: selected, being edited, or
+    /// the root of the selection's spine.
+    private var dotEmphasis: Bool { isEmphasized || isSpineRoot }
 
     /// True for the effective branch root. A selected leaf promotes to its
     /// parent, whose downward guide should still read as the spine.
@@ -406,15 +494,68 @@ struct NestedRowView: View {
     private var rowBackground: Color {
         if isEditing { return nestedEditingColor }
         if isSelected { return nestedSelectedColor }
-        if item.backgroundColor.name != "Default" {
-            return nestedTokenColor(item.backgroundColor.name).opacity(0.20 * focusOpacity)
+        if item.backgroundColor != NestedColorToken.default_ {
+            return nestedTokenColor(item.backgroundColor).opacity(0.20 * focusOpacity)
         }
         return .clear
     }
 
+    private var rowShape: NestedCardShape {
+        NestedCardShape(kind: item.borderShape)
+    }
+
+    /// Shape-specific breathing room: scallops/notches would otherwise run
+    /// into the checkbox, text, and labels. Mirrors
+    /// `NestedBorderShape.horizontalContentPadding()` in NestedRowShapes.kt.
+    private var shapeExtraHorizontalPadding: CGFloat {
+        switch item.borderShape {
+        case NestedBorderShape.cloud, NestedBorderShape.ticket, NestedBorderShape.ribbon: return 8
+        case NestedBorderShape.hexagon: return 6
+        case NestedBorderShape.cutcorner, NestedBorderShape.leaf: return 3
+        default: return 0
+        }
+    }
+
+    /// Mirrors `NestedBorderShape.verticalContentPadding()` in
+    /// NestedRowShapes.kt.
+    private var shapeExtraVerticalPadding: CGFloat {
+        switch item.borderShape {
+        case NestedBorderShape.cloud: return 5
+        case NestedBorderShape.ticket: return 2
+        default: return 0
+        }
+    }
+
+    private var rowBorderColor: Color {
+        let base = item.borderColor == NestedColorToken.default_
+            ? Color.secondary.opacity(0.55)
+            : nestedTokenColor(item.borderColor)
+        return base.opacity(focusOpacity)
+    }
+
+    /// Dash lengths in points, matching `NestedBorderStyle.toStroke` in
+    /// NestedRowShapes.kt (which converts the same dp values by density).
+    private var rowBorderDash: [CGFloat] {
+        switch item.borderStyle {
+        case NestedBorderStyle.dashed: return [4.5, 3]
+        case NestedBorderStyle.dotted: return [0.5, 2.8]
+        default: return []
+        }
+    }
+
+    @ViewBuilder
+    private var rowBorderOverlay: some View {
+        if item.borderStyle != NestedBorderStyle.none {
+            rowShape.strokeBorder(
+                rowBorderColor,
+                style: StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: rowBorderDash)
+            )
+        }
+    }
+
     @ViewBuilder
     private var metadata: some View {
-        let summary = state.summary(for: item.id)
+        let summary = row.summary
         let progress = item.progressPercent?.int32Value
         let note = item.note
         let dateLabel = nestedDateLabel(
@@ -481,7 +622,7 @@ struct NestedRowView: View {
                 if let n = note, !n.isEmpty {
                     Text(renderInlineMarkdown(n))
                         .font(.callout).foregroundStyle(.secondary)
-                        .lineLimit(state.noteLineLimit > 0 ? state.noteLineLimit : nil)
+                        .lineLimit(noteLineLimit > 0 ? noteLineLimit : nil)
                 }
                 if dateLabel != nil || !item.tags.isEmpty {
                     HStack(spacing: 6) {
@@ -551,6 +692,17 @@ struct NestedRowView: View {
             }
         }
         return result
+    }
+
+    static func == (lhs: NestedRowView, rhs: NestedRowView) -> Bool {
+        lhs.state === rhs.state
+            && lhs.row == rhs.row
+            && lhs.isEditing == rhs.isEditing
+            && lhs.isSelected == rhs.isSelected
+            && lhs.isDragged == rhs.isDragged
+            && lhs.noteLineLimit == rhs.noteLineLimit
+            && lhs.focusTier == rhs.focusTier
+            && lhs.selectionBranch == rhs.selectionBranch
     }
 }
 
@@ -731,4 +883,253 @@ struct OutlineBottomDropDelegate: DropDelegate {
             draggedItemId: nil
         )
     }
+}
+
+// MARK: - Row card shapes
+//
+// Mirrors NestedBorderShape / NestedBorderStyle in the shared domain. The
+// geometry is authored against the row card bounds, so the same shape drives
+// both the background fill and the inset border.
+
+struct NestedCardShape: InsettableShape {
+    let kind: NestedBorderShape
+    var insetAmount: CGFloat = 0
+
+    func inset(by amount: CGFloat) -> NestedCardShape {
+        var copy = self
+        copy.insetAmount += amount
+        return copy
+    }
+
+    func path(in rect: CGRect) -> Path {
+        let r = rect.insetBy(dx: insetAmount, dy: insetAmount)
+        guard r.width > 0, r.height > 0 else { return Path() }
+        switch kind {
+        case NestedBorderShape.rectangle:
+            var p = Path()
+            p.addRect(r)
+            return p
+        case NestedBorderShape.pill:
+            return Path(roundedRect: r, cornerRadius: min(r.width, r.height) / 2)
+        case NestedBorderShape.cloud:
+            return cloudCardPath(r)
+        case NestedBorderShape.ticket:
+            return ticketCardPath(r)
+        case NestedBorderShape.cutcorner:
+            return cutCornerCardPath(r)
+        case NestedBorderShape.hexagon:
+            return hexagonCardPath(r)
+        case NestedBorderShape.leaf:
+            return leafCardPath(r)
+        case NestedBorderShape.ribbon:
+            return ribbonCardPath(r)
+        default:
+            return Path(roundedRect: r, cornerRadius: min(6, min(r.width, r.height) / 2))
+        }
+    }
+}
+
+private func ticketCardPath(_ r: CGRect) -> Path {
+    let radius = min(min(r.width, r.height) * 0.32, 12)
+    let notch = min(r.height * 0.18, 9)
+    let cy = r.midY
+    let c = notch * 0.66
+    var p = Path()
+    p.move(to: CGPoint(x: r.minX + radius, y: r.minY))
+    p.addLine(to: CGPoint(x: r.maxX - radius, y: r.minY))
+    p.addQuadCurve(
+        to: CGPoint(x: r.maxX, y: r.minY + radius),
+        control: CGPoint(x: r.maxX, y: r.minY)
+    )
+    p.addLine(to: CGPoint(x: r.maxX, y: cy - notch))
+    p.addCurve(
+        to: CGPoint(x: r.maxX, y: cy + notch),
+        control1: CGPoint(x: r.maxX - c, y: cy - c),
+        control2: CGPoint(x: r.maxX - c, y: cy + c)
+    )
+    p.addLine(to: CGPoint(x: r.maxX, y: r.maxY - radius))
+    p.addQuadCurve(
+        to: CGPoint(x: r.maxX - radius, y: r.maxY),
+        control: CGPoint(x: r.maxX, y: r.maxY)
+    )
+    p.addLine(to: CGPoint(x: r.minX + radius, y: r.maxY))
+    p.addQuadCurve(
+        to: CGPoint(x: r.minX, y: r.maxY - radius),
+        control: CGPoint(x: r.minX, y: r.maxY)
+    )
+    p.addLine(to: CGPoint(x: r.minX, y: cy + notch))
+    p.addCurve(
+        to: CGPoint(x: r.minX, y: cy - notch),
+        control1: CGPoint(x: r.minX + c, y: cy + c),
+        control2: CGPoint(x: r.minX + c, y: cy - c)
+    )
+    p.addLine(to: CGPoint(x: r.minX, y: r.minY + radius))
+    p.addQuadCurve(
+        to: CGPoint(x: r.minX + radius, y: r.minY),
+        control: CGPoint(x: r.minX, y: r.minY)
+    )
+    p.closeSubpath()
+    return p
+}
+
+private func cutCornerCardPath(_ r: CGRect) -> Path {
+    let cut = max(min(r.height * 0.36, r.width * 0.10), 2)
+    var p = Path()
+    p.move(to: CGPoint(x: r.minX, y: r.minY))
+    p.addLine(to: CGPoint(x: r.maxX - cut, y: r.minY))
+    p.addLine(to: CGPoint(x: r.maxX, y: r.minY + cut))
+    p.addLine(to: CGPoint(x: r.maxX, y: r.maxY))
+    p.addLine(to: CGPoint(x: r.minX, y: r.maxY))
+    p.closeSubpath()
+    return p
+}
+
+private func hexagonCardPath(_ r: CGRect) -> Path {
+    let slant = max(min(r.height * 0.45, r.width * 0.09), 2)
+    var p = Path()
+    p.move(to: CGPoint(x: r.minX, y: r.midY))
+    p.addLine(to: CGPoint(x: r.minX + slant, y: r.minY))
+    p.addLine(to: CGPoint(x: r.maxX - slant, y: r.minY))
+    p.addLine(to: CGPoint(x: r.maxX, y: r.midY))
+    p.addLine(to: CGPoint(x: r.maxX - slant, y: r.maxY))
+    p.addLine(to: CGPoint(x: r.minX + slant, y: r.maxY))
+    p.closeSubpath()
+    return p
+}
+
+private func leafCardPath(_ r: CGRect) -> Path {
+    let big = min(r.width, r.height) / 2
+    let small = min(6, min(r.width, r.height) / 2)
+    var p = Path()
+    p.move(to: CGPoint(x: r.minX + big, y: r.minY))
+    p.addLine(to: CGPoint(x: r.maxX - small, y: r.minY))
+    p.addQuadCurve(
+        to: CGPoint(x: r.maxX, y: r.minY + small),
+        control: CGPoint(x: r.maxX, y: r.minY)
+    )
+    p.addLine(to: CGPoint(x: r.maxX, y: r.maxY - big))
+    p.addQuadCurve(
+        to: CGPoint(x: r.maxX - big, y: r.maxY),
+        control: CGPoint(x: r.maxX, y: r.maxY)
+    )
+    p.addLine(to: CGPoint(x: r.minX + small, y: r.maxY))
+    p.addQuadCurve(
+        to: CGPoint(x: r.minX, y: r.maxY - small),
+        control: CGPoint(x: r.minX, y: r.maxY)
+    )
+    p.addLine(to: CGPoint(x: r.minX, y: r.minY + big))
+    p.addQuadCurve(
+        to: CGPoint(x: r.minX + big, y: r.minY),
+        control: CGPoint(x: r.minX, y: r.minY)
+    )
+    p.closeSubpath()
+    return p
+}
+
+private func ribbonCardPath(_ r: CGRect) -> Path {
+    let radius = min(6, min(r.width, r.height) / 2)
+    let notch = max(min(r.width * 0.12, 10), 4)
+    let cy = r.midY
+    var p = Path()
+    p.move(to: CGPoint(x: r.minX + radius, y: r.minY))
+    p.addLine(to: CGPoint(x: r.maxX, y: r.minY))
+    p.addLine(to: CGPoint(x: r.maxX - notch, y: cy))
+    p.addLine(to: CGPoint(x: r.maxX, y: r.maxY))
+    p.addLine(to: CGPoint(x: r.minX + radius, y: r.maxY))
+    p.addQuadCurve(
+        to: CGPoint(x: r.minX, y: r.maxY - radius),
+        control: CGPoint(x: r.minX, y: r.maxY)
+    )
+    p.addLine(to: CGPoint(x: r.minX, y: r.minY + radius))
+    p.addQuadCurve(
+        to: CGPoint(x: r.minX + radius, y: r.minY),
+        control: CGPoint(x: r.minX, y: r.minY)
+    )
+    p.closeSubpath()
+    return p
+}
+
+private func cloudCardPath(_ r: CGRect) -> Path {
+    let depth = max(min(11, r.height * 0.20), 1.5)
+    let left = r.minX + depth
+    let top = r.minY + depth
+    let right = r.maxX - depth
+    let bottom = r.maxY - depth
+    // Only slivers with no room for a body fall back to a plain card. The
+    // scaled threshold that used to live here changed between the fill rect
+    // and the half-stroke-inset border rect, so a Cloud fill could pair with
+    // a non-cloud stroke on the same row.
+    guard right - left > 1, bottom - top > 1 else {
+        return Path(roundedRect: r, cornerRadius: min(r.width, r.height) * 0.2)
+    }
+
+    let corner = min(14, min(right - left, bottom - top) * 0.28)
+    let horizontal = right - left - corner * 2
+    let vertical = bottom - top - corner * 2
+    let horizontalBumps = max(2, min(14, Int((horizontal / (depth * 3)).rounded())))
+    let verticalBumps = max(1, min(5, Int((vertical / (depth * 3)).rounded())))
+    let bumpW = horizontal / CGFloat(horizontalBumps)
+    let bumpH = vertical / CGFloat(verticalBumps)
+    let bulge = depth / 3
+
+    var p = Path()
+    p.move(to: CGPoint(x: left + corner, y: top))
+
+    var x = left + corner
+    for _ in 0..<horizontalBumps {
+        p.addCurve(
+            to: CGPoint(x: x + bumpW, y: top),
+            control1: CGPoint(x: x + bumpW * 0.25, y: top - bulge),
+            control2: CGPoint(x: x + bumpW * 0.75, y: top - bulge)
+        )
+        x += bumpW
+    }
+    p.addQuadCurve(
+        to: CGPoint(x: right, y: top + corner),
+        control: CGPoint(x: right, y: top)
+    )
+
+    var y = top + corner
+    for _ in 0..<verticalBumps {
+        p.addCurve(
+            to: CGPoint(x: right, y: y + bumpH),
+            control1: CGPoint(x: right + bulge, y: y + bumpH * 0.25),
+            control2: CGPoint(x: right + bulge, y: y + bumpH * 0.75)
+        )
+        y += bumpH
+    }
+    p.addQuadCurve(
+        to: CGPoint(x: right - corner, y: bottom),
+        control: CGPoint(x: right, y: bottom)
+    )
+
+    x = right - corner
+    for _ in 0..<horizontalBumps {
+        p.addCurve(
+            to: CGPoint(x: x - bumpW, y: bottom),
+            control1: CGPoint(x: x - bumpW * 0.25, y: bottom + bulge),
+            control2: CGPoint(x: x - bumpW * 0.75, y: bottom + bulge)
+        )
+        x -= bumpW
+    }
+    p.addQuadCurve(
+        to: CGPoint(x: left, y: bottom - corner),
+        control: CGPoint(x: left, y: bottom)
+    )
+
+    y = bottom - corner
+    for _ in 0..<verticalBumps {
+        p.addCurve(
+            to: CGPoint(x: left, y: y - bumpH),
+            control1: CGPoint(x: left - bulge, y: y - bumpH * 0.25),
+            control2: CGPoint(x: left - bulge, y: y - bumpH * 0.75)
+        )
+        y -= bumpH
+    }
+    p.addQuadCurve(
+        to: CGPoint(x: left + corner, y: top),
+        control: CGPoint(x: left, y: top)
+    )
+    p.closeSubpath()
+    return p
 }

@@ -9,6 +9,8 @@ import com.checkit.data.SettingsRepository
 import com.checkit.domain.MetricItem
 import com.checkit.domain.MetricRollupPolicy
 import com.checkit.domain.NestedColorToken
+import com.checkit.domain.NestedBorderShape
+import com.checkit.domain.NestedBorderStyle
 import com.checkit.domain.NestedDocument
 import com.checkit.domain.NestedDocumentTree
 import com.checkit.domain.NestedItemNode
@@ -38,6 +40,10 @@ import com.checkit.domain.usecase.ToggleNestedItemCollapsedUseCase
 import com.checkit.domain.usecase.resolveCollapseScopeRoots
 import com.checkit.domain.usecase.UpdateNestedItemDateRangeUseCase
 import com.checkit.domain.usecase.UpdateNestedItemFormattingUseCase
+import com.checkit.domain.usecase.UpdateNestedItemBorderUseCase
+import com.checkit.domain.usecase.UpdateNestedItemGuideDotUseCase
+import com.checkit.domain.usecase.UpdateNestedItemGuideDotColorUseCase
+import com.checkit.domain.usecase.UpdateNestedItemLabelUseCase
 import com.checkit.domain.usecase.UpdateNestedItemMetricSettingsUseCase
 import com.checkit.domain.usecase.UpdateNestedItemNoteUseCase
 import com.checkit.domain.usecase.UpdateNestedItemPriorityUseCase
@@ -170,9 +176,13 @@ class NestedListsViewModel(
     private val addItemUseCase: AddNestedItemUseCase,
     private val updateItemTextUseCase: UpdateNestedItemTextUseCase,
     private val updateItemNoteUseCase: UpdateNestedItemNoteUseCase,
+    private val updateItemLabelUseCase: UpdateNestedItemLabelUseCase,
     private val updateItemFormattingUseCase: UpdateNestedItemFormattingUseCase,
+    private val updateItemBorderUseCase: UpdateNestedItemBorderUseCase,
     private val updateItemDateRangeUseCase: UpdateNestedItemDateRangeUseCase,
     private val updateItemPriorityUseCase: UpdateNestedItemPriorityUseCase,
+    private val updateItemGuideDotUseCase: UpdateNestedItemGuideDotUseCase,
+    private val updateItemGuideDotColorUseCase: UpdateNestedItemGuideDotColorUseCase,
     private val updateItemTagsUseCase: UpdateNestedItemTagsUseCase,
     private val updateItemMetricSettingsUseCase: UpdateNestedItemMetricSettingsUseCase,
     private val updateItemProgressUseCase: UpdateNestedItemProgressUseCase,
@@ -666,8 +676,16 @@ class NestedListsViewModel(
 
     // --- Formatting & Metadata ---
 
+    fun updateItemLabel(itemId: String, label: String?) {
+        viewModelScope.launch { updateItemLabelUseCase(itemId, label) }
+    }
+
     fun updateItemFormatting(itemId: String, style: NestedTextStyle, text: NestedColorToken, bg: NestedColorToken) {
         viewModelScope.launch { updateItemFormattingUseCase(itemId, style, text, bg) }
+    }
+
+    fun updateItemBorder(itemId: String, shape: NestedBorderShape, style: NestedBorderStyle, color: NestedColorToken) {
+        viewModelScope.launch { updateItemBorderUseCase(itemId, shape, style, color) }
     }
 
     fun updateItemDateRange(itemId: String, start: LocalDate?, end: LocalDate?) {
@@ -676,6 +694,14 @@ class NestedListsViewModel(
 
     fun updateItemPriority(itemId: String, priority: TaskPriority) {
         viewModelScope.launch { updateItemPriorityUseCase(itemId, priority) }
+    }
+
+    fun updateItemGuideDot(itemId: String, guideDot: String?) {
+        viewModelScope.launch { updateItemGuideDotUseCase(itemId, guideDot) }
+    }
+
+    fun updateItemGuideDotColor(itemId: String, guideDotColor: NestedColorToken?) {
+        viewModelScope.launch { updateItemGuideDotColorUseCase(itemId, guideDotColor) }
     }
 
     fun updateItemTags(itemId: String, tagIds: List<String>) {

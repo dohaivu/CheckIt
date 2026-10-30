@@ -88,9 +88,8 @@ class NestedFocusRangeTest {
 
     @Test
     fun collapsedRowsStillCountAsDescendants() {
-        // flattenVisibleNodes keeps collapsed rows in the list with
-        // isVisible=false for expand/collapse animation, so the range must
-        // include them rather than stopping at the first hidden row.
+        // The range helper remains correct for a caller that supplies hidden
+        // rows, even though production flattening now omits them.
         val rows = listOf(
             row("root", 0),
             row("hidden", 1, isVisible = false),
@@ -98,6 +97,21 @@ class NestedFocusRangeTest {
             row("sibling", 0),
         )
         assertEquals(0..2, focusRowRange(rows, rootId = "root"))
+    }
+
+    @Test
+    fun flattenOmitsCollapsedDescendants() {
+        val root = NestedItemNode(
+            item = item("root").copy(collapsed = true),
+            children = listOf(
+                NestedItemNode(
+                    item = item("hidden", parentId = "root"),
+                    children = emptyList()
+                )
+            )
+        )
+
+        assertEquals(listOf("root"), flattenVisibleNodes(listOf(root)).map { it.node.item.id })
     }
 
     @Test

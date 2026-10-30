@@ -615,6 +615,7 @@ data class NestedListItemEntity(
     val position: Int,
     val text: String,
     val note: String? = null,
+    val label: String? = null,
     val checkboxEnabled: Boolean = false,
     val checked: Boolean = false,
     /** When the item was last checked; cleared on uncheck. */
@@ -623,6 +624,13 @@ data class NestedListItemEntity(
     val textStyle: String = "Body",
     val textColor: String = "Default",
     val backgroundColor: String = "Default",
+    val borderShape: String = "Rounded",
+    val borderStyle: String = "None",
+    val borderColor: String = "Default",
+    /** Nullable palette token; null inherits the depth palette. */
+    val guideDotColor: String? = null,
+    /** Emoji rendered in place of the guide dot; null keeps the default. */
+    val guideDot: String? = null,
     val startDateEpochDays: Int? = null,
     val endDateEpochDays: Int? = null,
     val priority: String = "None",
@@ -741,7 +749,7 @@ data class RoutineLogEntity(
         RoutineLogEntity::class,
         QuickNoteEntity::class
     ],
-    version = 7,
+    version = 11,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)
@@ -808,13 +816,53 @@ private val NestedDocumentSortOrderMigration6To7 = object : Migration(6, 7) {
     }
 }
 
+/** v7 -> v8: adds the nested-item label column; existing rows stay null. */
+private val NestedItemLabelMigration7To8 = object : Migration(7, 8) {
+    override suspend fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            "ALTER TABLE nested_list_items ADD COLUMN label TEXT"
+        )
+    }
+}
+
+/** v8 -> v9: adds nested-item border shape/style/color; existing rows stay plain. */
+private val NestedItemBorderMigration8To9 = object : Migration(8, 9) {
+    override suspend fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            "ALTER TABLE nested_list_items ADD COLUMN borderShape TEXT NOT NULL DEFAULT 'Rounded'"
+        )
+        connection.execSQL(
+            "ALTER TABLE nested_list_items ADD COLUMN borderStyle TEXT NOT NULL DEFAULT 'None'"
+        )
+        connection.execSQL(
+            "ALTER TABLE nested_list_items ADD COLUMN borderColor TEXT NOT NULL DEFAULT 'Default'"
+        )
+    }
+}
+
+/** v9 -> v10: adds the per-row guide emoji; existing rows keep the default dot. */
+private val NestedItemGuideDotMigration9To10 = object : Migration(9, 10) {
+    override suspend fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            "ALTER TABLE nested_list_items ADD COLUMN guideDot TEXT"
+        )
+    }
+}
+
+/** v10 -> v11: adds the per-row dot/guide palette override. */
+private val NestedItemGuideDotColorMigration10To11 = object : Migration(10, 11) {
+    override suspend fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("ALTER TABLE nested_list_items ADD COLUMN guideDotColor TEXT")
+    }
+}
+
 fun buildCheckItDatabase(
     builder: RoomDatabase.Builder<CheckItDatabase>
 ): CheckItDatabase {
     return builder
         .fallbackToDestructiveMigration(false)
         .fallbackToDestructiveMigrationOnDowngrade(false)
-        .addMigrations(RoutineColorMigration1To2, TaskMetricsMigration2To3, NestedCompletedAtMigration3To4, DropTaskRemindersMigration4To5, RepeatRuleMigration5To6, NestedDocumentSortOrderMigration6To7)
+        .addMigrations(RoutineColorMigration1To2, TaskMetricsMigration2To3, NestedCompletedAtMigration3To4, DropTaskRemindersMigration4To5, RepeatRuleMigration5To6, NestedDocumentSortOrderMigration6To7, NestedItemLabelMigration7To8, NestedItemBorderMigration8To9, NestedItemGuideDotMigration9To10, NestedItemGuideDotColorMigration10To11)
         .setQueryCoroutineContext(Dispatchers.IO)
         .setDriver(BundledSQLiteDriver())
         .addCallback(object : RoomDatabase.Callback() {

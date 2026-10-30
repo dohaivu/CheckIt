@@ -11,6 +11,8 @@ import com.checkit.domain.NestedSortOrder
 import com.checkit.domain.TagItem
 import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.NestedColorToken
+import com.checkit.domain.NestedBorderShape
+import com.checkit.domain.NestedBorderStyle
 import com.checkit.domain.MetricRollupPolicy
 
 import com.checkit.domain.TaskPriority
@@ -96,6 +98,13 @@ class UpdateNestedItemNoteUseCase(
         repository.updateNestedItemNote(itemId, note)
 }
 
+class UpdateNestedItemLabelUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(itemId: String, label: String?) =
+        repository.updateNestedItemLabel(itemId, label)
+}
+
 class UpdateNestedItemFormattingUseCase(
     private val repository: CheckItRepository
 ) {
@@ -107,11 +116,36 @@ class UpdateNestedItemFormattingUseCase(
     ) = repository.updateNestedItemFormatting(itemId, textStyle, textColor, backgroundColor)
 }
 
+class UpdateNestedItemBorderUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(
+        itemId: String,
+        borderShape: NestedBorderShape,
+        borderStyle: NestedBorderStyle,
+        borderColor: NestedColorToken
+    ) = repository.updateNestedItemBorder(itemId, borderShape, borderStyle, borderColor)
+}
+
 class UpdateNestedItemPriorityUseCase(
     private val repository: CheckItRepository
 ) {
     suspend operator fun invoke(itemId: String, priority: TaskPriority) =
         repository.updateNestedItemPriority(itemId, priority)
+}
+
+class UpdateNestedItemGuideDotUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(itemId: String, guideDot: String?) =
+        repository.updateNestedItemGuideDot(itemId, guideDot)
+}
+
+class UpdateNestedItemGuideDotColorUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(itemId: String, guideDotColor: NestedColorToken?) =
+        repository.updateNestedItemGuideDotColor(itemId, guideDotColor)
 }
 
 class UpdateNestedItemDateRangeUseCase(

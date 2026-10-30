@@ -7,6 +7,7 @@ import SwiftUI
 import AppKit
 import Combine
 import Shared
+import SwiftEmojiPicker
 
 // MARK: - Note editor (shared by sheet + inspector)
 
@@ -548,26 +549,31 @@ struct NestedFormattingBar: View {
     let item: NestedListItem
 
     @State private var showDates = false
+    @State private var showLabel = false
+    @State private var showEmojiPicker = false
     @State private var startDate = Date()
     @State private var endDate = Date()
     @State private var hasStart = false
     @State private var hasEnd = false
 
-    private let tokens = ["Default", "Red", "Orange", "Yellow", "Green", "Blue", "Purple", "Pink"]
+    /// Menu order for text styles (the shared enum lists Body first).
+    private let textStyles: [NestedTextStyle] = [.header, .subheader, .body]
 
     /// Filled-flag tint from the shared TaskPriority palette (None → secondary).
-    private func priorityTint(_ name: String) -> Color {
-        let entry: TaskPriority?
-        switch name {
-        case "Low": entry = TaskPriority.low
-        case "Medium": entry = TaskPriority.medium
-        case "High": entry = TaskPriority.high
-        default: entry = nil
-        }
-        if let hex = entry?.priorityHex(), let color = Color(nestedHex: hex) {
+    private func priorityTint(_ priority: TaskPriority) -> Color {
+        if let hex = priority.priorityHex(), let color = Color(nestedHex: hex) {
             return color
         }
         return .secondary
+    }
+
+    /// Writes straight through to the shared use case, so the picker's
+    /// binding is the source of truth (no draft state to commit).
+    private var guideEmojiBinding: Binding<String> {
+        Binding(
+            get: { item.guideDot ?? "" },
+            set: { state.updateGuideDot(id: item.id, emoji: $0) }
+        )
     }
 
     private func barBtn(
@@ -593,10 +599,10 @@ struct NestedFormattingBar: View {
             // Text style (flat rows; Toggle renders a native checkmark on
             // the current value — custom row views don't paint in Menus).
             Menu {
-                ForEach(["Header", "Subheader", "Body"], id: \.self) { s in
-                    Toggle(s, isOn: Binding(
-                        get: { s == item.textStyle.name },
-                        set: { if $0 { state.updateFormatting(id: item.id, style: s, textColor: item.textColor.name, background: item.backgroundColor.name) } }
+                ForEach(textStyles, id: \.self) { s in
+                    Toggle(s.name, isOn: Binding(
+                        get: { s == item.textStyle },
+                        set: { if $0 { state.updateFormatting(id: item.id, style: s, textColor: item.textColor, background: item.backgroundColor) } }
                     ))
                 }
                 Divider()
@@ -615,60 +621,133 @@ struct NestedFormattingBar: View {
             .accessibilityLabel("Text style")
             .help("Text style")
             // Text color
-            Menu {
-                ForEach(tokens, id: \.self) { t in
-                    Toggle(t, isOn: Binding(
-                        get: { t == item.textColor.name },
-                        set: { if $0 { state.updateFormatting(id: item.id, style: item.textStyle.name, textColor: t, background: item.backgroundColor.name) } }
-                    ))
+            NestedMenuButton(rows: {
+                NestedColorToken.entries.map { t in
+                    NestedMenuRow.color(t, selected: t == item.textColor) {
+                        state.updateFormatting(id: item.id, style: item.textStyle, textColor: t, background: item.backgroundColor)
+                    }
                 }
-            } label: {
-                Image(systemName: "paintbrush")
-                    .tint(item.textColor.name == "Default" ? .secondary : Color.accentColor)
-            }
-            .menuStyle(.borderlessButton)
-            .frame(width: 28, height: 28)
+            }, label: {
+                NestedMenuTrigger(
+                    symbol: "paintbrush",
+                    tint: item.textColor == NestedColorToken.default_ ? .secondary : .accentColor
+                )
+            })
             .accessibilityLabel("Text color")
             .help("Text color")
             // Background
-            Menu {
-                ForEach(tokens, id: \.self) { t in
-                    Toggle(t, isOn: Binding(
-                        get: { t == item.backgroundColor.name },
-                        set: { if $0 { state.updateFormatting(id: item.id, style: item.textStyle.name, textColor: item.textColor.name, background: t) } }
-                    ))
-                }
-            } label: {
-                Image(systemName: "paintpalette")
-                    .tint(item.backgroundColor.name == "Default" ? .secondary : Color.accentColor)
-            }
-            .menuStyle(.borderlessButton)
-            .frame(width: 28, height: 28)
-            .accessibilityLabel("Background color")
-            .help("Background color")
-            // Priority
-            Menu {
-                ForEach(["None", "Low", "Medium", "High"], id: \.self) { p in
-                    Toggle(isOn: Binding(
-                        get: { p == item.priority.name },
-                        set: { if $0 { state.updatePriority(id: item.id, name: p) } }
-                    )) {
-                        Label {
-                            Text(p)
-                        } icon: {
-                            Image(systemName: "flag.fill")
-                                .foregroundStyle(priorityTint(p))
-                        }
+            NestedMenuButton(rows: {
+                NestedColorToken.entries.map { t in
+                    NestedMenuRow.color(t, selected: t == item.backgroundColor) {
+                        state.updateFormatting(id: item.id, style: item.textStyle, textColor: item.textColor, background: t)
                     }
                 }
-            } label: {
-                Image(systemName: item.priority.name == "None" ? "flag" : "flag.fill")
-                    .tint(priorityTint(item.priority.name))
+            }, label: {
+                NestedMenuTrigger(
+                    symbol: "paintpalette",
+                    tint: item.backgroundColor == NestedColorToken.default_ ? .secondary : .accentColor
+                )
+            })
+            .accessibilityLabel("Background color")
+            .help("Background color")
+            // Border: shape + line style + color in one menu.
+            NestedMenuButton(rows: {
+                var rows: [NestedMenuRow] = [.header("Style")]
+                for s in NestedBorderStyle.entries {
+                    rows.append(.item(title: s.name, selected: s == item.borderStyle) {
+                        state.updateBorder(id: item.id, shape: item.borderShape, style: s, color: item.borderColor)
+                    })
+                }
+                rows.append(.header("Shape"))
+                for s in NestedBorderShape.entries {
+                    rows.append(.item(title: s.displayName(), selected: s == item.borderShape) {
+                        state.updateBorder(id: item.id, shape: s, style: item.borderStyle, color: item.borderColor)
+                    })
+                }
+                rows.append(.header("Color"))
+                for t in NestedColorToken.entries {
+                    rows.append(.color(t, selected: t == item.borderColor) {
+                        state.updateBorder(id: item.id, shape: item.borderShape, style: item.borderStyle, color: t)
+                    })
+                }
+                return rows
+            }, label: {
+                NestedMenuTrigger(
+                    symbol: "square.dashed",
+                    tint: item.borderStyle == NestedBorderStyle.none ? .secondary : .accentColor
+                )
+            })
+            .accessibilityLabel("Border")
+            .help("Border")
+            // Guide dot: emoji inside the row's dot (parents keep the ring).
+            NestedMenuButton(rows: {
+                [
+                    .item(title: "Default dot", selected: item.guideDot == nil) {
+                        state.updateGuideDot(id: item.id, emoji: nil)
+                    },
+                    .item(title: item.guideDot == nil ? "Choose emoji…" : "Change emoji…") {
+                        // Let the menu finish dismissing before the popover opens.
+                        DispatchQueue.main.async { showEmojiPicker = true }
+                    },
+                ]
+            }, label: {
+                NestedMenuTrigger(
+                    symbol: "circle.dotted",
+                    emoji: item.guideDot,
+                    tint: item.guideDot == nil ? .secondary : .accentColor
+                )
+            })
+            .accessibilityLabel("Guide dot")
+            .help("Guide dot")
+            .popover(isPresented: $showEmojiPicker, arrowEdge: .bottom) {
+                EmojiPickerView(
+                    selectedEmoji: guideEmojiBinding,
+                    selectedEmojiCategoryTintColor: .accentColor
+                )
+                .frame(width: 340, height: 420)
             }
-            .menuStyle(.borderlessButton)
-            .frame(width: 28, height: 28)
+            // Dot color owns this row's connector and its descendant spine.
+            NestedMenuButton(rows: {
+                NestedColorToken.entries.map { t in
+                    NestedMenuRow.color(t, selected: t == (item.guideDotColor ?? NestedColorToken.default_)) {
+                        state.updateGuideDotColor(id: item.id, color: t == NestedColorToken.default_ ? nil : t)
+                    }
+                }
+            }, label: {
+                NestedMenuTrigger(
+                    symbol: "circle.lefthalf.filled",
+                    tint: item.guideDotColor == nil ? .secondary : nestedTokenColor(item.guideDotColor!)
+                )
+            })
+            .accessibilityLabel("Dot and guide color")
+            .help("Dot and guide color")
+            // Priority
+            NestedMenuButton(rows: {
+                TaskPriority.entries.map { p in
+                    NestedMenuRow.item(
+                        title: p.name,
+                        icon: nestedPriorityFlag(p),
+                        selected: p == item.priority
+                    ) {
+                        state.updatePriority(id: item.id, priority: p)
+                    }
+                }
+            }, label: {
+                NestedMenuTrigger(
+                    symbol: item.priority == TaskPriority.none ? "flag" : "flag.fill",
+                    tint: priorityTint(item.priority)
+                )
+            })
             .accessibilityLabel("Priority")
             .help("Priority")
+            // Label
+            barBtn(
+                item.label?.isEmpty == false ? "bookmark.fill" : "bookmark",
+                tint: item.label?.isEmpty == false ? Color.accentColor : .secondary,
+                help: "Label"
+            ) {
+                showLabel = true
+            }
             // Dates
             barBtn(
                 "calendar",
@@ -733,5 +812,98 @@ struct NestedFormattingBar: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .background(Color(nsColor: .windowBackgroundColor))
+        .sheet(isPresented: $showLabel) {
+            NestedLabelSheet(
+                initialLabel: item.label,
+                predefined: state.predefinedLabels,
+                onSave: { label in
+                    state.updateLabel(id: item.id, label: label)
+                    showLabel = false
+                },
+                onClear: {
+                    state.updateLabel(id: item.id, label: nil)
+                    showLabel = false
+                },
+                onCancel: { showLabel = false }
+            )
+        }
+    }
+}
+
+// MARK: - Label sheet
+
+struct NestedLabelSheet: View {
+    let predefined: [String]
+    let onSave: (String?) -> Void
+    let onClear: () -> Void
+    let onCancel: () -> Void
+
+    @State private var text: String
+
+    init(
+        initialLabel: String?,
+        predefined: [String],
+        onSave: @escaping (String?) -> Void,
+        onClear: @escaping () -> Void,
+        onCancel: @escaping () -> Void
+    ) {
+        self.predefined = predefined
+        self.onSave = onSave
+        self.onClear = onClear
+        self.onCancel = onCancel
+        _text = State(initialValue: initialLabel ?? "")
+    }
+
+    private var trimmed: String {
+        text.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Label")
+                .font(.headline)
+            TextField("Add a label", text: $text)
+                .textFieldStyle(.roundedBorder)
+                .onSubmit { save() }
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 100), spacing: 6, alignment: .leading)],
+                alignment: .leading,
+                spacing: 6
+            ) {
+                ForEach(predefined, id: \.self) { label in
+                    let selected = trimmed == label
+                    Button {
+                        text = selected ? "" : label
+                    } label: {
+                        Text(label)
+                            .font(.caption.weight(.semibold))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(
+                                selected
+                                    ? Color.accentColor.opacity(0.20)
+                                    : Color.secondary.opacity(0.12),
+                                in: Capsule()
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            HStack {
+                Button("Clear") { onClear() }
+                    .foregroundStyle(.red)
+                Spacer()
+                Button("Cancel") { onCancel() }
+                    .keyboardShortcut(.cancelAction)
+                Button("Save") { save() }
+                    .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(20)
+        .frame(width: 380)
+    }
+
+    private func save() {
+        onSave(trimmed.isEmpty ? nil : trimmed)
     }
 }

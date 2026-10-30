@@ -22,10 +22,13 @@ import com.checkit.domain.ListSection
 import com.checkit.domain.NoteItem
 import com.checkit.domain.NestedDocument
 import com.checkit.domain.NestedDocumentTree
+import com.checkit.domain.NestedBorderShape
+import com.checkit.domain.NestedBorderStyle
 import com.checkit.domain.NestedItemMove
 import com.checkit.domain.NestedListItem
 import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.NestedColorToken
+import com.checkit.domain.sanitizeGuideDot
 import com.checkit.domain.MetricRollupPolicy
 import com.checkit.domain.MetricItem
 import com.checkit.domain.MetricUnit
@@ -177,8 +180,12 @@ interface CheckItRepository {
     suspend fun addNestedItem(documentId: String, parentId: String?, text: String, position: Int?): String
     suspend fun updateNestedItemText(itemId: String, text: String)
     suspend fun updateNestedItemNote(itemId: String, note: String?)
+    suspend fun updateNestedItemLabel(itemId: String, label: String?)
     suspend fun updateNestedItemFormatting(itemId: String, textStyle: NestedTextStyle, textColor: NestedColorToken, backgroundColor: NestedColorToken)
+    suspend fun updateNestedItemBorder(itemId: String, borderShape: NestedBorderShape, borderStyle: NestedBorderStyle, borderColor: NestedColorToken)
     suspend fun updateNestedItemPriority(itemId: String, priority: TaskPriority)
+    suspend fun updateNestedItemGuideDot(itemId: String, guideDot: String?)
+    suspend fun updateNestedItemGuideDotColor(itemId: String, guideDotColor: NestedColorToken?)
     suspend fun updateNestedItemDateRange(itemId: String, startDate: LocalDate?, endDate: LocalDate?)
     suspend fun updateNestedItemTags(itemId: String, tagIds: List<String>)
     suspend fun updateNestedItemMetricSettings(itemId: String, actualMinutes: Int, metricRollupPolicy: MetricRollupPolicy, showTrackedMinutes: Boolean)
@@ -1541,6 +1548,14 @@ class RoomCheckItRepository(
         )
     }
 
+    override suspend fun updateNestedItemLabel(itemId: String, label: String?) {
+        dao.updateNestedItemLabel(
+            itemId,
+            label?.trim()?.takeIf { it.isNotBlank() },
+            Clock.System.now().toEpochMilliseconds()
+        )
+    }
+
     override suspend fun updateNestedItemFormatting(
         itemId: String,
         textStyle: NestedTextStyle,
@@ -1550,8 +1565,29 @@ class RoomCheckItRepository(
         dao.updateNestedItemFormatting(itemId, textStyle.name, textColor.name, backgroundColor.name, Clock.System.now().toEpochMilliseconds())
     }
 
+    override suspend fun updateNestedItemBorder(
+        itemId: String,
+        borderShape: NestedBorderShape,
+        borderStyle: NestedBorderStyle,
+        borderColor: NestedColorToken
+    ) {
+        dao.updateNestedItemBorder(itemId, borderShape.name, borderStyle.name, borderColor.name, Clock.System.now().toEpochMilliseconds())
+    }
+
     override suspend fun updateNestedItemPriority(itemId: String, priority: TaskPriority) {
         dao.updateNestedItemPriority(itemId, priority.name, Clock.System.now().toEpochMilliseconds())
+    }
+
+    override suspend fun updateNestedItemGuideDot(itemId: String, guideDot: String?) {
+        dao.updateNestedItemGuideDot(
+            itemId,
+            sanitizeGuideDot(guideDot),
+            Clock.System.now().toEpochMilliseconds()
+        )
+    }
+
+    override suspend fun updateNestedItemGuideDotColor(itemId: String, guideDotColor: NestedColorToken?) {
+        dao.updateNestedItemGuideDotColor(itemId, guideDotColor?.name, Clock.System.now().toEpochMilliseconds())
     }
 
     override suspend fun updateNestedItemDateRange(itemId: String, startDate: LocalDate?, endDate: LocalDate?) {
@@ -1712,6 +1748,7 @@ class RoomCheckItRepository(
                     position = item.position,
                     text = item.text,
                     note = item.note?.takeIf { it.isNotBlank() },
+                    label = item.label?.takeIf { it.isNotBlank() },
                     checkboxEnabled = item.checkboxEnabled,
                     checked = item.checked,
                     completedAtMillis = item.completedAtMillis,
@@ -1719,6 +1756,13 @@ class RoomCheckItRepository(
                     textStyle = runCatching { NestedTextStyle.valueOf(item.textStyle) }.getOrDefault(NestedTextStyle.Body).name,
                     textColor = runCatching { NestedColorToken.valueOf(item.textColor) }.getOrDefault(NestedColorToken.Default).name,
                     backgroundColor = runCatching { NestedColorToken.valueOf(item.backgroundColor) }.getOrDefault(NestedColorToken.Default).name,
+                    borderShape = runCatching { NestedBorderShape.valueOf(item.borderShape) }.getOrDefault(NestedBorderShape.Rounded).name,
+                    borderStyle = runCatching { NestedBorderStyle.valueOf(item.borderStyle) }.getOrDefault(NestedBorderStyle.None).name,
+                    borderColor = runCatching { NestedColorToken.valueOf(item.borderColor) }.getOrDefault(NestedColorToken.Default).name,
+                    guideDotColor = item.guideDotColor?.let { color ->
+                        runCatching { NestedColorToken.valueOf(color) }.getOrNull()?.takeIf { it != NestedColorToken.Default }?.name
+                    },
+                    guideDot = sanitizeGuideDot(item.guideDot),
                     startDateEpochDays = item.startDate?.let { runCatching { LocalDate.parse(it).toEpochDays().toInt() }.getOrNull() },
                     endDateEpochDays = item.endDate?.let { runCatching { LocalDate.parse(it).toEpochDays().toInt() }.getOrNull() },
                     priority = runCatching { TaskPriority.valueOf(item.priority) }.getOrDefault(TaskPriority.None).name,
@@ -2102,6 +2146,7 @@ private fun NestedListItemEntity.toNestedListItem(
     position = position,
     text = text,
     note = note,
+    label = label,
     checkboxEnabled = checkboxEnabled,
     checked = checked,
     completedAtMillis = completedAtMillis,
@@ -2109,6 +2154,14 @@ private fun NestedListItemEntity.toNestedListItem(
     textStyle = runCatching { com.checkit.domain.NestedTextStyle.valueOf(textStyle) }.getOrDefault(com.checkit.domain.NestedTextStyle.Body),
     textColor = runCatching { com.checkit.domain.NestedColorToken.valueOf(textColor) }.getOrDefault(com.checkit.domain.NestedColorToken.Default),
     backgroundColor = runCatching { com.checkit.domain.NestedColorToken.valueOf(backgroundColor) }.getOrDefault(com.checkit.domain.NestedColorToken.Default),
+    borderShape = runCatching { com.checkit.domain.NestedBorderShape.valueOf(borderShape) }.getOrDefault(com.checkit.domain.NestedBorderShape.Rounded),
+    borderStyle = runCatching { com.checkit.domain.NestedBorderStyle.valueOf(borderStyle) }.getOrDefault(com.checkit.domain.NestedBorderStyle.None),
+    borderColor = runCatching { com.checkit.domain.NestedColorToken.valueOf(borderColor) }.getOrDefault(com.checkit.domain.NestedColorToken.Default),
+    guideDotColor = guideDotColor?.let { value ->
+        runCatching { com.checkit.domain.NestedColorToken.valueOf(value) }.getOrNull()
+            ?.takeIf { it != com.checkit.domain.NestedColorToken.Default }
+    },
+    guideDot = sanitizeGuideDot(guideDot),
     startDate = startDateEpochDays?.let { LocalDate.fromEpochDays(it) },
     endDate = endDateEpochDays?.let { LocalDate.fromEpochDays(it) },
     priority = runCatching { TaskPriority.valueOf(priority) }.getOrDefault(TaskPriority.None),

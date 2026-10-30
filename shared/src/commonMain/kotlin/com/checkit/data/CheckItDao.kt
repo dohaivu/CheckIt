@@ -1205,6 +1205,9 @@ interface CheckItDao {
     @Query("UPDATE nested_list_items SET note = :note, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
     suspend fun updateNestedItemNote(itemId: String, note: String?, updatedAtMillis: Long)
 
+    @Query("UPDATE nested_list_items SET label = :label, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
+    suspend fun updateNestedItemLabel(itemId: String, label: String?, updatedAtMillis: Long)
+
     @Query("UPDATE nested_list_items SET textStyle = :textStyle, textColor = :textColor, backgroundColor = :backgroundColor, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
     suspend fun updateNestedItemFormatting(
         itemId: String,
@@ -1214,10 +1217,33 @@ interface CheckItDao {
         updatedAtMillis: Long
     )
 
+    @Query("UPDATE nested_list_items SET borderShape = :borderShape, borderStyle = :borderStyle, borderColor = :borderColor, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
+    suspend fun updateNestedItemBorder(
+        itemId: String,
+        borderShape: String,
+        borderStyle: String,
+        borderColor: String,
+        updatedAtMillis: Long
+    )
+
     @Query("UPDATE nested_list_items SET priority = :priority, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
     suspend fun updateNestedItemPriority(
         itemId: String,
         priority: String,
+        updatedAtMillis: Long
+    )
+
+    @Query("UPDATE nested_list_items SET guideDot = :guideDot, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
+    suspend fun updateNestedItemGuideDot(
+        itemId: String,
+        guideDot: String?,
+        updatedAtMillis: Long
+    )
+
+    @Query("UPDATE nested_list_items SET guideDotColor = :guideDotColor, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
+    suspend fun updateNestedItemGuideDotColor(
+        itemId: String,
+        guideDotColor: String?,
         updatedAtMillis: Long
     )
 

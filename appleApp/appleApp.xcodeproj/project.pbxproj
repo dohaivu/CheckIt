@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		713BDAFF3091FA4C00678CC0 /* SwiftEmojiPicker in Frameworks */ = {isa = PBXBuildFile; productRef = 713BDAFE3091FA4C00678CC0 /* SwiftEmojiPicker */; };
+		713BDB013091FA4C00678CC0 /* SwiftEmojiPickerJSON in Frameworks */ = {isa = PBXBuildFile; productRef = 713BDB003091FA4C00678CC0 /* SwiftEmojiPickerJSON */; };
 		71EAA4A83052F28600B51246 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 71EAA4A73052F28600B51246 /* FirebaseAuth */; };
 		71EAA4AA3052F28600B51246 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 71EAA4A93052F28600B51246 /* FirebaseFirestore */; };
 		71EAA4AC3052F28600B51246 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 71EAA4AB3052F28600B51246 /* FirebaseStorage */; };
@@ -87,7 +89,9 @@
 				71EAA4B43052F30000B51246 /* GoogleSignIn in Frameworks */,
 				71EAA4B53052F30000B51246 /* GoogleSignInSwift in Frameworks */,
 				71EAA4C33052F31000B51246 /* KeyboardShortcuts in Frameworks */,
+				713BDB013091FA4C00678CC0 /* SwiftEmojiPickerJSON in Frameworks */,
 				71EAA4AC3052F28600B51246 /* FirebaseStorage in Frameworks */,
+				713BDAFF3091FA4C00678CC0 /* SwiftEmojiPicker in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -180,6 +184,8 @@
 				71EAA4B23052F30000B51246 /* GoogleSignIn */,
 				71EAA4B33052F30000B51246 /* GoogleSignInSwift */,
 				71EAA4C23052F31000B51246 /* KeyboardShortcuts */,
+				713BDAFE3091FA4C00678CC0 /* SwiftEmojiPicker */,
+				713BDB003091FA4C00678CC0 /* SwiftEmojiPickerJSON */,
 			);
 			productName = CheckIt;
 			productReference = 71EAA46B3052D84100B51246 /* CheckIt.app */;
@@ -216,6 +222,7 @@
 				71EAA4A63052F28500B51246 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				71EAA4B13052F30000B51246 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 				71EAA4C13052F31000B51246 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */,
+				713BDAFD3091FA4C00678CC0 /* XCRemoteSwiftPackageReference "SwiftEmojiPicker" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 130C316EF7162D9A63162B0A /* Products */;
@@ -604,6 +611,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		713BDAFD3091FA4C00678CC0 /* XCRemoteSwiftPackageReference "SwiftEmojiPicker" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sergius-la/SwiftEmojiPicker";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.2.1;
+			};
+		};
 		71EAA4A63052F28500B51246 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
@@ -631,6 +646,16 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		713BDAFE3091FA4C00678CC0 /* SwiftEmojiPicker */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 713BDAFD3091FA4C00678CC0 /* XCRemoteSwiftPackageReference "SwiftEmojiPicker" */;
+			productName = SwiftEmojiPicker;
+		};
+		713BDB003091FA4C00678CC0 /* SwiftEmojiPickerJSON */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 713BDAFD3091FA4C00678CC0 /* XCRemoteSwiftPackageReference "SwiftEmojiPicker" */;
+			productName = SwiftEmojiPickerJSON;
+		};
 		71EAA4A73052F28600B51246 /* FirebaseAuth */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 71EAA4A63052F28500B51246 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;

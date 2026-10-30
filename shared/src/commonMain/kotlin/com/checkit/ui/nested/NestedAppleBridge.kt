@@ -3,6 +3,8 @@ package com.checkit.ui.nested
 import com.checkit.domain.MetricItem
 import com.checkit.domain.MetricRollupPolicy
 import com.checkit.domain.NestedColorToken
+import com.checkit.domain.NestedBorderShape
+import com.checkit.domain.NestedBorderStyle
 import com.checkit.domain.NestedDocument
 import com.checkit.domain.NestedDocumentTree
 import com.checkit.domain.NestedItemNode
@@ -18,6 +20,7 @@ import com.checkit.domain.filterNestedTreeWithContext
 import com.checkit.domain.TagItem
 import com.checkit.domain.TaskPriority
 import com.checkit.ui.isValidForSave
+import com.checkit.ui.tasks.PredefinedLabels
 import com.checkit.domain.usecase.AddNestedDocumentUseCase
 import com.checkit.domain.usecase.AddNestedItemUseCase
 import com.checkit.domain.usecase.DeleteNestedDocumentUseCase
@@ -35,6 +38,10 @@ import com.checkit.domain.usecase.SetNestedItemsCollapsedUseCase
 import com.checkit.domain.usecase.ToggleNestedItemCollapsedUseCase
 import com.checkit.domain.usecase.UpdateNestedItemDateRangeUseCase
 import com.checkit.domain.usecase.UpdateNestedItemFormattingUseCase
+import com.checkit.domain.usecase.UpdateNestedItemBorderUseCase
+import com.checkit.domain.usecase.UpdateNestedItemGuideDotUseCase
+import com.checkit.domain.usecase.UpdateNestedItemGuideDotColorUseCase
+import com.checkit.domain.usecase.UpdateNestedItemLabelUseCase
 import com.checkit.domain.usecase.UpdateNestedItemMetricSettingsUseCase
 import com.checkit.domain.usecase.UpdateNestedItemNoteUseCase
 import com.checkit.domain.usecase.UpdateNestedItemPriorityUseCase
@@ -98,9 +105,13 @@ class NestedAppleHelper(
     private val addItem: AddNestedItemUseCase,
     private val updateItemText: UpdateNestedItemTextUseCase,
     private val updateItemNote: UpdateNestedItemNoteUseCase,
+    private val updateItemLabel: UpdateNestedItemLabelUseCase,
     private val updateItemFormatting: UpdateNestedItemFormattingUseCase,
+    private val updateItemBorder: UpdateNestedItemBorderUseCase,
     private val updateItemDateRange: UpdateNestedItemDateRangeUseCase,
     private val updateItemPriority: UpdateNestedItemPriorityUseCase,
+    private val updateItemGuideDot: UpdateNestedItemGuideDotUseCase,
+    private val updateItemGuideDotColor: UpdateNestedItemGuideDotColorUseCase,
     private val updateItemTags: UpdateNestedItemTagsUseCase,
     private val updateItemMetricSettings: UpdateNestedItemMetricSettingsUseCase,
     private val updateItemProgress: UpdateNestedItemProgressUseCase,
@@ -204,6 +215,13 @@ class NestedAppleHelper(
         scope.launch { runCatching { updateItemNote(itemId, note?.take(NESTED_NOTE_MAX_LENGTH)) } }
     }
 
+    fun saveItemLabel(itemId: String, label: String?) {
+        scope.launch { runCatching { updateItemLabel(itemId, label) } }
+    }
+
+    /** Shared predefined labels so Swift and Android offer the same choices. */
+    fun predefinedLabels(): List<String> = PredefinedLabels
+
     // --- Formatting & metadata (same use cases as Android) ---
 
     fun updateFormatting(itemId: String, style: NestedTextStyle, textColor: NestedColorToken, backgroundColor: NestedColorToken) {
@@ -219,6 +237,20 @@ class NestedAppleHelper(
                     NestedTextStyle.valueOf(styleName),
                     NestedColorToken.valueOf(textColorName),
                     NestedColorToken.valueOf(backgroundColorName)
+                )
+            }
+        }
+    }
+
+    /** Border shape/style/color, string-based for the SwiftUI editor. */
+    fun updateBorderByName(itemId: String, shapeName: String, styleName: String, borderColorName: String) {
+        scope.launch {
+            runCatching {
+                updateItemBorder(
+                    itemId,
+                    NestedBorderShape.valueOf(shapeName),
+                    NestedBorderStyle.valueOf(styleName),
+                    NestedColorToken.valueOf(borderColorName)
                 )
             }
         }
@@ -246,6 +278,23 @@ class NestedAppleHelper(
 
     fun updatePriorityByName(itemId: String, priorityName: String) {
         scope.launch { runCatching { updateItemPriority(itemId, TaskPriority.valueOf(priorityName)) } }
+    }
+
+    /** Guide-dot emoji; pass null (or blank) to restore the default dot. */
+    fun updateGuideDot(itemId: String, guideDot: String?) {
+        scope.launch { runCatching { updateItemGuideDot(itemId, guideDot) } }
+    }
+
+    /** Nullable token override for the row's dot and guide segments. */
+    fun updateGuideDotColorByName(itemId: String, guideDotColorName: String?) {
+        scope.launch {
+            runCatching {
+                updateItemGuideDotColor(
+                    itemId,
+                    guideDotColorName?.let { NestedColorToken.valueOf(it) }?.takeIf { it != NestedColorToken.Default }
+                )
+            }
+        }
     }
 
     fun updateTags(itemId: String, tagIds: List<String>) {

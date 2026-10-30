@@ -1,5 +1,7 @@
 package com.checkit.data
 
+import com.checkit.domain.sanitizeGuideDot
+
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -45,12 +47,18 @@ object NestedSyncDocument {
     const val FIELD_POSITION = "position"
     const val FIELD_TEXT = "text"
     const val FIELD_NOTE = "note"
+    const val FIELD_LABEL = "label"
     const val FIELD_CHECKBOX_ENABLED = "checkboxEnabled"
     const val FIELD_CHECKED = "checked"
     const val FIELD_COMPLETED_AT = "completedAtMillis"
     const val FIELD_TEXT_STYLE = "textStyle"
     const val FIELD_TEXT_COLOR = "textColor"
     const val FIELD_BACKGROUND_COLOR = "backgroundColor"
+    const val FIELD_BORDER_SHAPE = "borderShape"
+    const val FIELD_BORDER_STYLE = "borderStyle"
+    const val FIELD_BORDER_COLOR = "borderColor"
+    const val FIELD_GUIDE_DOT = "guideDot"
+    const val FIELD_GUIDE_DOT_COLOR = "guideDotColor"
     const val FIELD_START_DATE = "startDateEpochDays"
     const val FIELD_END_DATE = "endDateEpochDays"
     const val FIELD_PRIORITY = "priority"
@@ -84,12 +92,18 @@ object NestedSyncDocument {
         position: Int,
         text: String,
         note: String?,
+        label: String? = null,
         checkboxEnabled: Boolean,
         checked: Boolean,
         completedAtMillis: Long? = null,
         textStyle: String,
         textColor: String,
         backgroundColor: String,
+        borderShape: String = "Rounded",
+        borderStyle: String = "None",
+        borderColor: String = "Default",
+        guideDotColor: String? = null,
+        guideDot: String? = null,
         startDateEpochDays: Int?,
         endDateEpochDays: Int?,
         priority: String,
@@ -109,12 +123,18 @@ object NestedSyncDocument {
         FIELD_POSITION to position,
         FIELD_TEXT to text,
         FIELD_NOTE to note,
+        FIELD_LABEL to label,
         FIELD_CHECKBOX_ENABLED to checkboxEnabled,
         FIELD_CHECKED to checked,
         FIELD_COMPLETED_AT to completedAtMillis,
         FIELD_TEXT_STYLE to textStyle,
         FIELD_TEXT_COLOR to textColor,
         FIELD_BACKGROUND_COLOR to backgroundColor,
+        FIELD_BORDER_SHAPE to borderShape,
+        FIELD_BORDER_STYLE to borderStyle,
+        FIELD_BORDER_COLOR to borderColor,
+        FIELD_GUIDE_DOT_COLOR to guideDotColor,
+        FIELD_GUIDE_DOT to guideDot,
         FIELD_START_DATE to startDateEpochDays,
         FIELD_END_DATE to endDateEpochDays,
         FIELD_PRIORITY to priority,
@@ -157,12 +177,18 @@ object NestedSyncDocument {
             position = (map[FIELD_POSITION] as? Number)?.toInt() ?: 0,
             text = text,
             note = map[FIELD_NOTE] as? String,
+            label = map[FIELD_LABEL] as? String,
             checkboxEnabled = map[FIELD_CHECKBOX_ENABLED] as? Boolean ?: false,
             checked = map[FIELD_CHECKED] as? Boolean ?: false,
             completedAtMillis = (map[FIELD_COMPLETED_AT] as? Number)?.toLong(),
             textStyle = map[FIELD_TEXT_STYLE] as? String ?: "Body",
             textColor = map[FIELD_TEXT_COLOR] as? String ?: "Default",
             backgroundColor = map[FIELD_BACKGROUND_COLOR] as? String ?: "Default",
+            borderShape = map[FIELD_BORDER_SHAPE] as? String ?: "Rounded",
+            borderStyle = map[FIELD_BORDER_STYLE] as? String ?: "None",
+            borderColor = map[FIELD_BORDER_COLOR] as? String ?: "Default",
+            guideDotColor = map[FIELD_GUIDE_DOT_COLOR] as? String,
+            guideDot = sanitizeGuideDot(map[FIELD_GUIDE_DOT] as? String),
             startDateEpochDays = (map[FIELD_START_DATE] as? Number)?.toInt(),
             endDateEpochDays = (map[FIELD_END_DATE] as? Number)?.toInt(),
             priority = map[FIELD_PRIORITY] as? String ?: "None",
@@ -304,12 +330,18 @@ data class RemoteNestedItem(
     val position: Int,
     val text: String,
     val note: String?,
+    val label: String? = null,
     val checkboxEnabled: Boolean,
     val checked: Boolean,
     val completedAtMillis: Long? = null,
     val textStyle: String,
     val textColor: String,
     val backgroundColor: String,
+    val borderShape: String = "Rounded",
+    val borderStyle: String = "None",
+    val borderColor: String = "Default",
+    val guideDotColor: String? = null,
+    val guideDot: String? = null,
     val startDateEpochDays: Int?,
     val endDateEpochDays: Int?,
     val priority: String,

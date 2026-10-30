@@ -1,5 +1,7 @@
 package com.checkit.data
 
+import com.checkit.domain.sanitizeGuideDot
+
 /**
  * Pure decision logic for the manual "force push" / "force pull" actions,
  * kept out of the Firestore orchestration so both platforms share it and it
@@ -36,12 +38,18 @@ object NestedForceSync {
             position = item.position,
             text = item.text,
             note = item.note,
+            label = item.label,
             checkboxEnabled = item.checkboxEnabled,
             checked = item.checked,
             completedAtMillis = item.completedAtMillis,
             textStyle = item.textStyle,
             textColor = item.textColor,
             backgroundColor = item.backgroundColor,
+            borderShape = item.borderShape,
+            borderStyle = item.borderStyle,
+            borderColor = item.borderColor,
+            guideDotColor = item.guideDotColor,
+            guideDot = item.guideDot,
             startDateEpochDays = item.startDateEpochDays,
             endDateEpochDays = item.endDateEpochDays,
             priority = item.priority,
@@ -113,6 +121,7 @@ object NestedForceSync {
                     position = remote.position,
                     text = remote.text,
                     note = remote.note,
+                    label = remote.label,
                     checkboxEnabled = remote.checkboxEnabled,
                     checked = remote.checked,
                     completedAtMillis = remote.completedAtMillis,
@@ -120,6 +129,11 @@ object NestedForceSync {
                     textStyle = remote.textStyle,
                     textColor = remote.textColor,
                     backgroundColor = remote.backgroundColor,
+                    borderShape = remote.borderShape,
+                    borderStyle = remote.borderStyle,
+                    borderColor = remote.borderColor,
+                    guideDotColor = remote.guideDotColor,
+                    guideDot = sanitizeGuideDot(remote.guideDot),
                     startDateEpochDays = remote.startDateEpochDays,
                     endDateEpochDays = remote.endDateEpochDays,
                     priority = remote.priority,

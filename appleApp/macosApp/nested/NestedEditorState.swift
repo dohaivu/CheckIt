@@ -37,24 +37,34 @@ struct NestedRow: Identifiable, Equatable {
     /// pre-order range of the selection branch.
     let index: Int
     let depth: Int
+    /// Palette overrides owned by ancestor spines, indexed by their depth.
+    let ancestorGuideColors: [NestedColorToken?]
     let node: NestedItemNode
     /// Self or any ancestor checked (Android `isInCheckedBranch` parity).
     let isInCheckedBranch: Bool
     /// Kept only as ancestor scaffolding for a filtered match.
     var isContext: Bool = false
+    /// Summary is prepared when the tree changes, rather than crossing the
+    /// Kotlin bridge during every SwiftUI row update.
+    let summary: NestedMetricSummary?
+    /// Equatable rendering key for the summary. Parent summaries may change
+    /// when a descendant changes without altering the parent's item timestamp.
+    let summaryRenderKey: String
 
     static func == (lhs: NestedRow, rhs: NestedRow) -> Bool {
         lhs.id == rhs.id
             && lhs.depth == rhs.depth
+            && lhs.ancestorGuideColors == rhs.ancestorGuideColors
             && lhs.isInCheckedBranch == rhs.isInCheckedBranch
             && lhs.isContext == rhs.isContext
+            && lhs.summaryRenderKey == rhs.summaryRenderKey
             && lhs.node.item.collapsed == rhs.node.item.collapsed
             && lhs.node.item.updatedAtMillis == rhs.node.item.updatedAtMillis
     }
 }
 
 /// Render-time emphasis tier for the transient focus-selection mode.
-enum NestedFocusTier {
+enum NestedFocusTier: Equatable {
     case none
     case focused
     case path
@@ -190,6 +200,7 @@ final class NestedEditorState: ObservableObject {
     @Published var docDropTargetId: String? = nil
     @Published var docDropBelow: Bool = false
     @Published private(set) var visibleRows: [NestedRow] = []
+    @Published private(set) var hasCollapsibleItems = false
     @Published var toastMessage: String? = nil
 
     private let helper: NestedAppleHelper
@@ -448,22 +459,26 @@ final class NestedEditorState: ObservableObject {
         let contextIds = Set(projection?.contextIds ?? [])
         let roots: [NestedItemNode] = projection?.roots ?? zoomRoots
         var out: [NestedRow] = []
-        var stack = roots.reversed().map { ($0, 0, false) }
-        while let (node, depth, ancestorChecked) = stack.popLast() {
+        var stack = roots.reversed().map { ($0, 0, false, [NestedColorToken?]()) }
+        while let (node, depth, ancestorChecked, ancestorGuideColors) = stack.popLast() {
             let inCheckedBranch = ancestorChecked || node.item.checked
+            let summary = helper.summaryFor(tree: tree, itemId: node.item.id)
             out.append(
                 NestedRow(
                     id: node.item.id,
                     index: out.count,
                     depth: depth,
+                    ancestorGuideColors: ancestorGuideColors,
                     node: node,
                     isInCheckedBranch: inCheckedBranch,
-                    isContext: contextIds.contains(node.item.id)
+                    isContext: contextIds.contains(node.item.id),
+                    summary: summary,
+                    summaryRenderKey: "\(summary.doneTaskCount)|\(summary.totalTaskCount)|\(summary.trackedMinutes)"
                 )
             )
             if !node.item.collapsed {
                 for child in node.children.reversed() {
-                    stack.append((child, depth + 1, inCheckedBranch))
+                    stack.append((child, depth + 1, inCheckedBranch, ancestorGuideColors + [node.item.guideDotColor]))
                 }
             }
         }
@@ -551,6 +566,7 @@ final class NestedEditorState: ObservableObject {
             stack.append(contentsOf: node.children)
         }
         nodeIndex = map
+        hasCollapsibleItems = map.values.contains(where: { $0.hasChildren })
         tree = newTree
         recomputeVisibleRows()
     }
@@ -559,6 +575,7 @@ final class NestedEditorState: ObservableObject {
         // Focus mode is per open document; switching or closing clears it.
         focusSelectionEnabled = false
         nodeIndex = [:]
+        hasCollapsibleItems = false
         tree = nil
         recomputeVisibleRows()
     }
@@ -1007,12 +1024,44 @@ final class NestedEditorState: ObservableObject {
         helper.saveItemNote(itemId: id, note: t.isEmpty ? nil : t)
     }
 
-    func updateFormatting(id: String, style: String, textColor: String, background: String) {
-        helper.updateFormattingByName(itemId: id, styleName: style, textColorName: textColor, backgroundColorName: background)
+    func updateLabel(id: String, label: String?) {
+        let t = label?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        helper.saveItemLabel(itemId: id, label: t.isEmpty ? nil : t)
     }
 
-    func updatePriority(id: String, name: String) {
-        helper.updatePriorityByName(itemId: id, priorityName: name)
+    /// Shared predefined label choices, single-sourced in Kotlin.
+    var predefinedLabels: [String] { helper.predefinedLabels() }
+
+    func updateFormatting(id: String, style: NestedTextStyle, textColor: NestedColorToken, background: NestedColorToken) {
+        helper.updateFormattingByName(
+            itemId: id,
+            styleName: style.name,
+            textColorName: textColor.name,
+            backgroundColorName: background.name
+        )
+    }
+
+    func updateBorder(id: String, shape: NestedBorderShape, style: NestedBorderStyle, color: NestedColorToken) {
+        helper.updateBorderByName(
+            itemId: id,
+            shapeName: shape.name,
+            styleName: style.name,
+            borderColorName: color.name
+        )
+    }
+
+    func updatePriority(id: String, priority: TaskPriority) {
+        helper.updatePriorityByName(itemId: id, priorityName: priority.name)
+    }
+
+    /// Emoji for the row's guide dot; nil restores the default dot. Blank input
+    /// is normalized to nil by the shared sanitizer behind the bridge.
+    func updateGuideDot(id: String, emoji: String?) {
+        helper.updateGuideDot(itemId: id, guideDot: emoji)
+    }
+
+    func updateGuideDotColor(id: String, color: NestedColorToken?) {
+        helper.updateGuideDotColorByName(itemId: id, guideDotColorName: color?.name)
     }
 
     func setTag(id: String, tagId: String, enabled: Bool) {

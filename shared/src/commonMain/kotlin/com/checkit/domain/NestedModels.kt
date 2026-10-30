@@ -22,9 +22,68 @@ enum class NestedColorToken {
     Orange,
     Yellow,
     Green,
+    Teal,
+    Cyan,
     Blue,
+    Indigo,
     Purple,
-    Pink
+    Pink,
+    Brown,
+    Gray;
+
+    /**
+     * Hex RGB for concrete tokens; null for [Default], which follows the
+     * theme. Single source of truth so the Compose and macOS SwiftUI palettes
+     * cannot drift.
+     */
+    fun hex(): String? = when (this) {
+        Default -> null
+        Red -> "#E57373"
+        Orange -> "#FFB74D"
+        Yellow -> "#FFD54F"
+        Green -> "#66BB6A"
+        Teal -> "#26A69A"
+        Cyan -> "#26C6DA"
+        Blue -> "#42A5F5"
+        Indigo -> "#5C6BC0"
+        Purple -> "#AB47BC"
+        Pink -> "#EC407A"
+        Brown -> "#8D6E63"
+        Gray -> "#78909C"
+    }
+}
+
+/**
+ * Shape of a nested row's card. `None` is not needed: [NestedBorderStyle.None]
+ * hides the stroke while the shape still defines the background fill.
+ */
+enum class NestedBorderShape {
+    Rectangle,
+    Rounded,
+    Pill,
+    Cloud,
+    Ticket,
+    CutCorner,
+    Hexagon,
+    Leaf,
+    Ribbon;
+
+    /**
+     * Menu label. The enum name is the persisted value, so this is
+     * presentational only and shared by both platforms.
+     */
+    fun displayName(): String = when (this) {
+        CutCorner -> "Cut corner"
+        else -> name
+    }
+}
+
+/** Stroke style for a nested row's border. `None` keeps the card unstroked. */
+enum class NestedBorderStyle {
+    None,
+    Solid,
+    Dashed,
+    Dotted
 }
 
 enum class MetricRollupPolicy {
@@ -62,6 +121,7 @@ data class NestedListItem(
     val position: Int,
     val text: String,
     val note: String? = null,
+    val label: String? = null,
     val checkboxEnabled: Boolean = false,
     val checked: Boolean = false,
     /** When the item was last checked; null when never checked or unchecked. */
@@ -70,6 +130,17 @@ data class NestedListItem(
     val textStyle: NestedTextStyle = NestedTextStyle.Body,
     val textColor: NestedColorToken = NestedColorToken.Default,
     val backgroundColor: NestedColorToken = NestedColorToken.Default,
+    val borderShape: NestedBorderShape = NestedBorderShape.Rounded,
+    val borderStyle: NestedBorderStyle = NestedBorderStyle.None,
+    val borderColor: NestedColorToken = NestedColorToken.Default,
+    /** Optional palette override for this row's dot and owned guide segments. */
+    val guideDotColor: NestedColorToken? = null,
+    /**
+     * Emoji drawn in the row's guide dot instead of the default ring/dot.
+     * Null keeps the standard guide. Normalize writes with
+     * [sanitizeGuideDot] so a row cannot be used as a free-text field.
+     */
+    val guideDot: String? = null,
     val startDate: LocalDate? = null,
     val endDate: LocalDate? = null,
     val priority: TaskPriority = TaskPriority.None,
@@ -113,3 +184,21 @@ class NestedDocumentTree(
     val flatItems: List<NestedListItem> by lazy { flattenNestedNodes(rootNodes) }
     val metricSummaryById: Map<String, NestedMetricSummary> by lazy { calculateNestedMetricSummaries(rootNodes) }
 }
+
+/** Longest guide emoji accepted, in UTF-16 units. */
+const val NESTED_GUIDE_DOT_MAX_LENGTH = 16
+
+/**
+ * Normalizes a picked guide emoji: trims surrounding whitespace, maps blank to
+ * null (so the row falls back to the default dot), and rejects values that are
+ * clearly not a single emoji rather than storing arbitrary text.
+ *
+ * Emojis with skin tones or zero-width joiners need several code points, hence
+ * the generous cap; anything longer is treated as invalid input.
+ */
+fun sanitizeGuideDot(raw: String?): String? {
+    val trimmed = raw?.trim().orEmpty()
+    if (trimmed.isEmpty()) return null
+    return trimmed.takeIf { it.length <= NESTED_GUIDE_DOT_MAX_LENGTH }
+}
+
