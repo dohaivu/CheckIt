@@ -16,6 +16,14 @@ enum class NestedTextStyle {
     Subheader
 }
 
+/**
+ * Concrete row colors shared by nested formatting and `=={cN}==` highlight
+ * tokens (see [HighlightPalette]).
+ *
+ * 13 colors, one hex each. [Default] follows the theme and has no hex.
+ * Persisted by [name] in Room and sync payloads, so entries are append-only:
+ * renaming or removing one resets existing rows to [Default].
+ */
 enum class NestedColorToken {
     Default,
     Red,
@@ -29,7 +37,8 @@ enum class NestedColorToken {
     Purple,
     Pink,
     Brown,
-    Gray;
+    Gray,
+    Lime;
 
     /**
      * Hex RGB for concrete tokens; null for [Default], which follows the
@@ -38,18 +47,19 @@ enum class NestedColorToken {
      */
     fun hex(): String? = when (this) {
         Default -> null
-        Red -> "#E57373"
-        Orange -> "#FFB74D"
-        Yellow -> "#FFD54F"
-        Green -> "#66BB6A"
-        Teal -> "#26A69A"
-        Cyan -> "#26C6DA"
-        Blue -> "#42A5F5"
-        Indigo -> "#5C6BC0"
-        Purple -> "#AB47BC"
-        Pink -> "#EC407A"
-        Brown -> "#8D6E63"
-        Gray -> "#78909C"
+        Red -> "#DC2626"
+        Orange -> "#EA580C"
+        Yellow -> "#CA8A04"
+        Green -> "#16A34A"
+        Teal -> "#0D9488"
+        Cyan -> "#0891B2"
+        Blue -> "#2563EB"
+        Indigo -> "#6366F1"
+        Purple -> "#7C3AED"
+        Pink -> "#DB2777"
+        Brown -> "#7C2D12"
+        Gray -> "#64748B"
+        Lime -> "#65A30D"
     }
 }
 

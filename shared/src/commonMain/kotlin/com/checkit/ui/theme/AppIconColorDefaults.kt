@@ -91,7 +91,8 @@ object AppIconColorDefaults {
 
     /**
      * Shared color palette (pickers and `=={cN}==` highlight tokens).
-     * Single-sourced from [com.checkit.domain.HighlightPalette]: append-only,
+     * Single-sourced from [com.checkit.domain.NestedColorToken] via
+     * [com.checkit.domain.HighlightPalette]: one hex per token, append-only,
      * indices are user-visible as `c1`..`c13`.
      */
     val CommonColors: List<String> = com.checkit.domain.HighlightPalette
