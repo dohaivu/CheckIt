@@ -1137,6 +1137,20 @@ interface CheckItDao {
     }
 
     /**
+     * Inserts a copied subtree and its tag links atomically, so observers
+     * never see rows without their tags (or a partially inserted hierarchy).
+     * [items] must be pre-order: parents before children.
+     */
+    @Transaction
+    suspend fun insertNestedSubtree(
+        items: List<NestedListItemEntity>,
+        tagLinks: List<NestedItemTagEntity>
+    ) {
+        if (items.isNotEmpty()) insertNestedListItems(items)
+        if (tagLinks.isNotEmpty()) insertNestedItemTags(tagLinks)
+    }
+
+    /**
      * Force-pull replacement: hard-deletes the local document (cascading to
      * its items and tag links) and inserts the cloud rows in one transaction
      * so observers never see an empty intermediate tree.

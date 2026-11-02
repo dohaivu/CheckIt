@@ -23,12 +23,15 @@ import com.checkit.ui.isValidForSave
 import com.checkit.ui.tasks.PredefinedLabels
 import com.checkit.domain.usecase.AddNestedDocumentUseCase
 import com.checkit.domain.usecase.AddNestedItemUseCase
+import com.checkit.domain.usecase.CopyNestedSubtreeUseCase
 import com.checkit.domain.usecase.DeleteNestedDocumentUseCase
 import com.checkit.domain.usecase.DeleteNestedItemsUseCase
 import com.checkit.domain.usecase.MoveNestedItemsUseCase
+import com.checkit.domain.usecase.NestedSubtreeClipboard
 import com.checkit.domain.usecase.ObserveNestedDocumentTreeUseCase
 import com.checkit.domain.usecase.ObserveNestedDocumentsUseCase
 import com.checkit.domain.usecase.ObserveNestedTagsUseCase
+import com.checkit.domain.usecase.PasteNestedSubtreeUseCase
 import com.checkit.domain.usecase.RenameNestedDocumentUseCase
 import com.checkit.domain.usecase.ReorderNestedDocumentsUseCase
 import com.checkit.domain.usecase.ReplaceNestedManualMetricsUseCase
@@ -122,6 +125,9 @@ class NestedAppleHelper(
     private val setItemsCollapsed: SetNestedItemsCollapsedUseCase,
     private val moveItems: MoveNestedItemsUseCase,
     private val deleteItems: DeleteNestedItemsUseCase,
+    private val copySubtreeUseCase: CopyNestedSubtreeUseCase,
+    private val pasteSubtreeUseCase: PasteNestedSubtreeUseCase,
+    private val subtreeClipboard: NestedSubtreeClipboard,
     private val exportDocumentJsonUseCase: ExportNestedDocumentJsonUseCase,
     private val importDocumentJsonUseCase: ImportNestedDocumentJsonUseCase,
 ) {
@@ -456,6 +462,40 @@ class NestedAppleHelper(
 
     fun deleteSingleItem(itemId: String) {
         scope.launch { runCatching { deleteItems(listOf(itemId)) } }
+    }
+
+    // --- Subtree clipboard ---
+
+    /** True when the shared in-memory clipboard holds a structural subtree. */
+    fun canPasteSubtree(): Boolean = subtreeClipboard.clip.value != null
+
+    /**
+     * Copies [itemId]'s subtree in [documentId] into the shared clipboard.
+     * [onDone] receives the copied row count (0 on failure), on the Main thread.
+     */
+    fun captureSubtree(documentId: String, itemId: String, onDone: (Int) -> Unit) {
+        val tree = latestTrees[documentId]
+        val clip = tree?.let { copySubtreeUseCase(it, itemId) }
+        onDone(clip?.itemCount ?: 0)
+    }
+
+    /**
+     * Pastes the clipboard's subtree as the last child of [parentId], or at
+     * the document root when [parentId] is blank. Expands a collapsed target
+     * so the paste is visible. [onDone] receives the inserted row count.
+     */
+    fun pasteSubtree(documentId: String, parentId: String, onDone: (Int) -> Unit) {
+        scope.launch {
+            val tree = latestTrees[documentId]
+            val parent = parentId.takeIf { it.isNotEmpty() }
+            val count = runCatching {
+                pasteSubtreeUseCase(documentId, parent, tree?.flatItems.orEmpty())
+            }.getOrDefault(0)
+            if (count > 0 && parent != null && tree?.nodeById?.get(parent)?.item?.collapsed == true) {
+                runCatching { toggleCollapsedUseCase(parent) }
+            }
+            onDone(count)
+        }
     }
 
     private fun applyMove(documentId: String, planner: (List<NestedListItem>) -> List<com.checkit.domain.NestedItemMove>) {

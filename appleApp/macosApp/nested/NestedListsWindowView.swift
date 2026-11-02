@@ -704,10 +704,44 @@ struct NestedListsWindowView: View {
                     if sel != nil { state.showDeleteConfirm = true }
                 }
                 barSeparator
-                editorBtn("Copy Markdown", system: "doc.on.doc", help: "Copy selected as Markdown (⌘C)") {
-                    state.copySelectedAsMarkdown()
+                Menu {
+                    Button {
+                        state.copySelectedAsMarkdown()
+                    } label: {
+                        Label("Copy Markdown", systemImage: "doc.on.doc")
+                    }
+                    .disabled(sel == nil)
+                    Button {
+                        if let id = sel { state.copySubtree(id: id) }
+                    } label: {
+                        Label("Copy Subtree", systemImage: "doc.on.doc.fill")
+                    }
+                    .disabled(sel == nil)
+                    Button {
+                        state.pasteSubtree(under: sel)
+                    } label: {
+                        Label("Paste Subtree", systemImage: "doc.on.clipboard")
+                    }
+                    .disabled(!state.hasSubtreeClipboard)
+                } label: {
+                    EditorBarButtonLabel(system: "doc.on.doc", shortcut: nil, active: false)
                 }
-                .disabled(sel == nil)
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+                .accessibilityLabel("Copy and paste")
+                .help("Copy as Markdown (⌘C), or copy and paste subtrees")
+                Button {
+                    moveDestinationId = defaultMoveDestinationId()
+                    showMoveSheet = true
+                } label: {
+                    Image(systemName: "tray.and.arrow.down")
+                        .imageScale(.medium)
+                        .frame(width: 28, height: 28)
+                }
+                .buttonStyle(.borderless)
+                .accessibilityLabel("Move to")
+                .help("Move selected item under a sibling or uncle (M)")
+                .disabled(!hasMoveDestinations)
                 barSeparator
                 Menu {
                     Toggle(isOn: Binding(
@@ -760,19 +794,6 @@ struct NestedListsWindowView: View {
                     .padding(12)
                     .frame(width: 220)
                 }
-                barSeparator
-                Button {
-                    moveDestinationId = defaultMoveDestinationId()
-                    showMoveSheet = true
-                } label: {
-                    Image(systemName: "tray.and.arrow.down")
-                        .imageScale(.medium)
-                        .frame(width: 28, height: 28)
-                }
-                .buttonStyle(.borderless)
-                .accessibilityLabel("Move to")
-                .help("Move selected item under a sibling or uncle (M)")
-                .disabled(!hasMoveDestinations)
             }
             .frame(maxWidth: .infinity, alignment: .center)
             .padding(.horizontal, 10)
@@ -990,6 +1011,17 @@ struct NestedListsWindowView: View {
                                     Label("Copy Subtree as Markdown", systemImage: "list.bullet.indent")
                                 }
                             }
+                            Button {
+                                state.copySubtree(id: row.id)
+                            } label: {
+                                Label("Copy Subtree", systemImage: "doc.on.doc.fill")
+                            }
+                            Button {
+                                state.pasteSubtree(under: row.id)
+                            } label: {
+                                Label("Paste Subtree", systemImage: "doc.on.clipboard")
+                            }
+                            .disabled(!state.hasSubtreeClipboard)
                             Divider()
                             Button {
                                 state.selectedId = row.id

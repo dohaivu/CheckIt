@@ -43,6 +43,7 @@ import androidx.compose.material.icons.filled.CenterFocusStrong
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Done
@@ -896,6 +897,9 @@ internal fun EditorToolbar(
     onManageDetails: () -> Unit,
     onAddToDailyPlan: () -> Unit,
     onCopyToTask: () -> Unit,
+    onCopySubtree: () -> Unit,
+    onPasteSubtree: () -> Unit,
+    canPasteSubtree: Boolean,
     onEnterSelection: () -> Unit,
     onSortChildren: () -> Unit,
     onMoveTo: () -> Unit,
@@ -960,6 +964,8 @@ internal fun EditorToolbar(
             // Group 3: Add Items
             ToolbarButton(Icons.Default.Add, stringResource(Res.string.nested_add_child), hasSelection, onAddChild)
             ToolbarButton(Icons.AutoMirrored.Filled.NoteAdd, stringResource(Res.string.nested_add_sibling), canAddSibling, onAddSibling)
+            ToolbarButton(Icons.Default.ContentCopy, "Copy subtree", hasSelection, onCopySubtree)
+            ToolbarButton(Icons.Default.ContentPaste, "Paste subtree", canPasteSubtree, onPasteSubtree)
 
             VerticalDivider(
                 modifier = Modifier

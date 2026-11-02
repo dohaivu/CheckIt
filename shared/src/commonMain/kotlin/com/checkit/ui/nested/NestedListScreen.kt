@@ -191,7 +191,10 @@ internal fun NestedListScreen(
                                 )
                             }
                         }
-                    }
+                    },
+                    onCopySubtree = viewModel::copySelectedSubtree,
+                    onPasteSubtree = viewModel::pasteSubtree,
+                    canPasteSubtree = state.canPasteSubtree
                 )
             }
             androidx.compose.material3.HorizontalDivider(

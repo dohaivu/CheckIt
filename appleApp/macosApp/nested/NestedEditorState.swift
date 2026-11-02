@@ -202,6 +202,8 @@ final class NestedEditorState: ObservableObject {
     @Published private(set) var visibleRows: [NestedRow] = []
     @Published private(set) var hasCollapsibleItems = false
     @Published var toastMessage: String? = nil
+    /// True while the shared in-memory subtree clipboard has content.
+    @Published var hasSubtreeClipboard = false
 
     private let helper: NestedAppleHelper
     private var docsSub: NestedAppleSubscription?
@@ -215,6 +217,7 @@ final class NestedEditorState: ObservableObject {
     init() {
         NestedAppleBridge.shared.ensureKoin()
         helper = NestedAppleBridge.shared.helper()
+        hasSubtreeClipboard = helper.canPasteSubtree()
         if UserDefaults.standard.string(forKey: "nested.displayType") == "working" {
             displayType = .working
         }
@@ -1171,6 +1174,40 @@ final class NestedEditorState: ObservableObject {
             else { return }
             self.selectedId = (first ? group.first : group.last)!.item.id
             self.editingId = nil
+        }
+    }
+
+    // MARK: - Subtree clipboard
+
+    /// Copies [id]'s subtree (all descendants, formatting, tags, metrics) into
+    /// the shared in-memory clipboard. Kept separate from the Markdown copy
+    /// commands, which write plain text to the system pasteboard.
+    func copySubtree(id: String) {
+        guard !selectedDocId.isEmpty else { return }
+        helper.captureSubtree(documentId: selectedDocId, itemId: id) { [weak self] count in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                let copied = Int(truncating: count)
+                guard copied > 0 else { return }
+                self.hasSubtreeClipboard = true
+                self.showToast(copied == 1 ? "Copied item" : "Copied \(copied) items")
+            }
+        }
+    }
+
+    /// Pastes the clipboard as the last child of [parentId], or at the
+    /// document root when nil. The shared helper expands a collapsed target.
+    func pasteSubtree(under parentId: String? = nil) {
+        guard !selectedDocId.isEmpty, hasSubtreeClipboard else { return }
+        let target = parentId ?? selectedId ?? ""
+        helper.pasteSubtree(documentId: selectedDocId, parentId: target) { [weak self] count in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                let pasted = Int(truncating: count)
+                guard pasted > 0 else { return }
+                self.hasSubtreeClipboard = self.helper.canPasteSubtree()
+                self.showToast(pasted == 1 ? "Pasted item" : "Pasted \(pasted) items")
+            }
         }
     }
 

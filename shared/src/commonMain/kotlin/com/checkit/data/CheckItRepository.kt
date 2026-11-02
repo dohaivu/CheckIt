@@ -178,6 +178,12 @@ interface CheckItRepository {
     suspend fun deleteNestedDocument(documentId: String)
     suspend fun reorderNestedDocuments(documentIds: List<String>)
     suspend fun addNestedItem(documentId: String, parentId: String?, text: String, position: Int?): String
+    /**
+     * Inserts a pre-planned subtree (pre-order, parents before children) in a
+     * single transaction. Items already carry their new ids, parents and
+     * positions; [documentId] is forced onto every row.
+     */
+    suspend fun addNestedSubtree(documentId: String, items: List<NestedListItem>)
     suspend fun updateNestedItemText(itemId: String, text: String)
     suspend fun updateNestedItemNote(itemId: String, note: String?)
     suspend fun updateNestedItemLabel(itemId: String, label: String?)
@@ -1536,6 +1542,15 @@ class RoomCheckItRepository(
         return id
     }
 
+    override suspend fun addNestedSubtree(documentId: String, items: List<NestedListItem>) {
+        if (items.isEmpty()) return
+        val entities = items.map { item -> item.toNestedListItemEntity(documentId) }
+        val tagLinks = items.flatMap { item ->
+            item.tags.map { tag -> NestedItemTagEntity(itemId = item.id, tagId = tag.id) }
+        }.distinctBy { it.itemId to it.tagId }
+        dao.insertNestedSubtree(entities, tagLinks)
+    }
+
     override suspend fun updateNestedItemText(itemId: String, text: String) {
         dao.updateNestedItemText(itemId, text.trim(), Clock.System.now().toEpochMilliseconds())
     }
@@ -2135,6 +2150,42 @@ private fun NoteEntity.toDomain(
     isPinned = isPinned,
     sectionId = sectionId,
     trashedAtMillis = trashedAtMillis
+)
+
+private fun NestedListItem.toNestedListItemEntity(documentId: String) = NestedListItemEntity(
+    id = id,
+    documentId = documentId,
+    parentId = parentId,
+    position = position,
+    text = text,
+    note = note,
+    label = label,
+    checkboxEnabled = checkboxEnabled,
+    checked = checked,
+    completedAtMillis = completedAtMillis,
+    collapsed = collapsed,
+    textStyle = textStyle.name,
+    textColor = textColor.name,
+    backgroundColor = backgroundColor.name,
+    borderShape = borderShape.name,
+    borderStyle = borderStyle.name,
+    borderColor = borderColor.name,
+    guideDotColor = guideDotColor?.takeIf { it != NestedColorToken.Default }?.name,
+    guideDot = sanitizeGuideDot(guideDot),
+    startDateEpochDays = startDate?.toEpochDays()?.toInt(),
+    endDateEpochDays = endDate?.toEpochDays()?.toInt(),
+    priority = priority.name,
+    actualMinutes = actualMinutes,
+    metricRollupPolicy = metricRollupPolicy.name,
+    showTrackedMinutes = showTrackedMinutes,
+    progressPercent = progressPercent,
+    createdAtMillis = createdAtMillis,
+    updatedAtMillis = updatedAtMillis,
+    dirty = true,
+    deleted = false,
+    manualMetricsJson = if (manualMetrics.isNotEmpty()) {
+        metricsJsonFormat.encodeToString(manualMetrics)
+    } else "[]"
 )
 
 private fun NestedListItemEntity.toNestedListItem(

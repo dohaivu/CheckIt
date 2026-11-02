@@ -8,16 +8,24 @@ import com.checkit.domain.NestedItemMove
 import com.checkit.domain.NestedListItem
 import com.checkit.domain.NestedItemNode
 import com.checkit.domain.NestedSortOrder
+import com.checkit.domain.NestedSubtreeClip
 import com.checkit.domain.TagItem
 import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.NestedColorToken
 import com.checkit.domain.NestedBorderShape
 import com.checkit.domain.NestedBorderStyle
 import com.checkit.domain.MetricRollupPolicy
+import com.checkit.domain.captureNestedSubtree
+import com.checkit.domain.planNestedSubtreePaste
 
 import com.checkit.domain.TaskPriority
 import kotlinx.datetime.LocalDate
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlin.time.Clock
+import kotlin.uuid.Uuid
 
 class ObserveNestedDocumentsUseCase(
     private val repository: CheckItRepository
@@ -78,6 +86,69 @@ class AddNestedItemUseCase(
         val trimmed = text.trim()
         require(trimmed.isNotBlank()) { "Item text must not be blank" }
         return repository.addNestedItem(documentId, parentId, trimmed, position)
+    }
+}
+
+/**
+ * Process-wide, in-memory clipboard for nested subtrees.
+ *
+ * This intentionally does not touch the platform clipboard: copying a
+ * subtree is a structural operation (ids, parents, styles, tags) while the
+ * existing "Copy as Markdown" commands already cover plain-text interop.
+ * The clip is lost when the process exits.
+ */
+class NestedSubtreeClipboard {
+    private val _clip = MutableStateFlow<NestedSubtreeClip?>(null)
+    val clip: StateFlow<NestedSubtreeClip?> = _clip.asStateFlow()
+
+    fun copy(clip: NestedSubtreeClip) {
+        _clip.value = clip
+    }
+
+    fun clear() {
+        _clip.value = null
+    }
+}
+
+/** Snapshots [itemId]'s subtree into the shared clipboard. */
+class CopyNestedSubtreeUseCase(
+    private val clipboard: NestedSubtreeClipboard
+) {
+    operator fun invoke(tree: NestedDocumentTree, itemId: String): NestedSubtreeClip? =
+        captureNestedSubtree(tree, itemId)?.also(clipboard::copy)
+}
+
+/**
+ * Inserts the clipboard's subtree as the last child of [parentId], or at the
+ * end of the document root when [parentId] is null. Returns the number of
+ * inserted rows (0 when the clipboard is empty).
+ */
+class PasteNestedSubtreeUseCase(
+    private val repository: CheckItRepository,
+    private val clipboard: NestedSubtreeClipboard
+) {
+    suspend operator fun invoke(
+        documentId: String,
+        parentId: String?,
+        currentItems: List<NestedListItem>
+    ): Int {
+        val clip = clipboard.clip.value ?: return 0
+        val startPosition = currentItems
+            .filter { it.parentId == parentId }
+            .maxOfOrNull { it.position }
+            ?.plus(1)
+            ?: 0
+        val items = planNestedSubtreePaste(
+            clip = clip,
+            documentId = documentId,
+            parentId = parentId,
+            startPosition = startPosition,
+            nowMillis = Clock.System.now().toEpochMilliseconds(),
+            newId = { Uuid.random().toString() }
+        )
+        if (items.isEmpty()) return 0
+        repository.addNestedSubtree(documentId, items)
+        return items.size
     }
 }
 

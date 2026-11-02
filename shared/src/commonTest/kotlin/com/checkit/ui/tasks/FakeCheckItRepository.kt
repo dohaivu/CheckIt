@@ -27,6 +27,7 @@ import com.checkit.domain.NestedColorToken
 import com.checkit.domain.NestedDocument
 import com.checkit.domain.NestedDocumentTree
 import com.checkit.domain.NestedItemMove
+import com.checkit.domain.NestedListItem
 
 import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.NoteItem
@@ -989,6 +990,7 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
     override suspend fun deleteNestedDocument(documentId: String) {}
     override suspend fun reorderNestedDocuments(documentIds: List<String>) {}
     override suspend fun addNestedItem(documentId: String, parentId: String?, text: String, position: Int?): String = Uuid.random().toString()
+    override suspend fun addNestedSubtree(documentId: String, items: List<NestedListItem>) {}
     override suspend fun updateNestedItemText(itemId: String, text: String) {}
     override suspend fun updateNestedItemNote(itemId: String, note: String?) {}
     override suspend fun updateNestedItemLabel(itemId: String, label: String?) {}
