@@ -152,8 +152,8 @@ private fun nestedPaletteColor(token: NestedColorToken): Color =
  * Guide-emoji text style. Emoji fonts ship a tall line box; trimming keeps the glyph optically centred.
  */
 internal val nestedGuideEmojiStyle = TextStyle(
-    fontSize = 12.sp,
-    lineHeight = 12.sp,
+    fontSize = 14.sp,
+    lineHeight = 14.sp,
     textAlign = TextAlign.Center,
     lineHeightStyle = LineHeightStyle(
         alignment = LineHeightStyle.Alignment.Center,
@@ -221,7 +221,8 @@ internal fun NestedItemRow(
     val guideEmoji = item.guideDot
     val dotSize = when {
         node.hasChildren && guideEmoji != null -> 22.dp
-        node.hasChildren || guideEmoji != null -> 14.dp
+        node.hasChildren -> 14.dp
+        guideEmoji != null -> 18.dp
         else -> 7.dp
     }
     val dotTop = 16.dp - dotSize / 2
@@ -368,6 +369,9 @@ internal fun NestedItemRow(
                                 guideEmoji != null -> Text(
                                     text = guideEmoji,
                                     style = nestedGuideEmojiStyle,
+                                    softWrap = false,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Visible,
                                     modifier = Modifier.alpha(focusAlpha)
                                 )
                                 item.collapsed && hasChildren -> Box(
