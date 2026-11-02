@@ -416,10 +416,6 @@ struct NestedRowView: View, Equatable {
         nestedGuideBaseColor(row.depth, override: item.guideDotColor)
     }
 
-    /// A ring holding an emoji is larger, so it takes a thinner stroke to keep
-    /// the same visual weight as the plain ring.
-    private var guideRingLineWidth: CGFloat { dotEmphasis ? 1.25 : 1 }
-
     /// The guide dot / collapse glyph: a ring with a chevron or emoji inside for
     /// parents, the bare emoji or a small filled dot for leaves.
     private var guideDotGlyph: some View {
@@ -435,7 +431,7 @@ struct NestedRowView: View, Equatable {
                                   : Color.clear)
                         Circle()
                             .stroke(nestedDotColor(guideBaseColor, emphasized: dotEmphasis),
-                                    lineWidth: guideRingLineWidth)
+                                    lineWidth: dotEmphasis ? 1.0 : 0.5)
                         Text(emoji)
                             .font(.system(size: 11))
                     }
@@ -447,7 +443,7 @@ struct NestedRowView: View, Equatable {
             } else if row.node.hasChildren {
                 ZStack {
                     Circle()
-                    .stroke(nestedDotColor(guideBaseColor, emphasized: dotEmphasis), lineWidth: dotEmphasis ? 2 : 1.5)
+                        .stroke(nestedDotColor(guideBaseColor, emphasized: dotEmphasis), lineWidth: dotEmphasis ? 1.5 : 1.0)
                         .frame(width: 12, height: 12)
                     Image(systemName: item.collapsed ? "chevron.right" : "chevron.down")
                         .font(.system(size: 8, weight: .semibold))
