@@ -97,6 +97,8 @@ private val nestedDepthSolids: List<Color> = listOf(
 
 private const val nestedGuideSubtleAlpha = 0.18f
 private const val nestedGuideStrongAlpha = 0.92f
+private const val nestedDotSubtleAlpha = 0.5f
+private const val nestedDotGuideEmojiSubtleAlpha = 0.35f
 
 internal fun nestedDepthColor(depth: Int): Color =
     nestedDepthSolids[depth % nestedDepthSolids.size]
@@ -109,9 +111,18 @@ private fun nestedGuideColor(color: Color, emphasized: Boolean = false, focusAlp
         alpha = (if (emphasized) nestedGuideStrongAlpha else nestedGuideSubtleAlpha) * focusAlpha
     )
 
-internal fun nestedDotColor(color: Color, emphasized: Boolean = false, focusAlpha: Float = 1f): Color =
+internal fun nestedDotColor(
+    color: Color,
+    emphasized: Boolean = false,
+    focusAlpha: Float = 1f,
+    hasGuideEmoji: Boolean = false
+): Color =
     color.copy(
-        alpha = (if (emphasized) 1f else 0.5f) * focusAlpha
+        alpha = when {
+            emphasized -> 1f
+            hasGuideEmoji -> nestedDotGuideEmojiSubtleAlpha
+            else -> nestedDotSubtleAlpha
+        } * focusAlpha
     )
 
 @Composable
@@ -313,7 +324,8 @@ internal fun NestedItemRow(
                     val dotColor = nestedDotColor(
                         guideBaseColor,
                         emphasized = isEmphasized || isSpineRoot,
-                        focusAlpha = focusAlpha
+                        focusAlpha = focusAlpha,
+                        hasGuideEmoji = guideEmoji != null
                     )
                     val hasChildren = node.hasChildren
                     val ringStroke = when {

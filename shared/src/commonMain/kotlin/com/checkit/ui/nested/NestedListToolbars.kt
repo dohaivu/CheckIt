@@ -48,6 +48,7 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.EditNote
+import androidx.compose.material.icons.filled.FileCopy
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.FormatColorFill
 import androidx.compose.material.icons.filled.FormatColorText
@@ -964,8 +965,6 @@ internal fun EditorToolbar(
             // Group 3: Add Items
             ToolbarButton(Icons.Default.Add, stringResource(Res.string.nested_add_child), hasSelection, onAddChild)
             ToolbarButton(Icons.AutoMirrored.Filled.NoteAdd, stringResource(Res.string.nested_add_sibling), canAddSibling, onAddSibling)
-            ToolbarButton(Icons.Default.ContentCopy, "Copy subtree", hasSelection, onCopySubtree)
-            ToolbarButton(Icons.Default.ContentPaste, "Paste subtree", canPasteSubtree, onPasteSubtree)
 
             VerticalDivider(
                 modifier = Modifier
@@ -995,6 +994,12 @@ internal fun EditorToolbar(
                     }
                     ToolbarMenuItem("Copy to Task", Icons.Default.ContentCopy, hasSelection) {
                         showMore = false; onCopyToTask()
+                    }
+                    ToolbarMenuItem("Copy subtree", Icons.Default.FileCopy, hasSelection) {
+                        showMore = false; onCopySubtree()
+                    }
+                    ToolbarMenuItem("Paste subtree", Icons.Default.ContentPaste, canPasteSubtree) {
+                        showMore = false; onPasteSubtree()
                     }
                     ToolbarMenuItem(stringResource(Res.string.nested_batch_delete), Icons.Default.Delete, hasSelection) {
                         showMore = false; onDelete()
