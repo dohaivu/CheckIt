@@ -36,6 +36,7 @@ enum class NestedColorToken {
     Red,
     Orange,
     Yellow,
+    Lime,
     Green,
     Teal,
     Cyan,
@@ -44,8 +45,7 @@ enum class NestedColorToken {
     Purple,
     Pink,
     Brown,
-    Gray,
-    Lime;
+    Gray;
 
     /**
      * Hex RGB for concrete tokens; null for [Default], which follows the

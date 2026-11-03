@@ -29,19 +29,19 @@ data class RichSpan(
  * not a token.
  */
 val HighlightPalette: List<String> = listOf(
-    NestedColorToken.Blue,   // c1
-    NestedColorToken.Indigo, // c2 (formerly Violet)
-    NestedColorToken.Purple, // c3 (formerly Fuchsia)
-    NestedColorToken.Pink,   // c4
-    NestedColorToken.Red,    // c5
-    NestedColorToken.Orange, // c6
-    NestedColorToken.Yellow, // c7 (formerly Amber)
-    NestedColorToken.Lime,   // c8
-    NestedColorToken.Green,  // c9
-    NestedColorToken.Teal,   // c10
-    NestedColorToken.Cyan,   // c11
-    NestedColorToken.Brown,  // c12
-    NestedColorToken.Gray,   // c13 (formerly Slate; same hex)
+    NestedColorToken.Red,
+    NestedColorToken.Orange,
+    NestedColorToken.Yellow,
+    NestedColorToken.Lime,
+    NestedColorToken.Green,
+    NestedColorToken.Teal,
+    NestedColorToken.Cyan,
+    NestedColorToken.Blue,
+    NestedColorToken.Indigo,
+    NestedColorToken.Purple,
+    NestedColorToken.Pink,
+    NestedColorToken.Brown,
+    NestedColorToken.Gray,
 ).map { requireNotNull(it.hex()) }
 
 /** Resolves a `{cN}` token (braces included) to its hex, or null when unknown. */
