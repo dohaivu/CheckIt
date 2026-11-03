@@ -133,10 +133,10 @@ internal fun priorityColor(priority: TaskPriority): Color =
 
 @Composable
 internal fun nestedTextStyle(style: NestedTextStyle) = when (style) {
-    NestedTextStyle.Body -> MaterialTheme.typography.bodyMedium
     NestedTextStyle.Title -> MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)
     NestedTextStyle.Heading -> MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold)
     NestedTextStyle.Subheading -> MaterialTheme.typography.titleMedium
+    NestedTextStyle.Body -> MaterialTheme.typography.bodyMedium
     NestedTextStyle.Monostyled -> MaterialTheme.typography.bodyMedium.copy(
         fontFamily = FontFamily.Monospace
     )

@@ -16,10 +16,10 @@ import kotlinx.datetime.LocalDate
  * not migrated and read back as [Body].
  */
 enum class NestedTextStyle {
-    Body,
     Title,
     Heading,
     Subheading,
+    Body,
     Monostyled
 }
 

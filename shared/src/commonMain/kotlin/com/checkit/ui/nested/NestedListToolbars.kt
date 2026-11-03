@@ -309,6 +309,10 @@ internal fun NestedFormattingBar(
                             }
                         )
                     }
+                    HorizontalDivider(
+                        modifier = Modifier,
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                    )
                     DropdownMenuItem(
                         text = { Text("Checkbox") },
                         modifier = if (item.checkboxEnabled) {
