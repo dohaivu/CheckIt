@@ -556,8 +556,8 @@ struct NestedFormattingBar: View {
     @State private var hasStart = false
     @State private var hasEnd = false
 
-    /// Menu order for text styles (the shared enum lists Body first).
-    private let textStyles: [NestedTextStyle] = [.header, .subheader, .body]
+    /// Menu order for text styles (largest first, monostyled last).
+    private let textStyles: [NestedTextStyle] = [.title, .heading, .subheading, .body, .monostyled]
 
     /// Filled-flag tint from the shared TaskPriority palette (None → secondary).
     private func priorityTint(_ priority: TaskPriority) -> Color {

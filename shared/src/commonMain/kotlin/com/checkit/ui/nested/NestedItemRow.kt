@@ -64,6 +64,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.LineHeightStyle
@@ -133,8 +134,12 @@ internal fun priorityColor(priority: TaskPriority): Color =
 @Composable
 internal fun nestedTextStyle(style: NestedTextStyle) = when (style) {
     NestedTextStyle.Body -> MaterialTheme.typography.bodyMedium
-    NestedTextStyle.Header -> MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold)
-    NestedTextStyle.Subheader -> MaterialTheme.typography.titleMedium
+    NestedTextStyle.Title -> MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)
+    NestedTextStyle.Heading -> MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold)
+    NestedTextStyle.Subheading -> MaterialTheme.typography.titleMedium
+    NestedTextStyle.Monostyled -> MaterialTheme.typography.bodyMedium.copy(
+        fontFamily = FontFamily.Monospace
+    )
 }
 
 @Composable

@@ -10,10 +10,17 @@ import kotlinx.datetime.LocalDate
  * `NestedFocusWidgets.kt`.
  */
 
+/**
+ * Row typography. Persisted by [name] in Room and sync payloads; the ordering
+ * is the picker order. Legacy `Header`/`Subheader` values are intentionally
+ * not migrated and read back as [Body].
+ */
 enum class NestedTextStyle {
     Body,
-    Header,
-    Subheader
+    Title,
+    Heading,
+    Subheading,
+    Monostyled
 }
 
 /**

@@ -29,7 +29,7 @@ class NestedSubtreeTest {
         checked = true,
         completedAtMillis = 123L,
         collapsed = collapsed,
-        textStyle = NestedTextStyle.Header,
+        textStyle = NestedTextStyle.Heading,
         textColor = NestedColorToken.Blue,
         backgroundColor = NestedColorToken.Yellow,
         borderShape = NestedBorderShape.Pill,
@@ -145,7 +145,7 @@ class NestedSubtreeTest {
         assertEquals("a", root.text)
         assertEquals("note-a", root.note)
         assertEquals("label-a", root.label)
-        assertEquals(NestedTextStyle.Header, root.textStyle)
+        assertEquals(NestedTextStyle.Heading, root.textStyle)
         assertEquals(NestedColorToken.Blue, root.textColor)
         assertEquals(NestedColorToken.Yellow, root.backgroundColor)
         assertEquals(NestedBorderShape.Pill, root.borderShape)

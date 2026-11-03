@@ -18,8 +18,10 @@ func nestedTokenColor(_ token: NestedColorToken) -> Color {
 
 func nestedRowFont(_ styleName: String) -> Font {
     switch styleName {
-    case "Header": .title3.weight(.semibold)
-    case "Subheader": .headline
+    case "Title": .title2.weight(.bold)
+    case "Heading": .title3.weight(.semibold)
+    case "Subheading": .headline
+    case "Monostyled": .system(.body, design: .monospaced)
     default: .body
     }
 }

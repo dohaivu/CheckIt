@@ -58,7 +58,7 @@ class NestedListToMarkdownTest {
         val child1 = NestedItemNode(item = item("2", "Subtask uncompleted", checkbox = true, checked = false))
         val child2 = NestedItemNode(item = item("3", "Subtask completed", checkbox = true, checked = true))
         val root = NestedItemNode(
-            item = item("1", "Parent Task", checkbox = true, checked = false, style = NestedTextStyle.Header),
+            item = item("1", "Parent Task", checkbox = true, checked = false, style = NestedTextStyle.Heading),
             children = listOf(child1, child2)
         )
         val tree = NestedDocumentTree(
@@ -108,5 +108,17 @@ class NestedListToMarkdownTest {
               - Grandchild
         """.trimIndent()
         assertEquals(expected, childMd)
+    }
+
+    @Test
+    fun testTextStyleExport() {
+        fun export(style: NestedTextStyle, text: String) =
+            NestedItemNode(item = item("1", text, style = style)).toMarkdown()
+
+        assertEquals("- Plain", export(NestedTextStyle.Body, "Plain"))
+        assertEquals("- ***Title***", export(NestedTextStyle.Title, "Title"))
+        assertEquals("- **Heading**", export(NestedTextStyle.Heading, "Heading"))
+        assertEquals("- *Subheading*", export(NestedTextStyle.Subheading, "Subheading"))
+        assertEquals("- `Mono`", export(NestedTextStyle.Monostyled, "Mono"))
     }
 }
