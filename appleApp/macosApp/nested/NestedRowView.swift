@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import AppKit
 import Shared
 import UniformTypeIdentifiers
 
@@ -23,6 +24,82 @@ func nestedRowFont(_ styleName: String) -> Font {
     case "Subheading": .headline
     case "Monostyled": .system(.body, design: .monospaced)
     default: .body
+    }
+}
+
+// MARK: - Callout display mappings (mirror NestedCalloutVisuals.kt)
+
+/// SF Symbol for the shared `NestedCalloutSpec.iconKey`.
+func nestedCalloutSymbol(_ key: String) -> String {
+    switch key {
+    case "info": "info.circle"
+    case "lightbulb": "lightbulb"
+    case "sparkles": "sparkles"
+    case "important": "exclamationmark.circle"
+    case "warning": "exclamationmark.triangle"
+    case "caution": "exclamationmark.octagon"
+    case "question": "questionmark.circle"
+    case "quote": "quote.opening"
+    default: "info.circle"
+    }
+}
+
+/// Tinted symbol for the callout picker rows. `None` keeps a muted icon so the
+/// reset row lines up with the kinds, matching Android's picker.
+func nestedCalloutMenuImage(_ style: NestedCalloutStyle) -> NSImage? {
+    let symbol: String
+    let color: NSColor
+    if let spec = style.spec() {
+        symbol = nestedCalloutSymbol(spec.iconKey)
+        color = spec.accent.hex().flatMap { NSColor(nestedHex: $0) } ?? .secondaryLabelColor
+    } else {
+        symbol = "megaphone"
+        color = .secondaryLabelColor
+    }
+    let configuration = NSImage.SymbolConfiguration(pointSize: 13, weight: .regular)
+        .applying(NSImage.SymbolConfiguration(paletteColors: [color]))
+    guard let image = NSImage(
+        systemSymbolName: symbol,
+        accessibilityDescription: nil
+    )?.withSymbolConfiguration(configuration) else { return nil }
+    image.isTemplate = false
+    return image
+}
+
+/// Row title treatment. Panel uses an uppercase eyebrow, Tab a filled label
+/// chip, and Rail an inline accent label next to the icon.
+@ViewBuilder
+func nestedCalloutHeader(_ spec: NestedCalloutSpec, title: String, accent: Color) -> some View {
+    let icon = Image(systemName: nestedCalloutSymbol(spec.iconKey))
+    switch spec.titlePlacement {
+    case NestedCalloutTitlePlacement.eyebrow:
+        HStack(spacing: 4) {
+            icon.font(.system(size: 10, weight: .semibold))
+            Text(title.uppercased())
+                .font(.system(size: 10, weight: .bold))
+                .tracking(0.8)
+        }
+        .foregroundStyle(accent)
+    case NestedCalloutTitlePlacement.toptab:
+        HStack(spacing: 4) {
+            icon.font(.system(size: 10, weight: .semibold))
+            Text(title).font(.system(size: 10, weight: .semibold))
+        }
+        .foregroundStyle(accent)
+        .padding(.horizontal, 7)
+        .padding(.vertical, 2)
+        .background(
+            accent.opacity(0.16),
+            in: UnevenRoundedRectangle(topLeadingRadius: 5, topTrailingRadius: 5)
+        )
+    case NestedCalloutTitlePlacement.inline_:
+        HStack(spacing: 5) {
+            icon.font(.system(size: 11, weight: .semibold))
+            Text(title).font(.system(size: 11, weight: .semibold))
+        }
+        .foregroundStyle(accent)
+    default:
+        EmptyView()
     }
 }
 
@@ -190,7 +267,15 @@ struct NestedRowView: View, Equatable {
             }
             .padding(.top, 2).padding(.leading, 3)
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: calloutHeaderSpacing) {
+                if let spec = calloutSpec {
+                    nestedCalloutHeader(
+                        spec,
+                        title: item.calloutTitle ?? item.callout.displayName(),
+                        accent: nestedTokenColor(spec.accent)
+                    )
+                    .opacity(focusOpacity)
+                }
                 HStack(alignment: .center, spacing: 6) {
                     if item.checkboxEnabled {
                         Button {
@@ -489,9 +574,31 @@ struct NestedRowView: View, Equatable {
         return branch.depth
     }
 
+    private var calloutSpec: NestedCalloutSpec? { item.callout.spec() }
+
+    private var isRailCallout: Bool { calloutSpec?.layout == NestedCalloutLayout.rail }
+
+    /// Mirrors `NestedCalloutLayout.headerGapDp()`: Tab needs a little more
+    /// room under its chip than the eyebrow/inline treatments.
+    private var calloutHeaderSpacing: CGFloat {
+        guard let spec = calloutSpec else { return 2 }
+        return spec.layout == NestedCalloutLayout.tab ? 4 : 3
+    }
+
+    private var effectiveShapeKind: NestedBorderShape {
+        if let spec = calloutSpec {
+            if spec.layout == NestedCalloutLayout.rail { return NestedBorderShape.rectangle }
+            if let shape = spec.shape { return shape }
+        }
+        return item.borderShape
+    }
+
     private var rowBackground: Color {
         if isEditing { return nestedEditingColor }
         if isSelected { return nestedSelectedColor }
+        if let spec = calloutSpec, !isRailCallout {
+            return nestedTokenColor(spec.accent).opacity(0.10 * focusOpacity)
+        }
         if item.backgroundColor != NestedColorToken.default_ {
             return nestedTokenColor(item.backgroundColor).opacity(0.20 * focusOpacity)
         }
@@ -499,25 +606,31 @@ struct NestedRowView: View, Equatable {
     }
 
     private var rowShape: NestedCardShape {
-        NestedCardShape(kind: item.borderShape)
+        NestedCardShape(kind: effectiveShapeKind)
     }
 
     /// Shape-specific breathing room: scallops/notches would otherwise run
     /// into the checkbox, text, and labels. Mirrors
     /// `NestedBorderShape.horizontalContentPadding()` in NestedRowShapes.kt.
     private var shapeExtraHorizontalPadding: CGFloat {
-        switch item.borderShape {
-        case NestedBorderShape.cloud, NestedBorderShape.ticket, NestedBorderShape.ribbon: return 8
-        case NestedBorderShape.hexagon: return 6
-        case NestedBorderShape.cutcorner, NestedBorderShape.leaf: return 3
-        default: return 0
+        let extra: CGFloat
+        switch effectiveShapeKind {
+        case NestedBorderShape.cloud, NestedBorderShape.ticket, NestedBorderShape.ribbon: extra = 8
+        case NestedBorderShape.hexagon: extra = 6
+        case NestedBorderShape.cutcorner, NestedBorderShape.leaf: extra = 3
+        default: extra = 0
         }
+        // Rail draws into the leading edge, so keep the content clear of it.
+        if let spec = calloutSpec, isRailCallout {
+            return extra + CGFloat(spec.borderWidthDp) + 6
+        }
+        return extra
     }
 
     /// Mirrors `NestedBorderShape.verticalContentPadding()` in
     /// NestedRowShapes.kt.
     private var shapeExtraVerticalPadding: CGFloat {
-        switch item.borderShape {
+        switch effectiveShapeKind {
         case NestedBorderShape.cloud: return 5
         case NestedBorderShape.ticket: return 2
         default: return 0
@@ -525,25 +638,51 @@ struct NestedRowView: View, Equatable {
     }
 
     private var rowBorderColor: Color {
+        if let spec = calloutSpec {
+            return nestedTokenColor(spec.accent).opacity(focusOpacity)
+        }
         let base = item.borderColor == NestedColorToken.default_
             ? Color.secondary.opacity(0.55)
             : nestedTokenColor(item.borderColor)
         return base.opacity(focusOpacity)
     }
 
-    /// Dash lengths in points, matching `NestedBorderStyle.toStroke` in
-    /// NestedRowShapes.kt (which converts the same dp values by density).
-    private var rowBorderDash: [CGFloat] {
-        switch item.borderStyle {
+    private func rowDash(_ style: NestedBorderStyle) -> [CGFloat] {
+        switch style {
         case NestedBorderStyle.dashed: return [4.5, 3]
         case NestedBorderStyle.dotted: return [0.5, 2.8]
         default: return []
         }
     }
 
+    /// Dash lengths in points, matching `NestedBorderStyle.toStroke` in
+    /// NestedRowShapes.kt (which converts the same dp values by density).
+    private var rowBorderDash: [CGFloat] {
+        rowDash(calloutSpec?.borderStyle ?? item.borderStyle)
+    }
+
     @ViewBuilder
     private var rowBorderOverlay: some View {
-        if item.borderStyle != NestedBorderStyle.none {
+        if let spec = calloutSpec {
+            if isRailCallout {
+                HStack(spacing: 0) {
+                    Rectangle()
+                        .fill(nestedTokenColor(spec.accent))
+                        .frame(width: CGFloat(spec.borderWidthDp))
+                    Spacer(minLength: 0)
+                }
+                .opacity(focusOpacity)
+            } else {
+                rowShape.strokeBorder(
+                    rowBorderColor,
+                    style: StrokeStyle(
+                        lineWidth: CGFloat(spec.borderWidthDp),
+                        lineCap: .round,
+                        dash: rowBorderDash
+                    )
+                )
+            }
+        } else if item.borderStyle != NestedBorderStyle.none {
             rowShape.strokeBorder(
                 rowBorderColor,
                 style: StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: rowBorderDash)

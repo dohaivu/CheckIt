@@ -1240,6 +1240,14 @@ interface CheckItDao {
         updatedAtMillis: Long
     )
 
+    @Query("UPDATE nested_list_items SET callout = :callout, calloutTitle = :calloutTitle, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
+    suspend fun updateNestedItemCallout(
+        itemId: String,
+        callout: String,
+        calloutTitle: String?,
+        updatedAtMillis: Long
+    )
+
     @Query("UPDATE nested_list_items SET priority = :priority, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
     suspend fun updateNestedItemPriority(
         itemId: String,

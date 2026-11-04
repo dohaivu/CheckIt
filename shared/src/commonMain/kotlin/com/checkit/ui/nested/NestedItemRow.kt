@@ -55,8 +55,10 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -74,7 +76,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.checkit.domain.NestedBorderShape
 import com.checkit.domain.NestedColorToken
+import com.checkit.domain.NestedCalloutLayout
 import com.checkit.domain.NestedItemNode
 import com.checkit.domain.NestedListItem
 import com.checkit.domain.NestedMetricSummary
@@ -242,6 +246,35 @@ internal fun NestedItemRow(
     }
     val borderColor = baseBorderColor.copy(alpha = baseBorderColor.alpha * focusAlpha)
 
+    // A callout owns the frame: shape, stroke and tint come from the shared
+    // recipe, and the stored background/border fields stay untouched so they
+    // reappear when the callout is removed. Rail draws only a left accent bar.
+    val calloutSpec = remember(item.callout) { item.callout.spec() }
+    val calloutAccent = calloutSpec?.let { nestedColor(it.accent) }
+    val isRailCallout = calloutSpec?.layout == NestedCalloutLayout.Rail
+    val frameShape = when {
+        isRailCallout -> RectangleShape
+        calloutSpec?.shape != null -> remember(calloutSpec.shape) { NestedCardShape(calloutSpec.shape) }
+        else -> cardShape
+    }
+    val frameStroke = if (isRailCallout) {
+        null
+    } else {
+        calloutSpec?.let { spec ->
+            remember(spec.borderStyle, spec.borderWidthDp, density.density) {
+                spec.borderStyle.toStroke(with(density) { spec.borderWidthDp.dp.toPx() }, density)
+            }
+        } ?: borderStroke
+    }
+    val frameBorderColor = calloutAccent?.copy(alpha = calloutAccent.alpha * focusAlpha) ?: borderColor
+    val frameShapeForPadding = when {
+        calloutSpec == null -> item.borderShape
+        isRailCallout -> NestedBorderShape.Rectangle
+        else -> calloutSpec.shape ?: item.borderShape
+    }
+    val calloutTint = calloutAccent?.copy(alpha = 0.10f * focusAlpha)
+    val railWidth = (calloutSpec?.borderWidthDp ?: 0f).dp
+
     // Reusable Path to avoid allocating a new Path instance on every draw frame
     val branchPath = remember { Path() }
 
@@ -394,22 +427,56 @@ internal fun NestedItemRow(
                     modifier = Modifier
                         .weight(1f)
                         .offset(x = (-8).dp)
-                        .clip(cardShape)
-                        .background(
-                            when {
-                                isEditing -> MaterialTheme.colorScheme.primaryContainer.copy(
-                                    alpha = 0.5f
-                                )
-                                isSelected -> MaterialTheme.colorScheme.secondaryContainer.copy(
-                                    alpha = 0.5f
-                                )
-                                item.backgroundColor != NestedColorToken.Default -> nestedColor(
-                                    item.backgroundColor
-                                ).copy(alpha = 0.18f * focusAlpha)
-                                else -> Color.Transparent
+                        .then(
+                            if (isRailCallout) {
+                                // The rail replaces the card, but selection and
+                                // editing still need their chrome behind the text.
+                                Modifier
+                                    .clip(RectangleShape)
+                                    .background(
+                                        when {
+                                            isEditing -> MaterialTheme.colorScheme.primaryContainer.copy(
+                                                alpha = 0.5f
+                                            )
+                                            isSelected -> MaterialTheme.colorScheme.secondaryContainer.copy(
+                                                alpha = 0.5f
+                                            )
+                                            else -> Color.Transparent
+                                        }
+                                    )
+                            } else {
+                                Modifier
+                                    .clip(frameShape)
+                                    .background(
+                                        when {
+                                            isEditing -> MaterialTheme.colorScheme.primaryContainer.copy(
+                                                alpha = 0.5f
+                                            )
+                                            isSelected -> MaterialTheme.colorScheme.secondaryContainer.copy(
+                                                alpha = 0.5f
+                                            )
+                                            calloutTint != null -> calloutTint
+                                            item.backgroundColor != NestedColorToken.Default -> nestedColor(
+                                                item.backgroundColor
+                                            ).copy(alpha = 0.18f * focusAlpha)
+                                            else -> Color.Transparent
+                                        }
+                                    )
+                                    .nestedCardBorder(frameShape, frameStroke, frameBorderColor)
                             }
                         )
-                        .nestedCardBorder(cardShape, borderStroke, borderColor)
+                        .then(
+                            if (isRailCallout && calloutAccent != null) {
+                                Modifier.drawBehind {
+                                    drawRect(
+                                        color = calloutAccent.copy(alpha = focusAlpha),
+                                        size = Size(railWidth.toPx(), size.height)
+                                    )
+                                }
+                            } else {
+                                Modifier
+                            }
+                        )
                         .combinedClickable(
                             onClick = {
                                 if (state.selection.isActive) {
@@ -424,8 +491,11 @@ internal fun NestedItemRow(
                             }
                         )
                         .padding(
-                            horizontal = 2.dp + item.borderShape.horizontalContentPadding(),
-                            vertical = 6.dp + item.borderShape.verticalContentPadding()
+                            horizontal = 2.dp + frameShapeForPadding.horizontalContentPadding(),
+                            vertical = 6.dp + frameShapeForPadding.verticalContentPadding()
+                        )
+                        .then(
+                            if (isRailCallout) Modifier.padding(start = railWidth + 6.dp) else Modifier
                         ),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -441,6 +511,15 @@ internal fun NestedItemRow(
                     }
 
                     Column(modifier = Modifier.weight(1f)) {
+                        if (calloutSpec != null && calloutAccent != null) {
+                            NestedCalloutHeader(
+                                spec = calloutSpec,
+                                title = item.calloutTitle ?: item.callout.displayName(),
+                                accent = calloutAccent,
+                                focusAlpha = focusAlpha
+                            )
+                            Spacer(Modifier.height(calloutSpec.layout.headerGapDp().dp))
+                        }
                         if (isEditing) {
                             var text by remember(item.id) { mutableStateOf(item.text) }
                             val focusRequester = remember(item.id) { FocusRequester() }

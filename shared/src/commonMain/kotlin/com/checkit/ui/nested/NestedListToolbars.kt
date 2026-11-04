@@ -119,6 +119,7 @@ import checkit.shared.generated.resources.nested_zoom_out
 import com.checkit.domain.FocusPeriod
 import com.checkit.domain.NestedBorderShape
 import com.checkit.domain.NestedBorderStyle
+import com.checkit.domain.NestedCalloutStyle
 import com.checkit.domain.NestedColorToken
 import com.checkit.domain.NestedItemNode
 import com.checkit.domain.NestedListItem
@@ -241,6 +242,7 @@ internal fun NestedFormattingBar(
     hasChildren: Boolean,
     onFormattingChange: (NestedTextStyle, NestedColorToken, NestedColorToken) -> Unit,
     onBorderChange: (NestedBorderShape, NestedBorderStyle, NestedColorToken) -> Unit,
+    onCalloutChange: (NestedCalloutStyle, String?) -> Unit,
     onLabelChange: (String?) -> Unit,
     onPriorityChange: (TaskPriority) -> Unit,
     onGuideDotChange: (String?) -> Unit,
@@ -261,6 +263,8 @@ internal fun NestedFormattingBar(
     var showEmojiPicker by remember { mutableStateOf(false) }
     var showDateDialog by remember { mutableStateOf(false) }
     var showLabelDialog by remember { mutableStateOf(false) }
+    var calloutExpanded by remember { mutableStateOf(false) }
+    var showCalloutTitleDialog by remember { mutableStateOf(false) }
     val subtleInactiveColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f)
 
     Surface(
@@ -352,6 +356,76 @@ internal fun NestedFormattingBar(
                 style = item.borderStyle,
                 color = item.borderColor
             ) { shape, style, color -> onBorderChange(shape, style, color) }
+
+            val calloutSpec = item.callout.spec()
+            Box {
+                IconButton(
+                    onClick = { calloutExpanded = true },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = nestedCalloutIcon(item.callout),
+                        contentDescription = "Callout",
+                        tint = calloutSpec?.accent?.let { nestedColor(it) } ?: subtleInactiveColor,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                DropdownMenu(
+                    expanded = calloutExpanded,
+                    onDismissRequest = { calloutExpanded = false }
+                ) {
+                    Text(
+                        text = "Callout",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    )
+                    NestedCalloutStyle.entries.forEach { style ->
+                        DropdownMenuItem(
+                            text = { Text(style.displayName()) },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = nestedCalloutIcon(style),
+                                    contentDescription = null,
+                                    tint = style.spec()?.accent?.let { nestedColor(it) }
+                                        ?: subtleInactiveColor,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
+                            trailingIcon = if (style == item.callout) {
+                                { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                            } else {
+                                null
+                            },
+                            onClick = {
+                                calloutExpanded = false
+                                onCalloutChange(
+                                    style,
+                                    if (style == NestedCalloutStyle.None) null else item.calloutTitle
+                                )
+                            }
+                        )
+                    }
+                    if (item.callout != NestedCalloutStyle.None) {
+                        HorizontalDivider()
+                        DropdownMenuItem(
+                            text = { Text("Title…") },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.EditNote,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
+                            onClick = {
+                                calloutExpanded = false
+                                showCalloutTitleDialog = true
+                            }
+                        )
+                    }
+                }
+            }
 
             // Dot color also owns the connector into this row and its descendant spine.
             Box {
@@ -648,6 +722,18 @@ internal fun NestedFormattingBar(
             onSave = { label ->
                 onLabelChange(label)
                 showLabelDialog = false
+            }
+        )
+    }
+
+    if (showCalloutTitleDialog) {
+        NestedCalloutTitleDialog(
+            initialTitle = item.calloutTitle,
+            defaultTitle = item.callout.displayName(),
+            onDismiss = { showCalloutTitleDialog = false },
+            onSave = { title ->
+                onCalloutChange(item.callout, title)
+                showCalloutTitleDialog = false
             }
         )
     }

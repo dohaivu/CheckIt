@@ -11,6 +11,7 @@ import com.checkit.domain.MetricRollupPolicy
 import com.checkit.domain.NestedColorToken
 import com.checkit.domain.NestedBorderShape
 import com.checkit.domain.NestedBorderStyle
+import com.checkit.domain.NestedCalloutStyle
 import com.checkit.domain.NestedDocument
 import com.checkit.domain.NestedDocumentTree
 import com.checkit.domain.NestedItemNode
@@ -44,6 +45,7 @@ import com.checkit.domain.usecase.resolveCollapseScopeRoots
 import com.checkit.domain.usecase.UpdateNestedItemDateRangeUseCase
 import com.checkit.domain.usecase.UpdateNestedItemFormattingUseCase
 import com.checkit.domain.usecase.UpdateNestedItemBorderUseCase
+import com.checkit.domain.usecase.UpdateNestedItemCalloutUseCase
 import com.checkit.domain.usecase.UpdateNestedItemGuideDotUseCase
 import com.checkit.domain.usecase.UpdateNestedItemGuideDotColorUseCase
 import com.checkit.domain.usecase.UpdateNestedItemLabelUseCase
@@ -184,6 +186,7 @@ class NestedListsViewModel(
     private val updateItemLabelUseCase: UpdateNestedItemLabelUseCase,
     private val updateItemFormattingUseCase: UpdateNestedItemFormattingUseCase,
     private val updateItemBorderUseCase: UpdateNestedItemBorderUseCase,
+    private val updateItemCalloutUseCase: UpdateNestedItemCalloutUseCase,
     private val updateItemDateRangeUseCase: UpdateNestedItemDateRangeUseCase,
     private val updateItemPriorityUseCase: UpdateNestedItemPriorityUseCase,
     private val updateItemGuideDotUseCase: UpdateNestedItemGuideDotUseCase,
@@ -737,6 +740,10 @@ class NestedListsViewModel(
 
     fun updateItemBorder(itemId: String, shape: NestedBorderShape, style: NestedBorderStyle, color: NestedColorToken) {
         viewModelScope.launch { updateItemBorderUseCase(itemId, shape, style, color) }
+    }
+
+    fun updateItemCallout(itemId: String, callout: NestedCalloutStyle, title: String?) {
+        viewModelScope.launch { updateItemCalloutUseCase(itemId, callout, title) }
     }
 
     fun updateItemDateRange(itemId: String, start: LocalDate?, end: LocalDate?) {

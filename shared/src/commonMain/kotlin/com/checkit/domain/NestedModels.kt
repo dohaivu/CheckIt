@@ -57,6 +57,7 @@ enum class NestedColorToken {
         Red -> "#DC2626"
         Orange -> "#EA580C"
         Yellow -> "#CA8A04"
+        Lime -> "#65A30D"
         Green -> "#16A34A"
         Teal -> "#0D9488"
         Cyan -> "#0891B2"
@@ -66,7 +67,6 @@ enum class NestedColorToken {
         Pink -> "#DB2777"
         Brown -> "#7C2D12"
         Gray -> "#64748B"
-        Lime -> "#65A30D"
     }
 }
 
@@ -102,6 +102,155 @@ enum class NestedBorderStyle {
     Dashed,
     Dotted
 }
+
+/**
+ * Visual frame for one nested row. Persisted by [name], so entries are
+ * append-only: renaming or removing one falls back to [None] on read.
+ *
+ * This is a style identifier, not a semantic tag. The frame is derived from
+ * [spec] so Compose and macOS SwiftUI render the same recipe. A callout owns
+ * the row's card shape, border and tint; the stored background/border fields
+ * stay untouched and become visible again when the callout is removed.
+ */
+enum class NestedCalloutStyle {
+    None,
+    Note,
+    Tip,
+    Example,
+    Important,
+    Warning,
+    Caution,
+    Question,
+    Quote;
+
+    /** Picker label; [None] is the reset row. */
+    fun displayName(): String = when (this) {
+        None -> "No callout"
+        else -> name
+    }
+
+    /** Visual recipe; null for [None]. Shared by Compose and SwiftUI. */
+    fun spec(): NestedCalloutSpec? = when (this) {
+        None -> null
+        Note -> NestedCalloutSpec(
+            layout = NestedCalloutLayout.Panel,
+            accent = NestedColorToken.Blue,
+            shape = NestedBorderShape.Rounded,
+            borderStyle = NestedBorderStyle.Solid,
+            borderWidthDp = 1f,
+            titlePlacement = NestedCalloutTitlePlacement.Eyebrow,
+            iconKey = "info"
+        )
+        Tip -> NestedCalloutSpec(
+            layout = NestedCalloutLayout.Panel,
+            accent = NestedColorToken.Green,
+            shape = NestedBorderShape.Leaf,
+            borderStyle = NestedBorderStyle.Solid,
+            borderWidthDp = 1f,
+            titlePlacement = NestedCalloutTitlePlacement.Eyebrow,
+            iconKey = "lightbulb"
+        )
+        Example -> NestedCalloutSpec(
+            layout = NestedCalloutLayout.Panel,
+            accent = NestedColorToken.Teal,
+            shape = NestedBorderShape.Rounded,
+            borderStyle = NestedBorderStyle.Dotted,
+            borderWidthDp = 1f,
+            titlePlacement = NestedCalloutTitlePlacement.Eyebrow,
+            iconKey = "sparkles"
+        )
+        Important -> NestedCalloutSpec(
+            layout = NestedCalloutLayout.Tab,
+            accent = NestedColorToken.Purple,
+            shape = NestedBorderShape.CutCorner,
+            borderStyle = NestedBorderStyle.Solid,
+            borderWidthDp = 1f,
+            titlePlacement = NestedCalloutTitlePlacement.TopTab,
+            iconKey = "important"
+        )
+        Warning -> NestedCalloutSpec(
+            layout = NestedCalloutLayout.Tab,
+            accent = NestedColorToken.Orange,
+            shape = NestedBorderShape.CutCorner,
+            borderStyle = NestedBorderStyle.Dashed,
+            borderWidthDp = 1f,
+            titlePlacement = NestedCalloutTitlePlacement.TopTab,
+            iconKey = "warning"
+        )
+        Caution -> NestedCalloutSpec(
+            layout = NestedCalloutLayout.Tab,
+            accent = NestedColorToken.Red,
+            shape = NestedBorderShape.Rectangle,
+            borderStyle = NestedBorderStyle.Solid,
+            borderWidthDp = 2f,
+            titlePlacement = NestedCalloutTitlePlacement.TopTab,
+            iconKey = "caution"
+        )
+        Question -> NestedCalloutSpec(
+            layout = NestedCalloutLayout.Rail,
+            accent = NestedColorToken.Cyan,
+            shape = null,
+            borderStyle = NestedBorderStyle.Solid,
+            borderWidthDp = 3f,
+            titlePlacement = NestedCalloutTitlePlacement.Inline,
+            iconKey = "question"
+        )
+        Quote -> NestedCalloutSpec(
+            layout = NestedCalloutLayout.Rail,
+            accent = NestedColorToken.Gray,
+            shape = null,
+            borderStyle = NestedBorderStyle.Solid,
+            borderWidthDp = 3f,
+            titlePlacement = NestedCalloutTitlePlacement.Inline,
+            iconKey = "quote"
+        )
+    }
+}
+
+/**
+ * Keeps a title only while a callout is applied. [NestedCalloutStyle.None] has
+ * no header, so a stale title must not survive and reappear when a callout is
+ * re-applied later.
+ */
+fun NestedCalloutStyle.normalizedTitle(title: String?): String? =
+    if (this == NestedCalloutStyle.None) null else title?.trim()?.takeIf { it.isNotBlank() }
+
+/** How a callout frame is laid out around the row. */
+enum class NestedCalloutLayout {
+    /** Full card with the title as a small eyebrow above the text. */
+    Panel,
+
+    /** Full card with the title in a tab attached to the top edge. */
+    Tab,
+
+    /** No card: an accent rail with the icon and title inline. */
+    Rail
+}
+
+/** Where the optional title is drawn for a callout layout. */
+enum class NestedCalloutTitlePlacement {
+    Eyebrow,
+    TopTab,
+    Inline
+}
+
+/**
+ * One callout's visual recipe. Pure data so both platforms share the look and
+ * the contract is unit-testable without a canvas.
+ *
+ * [shape] is null for [NestedCalloutLayout.Rail], which draws only a left
+ * accent rail. [borderWidthDp] is the stroke width for cards and the rail
+ * width for rails.
+ */
+data class NestedCalloutSpec(
+    val layout: NestedCalloutLayout,
+    val accent: NestedColorToken,
+    val shape: NestedBorderShape?,
+    val borderStyle: NestedBorderStyle,
+    val borderWidthDp: Float,
+    val titlePlacement: NestedCalloutTitlePlacement,
+    val iconKey: String
+)
 
 enum class MetricRollupPolicy {
     IncludeChildren,
@@ -150,6 +299,10 @@ data class NestedListItem(
     val borderShape: NestedBorderShape = NestedBorderShape.Rounded,
     val borderStyle: NestedBorderStyle = NestedBorderStyle.None,
     val borderColor: NestedColorToken = NestedColorToken.Default,
+    /** Visual frame; [NestedCalloutStyle.None] renders the plain row. */
+    val callout: NestedCalloutStyle = NestedCalloutStyle.None,
+    /** Optional override for the callout title; null shows the style name. */
+    val calloutTitle: String? = null,
     /** Optional palette override for this row's dot and owned guide segments. */
     val guideDotColor: NestedColorToken? = null,
     /**

@@ -1053,6 +1053,15 @@ final class NestedEditorState: ObservableObject {
         )
     }
 
+    /// Callout style and optional title override; nil title shows the style name.
+    func updateCallout(id: String, style: NestedCalloutStyle, title: String?) {
+        helper.updateCalloutByName(
+            itemId: id,
+            calloutName: style.name,
+            calloutTitle: title
+        )
+    }
+
     func updatePriority(id: String, priority: TaskPriority) {
         helper.updatePriorityByName(itemId: id, priorityName: priority.name)
     }

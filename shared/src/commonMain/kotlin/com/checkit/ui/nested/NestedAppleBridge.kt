@@ -5,6 +5,7 @@ import com.checkit.domain.MetricRollupPolicy
 import com.checkit.domain.NestedColorToken
 import com.checkit.domain.NestedBorderShape
 import com.checkit.domain.NestedBorderStyle
+import com.checkit.domain.NestedCalloutStyle
 import com.checkit.domain.NestedDocument
 import com.checkit.domain.NestedDocumentTree
 import com.checkit.domain.NestedItemNode
@@ -42,6 +43,7 @@ import com.checkit.domain.usecase.ToggleNestedItemCollapsedUseCase
 import com.checkit.domain.usecase.UpdateNestedItemDateRangeUseCase
 import com.checkit.domain.usecase.UpdateNestedItemFormattingUseCase
 import com.checkit.domain.usecase.UpdateNestedItemBorderUseCase
+import com.checkit.domain.usecase.UpdateNestedItemCalloutUseCase
 import com.checkit.domain.usecase.UpdateNestedItemGuideDotUseCase
 import com.checkit.domain.usecase.UpdateNestedItemGuideDotColorUseCase
 import com.checkit.domain.usecase.UpdateNestedItemLabelUseCase
@@ -111,6 +113,7 @@ class NestedAppleHelper(
     private val updateItemLabel: UpdateNestedItemLabelUseCase,
     private val updateItemFormatting: UpdateNestedItemFormattingUseCase,
     private val updateItemBorder: UpdateNestedItemBorderUseCase,
+    private val updateItemCallout: UpdateNestedItemCalloutUseCase,
     private val updateItemDateRange: UpdateNestedItemDateRangeUseCase,
     private val updateItemPriority: UpdateNestedItemPriorityUseCase,
     private val updateItemGuideDot: UpdateNestedItemGuideDotUseCase,
@@ -258,6 +261,16 @@ class NestedAppleHelper(
                     NestedBorderStyle.valueOf(styleName),
                     NestedColorToken.valueOf(borderColorName)
                 )
+            }
+        }
+    }
+
+    /** Callout style plus optional title override; blank title means default. */
+    fun updateCalloutByName(itemId: String, calloutName: String, calloutTitle: String?) {
+        scope.launch {
+            runCatching {
+                val title = calloutTitle?.trim()?.takeIf { it.isNotBlank() }
+                updateItemCallout(itemId, NestedCalloutStyle.valueOf(calloutName), title)
             }
         }
     }

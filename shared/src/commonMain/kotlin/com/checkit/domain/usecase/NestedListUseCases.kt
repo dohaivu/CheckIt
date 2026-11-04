@@ -14,6 +14,7 @@ import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.NestedColorToken
 import com.checkit.domain.NestedBorderShape
 import com.checkit.domain.NestedBorderStyle
+import com.checkit.domain.NestedCalloutStyle
 import com.checkit.domain.MetricRollupPolicy
 import com.checkit.domain.captureNestedSubtree
 import com.checkit.domain.planNestedSubtreePaste
@@ -196,6 +197,16 @@ class UpdateNestedItemBorderUseCase(
         borderStyle: NestedBorderStyle,
         borderColor: NestedColorToken
     ) = repository.updateNestedItemBorder(itemId, borderShape, borderStyle, borderColor)
+}
+
+class UpdateNestedItemCalloutUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(
+        itemId: String,
+        callout: NestedCalloutStyle,
+        calloutTitle: String?
+    ) = repository.updateNestedItemCallout(itemId, callout, calloutTitle)
 }
 
 class UpdateNestedItemPriorityUseCase(

@@ -35,6 +35,8 @@ class NestedSubtreeTest {
         borderShape = NestedBorderShape.Pill,
         borderStyle = NestedBorderStyle.Dotted,
         borderColor = NestedColorToken.Green,
+        callout = NestedCalloutStyle.Warning,
+        calloutTitle = "Custom title",
         guideDotColor = NestedColorToken.Pink,
         guideDot = "🔥",
         startDate = LocalDate(2026, 1, 1),
@@ -151,6 +153,8 @@ class NestedSubtreeTest {
         assertEquals(NestedBorderShape.Pill, root.borderShape)
         assertEquals(NestedBorderStyle.Dotted, root.borderStyle)
         assertEquals(NestedColorToken.Green, root.borderColor)
+        assertEquals(NestedCalloutStyle.Warning, root.callout)
+        assertEquals("Custom title", root.calloutTitle)
         assertEquals(NestedColorToken.Pink, root.guideDotColor)
         assertEquals("🔥", root.guideDot)
         assertEquals(LocalDate(2026, 1, 1), root.startDate)

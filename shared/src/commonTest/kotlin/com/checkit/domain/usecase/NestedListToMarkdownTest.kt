@@ -1,5 +1,6 @@
 package com.checkit.domain.usecase
 
+import com.checkit.domain.NestedCalloutStyle
 import com.checkit.domain.NestedDocument
 import com.checkit.domain.NestedDocumentTree
 import com.checkit.domain.NestedItemNode
@@ -34,8 +35,7 @@ class NestedListToMarkdownTest {
     )
 
     @Test
-    fun testSimpleListExport() {
-        val nodes = listOf(
+    fun testSimpleListExport() {        val nodes = listOf(
             NestedItemNode(item = item("1", "First item")),
             NestedItemNode(item = item("2", "Second item"))
         )
@@ -51,6 +51,20 @@ class NestedListToMarkdownTest {
             """.trimIndent(),
             md
         )
+    }
+
+    @Test
+    fun testCalloutIsOmittedFromMarkdown() {
+        val item = item("1", "Heads up").copy(
+            callout = NestedCalloutStyle.Warning,
+            calloutTitle = "Read me before continuing"
+        )
+        val tree = NestedDocumentTree(
+            document = NestedDocument("doc-1", "Test Doc", 0L, 0L),
+            rootNodes = listOf(NestedItemNode(item = item))
+        )
+        val md = tree.toMarkdown()
+        assertEquals("- Heads up", md)
     }
 
     @Test
