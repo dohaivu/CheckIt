@@ -66,10 +66,21 @@ func nestedCalloutMenuImage(_ style: NestedCalloutStyle) -> NSImage? {
     return image
 }
 
-/// Row title treatment. Panel uses an uppercase eyebrow, Tab a filled label
-/// chip, and Rail an inline accent label next to the icon.
+/// Height of the Tab title badge. Fixed so its vertical center can sit on the
+/// card's top border; the row reserves half of it above the card so the upper
+/// half can overhang.
+private let nestedCalloutBadgeHeight: CGFloat = 20
+
+/// Row title treatment. Panel uses an uppercase eyebrow, Tab a filled badge
+/// sitting on the card's top border at the leading edge, and Rail an inline
+/// accent label next to the icon.
 @ViewBuilder
-func nestedCalloutHeader(_ spec: NestedCalloutSpec, title: String, accent: Color) -> some View {
+func nestedCalloutHeader(
+    _ spec: NestedCalloutSpec,
+    title: String,
+    accent: Color,
+    focusOpacity: Double
+) -> some View {
     let icon = Image(systemName: nestedCalloutSymbol(spec.iconKey))
     switch spec.titlePlacement {
     case NestedCalloutTitlePlacement.eyebrow:
@@ -80,24 +91,33 @@ func nestedCalloutHeader(_ spec: NestedCalloutSpec, title: String, accent: Color
                 .tracking(0.8)
         }
         .foregroundStyle(accent)
+        .opacity(focusOpacity)
     case NestedCalloutTitlePlacement.toptab:
         HStack(spacing: 4) {
             icon.font(.system(size: 10, weight: .semibold))
-            Text(title).font(.system(size: 10, weight: .semibold))
+            Text(title)
+                .font(.system(size: 10, weight: .semibold))
+                .lineLimit(1)
+                .truncationMode(.tail)
         }
         .foregroundStyle(accent)
+        .opacity(focusOpacity)
+        .frame(height: nestedCalloutBadgeHeight)
         .padding(.horizontal, 7)
-        .padding(.vertical, 2)
-        .background(
-            accent.opacity(0.16),
-            in: UnevenRoundedRectangle(topLeadingRadius: 5, topTrailingRadius: 5)
-        )
+        .background {
+            ZStack {
+                nestedCanvasColor
+                accent.opacity(0.16 * focusOpacity)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 5))
+        }
     case NestedCalloutTitlePlacement.inline_:
         HStack(spacing: 5) {
             icon.font(.system(size: 11, weight: .semibold))
             Text(title).font(.system(size: 11, weight: .semibold))
         }
         .foregroundStyle(accent)
+        .opacity(focusOpacity)
     default:
         EmptyView()
     }
@@ -268,13 +288,15 @@ struct NestedRowView: View, Equatable {
             .padding(.top, 2).padding(.leading, 3)
 
             VStack(alignment: .leading, spacing: calloutHeaderSpacing) {
-                if let spec = calloutSpec {
+                // Tab's badge lives on the card border (see the overlay
+                // below), so it is not part of the content column.
+                if let spec = calloutSpec, !isTabCallout {
                     nestedCalloutHeader(
                         spec,
                         title: item.calloutTitle ?? item.callout.displayName(),
-                        accent: nestedTokenColor(spec.accent)
+                        accent: nestedTokenColor(spec.accent),
+                        focusOpacity: focusOpacity
                     )
-                    .opacity(focusOpacity)
                 }
                 HStack(alignment: .center, spacing: 6) {
                     if item.checkboxEnabled {
@@ -391,12 +413,39 @@ struct NestedRowView: View, Equatable {
                 }
                 metadata.opacity(focusOpacity)
             }
-            .padding(.vertical, 5 + shapeExtraVerticalPadding)
+            // Tab's badge straddles the border: half sits above the card, so
+            // the content starts below the badge's lower half plus the gap.
+            .padding(.top, isTabCallout ? nestedCalloutBadgeHeight / 2 + 4 : 5 + shapeExtraVerticalPadding)
+            .padding(.bottom, 5 + shapeExtraVerticalPadding)
             .padding(.horizontal, 6 + shapeExtraHorizontalPadding)
-            .background(rowBackground, in: rowShape)
+            .background {
+                // Border behind the content so the Tab badge can mask the top
+                // stroke where it sits.
+                ZStack {
+                    rowShape.fill(rowBackground)
+                    rowBorderOverlay
+                }
+            }
             .clipShape(rowShape)
-            .overlay { rowBorderOverlay }
             .contentShape(Rectangle())
+            // Reserve the badge's top half above the card, then lay the badge
+            // on the border at the leading edge. The overlay is outside the
+            // clip so the shape cannot cut the badge.
+            .padding(.top, isTabCallout ? nestedCalloutBadgeHeight / 2 : 0)
+            .overlay(alignment: .topLeading) {
+                if isTabCallout, let spec = calloutSpec {
+                    HStack(spacing: 0) {
+                        nestedCalloutHeader(
+                            spec,
+                            title: item.calloutTitle ?? item.callout.displayName(),
+                            accent: nestedTokenColor(spec.accent),
+                            focusOpacity: focusOpacity
+                        )
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.horizontal, 12)
+                }
+            }
         }
         .background(alignment: .topLeading) {
             // Guide continuation from the toggle down through the children.
@@ -577,6 +626,8 @@ struct NestedRowView: View, Equatable {
     private var calloutSpec: NestedCalloutSpec? { item.callout.spec() }
 
     private var isRailCallout: Bool { calloutSpec?.layout == NestedCalloutLayout.rail }
+
+    private var isTabCallout: Bool { calloutSpec?.layout == NestedCalloutLayout.tab }
 
     /// Mirrors `NestedCalloutLayout.headerGapDp()`: Tab needs a little more
     /// room under its chip than the eyebrow/inline treatments.

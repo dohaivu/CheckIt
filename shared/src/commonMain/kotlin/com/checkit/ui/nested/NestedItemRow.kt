@@ -274,6 +274,28 @@ internal fun NestedItemRow(
     }
     val calloutTint = calloutAccent?.copy(alpha = 0.10f * focusAlpha)
     val railWidth = (calloutSpec?.borderWidthDp ?: 0f).dp
+    val isTabCallout = calloutSpec?.layout == NestedCalloutLayout.Tab
+    // The Tab badge is fixed-height so its vertical center can sit exactly on
+    // the card's top border. Shared with NestedCalloutVisuals.
+    val tabChipHalf = NestedCalloutTabBadgeHeight / 2
+    val tabHeaderGap = NestedCalloutLayout.Tab.headerGapDp().dp
+
+    // Card fill behind the callout frame. The Tab badge is drawn as an
+    // overlay sibling, so this wash does not need to hide the top stroke.
+    val frameBackground = when {
+        isEditing -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+        isSelected -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+        calloutTint != null -> calloutTint
+        item.backgroundColor != NestedColorToken.Default -> nestedColor(
+            item.backgroundColor
+        ).copy(alpha = 0.18f * focusAlpha)
+        else -> Color.Transparent
+    }
+    val railBackground = when {
+        isEditing -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+        isSelected -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+        else -> Color.Transparent
+    }
 
     // Reusable Path to avoid allocating a new Path instance on every draw frame
     val branchPath = remember { Path() }
@@ -423,203 +445,213 @@ internal fun NestedItemRow(
                     }
                 }
 
-                Row(
+                Box(
                     modifier = Modifier
                         .weight(1f)
                         .offset(x = (-8).dp)
-                        .then(
-                            if (isRailCallout) {
-                                // The rail replaces the card, but selection and
-                                // editing still need their chrome behind the text.
-                                Modifier
-                                    .clip(RectangleShape)
-                                    .background(
-                                        when {
-                                            isEditing -> MaterialTheme.colorScheme.primaryContainer.copy(
-                                                alpha = 0.5f
-                                            )
-                                            isSelected -> MaterialTheme.colorScheme.secondaryContainer.copy(
-                                                alpha = 0.5f
-                                            )
-                                            else -> Color.Transparent
-                                        }
-                                    )
-                            } else {
-                                Modifier
-                                    .clip(frameShape)
-                                    .background(
-                                        when {
-                                            isEditing -> MaterialTheme.colorScheme.primaryContainer.copy(
-                                                alpha = 0.5f
-                                            )
-                                            isSelected -> MaterialTheme.colorScheme.secondaryContainer.copy(
-                                                alpha = 0.5f
-                                            )
-                                            calloutTint != null -> calloutTint
-                                            item.backgroundColor != NestedColorToken.Default -> nestedColor(
-                                                item.backgroundColor
-                                            ).copy(alpha = 0.18f * focusAlpha)
-                                            else -> Color.Transparent
-                                        }
-                                    )
-                                    .nestedCardBorder(frameShape, frameStroke, frameBorderColor)
-                            }
-                        )
-                        .then(
-                            if (isRailCallout && calloutAccent != null) {
-                                Modifier.drawBehind {
-                                    drawRect(
-                                        color = calloutAccent.copy(alpha = focusAlpha),
-                                        size = Size(railWidth.toPx(), size.height)
-                                    )
-                                }
-                            } else {
-                                Modifier
-                            }
-                        )
-                        .combinedClickable(
-                            onClick = {
-                                if (state.selection.isActive) {
-                                    viewModel.toggleSelect(item.id)
-                                } else {
-                                    viewModel.selectItem(item.id)
-                                    if (state.overlay is NestedEditorOverlay.AddingItem) viewModel.cancelAddItem()
-                                }
-                            },
-                            onDoubleClick = {
-                                if (!state.selection.isActive) viewModel.startEditText(item.id)
-                            }
-                        )
-                        .padding(
-                            horizontal = 2.dp + frameShapeForPadding.horizontalContentPadding(),
-                            vertical = 6.dp + frameShapeForPadding.verticalContentPadding()
-                        )
-                        .then(
-                            if (isRailCallout) Modifier.padding(start = railWidth + 6.dp) else Modifier
-                        ),
-                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (item.checkboxEnabled) {
-                        Checkbox(
-                            checked = item.checked,
-                            onCheckedChange = { viewModel.toggleChecked(item.id) },
-                            modifier = Modifier.size(28.dp).scale(0.7f).align(Alignment.Top),
-                            colors = CheckboxDefaults.colors(uncheckedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
-                        )
-                    } else {
-                        Spacer(Modifier.width(4.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            // Reserve the badge's top half above the card so
+                            // the border can run through its vertical center.
+                            .padding(top = if (isTabCallout) tabChipHalf else 0.dp)
+                            .then(
+                                if (isRailCallout) {
+                                    // The rail replaces the card, but selection and
+                                    // editing still need their chrome behind the text.
+                                    Modifier
+                                        .clip(RectangleShape)
+                                        .background(railBackground)
+                                } else {
+                                    Modifier
+                                        .clip(frameShape)
+                                        .background(frameBackground)
+                                        .nestedCardBorder(frameShape, frameStroke, frameBorderColor)
+                                }
+                            )
+                            .then(
+                                if (isRailCallout && calloutAccent != null) {
+                                    Modifier.drawBehind {
+                                        drawRect(
+                                            color = calloutAccent.copy(alpha = focusAlpha),
+                                            size = Size(railWidth.toPx(), size.height)
+                                        )
+                                    }
+                                } else {
+                                    Modifier
+                                }
+                            )
+                            .combinedClickable(
+                                onClick = {
+                                    if (state.selection.isActive) {
+                                        viewModel.toggleSelect(item.id)
+                                    } else {
+                                        viewModel.selectItem(item.id)
+                                        if (state.overlay is NestedEditorOverlay.AddingItem) viewModel.cancelAddItem()
+                                    }
+                                },
+                                onDoubleClick = {
+                                    if (!state.selection.isActive) viewModel.startEditText(item.id)
+                                }
+                            )
+                            .padding(
+                                horizontal = 2.dp + frameShapeForPadding.horizontalContentPadding()
+                            )
+                            .padding(
+                                // Tab's badge straddles the border: reserve its
+                                // bottom half plus the header gap above the text.
+                                top = if (isTabCallout) {
+                                    tabChipHalf + tabHeaderGap
+                                } else {
+                                    6.dp + frameShapeForPadding.verticalContentPadding()
+                                },
+                                bottom = 6.dp + frameShapeForPadding.verticalContentPadding()
+                            )
+                            .then(
+                                if (isRailCallout) Modifier.padding(start = railWidth + 6.dp) else Modifier
+                            ),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (item.checkboxEnabled) {
+                            Checkbox(
+                                checked = item.checked,
+                                onCheckedChange = { viewModel.toggleChecked(item.id) },
+                                modifier = Modifier.size(28.dp).scale(0.7f).align(Alignment.Top),
+                                colors = CheckboxDefaults.colors(uncheckedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
+                            )
+                        } else {
+                            Spacer(Modifier.width(4.dp))
+                        }
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            if (calloutSpec != null && calloutAccent != null && !isTabCallout) {
+                                NestedCalloutHeader(
+                                    spec = calloutSpec,
+                                    title = item.calloutTitle ?: item.callout.displayName(),
+                                    accent = calloutAccent,
+                                    focusAlpha = focusAlpha
+                                )
+                                Spacer(Modifier.height(calloutSpec.layout.headerGapDp().dp))
+                            }
+                            if (isEditing) {
+                                var text by remember(item.id) { mutableStateOf(item.text) }
+                                val focusRequester = remember(item.id) { FocusRequester() }
+                                LaunchedEffect(item.id) {
+                                    text = item.text
+                                    focusRequester.requestFocus()
+                                }
+                                DisposableEffect(item.id) {
+                                    onDispose {
+                                        if (text != item.text) {
+                                            viewModel.saveItemText(item.id, text)
+                                        }
+                                    }
+                                }
+                                BasicTextField(
+                                    value = text,
+                                    onValueChange = { text = it },
+                                    singleLine = false,
+                                    textStyle = nestedTextStyle(item.textStyle).copy(
+                                        color = nestedTextColor(item.textColor).copy(
+                                            alpha = minOf(1f, focusAlpha)
+                                        )
+                                    ),
+                                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Default),
+                                    modifier = Modifier.fillMaxWidth()
+                                        .focusRequester(focusRequester)
+                                        .onFocusChanged { focusState ->
+                                            if (!focusState.isFocused && isEditing && text != item.text) {
+                                                viewModel.saveItemText(item.id, text)
+                                            }
+                                        }
+                                )
+                            } else {
+                                Text(
+                                    text = remember(item.text) {
+                                        renderInlineMarkdown(item.text)
+                                    },
+                                    style = nestedTextStyle(item.textStyle),
+                                    textDecoration = if (item.checked) TextDecoration.LineThrough else TextDecoration.None,
+                                    color = itemTextColor,
+                                    fontWeight = if (depth == 0 && !node.hasChildren) FontWeight.Bold else null
+                                )
+                            }
+                            Box(
+                                modifier = if (focusAlpha < 1f) {
+                                    Modifier.alpha(focusAlpha)
+                                } else {
+                                    Modifier
+                                }
+                            ) {
+                                NestedItemMetadataPreview(
+                                    item = item,
+                                    summary = state.tree.metricSummaryById[item.id]
+                                        ?: NestedMetricSummary(),
+                                    isLeaf = !node.hasChildren
+                                )
+                            }
+                        }
+
+                        if (item.priority != TaskPriority.None) {
+                            Icon(
+                                imageVector = Icons.Default.Flag,
+                                contentDescription = null,
+                                tint = priorityColor(item.priority),
+                                modifier = Modifier.size(18.dp).alpha(focusAlpha)
+                            )
+                        }
+
+                        if (!item.label.isNullOrBlank()) {
+                            Box(
+                                modifier = Modifier
+                                    .padding(start = 4.dp)
+                                    .widthIn(max = 140.dp)
+                                    .heightIn(max = 22.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        MaterialTheme.colorScheme.secondaryContainer.copy(
+                                            alpha = 0.85f * focusAlpha
+                                        )
+                                    )
+                            ) {
+                                Text(
+                                    text = item.label,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+
+                        if (state.selection.isActive) {
+                            Checkbox(
+                                checked = isSelected,
+                                onCheckedChange = { viewModel.toggleSelect(item.id) },
+                                modifier = Modifier.size(28.dp).scale(0.7f).align(Alignment.Top)
+                            )
+                        }
                     }
 
-                    Column(modifier = Modifier.weight(1f)) {
-                        if (calloutSpec != null && calloutAccent != null) {
+                    if (isTabCallout && calloutSpec != null && calloutAccent != null) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp),
+                            contentAlignment = Alignment.TopStart
+                        ) {
                             NestedCalloutHeader(
                                 spec = calloutSpec,
                                 title = item.calloutTitle ?: item.callout.displayName(),
                                 accent = calloutAccent,
                                 focusAlpha = focusAlpha
                             )
-                            Spacer(Modifier.height(calloutSpec.layout.headerGapDp().dp))
                         }
-                        if (isEditing) {
-                            var text by remember(item.id) { mutableStateOf(item.text) }
-                            val focusRequester = remember(item.id) { FocusRequester() }
-                            LaunchedEffect(item.id) {
-                                text = item.text
-                                focusRequester.requestFocus()
-                            }
-                            DisposableEffect(item.id) {
-                                onDispose {
-                                    if (text != item.text) {
-                                        viewModel.saveItemText(item.id, text)
-                                    }
-                                }
-                            }
-                            BasicTextField(
-                                value = text,
-                                onValueChange = { text = it },
-                                singleLine = false,
-                                textStyle = nestedTextStyle(item.textStyle).copy(
-                                    color = nestedTextColor(item.textColor).copy(
-                                        alpha = minOf(1f, focusAlpha)
-                                    )
-                                ),
-                                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Default),
-                                modifier = Modifier.fillMaxWidth()
-                                    .focusRequester(focusRequester)
-                                    .onFocusChanged { focusState ->
-                                        if (!focusState.isFocused && isEditing && text != item.text) {
-                                            viewModel.saveItemText(item.id, text)
-                                        }
-                                    }
-                            )
-                        } else {
-                            Text(
-                                text = remember(item.text) {
-                                    renderInlineMarkdown(item.text)
-                                },
-                                style = nestedTextStyle(item.textStyle),
-                                textDecoration = if (item.checked) TextDecoration.LineThrough else TextDecoration.None,
-                                color = itemTextColor,
-                                fontWeight = if (depth == 0 && !node.hasChildren) FontWeight.Bold else null
-                            )
-                        }
-                        Box(
-                            modifier = if (focusAlpha < 1f) {
-                                Modifier.alpha(focusAlpha)
-                            } else {
-                                Modifier
-                            }
-                        ) {
-                            NestedItemMetadataPreview(
-                                item = item,
-                                summary = state.tree.metricSummaryById[item.id]
-                                    ?: NestedMetricSummary(),
-                                isLeaf = !node.hasChildren
-                            )
-                        }
-                    }
-
-                    if (item.priority != TaskPriority.None) {
-                        Icon(
-                            imageVector = Icons.Default.Flag,
-                            contentDescription = null,
-                            tint = priorityColor(item.priority),
-                            modifier = Modifier.size(18.dp).alpha(focusAlpha)
-                        )
-                    }
-
-                    if (!item.label.isNullOrBlank()) {
-                        Box(
-                            modifier = Modifier
-                                .padding(start = 4.dp)
-                                .widthIn(max = 140.dp)
-                                .heightIn(max = 22.dp)
-                                .clip(CircleShape)
-                                .background(
-                                    MaterialTheme.colorScheme.secondaryContainer.copy(
-                                        alpha = 0.85f * focusAlpha
-                                    )
-                                )
-                        ) {
-                            Text(
-                                text = item.label,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.SemiBold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    }
-
-                    if (state.selection.isActive) {
-                        Checkbox(
-                            checked = isSelected,
-                            onCheckedChange = { viewModel.toggleSelect(item.id) },
-                            modifier = Modifier.size(28.dp).scale(0.7f).align(Alignment.Top)
-                        )
                     }
                 }
             }

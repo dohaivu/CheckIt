@@ -3,13 +3,14 @@ package com.checkit.ui.nested
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoAwesome
-import androidx.compose.material.icons.outlined.Campaign
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.Dangerous
 import androidx.compose.material.icons.outlined.FormatQuote
 import androidx.compose.material.icons.outlined.HelpOutline
@@ -26,8 +27,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.checkit.domain.NestedCalloutLayout
@@ -54,12 +57,20 @@ internal fun nestedCalloutIcon(iconKey: String): ImageVector = when (iconKey) {
 
 /** Icon for a callout; [NestedCalloutStyle.None] falls back to the picker glyph. */
 internal fun nestedCalloutIcon(style: NestedCalloutStyle): ImageVector =
-    style.spec()?.let { nestedCalloutIcon(it.iconKey) } ?: Icons.Outlined.Campaign
+    style.spec()?.let { nestedCalloutIcon(it.iconKey) } ?: Icons.Outlined.ChatBubbleOutline
 
 /**
- * Row title treatment. Panel uses an uppercase eyebrow, Tab a filled label
- * chip, and Rail an inline accent label next to the icon. The accent color is
- * shared with the frame so all three read as one callout.
+ * Height of the Tab title badge. It is fixed so the badge's vertical center can
+ * sit on the card's top border; the row reserves [NestedCalloutTabBadgeHeight] / 2
+ * above the card to let the upper half overhang.
+ */
+internal val NestedCalloutTabBadgeHeight = 20.dp
+
+/**
+ * Row title treatment. Panel uses an uppercase eyebrow, Tab a filled badge
+ * sitting on the card's top border at the leading edge, and Rail an inline
+ * accent label next to the icon. The accent color is shared with the frame so
+ * all three read as one callout.
  */
 @Composable
 internal fun NestedCalloutHeader(
@@ -85,22 +96,34 @@ internal fun NestedCalloutHeader(
             )
         }
 
-        NestedCalloutTitlePlacement.TopTab -> Row(
-            modifier = Modifier
-                .alpha(focusAlpha)
-                .clip(RoundedCornerShape(topStart = 5.dp, topEnd = 5.dp))
-                .background(accent.copy(alpha = 0.16f))
-                .padding(horizontal = 7.dp, vertical = 2.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(13.dp))
-            Spacer(Modifier.width(4.dp))
-            Text(
-                text = title,
-                style = MaterialTheme.typography.labelSmall,
-                color = accent,
-                fontWeight = FontWeight.SemiBold
-            )
+        NestedCalloutTitlePlacement.TopTab -> {
+            val chipShape = RoundedCornerShape(5.dp)
+            val chipColor = accent.copy(alpha = 0.16f * focusAlpha)
+                .compositeOver(MaterialTheme.colorScheme.surface)
+            Row(
+                modifier = Modifier
+                    .height(NestedCalloutTabBadgeHeight)
+                    .clip(chipShape)
+                    .background(chipColor)
+                    .padding(horizontal = 7.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    modifier = Modifier.alpha(focusAlpha),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(13.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = accent,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
         }
 
         NestedCalloutTitlePlacement.Inline -> Row(
