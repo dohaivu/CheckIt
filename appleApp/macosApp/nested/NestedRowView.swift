@@ -79,10 +79,12 @@ func nestedCalloutHeader(
     _ spec: NestedCalloutSpec,
     title: String,
     accent: Color,
-    focusOpacity: Double
+    focusOpacity: Double,
+    overrideTitlePlacement: NestedCalloutTitlePlacement? = nil
 ) -> some View {
     let icon = Image(systemName: nestedCalloutSymbol(spec.iconKey))
-    switch spec.titlePlacement {
+    let placement = overrideTitlePlacement ?? spec.titlePlacement
+    switch placement {
     case NestedCalloutTitlePlacement.eyebrow:
         HStack(spacing: 4) {
             icon.font(.system(size: 10, weight: .semibold))
@@ -294,8 +296,9 @@ struct NestedRowView: View, Equatable {
                     nestedCalloutHeader(
                         spec,
                         title: item.calloutTitle ?? item.callout.displayName(),
-                        accent: nestedTokenColor(spec.accent),
-                        focusOpacity: focusOpacity
+                        accent: effectiveCalloutAccent,
+                        focusOpacity: focusOpacity,
+                        overrideTitlePlacement: effectiveTitlePlacement
                     )
                 }
                 HStack(alignment: .center, spacing: 6) {
@@ -438,8 +441,9 @@ struct NestedRowView: View, Equatable {
                         nestedCalloutHeader(
                             spec,
                             title: item.calloutTitle ?? item.callout.displayName(),
-                            accent: nestedTokenColor(spec.accent),
-                            focusOpacity: focusOpacity
+                            accent: effectiveCalloutAccent,
+                            focusOpacity: focusOpacity,
+                            overrideTitlePlacement: effectiveTitlePlacement
                         )
                         Spacer(minLength: 0)
                     }
@@ -623,35 +627,47 @@ struct NestedRowView: View, Equatable {
         return branch.depth
     }
 
-    private var calloutSpec: NestedCalloutSpec? { item.callout.spec() }
+    /// Shared resolution of preset + explicit overrides, so the macOS row draws
+    /// the exact same frame as the Compose row (`NestedListItem.resolveVisuals`).
+    private var visuals: EffectiveRowVisuals { item.resolveVisuals() }
 
-    private var isRailCallout: Bool { calloutSpec?.layout == NestedCalloutLayout.rail }
+    private var calloutSpec: NestedCalloutSpec? { visuals.calloutSpec }
 
-    private var isTabCallout: Bool { calloutSpec?.layout == NestedCalloutLayout.tab }
+    private var isRailCallout: Bool { visuals.layout == NestedCalloutLayout.rail }
+
+    private var isTabCallout: Bool { visuals.layout == NestedCalloutLayout.tab }
+
+    private var effectiveTitlePlacement: NestedCalloutTitlePlacement? {
+        visuals.titlePlacement
+    }
 
     /// Mirrors `NestedCalloutLayout.headerGapDp()`: Tab needs a little more
     /// room under its chip than the eyebrow/inline treatments.
     private var calloutHeaderSpacing: CGFloat {
-        guard let spec = calloutSpec else { return 2 }
-        return spec.layout == NestedCalloutLayout.tab ? 4 : 3
+        guard calloutSpec != nil else { return 2 }
+        return isTabCallout ? 4 : 3
     }
 
-    private var effectiveShapeKind: NestedBorderShape {
-        if let spec = calloutSpec {
-            if spec.layout == NestedCalloutLayout.rail { return NestedBorderShape.rectangle }
-            if let shape = spec.shape { return shape }
+    private var effectiveShapeKind: NestedBorderShape { visuals.shape }
+
+    private var effectiveBorderColorToken: NestedColorToken { visuals.borderToken }
+
+    private var effectiveCalloutAccent: Color {
+        let token = effectiveBorderColorToken
+        if token == NestedColorToken.default_ {
+            return calloutSpec.map { nestedTokenColor($0.accent) } ?? .secondary
         }
-        return item.borderShape
+        return nestedTokenColor(token)
     }
 
     private var rowBackground: Color {
         if isEditing { return nestedEditingColor }
         if isSelected { return nestedSelectedColor }
-        if let spec = calloutSpec, !isRailCallout {
-            return nestedTokenColor(spec.accent).opacity(0.10 * focusOpacity)
-        }
-        if item.backgroundColor != NestedColorToken.default_ {
-            return nestedTokenColor(item.backgroundColor).opacity(0.20 * focusOpacity)
+        // Rail draws only its bar; the card stays transparent like Compose.
+        if isRailCallout { return .clear }
+        let token = visuals.bgToken
+        if token != NestedColorToken.default_ {
+            return nestedTokenColor(token).opacity(Double(visuals.bgAlpha) * focusOpacity)
         }
         return .clear
     }
@@ -672,8 +688,8 @@ struct NestedRowView: View, Equatable {
         default: extra = 0
         }
         // Rail draws into the leading edge, so keep the content clear of it.
-        if let spec = calloutSpec, isRailCallout {
-            return extra + CGFloat(spec.borderWidthDp) + 6
+        if isRailCallout {
+            return extra + CGFloat(visuals.borderWidthDp) + 6
         }
         return extra
     }
@@ -688,14 +704,14 @@ struct NestedRowView: View, Equatable {
         }
     }
 
+    private var effectiveBorderStyle: NestedBorderStyle { visuals.borderStyle }
+
     private var rowBorderColor: Color {
-        if let spec = calloutSpec {
-            return nestedTokenColor(spec.accent).opacity(focusOpacity)
+        let token = effectiveBorderColorToken
+        if token == NestedColorToken.default_ {
+            return Color.secondary.opacity(0.55 * focusOpacity)
         }
-        let base = item.borderColor == NestedColorToken.default_
-            ? Color.secondary.opacity(0.55)
-            : nestedTokenColor(item.borderColor)
-        return base.opacity(focusOpacity)
+        return nestedTokenColor(token).opacity(focusOpacity)
     }
 
     private func rowDash(_ style: NestedBorderStyle) -> [CGFloat] {
@@ -709,34 +725,27 @@ struct NestedRowView: View, Equatable {
     /// Dash lengths in points, matching `NestedBorderStyle.toStroke` in
     /// NestedRowShapes.kt (which converts the same dp values by density).
     private var rowBorderDash: [CGFloat] {
-        rowDash(calloutSpec?.borderStyle ?? item.borderStyle)
+        rowDash(effectiveBorderStyle)
     }
 
     @ViewBuilder
     private var rowBorderOverlay: some View {
-        if let spec = calloutSpec {
-            if isRailCallout {
-                HStack(spacing: 0) {
-                    Rectangle()
-                        .fill(nestedTokenColor(spec.accent))
-                        .frame(width: CGFloat(spec.borderWidthDp))
-                    Spacer(minLength: 0)
-                }
-                .opacity(focusOpacity)
-            } else {
-                rowShape.strokeBorder(
-                    rowBorderColor,
-                    style: StrokeStyle(
-                        lineWidth: CGFloat(spec.borderWidthDp),
-                        lineCap: .round,
-                        dash: rowBorderDash
-                    )
-                )
+        if isRailCallout {
+            HStack(spacing: 0) {
+                Rectangle()
+                    .fill(effectiveCalloutAccent)
+                    .frame(width: CGFloat(visuals.borderWidthDp))
+                Spacer(minLength: 0)
             }
-        } else if item.borderStyle != NestedBorderStyle.none {
+            .opacity(focusOpacity)
+        } else if effectiveBorderStyle != NestedBorderStyle.none {
             rowShape.strokeBorder(
                 rowBorderColor,
-                style: StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: rowBorderDash)
+                style: StrokeStyle(
+                    lineWidth: CGFloat(visuals.borderWidthDp),
+                    lineCap: .round,
+                    dash: rowBorderDash
+                )
             )
         }
     }

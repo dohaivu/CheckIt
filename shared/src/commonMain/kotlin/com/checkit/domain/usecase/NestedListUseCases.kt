@@ -15,6 +15,7 @@ import com.checkit.domain.NestedColorToken
 import com.checkit.domain.NestedBorderShape
 import com.checkit.domain.NestedBorderStyle
 import com.checkit.domain.NestedCalloutStyle
+import com.checkit.domain.NestedCalloutLayout
 import com.checkit.domain.MetricRollupPolicy
 import com.checkit.domain.captureNestedSubtree
 import com.checkit.domain.planNestedSubtreePaste
@@ -207,6 +208,15 @@ class UpdateNestedItemCalloutUseCase(
         callout: NestedCalloutStyle,
         calloutTitle: String?
     ) = repository.updateNestedItemCallout(itemId, callout, calloutTitle)
+}
+
+class UpdateNestedItemCalloutLayoutUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(
+        itemId: String,
+        layout: NestedCalloutLayout?
+    ) = repository.updateNestedItemCalloutLayout(itemId, layout)
 }
 
 class UpdateNestedItemPriorityUseCase(

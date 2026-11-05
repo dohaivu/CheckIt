@@ -120,6 +120,7 @@ import com.checkit.domain.FocusPeriod
 import com.checkit.domain.NestedBorderShape
 import com.checkit.domain.NestedBorderStyle
 import com.checkit.domain.NestedCalloutStyle
+import com.checkit.domain.NestedCalloutLayout
 import com.checkit.domain.NestedColorToken
 import com.checkit.domain.NestedItemNode
 import com.checkit.domain.NestedListItem
@@ -243,6 +244,7 @@ internal fun NestedFormattingBar(
     onFormattingChange: (NestedTextStyle, NestedColorToken, NestedColorToken) -> Unit,
     onBorderChange: (NestedBorderShape, NestedBorderStyle, NestedColorToken) -> Unit,
     onCalloutChange: (NestedCalloutStyle, String?) -> Unit,
+    onCalloutLayoutChange: (NestedCalloutLayout?) -> Unit = {},
     onLabelChange: (String?) -> Unit,
     onPriorityChange: (TaskPriority) -> Unit,
     onGuideDotChange: (String?) -> Unit,
@@ -408,6 +410,29 @@ internal fun NestedFormattingBar(
                         )
                     }
                     if (item.callout != NestedCalloutStyle.None) {
+                        HorizontalDivider()
+                        Text(
+                            text = "Layout",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                        )
+                        val activeLayout = item.calloutLayout ?: item.callout.spec()?.layout
+                        NestedCalloutLayout.entries.forEach { layout ->
+                            DropdownMenuItem(
+                                text = { Text(layout.name) },
+                                trailingIcon = if (layout == activeLayout) {
+                                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                                } else null,
+                                onClick = {
+                                    calloutExpanded = false
+                                    onCalloutLayoutChange(
+                                        if (layout == item.callout.spec()?.layout) null else layout
+                                    )
+                                }
+                            )
+                        }
                         HorizontalDivider()
                         DropdownMenuItem(
                             text = { Text("Title…") },

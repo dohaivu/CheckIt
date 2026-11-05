@@ -1062,6 +1062,13 @@ final class NestedEditorState: ObservableObject {
         )
     }
 
+    func updateCalloutLayout(id: String, layout: NestedCalloutLayout?) {
+        helper.updateCalloutLayoutByName(
+            itemId: id,
+            layoutName: layout?.name
+        )
+    }
+
     func updatePriority(id: String, priority: TaskPriority) {
         helper.updatePriorityByName(itemId: id, priorityName: priority.name)
     }

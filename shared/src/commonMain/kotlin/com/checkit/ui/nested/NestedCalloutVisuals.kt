@@ -77,10 +77,12 @@ internal fun NestedCalloutHeader(
     spec: NestedCalloutSpec,
     title: String,
     accent: Color,
-    focusAlpha: Float
+    focusAlpha: Float,
+    overrideTitlePlacement: NestedCalloutTitlePlacement? = null
 ) {
     val icon = nestedCalloutIcon(spec.iconKey)
-    when (spec.titlePlacement) {
+    val placement = overrideTitlePlacement ?: spec.titlePlacement
+    when (placement) {
         NestedCalloutTitlePlacement.Eyebrow -> Row(
             modifier = Modifier.alpha(focusAlpha),
             verticalAlignment = Alignment.CenterVertically

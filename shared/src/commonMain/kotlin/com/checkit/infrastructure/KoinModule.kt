@@ -113,6 +113,7 @@ import com.checkit.domain.usecase.UpdateNestedItemDateRangeUseCase
 import com.checkit.domain.usecase.UpdateNestedItemFormattingUseCase
 import com.checkit.domain.usecase.UpdateNestedItemBorderUseCase
 import com.checkit.domain.usecase.UpdateNestedItemCalloutUseCase
+import com.checkit.domain.usecase.UpdateNestedItemCalloutLayoutUseCase
 import com.checkit.domain.usecase.UpdateNestedItemGuideDotUseCase
 import com.checkit.domain.usecase.UpdateNestedItemGuideDotColorUseCase
 import com.checkit.domain.usecase.UpdateNestedItemLabelUseCase
@@ -273,6 +274,7 @@ val provideInteractorModule = module {
     single { UpdateNestedItemFormattingUseCase(get()) }
     single { UpdateNestedItemBorderUseCase(get()) }
     single { UpdateNestedItemCalloutUseCase(get()) }
+    single { UpdateNestedItemCalloutLayoutUseCase(get()) }
     single { UpdateNestedItemPriorityUseCase(get()) }
     single { UpdateNestedItemGuideDotUseCase(get()) }
     single { UpdateNestedItemGuideDotColorUseCase(get()) }
@@ -309,6 +311,7 @@ val provideInteractorModule = module {
             updateItemFormatting = get(),
             updateItemBorder = get(),
             updateItemCallout = get(),
+            updateItemCalloutLayout = get(),
             updateItemDateRange = get(),
             updateItemPriority = get(),
             updateItemGuideDot = get(),
@@ -480,6 +483,7 @@ val provideViewModelModule = module {
             updateItemFormattingUseCase = get(),
             updateItemBorderUseCase = get(),
             updateItemCalloutUseCase = get(),
+            updateItemCalloutLayoutUseCase = get(),
             updateItemDateRangeUseCase = get(),
             updateItemPriorityUseCase = get(),
             updateItemGuideDotUseCase = get(),

@@ -80,6 +80,7 @@ class NestedSyncDocumentTest {
             borderColor = "Pink",
             callout = "Caution",
             calloutTitle = "Watch out",
+            calloutLayout = "Rail",
             guideDot = "🚀",
             startDateEpochDays = 20000,
             endDateEpochDays = 20001,
@@ -114,6 +115,7 @@ class NestedSyncDocumentTest {
         assertEquals("Pink", remote?.borderColor)
         assertEquals("Caution", remote?.callout)
         assertEquals("Watch out", remote?.calloutTitle)
+        assertEquals("Rail", remote?.calloutLayout)
         assertEquals("🚀", remote?.guideDot)
         assertEquals("High", remote?.priority)
         assertEquals(25, remote?.actualMinutes)

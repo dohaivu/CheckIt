@@ -698,6 +698,21 @@ struct NestedFormattingBar: View {
                     })
                 }
                 if item.callout != NestedCalloutStyle.none {
+                    rows.append(.header("Layout"))
+                    let activeLayout = item.calloutLayout ?? item.callout.spec()?.layout
+                    let allLayouts = [NestedCalloutLayout.panel, NestedCalloutLayout.tab, NestedCalloutLayout.rail]
+                    for l in allLayouts {
+                        rows.append(.item(
+                            title: l.name.capitalized,
+                            selected: l == activeLayout
+                        ) {
+                            let defaultLayout = item.callout.spec()?.layout
+                            state.updateCalloutLayout(
+                                id: item.id,
+                                layout: l == defaultLayout ? nil : l
+                            )
+                        })
+                    }
                     rows.append(.header("Title"))
                     rows.append(.item(
                         title: "Custom title…",

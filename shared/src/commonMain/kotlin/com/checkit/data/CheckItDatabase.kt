@@ -631,6 +631,8 @@ data class NestedListItemEntity(
     val callout: String = "None",
     /** Optional callout title override; null shows the style name. */
     val calloutTitle: String? = null,
+    /** Optional callout layout override; null uses callout.spec().layout. */
+    val calloutLayout: String? = null,
     /** Nullable palette token; null inherits the depth palette. */
     val guideDotColor: String? = null,
     /** Emoji rendered in place of the guide dot; null keeps the default. */
@@ -753,7 +755,7 @@ data class RoutineLogEntity(
         RoutineLogEntity::class,
         QuickNoteEntity::class
     ],
-    version = 12,
+    version = 13,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)
@@ -872,13 +874,22 @@ private val NestedItemCalloutMigration11To12 = object : Migration(11, 12) {
     }
 }
 
+/** v12 -> v13: adds the optional callout layout override column. */
+private val NestedItemCalloutLayoutMigration12To13 = object : Migration(12, 13) {
+    override suspend fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            "ALTER TABLE nested_list_items ADD COLUMN calloutLayout TEXT"
+        )
+    }
+}
+
 fun buildCheckItDatabase(
     builder: RoomDatabase.Builder<CheckItDatabase>
 ): CheckItDatabase {
     return builder
         .fallbackToDestructiveMigration(false)
         .fallbackToDestructiveMigrationOnDowngrade(false)
-        .addMigrations(RoutineColorMigration1To2, TaskMetricsMigration2To3, NestedCompletedAtMigration3To4, DropTaskRemindersMigration4To5, RepeatRuleMigration5To6, NestedDocumentSortOrderMigration6To7, NestedItemLabelMigration7To8, NestedItemBorderMigration8To9, NestedItemGuideDotMigration9To10, NestedItemGuideDotColorMigration10To11, NestedItemCalloutMigration11To12)
+        .addMigrations(RoutineColorMigration1To2, TaskMetricsMigration2To3, NestedCompletedAtMigration3To4, DropTaskRemindersMigration4To5, RepeatRuleMigration5To6, NestedDocumentSortOrderMigration6To7, NestedItemLabelMigration7To8, NestedItemBorderMigration8To9, NestedItemGuideDotMigration9To10, NestedItemGuideDotColorMigration10To11, NestedItemCalloutMigration11To12, NestedItemCalloutLayoutMigration12To13)
         .setQueryCoroutineContext(Dispatchers.IO)
         .setDriver(BundledSQLiteDriver())
         .addCallback(object : RoomDatabase.Callback() {

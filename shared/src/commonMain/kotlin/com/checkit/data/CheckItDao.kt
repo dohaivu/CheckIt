@@ -1240,11 +1240,18 @@ interface CheckItDao {
         updatedAtMillis: Long
     )
 
-    @Query("UPDATE nested_list_items SET callout = :callout, calloutTitle = :calloutTitle, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
+    @Query("UPDATE nested_list_items SET callout = :callout, calloutTitle = :calloutTitle, calloutLayout = CASE WHEN :callout = 'None' THEN NULL ELSE calloutLayout END, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
     suspend fun updateNestedItemCallout(
         itemId: String,
         callout: String,
         calloutTitle: String?,
+        updatedAtMillis: Long
+    )
+
+    @Query("UPDATE nested_list_items SET calloutLayout = :calloutLayout, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
+    suspend fun updateNestedItemCalloutLayout(
+        itemId: String,
+        calloutLayout: String?,
         updatedAtMillis: Long
     )
 

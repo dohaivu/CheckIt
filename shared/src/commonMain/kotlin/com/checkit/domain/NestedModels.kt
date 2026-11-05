@@ -303,6 +303,8 @@ data class NestedListItem(
     val callout: NestedCalloutStyle = NestedCalloutStyle.None,
     /** Optional override for the callout title; null shows the style name. */
     val calloutTitle: String? = null,
+    /** Optional override for the callout layout; null uses callout.spec().layout. */
+    val calloutLayout: NestedCalloutLayout? = null,
     /** Optional palette override for this row's dot and owned guide segments. */
     val guideDotColor: NestedColorToken? = null,
     /**
@@ -323,7 +325,114 @@ data class NestedListItem(
     val manualMetrics: List<MetricItem> = emptyList(),
     val createdAtMillis: Long,
     val updatedAtMillis: Long
-)
+) {
+    /**
+     * Resolves the frame this row should draw, layering explicit item properties
+     * over the [callout] preset. Shared by the Compose row and the SwiftUI row so
+     * both platforms render the same frame.
+     */
+    fun resolveVisuals(): EffectiveRowVisuals {
+        val spec = callout.spec()
+
+        // A layout override only means something with a callout; defensive
+        // because stored/imported rows can outlive the callout being cleared.
+        val layout = spec?.let { calloutLayout ?: it.layout }
+        val titlePlacement = when (layout) {
+            NestedCalloutLayout.Panel -> NestedCalloutTitlePlacement.Eyebrow
+            NestedCalloutLayout.Tab -> NestedCalloutTitlePlacement.TopTab
+            NestedCalloutLayout.Rail -> NestedCalloutTitlePlacement.Inline
+            null -> null
+        }
+
+        val hasBackground = backgroundColor != NestedColorToken.Default
+        val bgToken = when {
+            hasBackground -> backgroundColor
+            spec != null -> spec.accent
+            else -> NestedColorToken.Default
+        }
+        val bgAlpha = when {
+            hasBackground -> EffectiveRowVisuals.EXPLICIT_BACKGROUND_ALPHA
+            spec != null -> EffectiveRowVisuals.CALLOUT_BACKGROUND_ALPHA
+            else -> 0f
+        }
+
+        val borderToken = when {
+            borderColor != NestedColorToken.Default -> borderColor
+            spec != null -> spec.accent
+            else -> NestedColorToken.Default
+        }
+
+        val shape = when {
+            // Rail draws only a bar, so the frame is always square.
+            layout == NestedCalloutLayout.Rail -> NestedBorderShape.Rectangle
+            // "Rounded" is the default, so it means "keep the preset shape".
+            borderShape != NestedBorderShape.Rounded -> borderShape
+            spec?.shape != null -> spec.shape
+            else -> borderShape
+        }
+
+        val borderStyle = when {
+            // "None" is the default, so it means "keep the preset stroke".
+            borderStyle != NestedBorderStyle.None -> borderStyle
+            spec != null -> spec.borderStyle
+            else -> NestedBorderStyle.None
+        }
+
+        val borderWidthDp = spec?.borderWidthDp
+            ?: EffectiveRowVisuals.DEFAULT_BORDER_WIDTH_DP
+
+        return EffectiveRowVisuals(
+            calloutSpec = spec,
+            layout = layout,
+            titlePlacement = titlePlacement,
+            shape = shape,
+            borderStyle = borderStyle,
+            borderWidthDp = borderWidthDp,
+            borderToken = borderToken,
+            bgToken = bgToken,
+            bgAlpha = bgAlpha
+        )
+    }
+}
+
+/**
+ * Effective visual properties resolved for rendering one row card frame.
+ *
+ * Explicit item properties ([NestedListItem.backgroundColor],
+ * [NestedListItem.borderColor], [NestedListItem.borderShape],
+ * [NestedListItem.borderStyle]) override the callout preset so a single callout
+ * can be recolored or reshaped per row; the preset supplies the defaults.
+ *
+ * The stroke width has no item-level counterpart: it always comes from the
+ * preset (or the plain 1.5dp default when the row has no callout).
+ */
+data class EffectiveRowVisuals(
+    val calloutSpec: NestedCalloutSpec?,
+    /** Overridden or preset layout; null when the row has no callout. */
+    val layout: NestedCalloutLayout?,
+    /** Title treatment implied by [layout]; null when the row has no callout. */
+    val titlePlacement: NestedCalloutTitlePlacement?,
+    val shape: NestedBorderShape,
+    val borderStyle: NestedBorderStyle,
+    val borderWidthDp: Float,
+    /** Explicit border color, else the preset accent. [NestedColorToken.Default] means theme ink. */
+    val borderToken: NestedColorToken,
+    /** Explicit background, else the preset accent. [NestedColorToken.Default] means no wash. */
+    val bgToken: NestedColorToken,
+    /** Alpha for [bgToken]: an explicit fill reads stronger than a preset wash. */
+    val bgAlpha: Float
+) {
+    companion object {
+        /** Wash strength for a preset callout tint. */
+        const val CALLOUT_BACKGROUND_ALPHA = 0.10f
+
+        /** Wash strength for a row whose background was picked by hand. */
+        const val EXPLICIT_BACKGROUND_ALPHA = 0.18f
+
+        /** Plain rows and rows without a callout stroke. */
+        const val DEFAULT_BORDER_WIDTH_DP = 1.5f
+    }
+}
 
 /** UI/read model for one item node with its nested children. */
 data class NestedItemNode(

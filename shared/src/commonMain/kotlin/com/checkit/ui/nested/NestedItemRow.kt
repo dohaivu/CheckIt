@@ -76,11 +76,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.checkit.domain.NestedBorderShape
 import com.checkit.domain.NestedColorToken
 import com.checkit.domain.NestedCalloutLayout
 import com.checkit.domain.NestedItemNode
 import com.checkit.domain.NestedListItem
+import com.checkit.domain.EffectiveRowVisuals
 import com.checkit.domain.NestedMetricSummary
 import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.TaskPriority
@@ -235,60 +235,62 @@ internal fun NestedItemRow(
         else -> 7.dp
     }
     val dotTop = 16.dp - dotSize / 2
-    val cardShape = remember(item.borderShape) { NestedCardShape(item.borderShape) }
     val density = androidx.compose.ui.platform.LocalDensity.current
-    val borderStroke = remember(item.borderStyle, density.density) {
-        item.borderStyle.toStroke(with(density) { 1.5.dp.toPx() }, density)
-    }
-    val baseBorderColor = when (item.borderColor) {
-        NestedColorToken.Default -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
-        else -> nestedColor(item.borderColor)
-    }
-    val borderColor = baseBorderColor.copy(alpha = baseBorderColor.alpha * focusAlpha)
 
-    // A callout owns the frame: shape, stroke and tint come from the shared
-    // recipe, and the stored background/border fields stay untouched so they
-    // reappear when the callout is removed. Rail draws only a left accent bar.
-    val calloutSpec = remember(item.callout) { item.callout.spec() }
-    val calloutAccent = calloutSpec?.let { nestedColor(it.accent) }
-    val isRailCallout = calloutSpec?.layout == NestedCalloutLayout.Rail
-    val frameShape = when {
-        isRailCallout -> RectangleShape
-        calloutSpec?.shape != null -> remember(calloutSpec.shape) { NestedCardShape(calloutSpec.shape) }
-        else -> cardShape
+    // A callout preset supplies the frame defaults; explicit row formatting
+    // overrides them. Resolved in shared code so the SwiftUI row matches.
+    val visuals: EffectiveRowVisuals = remember(
+        item.callout,
+        item.calloutLayout,
+        item.backgroundColor,
+        item.borderColor,
+        item.borderShape,
+        item.borderStyle
+    ) {
+        item.resolveVisuals()
     }
+    val calloutSpec = visuals.calloutSpec
+    val isRailCallout = visuals.layout == NestedCalloutLayout.Rail
+    val isTabCallout = visuals.layout == NestedCalloutLayout.Tab
+
+    // Frame accent: the row's border color, else the callout's accent.
+    val frameAccent = visuals.borderToken
+        .takeIf { it != NestedColorToken.Default }
+        ?.let { nestedColor(it) }
+
+    val frameShape = remember(visuals.shape) { NestedCardShape(visuals.shape) }
+
     val frameStroke = if (isRailCallout) {
         null
     } else {
-        calloutSpec?.let { spec ->
-            remember(spec.borderStyle, spec.borderWidthDp, density.density) {
-                spec.borderStyle.toStroke(with(density) { spec.borderWidthDp.dp.toPx() }, density)
-            }
-        } ?: borderStroke
+        remember(visuals.borderStyle, visuals.borderWidthDp, density.density) {
+            visuals.borderStyle.toStroke(with(density) { visuals.borderWidthDp.dp.toPx() }, density)
+        }
     }
-    val frameBorderColor = calloutAccent?.copy(alpha = calloutAccent.alpha * focusAlpha) ?: borderColor
-    val frameShapeForPadding = when {
-        calloutSpec == null -> item.borderShape
-        isRailCallout -> NestedBorderShape.Rectangle
-        else -> calloutSpec.shape ?: item.borderShape
+
+    val baseBorderColor = frameAccent
+        ?: MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
+    val frameBorderColor = baseBorderColor.copy(alpha = baseBorderColor.alpha * focusAlpha)
+    val frameShapeForPadding = visuals.shape
+
+    val frameTint = if (visuals.bgToken != NestedColorToken.Default) {
+        nestedColor(visuals.bgToken).copy(alpha = visuals.bgAlpha * focusAlpha)
+    } else {
+        null
     }
-    val calloutTint = calloutAccent?.copy(alpha = 0.10f * focusAlpha)
-    val railWidth = (calloutSpec?.borderWidthDp ?: 0f).dp
-    val isTabCallout = calloutSpec?.layout == NestedCalloutLayout.Tab
+
+    val railWidth = visuals.borderWidthDp.dp
     // The Tab badge is fixed-height so its vertical center can sit exactly on
     // the card's top border. Shared with NestedCalloutVisuals.
     val tabChipHalf = NestedCalloutTabBadgeHeight / 2
-    val tabHeaderGap = NestedCalloutLayout.Tab.headerGapDp().dp
+    val tabHeaderGap = (visuals.layout?.headerGapDp() ?: 3).dp
 
     // Card fill behind the callout frame. The Tab badge is drawn as an
     // overlay sibling, so this wash does not need to hide the top stroke.
     val frameBackground = when {
         isEditing -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
         isSelected -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
-        calloutTint != null -> calloutTint
-        item.backgroundColor != NestedColorToken.Default -> nestedColor(
-            item.backgroundColor
-        ).copy(alpha = 0.18f * focusAlpha)
+        frameTint != null -> frameTint
         else -> Color.Transparent
     }
     val railBackground = when {
@@ -471,10 +473,10 @@ internal fun NestedItemRow(
                                 }
                             )
                             .then(
-                                if (isRailCallout && calloutAccent != null) {
+                                if (isRailCallout && frameAccent != null) {
                                     Modifier.drawBehind {
                                         drawRect(
-                                            color = calloutAccent.copy(alpha = focusAlpha),
+                                            color = frameAccent.copy(alpha = focusAlpha),
                                             size = Size(railWidth.toPx(), size.height)
                                         )
                                     }
@@ -525,14 +527,15 @@ internal fun NestedItemRow(
                         }
 
                         Column(modifier = Modifier.weight(1f)) {
-                            if (calloutSpec != null && calloutAccent != null && !isTabCallout) {
+                            if (calloutSpec != null && frameAccent != null && !isTabCallout) {
                                 NestedCalloutHeader(
                                     spec = calloutSpec,
                                     title = item.calloutTitle ?: item.callout.displayName(),
-                                    accent = calloutAccent,
-                                    focusAlpha = focusAlpha
+                                    accent = frameAccent,
+                                    focusAlpha = focusAlpha,
+                                    overrideTitlePlacement = visuals.titlePlacement
                                 )
-                                Spacer(Modifier.height(calloutSpec.layout.headerGapDp().dp))
+                                Spacer(Modifier.height(tabHeaderGap))
                             }
                             if (isEditing) {
                                 var text by remember(item.id) { mutableStateOf(item.text) }
@@ -637,7 +640,7 @@ internal fun NestedItemRow(
                         }
                     }
 
-                    if (isTabCallout && calloutSpec != null && calloutAccent != null) {
+                    if (isTabCallout && calloutSpec != null && frameAccent != null) {
                         Box(
                             modifier = Modifier
                                 .align(Alignment.TopStart)
@@ -648,8 +651,9 @@ internal fun NestedItemRow(
                             NestedCalloutHeader(
                                 spec = calloutSpec,
                                 title = item.calloutTitle ?: item.callout.displayName(),
-                                accent = calloutAccent,
-                                focusAlpha = focusAlpha
+                                accent = frameAccent,
+                                focusAlpha = focusAlpha,
+                                overrideTitlePlacement = visuals.titlePlacement
                             )
                         }
                     }
