@@ -34,7 +34,9 @@ func nestedCalloutSymbol(_ key: String) -> String {
     switch key {
     case "info": "info.circle"
     case "lightbulb": "lightbulb"
+    case "idea": "brain.head.profile"
     case "sparkles": "sparkles"
+    case "summary": "star"
     case "important": "exclamationmark.circle"
     case "warning": "exclamationmark.triangle"
     case "caution": "exclamationmark.octagon"

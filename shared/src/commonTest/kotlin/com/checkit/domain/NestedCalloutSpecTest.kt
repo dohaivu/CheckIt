@@ -24,7 +24,7 @@ class NestedCalloutSpecTest {
     @Test
     fun everyKindHasARecipeAndDefaultTitle() {
         val kinds = NestedCalloutStyle.entries.filter { it != NestedCalloutStyle.None }
-        assertEquals(8, kinds.size)
+        assertEquals(10, kinds.size)
         kinds.forEach { kind ->
             val spec = kind.spec()
             assertTrue(spec != null, "${kind.name} must define a recipe")
@@ -33,9 +33,14 @@ class NestedCalloutSpecTest {
     }
 
     @Test
-    fun kindsCoverAllThreeLayouts() {
+    fun kindsCoverAllLayouts() {
         assertEquals(
-            setOf(NestedCalloutLayout.Panel, NestedCalloutLayout.Tab, NestedCalloutLayout.Rail),
+            setOf(
+                NestedCalloutLayout.Panel,
+                NestedCalloutLayout.Tab,
+                NestedCalloutLayout.Rail,
+                NestedCalloutLayout.Text
+            ),
             NestedCalloutStyle.entries.mapNotNull { it.spec()?.layout }.toSet()
         )
         assertEquals(
@@ -49,13 +54,21 @@ class NestedCalloutSpecTest {
     }
 
     @Test
-    fun textLayoutIsAnOverrideNotAPresetDefault() {
-        // Text is a frame-less treatment users can pick per row; no callout
-        // kind should silently change its default look.
-        assertTrue(NestedCalloutLayout.Text in NestedCalloutLayout.entries)
-        assertTrue(
-            NestedCalloutStyle.entries.none { it.spec()?.layout == NestedCalloutLayout.Text }
-        )
+    fun textKindsAreTypographyOnly() {
+        // Text presets contribute an eyebrow title and icon only: no card shape
+        // and no stroke, so the row keeps its own frame if the user set one.
+        val idea = NestedCalloutStyle.Idea.spec()!!
+        val summary = NestedCalloutStyle.Summary.spec()!!
+
+        listOf(idea, summary).forEach {
+            assertEquals(NestedCalloutLayout.Text, it.layout)
+            assertEquals(NestedCalloutTitlePlacement.Eyebrow, it.titlePlacement)
+            assertNull(it.shape)
+            assertEquals(NestedBorderStyle.None, it.borderStyle)
+        }
+        assertEquals(NestedColorToken.Yellow, idea.accent)
+        assertEquals(NestedColorToken.Indigo, summary.accent)
+        assertEquals(2, setOf(idea.iconKey, summary.iconKey).size)
     }
 
     @Test

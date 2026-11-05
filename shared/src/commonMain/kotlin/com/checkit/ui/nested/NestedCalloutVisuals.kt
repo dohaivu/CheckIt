@@ -17,6 +17,8 @@ import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.PriorityHigh
+import androidx.compose.material.icons.outlined.Psychology
+import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -46,7 +48,9 @@ import com.checkit.domain.NestedCalloutTitlePlacement
 internal fun nestedCalloutIcon(iconKey: String): ImageVector = when (iconKey) {
     "info" -> Icons.Outlined.Info
     "lightbulb" -> Icons.Outlined.Lightbulb
+    "idea" -> Icons.Outlined.Psychology
     "sparkles" -> Icons.Outlined.AutoAwesome
+    "summary" -> Icons.Outlined.StarOutline
     "important" -> Icons.Outlined.PriorityHigh
     "warning" -> Icons.Outlined.Warning
     "caution" -> Icons.Outlined.Dangerous

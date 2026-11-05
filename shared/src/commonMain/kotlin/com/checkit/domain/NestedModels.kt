@@ -116,7 +116,9 @@ enum class NestedCalloutStyle {
     None,
     Note,
     Tip,
+    Idea,
     Example,
+    Summary,
     Important,
     Warning,
     Caution,
@@ -150,6 +152,15 @@ enum class NestedCalloutStyle {
             titlePlacement = NestedCalloutTitlePlacement.Eyebrow,
             iconKey = "lightbulb"
         )
+        Idea -> NestedCalloutSpec(
+            layout = NestedCalloutLayout.Text,
+            accent = NestedColorToken.Yellow,
+            shape = null,
+            borderStyle = NestedBorderStyle.None,
+            borderWidthDp = 1f,
+            titlePlacement = NestedCalloutTitlePlacement.Eyebrow,
+            iconKey = "idea"
+        )
         Example -> NestedCalloutSpec(
             layout = NestedCalloutLayout.Panel,
             accent = NestedColorToken.Teal,
@@ -158,6 +169,15 @@ enum class NestedCalloutStyle {
             borderWidthDp = 1f,
             titlePlacement = NestedCalloutTitlePlacement.Eyebrow,
             iconKey = "sparkles"
+        )
+        Summary -> NestedCalloutSpec(
+            layout = NestedCalloutLayout.Text,
+            accent = NestedColorToken.Indigo,
+            shape = null,
+            borderStyle = NestedBorderStyle.None,
+            borderWidthDp = 1f,
+            titlePlacement = NestedCalloutTitlePlacement.Eyebrow,
+            iconKey = "summary"
         )
         Important -> NestedCalloutSpec(
             layout = NestedCalloutLayout.Tab,
