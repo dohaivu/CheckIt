@@ -49,6 +49,16 @@ class NestedCalloutSpecTest {
     }
 
     @Test
+    fun textLayoutIsAnOverrideNotAPresetDefault() {
+        // Text is a frame-less treatment users can pick per row; no callout
+        // kind should silently change its default look.
+        assertTrue(NestedCalloutLayout.Text in NestedCalloutLayout.entries)
+        assertTrue(
+            NestedCalloutStyle.entries.none { it.spec()?.layout == NestedCalloutLayout.Text }
+        )
+    }
+
+    @Test
     fun panelKindsAreDistinct() {
         val note = NestedCalloutStyle.Note.spec()!!
         val tip = NestedCalloutStyle.Tip.spec()!!

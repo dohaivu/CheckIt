@@ -700,7 +700,12 @@ struct NestedFormattingBar: View {
                 if item.callout != NestedCalloutStyle.none {
                     rows.append(.header("Layout"))
                     let activeLayout = item.calloutLayout ?? item.callout.spec()?.layout
-                    let allLayouts = [NestedCalloutLayout.panel, NestedCalloutLayout.tab, NestedCalloutLayout.rail]
+                    let allLayouts = [
+                        NestedCalloutLayout.panel,
+                        NestedCalloutLayout.tab,
+                        NestedCalloutLayout.rail,
+                        NestedCalloutLayout.text
+                    ]
                     for l in allLayouts {
                         rows.append(.item(
                             title: l.name.capitalized,

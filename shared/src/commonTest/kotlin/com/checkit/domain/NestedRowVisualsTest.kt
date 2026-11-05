@@ -117,6 +117,45 @@ class NestedRowVisualsTest {
     }
 
     @Test
+    fun textLayoutDropsThePresetFrame() {
+        // Important is a Tab preset with a cut-corner card. Text must keep the
+        // accent for the eyebrow but draw no stroke and no wash.
+        val important = NestedCalloutStyle.Important.spec()!!
+        val visuals = item(
+            callout = NestedCalloutStyle.Important,
+            calloutLayout = NestedCalloutLayout.Text
+        ).resolveVisuals()
+
+        assertEquals(NestedCalloutLayout.Text, visuals.layout)
+        assertEquals(NestedCalloutTitlePlacement.Eyebrow, visuals.titlePlacement)
+        assertEquals(NestedBorderStyle.None, visuals.borderStyle)
+        // The preset's cut-corner geometry must not leak in and clip content.
+        assertEquals(NestedBorderShape.Rounded, visuals.shape)
+        assertEquals(NestedColorToken.Default, visuals.bgToken)
+        assertEquals(0f, visuals.bgAlpha)
+        assertEquals(important.accent, visuals.borderToken)
+    }
+
+    @Test
+    fun textLayoutStillHonorsExplicitFormatting() {
+        val visuals = item(
+            callout = NestedCalloutStyle.Note,
+            calloutLayout = NestedCalloutLayout.Text,
+            backgroundColor = NestedColorToken.Yellow,
+            borderColor = NestedColorToken.Red,
+            borderShape = NestedBorderShape.Pill,
+            borderStyle = NestedBorderStyle.Dashed
+        ).resolveVisuals()
+
+        assertEquals(NestedCalloutLayout.Text, visuals.layout)
+        assertEquals(NestedColorToken.Yellow, visuals.bgToken)
+        assertEquals(EffectiveRowVisuals.EXPLICIT_BACKGROUND_ALPHA, visuals.bgAlpha)
+        assertEquals(NestedColorToken.Red, visuals.borderToken)
+        assertEquals(NestedBorderShape.Pill, visuals.shape)
+        assertEquals(NestedBorderStyle.Dashed, visuals.borderStyle)
+    }
+
+    @Test
     fun explicitFormattingOverridesThePreset() {
         val note = NestedCalloutStyle.Note.spec()!!
         val visuals = item(
