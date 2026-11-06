@@ -1137,6 +1137,20 @@ interface CheckItDao {
     }
 
     /**
+     * Inserts a copied subtree and its tag links atomically, so observers
+     * never see rows without their tags (or a partially inserted hierarchy).
+     * [items] must be pre-order: parents before children.
+     */
+    @Transaction
+    suspend fun insertNestedSubtree(
+        items: List<NestedListItemEntity>,
+        tagLinks: List<NestedItemTagEntity>
+    ) {
+        if (items.isNotEmpty()) insertNestedListItems(items)
+        if (tagLinks.isNotEmpty()) insertNestedItemTags(tagLinks)
+    }
+
+    /**
      * Force-pull replacement: hard-deletes the local document (cascading to
      * its items and tag links) and inserts the cloud rows in one transaction
      * so observers never see an empty intermediate tree.
@@ -1223,6 +1237,21 @@ interface CheckItDao {
         borderShape: String,
         borderStyle: String,
         borderColor: String,
+        updatedAtMillis: Long
+    )
+
+    @Query("UPDATE nested_list_items SET callout = :callout, calloutTitle = :calloutTitle, calloutLayout = CASE WHEN :callout = 'None' THEN NULL ELSE calloutLayout END, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
+    suspend fun updateNestedItemCallout(
+        itemId: String,
+        callout: String,
+        calloutTitle: String?,
+        updatedAtMillis: Long
+    )
+
+    @Query("UPDATE nested_list_items SET calloutLayout = :calloutLayout, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
+    suspend fun updateNestedItemCalloutLayout(
+        itemId: String,
+        calloutLayout: String?,
         updatedAtMillis: Long
     )
 

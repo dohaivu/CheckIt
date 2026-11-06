@@ -3,11 +3,13 @@ package com.checkit.domain.usecase
 import com.checkit.data.CheckItRepository
 import com.checkit.domain.MetricItem
 import com.checkit.domain.MetricRollupPolicy
+import com.checkit.domain.NestedCalloutStyle
 import com.checkit.domain.NestedColorToken
 import com.checkit.domain.NestedDocumentTree
 import com.checkit.domain.NestedItemNode
 import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.TaskPriority
+import com.checkit.domain.normalizedTitle
 import kotlin.time.Clock
 import kotlin.uuid.Uuid
 import kotlinx.serialization.Serializable
@@ -62,6 +64,9 @@ data class NestedItemExportData(
     val borderShape: String = "Rounded",
     val borderStyle: String = "None",
     val borderColor: String = "Default",
+    val callout: String = "None",
+    val calloutTitle: String? = null,
+    val calloutLayout: String? = null,
     val guideDotColor: String? = null,
     val guideDot: String? = null,
     val startDate: String? = null,
@@ -109,6 +114,11 @@ fun NestedItemNode.toExportData(): NestedItemExportData =
         borderShape = item.borderShape.name,
         borderStyle = item.borderStyle.name,
         borderColor = item.borderColor.name,
+        callout = item.callout.name,
+        calloutTitle = item.callout.normalizedTitle(item.calloutTitle),
+        calloutLayout = item.calloutLayout
+            ?.takeIf { item.callout != NestedCalloutStyle.None }
+            ?.name,
         guideDotColor = item.guideDotColor?.name,
         guideDot = item.guideDot,
         startDate = item.startDate?.toString(),

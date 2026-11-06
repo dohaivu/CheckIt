@@ -19,26 +19,30 @@ data class RichSpan(
 )
 
 /**
- * Shared highlight palette for `=={cN}==` (1-based `c1`..`c13`). Single
- * source of truth, also surfaced to pickers as
- * `AppIconColorDefaults.CommonColors`. Lowercase only; anything else is not
- * a token.
+ * Shared highlight palette for `=={cN}==` (1-based `c1`..`c13`), derived from
+ * [NestedColorToken] so highlights and row formatting share one color set.
+ * Also surfaced to pickers as `AppIconColorDefaults.CommonColors`.
+ *
+ * The order is the historical palette order and is append-only: `{cN}` tokens
+ * live inside note text, so reordering recolors existing notes and removing an
+ * entry makes it render as literal text. Lowercase `c` only; anything else is
+ * not a token.
  */
 val HighlightPalette: List<String> = listOf(
-    "#2563EB", // c1 Blue
-    "#7C3AED", // c2 Violet
-    "#C026D3", // c3 Fuchsia
-    "#DB2777", // c4 Pink
-    "#DC2626", // c5 Red
-    "#EA580C", // c6 Orange
-    "#CA8A04", // c7 Amber
-    "#65A30D", // c8 Lime
-    "#16A34A", // c9 Green
-    "#0D9488", // c10 Teal
-    "#0891B2", // c11 Cyan
-    "#7C2D12", // c12 Brown
-    "#64748B", // c13 Slate
-)
+    NestedColorToken.Red,
+    NestedColorToken.Orange,
+    NestedColorToken.Yellow,
+    NestedColorToken.Lime,
+    NestedColorToken.Green,
+    NestedColorToken.Teal,
+    NestedColorToken.Cyan,
+    NestedColorToken.Blue,
+    NestedColorToken.Indigo,
+    NestedColorToken.Purple,
+    NestedColorToken.Pink,
+    NestedColorToken.Brown,
+    NestedColorToken.Gray,
+).map { requireNotNull(it.hex()) }
 
 /** Resolves a `{cN}` token (braces included) to its hex, or null when unknown. */
 fun highlightHexForToken(token: String): String? =

@@ -39,6 +39,7 @@ import com.checkit.domain.usecase.CarryOverDailyPlanItemsUseCase
 import com.checkit.domain.usecase.CompleteDayCloseUseCase
 import com.checkit.domain.usecase.CompleteNoteUseCase
 import com.checkit.domain.usecase.CompleteTaskUseCase
+import com.checkit.domain.usecase.CopyNestedSubtreeUseCase
 import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
 import com.checkit.domain.usecase.DeleteJournalEntryUseCase
 import com.checkit.domain.usecase.DeleteListUseCase
@@ -60,6 +61,7 @@ import com.checkit.domain.usecase.MoveNoteUseCase
 import com.checkit.domain.usecase.MoveTaskUseCase
 import com.checkit.domain.usecase.IsTagNameTakenUseCase
 import com.checkit.domain.usecase.MoveNestedItemsUseCase
+import com.checkit.domain.usecase.NestedSubtreeClipboard
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveJournalEntriesUseCase
 import com.checkit.domain.usecase.ObserveNestedDocumentTreeUseCase
@@ -75,6 +77,7 @@ import com.checkit.domain.usecase.ObserveTasksForDateUseCase
 import com.checkit.domain.usecase.ObserveTasksInRangeUseCase
 import com.checkit.domain.usecase.ObserveTagsUseCase
 import com.checkit.domain.usecase.ObserveWorkingTasksUseCase
+import com.checkit.domain.usecase.PasteNestedSubtreeUseCase
 import com.checkit.domain.usecase.ObserveRoutineLogsUseCase
 import com.checkit.domain.usecase.ObserveRoutineTodayUseCase
 import com.checkit.domain.usecase.ObserveRoutinesUseCase
@@ -109,6 +112,8 @@ import com.checkit.domain.usecase.UpdateSectionUseCase
 import com.checkit.domain.usecase.UpdateNestedItemDateRangeUseCase
 import com.checkit.domain.usecase.UpdateNestedItemFormattingUseCase
 import com.checkit.domain.usecase.UpdateNestedItemBorderUseCase
+import com.checkit.domain.usecase.UpdateNestedItemCalloutUseCase
+import com.checkit.domain.usecase.UpdateNestedItemCalloutLayoutUseCase
 import com.checkit.domain.usecase.UpdateNestedItemGuideDotUseCase
 import com.checkit.domain.usecase.UpdateNestedItemGuideDotColorUseCase
 import com.checkit.domain.usecase.UpdateNestedItemLabelUseCase
@@ -268,6 +273,8 @@ val provideInteractorModule = module {
     single { UpdateNestedItemLabelUseCase(get()) }
     single { UpdateNestedItemFormattingUseCase(get()) }
     single { UpdateNestedItemBorderUseCase(get()) }
+    single { UpdateNestedItemCalloutUseCase(get()) }
+    single { UpdateNestedItemCalloutLayoutUseCase(get()) }
     single { UpdateNestedItemPriorityUseCase(get()) }
     single { UpdateNestedItemGuideDotUseCase(get()) }
     single { UpdateNestedItemGuideDotColorUseCase(get()) }
@@ -282,6 +289,9 @@ val provideInteractorModule = module {
     single { SetNestedItemsCollapsedUseCase(get()) }
     single { MoveNestedItemsUseCase(get()) }
     single { DeleteNestedItemsUseCase(get()) }
+    single { NestedSubtreeClipboard() }
+    single { CopyNestedSubtreeUseCase(get()) }
+    single { PasteNestedSubtreeUseCase(get(), get()) }
     single { ExportNestedListToMarkdownUseCase() }
     single { ExportNestedDocumentJsonUseCase(get()) }
     single { ImportNestedDocumentJsonUseCase(get()) }
@@ -300,6 +310,8 @@ val provideInteractorModule = module {
             updateItemLabel = get(),
             updateItemFormatting = get(),
             updateItemBorder = get(),
+            updateItemCallout = get(),
+            updateItemCalloutLayout = get(),
             updateItemDateRange = get(),
             updateItemPriority = get(),
             updateItemGuideDot = get(),
@@ -314,6 +326,9 @@ val provideInteractorModule = module {
             setItemsCollapsed = get(),
             moveItems = get(),
             deleteItems = get(),
+            copySubtreeUseCase = get(),
+            pasteSubtreeUseCase = get(),
+            subtreeClipboard = get(),
             exportDocumentJsonUseCase = get(),
             importDocumentJsonUseCase = get()
         )
@@ -467,6 +482,8 @@ val provideViewModelModule = module {
             updateItemLabelUseCase = get(),
             updateItemFormattingUseCase = get(),
             updateItemBorderUseCase = get(),
+            updateItemCalloutUseCase = get(),
+            updateItemCalloutLayoutUseCase = get(),
             updateItemDateRangeUseCase = get(),
             updateItemPriorityUseCase = get(),
             updateItemGuideDotUseCase = get(),
@@ -481,6 +498,9 @@ val provideViewModelModule = module {
             setItemsCollapsedUseCase = get(),
             moveItemsUseCase = get(),
             deleteItemsUseCase = get(),
+            copySubtreeUseCase = get(),
+            pasteSubtreeUseCase = get(),
+            subtreeClipboard = get(),
             settingsRepository = get(),
             syncManager = get(),
             accountManager = get()

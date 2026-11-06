@@ -550,14 +550,15 @@ struct NestedFormattingBar: View {
 
     @State private var showDates = false
     @State private var showLabel = false
+    @State private var showCalloutTitle = false
     @State private var showEmojiPicker = false
     @State private var startDate = Date()
     @State private var endDate = Date()
     @State private var hasStart = false
     @State private var hasEnd = false
 
-    /// Menu order for text styles (the shared enum lists Body first).
-    private let textStyles: [NestedTextStyle] = [.header, .subheader, .body]
+    /// Menu order for text styles (largest first, monostyled last).
+    private let textStyles: [NestedTextStyle] = [.title, .heading, .subheading, .body, .monostyled]
 
     /// Filled-flag tint from the shared TaskPriority palette (None → secondary).
     private func priorityTint(_ priority: TaskPriority) -> Color {
@@ -679,6 +680,62 @@ struct NestedFormattingBar: View {
             })
             .accessibilityLabel("Border")
             .help("Border")
+            // Callout: a visual frame that owns the row's card and can carry
+            // a custom title (defaults to the style name).
+            NestedMenuButton(rows: {
+                var rows: [NestedMenuRow] = [.header("Callout")]
+                for s in NestedCalloutStyle.entries {
+                    rows.append(.item(
+                        title: s.displayName(),
+                        icon: nestedCalloutMenuImage(s),
+                        selected: s == item.callout
+                    ) {
+                        state.updateCallout(
+                            id: item.id,
+                            style: s,
+                            title: s == NestedCalloutStyle.none ? nil : item.calloutTitle
+                        )
+                    })
+                }
+                if item.callout != NestedCalloutStyle.none {
+                    rows.append(.header("Layout"))
+                    let activeLayout = item.calloutLayout ?? item.callout.spec()?.layout
+                    for l in NestedCalloutLayout.entries {
+                        rows.append(.item(
+                            title: l.name,
+                            selected: l == activeLayout
+                        ) {
+                            let defaultLayout = item.callout.spec()?.layout
+                            state.updateCalloutLayout(
+                                id: item.id,
+                                layout: l == defaultLayout ? nil : l
+                            )
+                        })
+                    }
+                    rows.append(.header("Title"))
+                    rows.append(.item(
+                        title: "Custom title…",
+                        selected: item.calloutTitle != nil
+                    ) {
+                        DispatchQueue.main.async { showCalloutTitle = true }
+                    })
+                    if item.calloutTitle != nil {
+                        rows.append(.item(title: "Use default title", selected: false) {
+                            state.updateCallout(id: item.id, style: item.callout, title: nil)
+                        })
+                    }
+                }
+                return rows
+            }, label: {
+                NestedMenuTrigger(
+                    symbol: "text.bubble",
+                    tint: item.callout == NestedCalloutStyle.none
+                        ? .secondary
+                        : nestedTokenColor(item.callout.spec()?.accent ?? NestedColorToken.default_)
+                )
+            })
+            .accessibilityLabel("Callout")
+            .help("Callout")
             // Guide dot: emoji inside the row's dot (parents keep the ring).
             NestedMenuButton(rows: {
                 [
@@ -827,6 +884,21 @@ struct NestedFormattingBar: View {
                 onCancel: { showLabel = false }
             )
         }
+        .sheet(isPresented: $showCalloutTitle) {
+            NestedCalloutTitleSheet(
+                initialTitle: item.calloutTitle,
+                defaultTitle: item.callout.displayName(),
+                onSave: { title in
+                    state.updateCallout(id: item.id, style: item.callout, title: title)
+                    showCalloutTitle = false
+                },
+                onUseDefault: {
+                    state.updateCallout(id: item.id, style: item.callout, title: nil)
+                    showCalloutTitle = false
+                },
+                onCancel: { showCalloutTitle = false }
+            )
+        }
     }
 }
 
@@ -892,6 +964,62 @@ struct NestedLabelSheet: View {
             HStack {
                 Button("Clear") { onClear() }
                     .foregroundStyle(.red)
+                Spacer()
+                Button("Cancel") { onCancel() }
+                    .keyboardShortcut(.cancelAction)
+                Button("Save") { save() }
+                    .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(20)
+        .frame(width: 380)
+    }
+
+    private func save() {
+        onSave(trimmed.isEmpty ? nil : trimmed)
+    }
+}
+
+// MARK: - Callout title sheet
+
+struct NestedCalloutTitleSheet: View {
+    let defaultTitle: String
+    let onSave: (String?) -> Void
+    let onUseDefault: () -> Void
+    let onCancel: () -> Void
+
+    @State private var text: String
+
+    init(
+        initialTitle: String?,
+        defaultTitle: String,
+        onSave: @escaping (String?) -> Void,
+        onUseDefault: @escaping () -> Void,
+        onCancel: @escaping () -> Void
+    ) {
+        self.defaultTitle = defaultTitle
+        self.onSave = onSave
+        self.onUseDefault = onUseDefault
+        self.onCancel = onCancel
+        _text = State(initialValue: initialTitle ?? "")
+    }
+
+    private var trimmed: String {
+        text.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Callout title")
+                .font(.headline)
+            TextField(defaultTitle, text: $text)
+                .textFieldStyle(.roundedBorder)
+                .onSubmit { save() }
+            Text("Leave empty to show \"\(defaultTitle)\".")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            HStack {
+                Button("Use default") { onUseDefault() }
                 Spacer()
                 Button("Cancel") { onCancel() }
                     .keyboardShortcut(.cancelAction)

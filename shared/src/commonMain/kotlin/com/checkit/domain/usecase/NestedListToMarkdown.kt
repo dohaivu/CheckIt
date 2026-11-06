@@ -71,8 +71,10 @@ fun NestedItemNode.toMarkdown(
 
     val rawText = item.text.trim().ifEmpty { "Untitled" }
     val formattedText = when (item.textStyle) {
-        NestedTextStyle.Header -> "**$rawText**"
-        NestedTextStyle.Subheader -> "*$rawText*"
+        NestedTextStyle.Title -> "***$rawText***"
+        NestedTextStyle.Heading -> "**$rawText**"
+        NestedTextStyle.Subheading -> "*$rawText*"
+        NestedTextStyle.Monostyled -> "`$rawText`"
         NestedTextStyle.Body -> rawText
     }
     builder.append(formattedText)

@@ -43,10 +43,12 @@ import androidx.compose.material.icons.filled.CenterFocusStrong
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.EditNote
+import androidx.compose.material.icons.filled.FileCopy
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.FormatColorFill
 import androidx.compose.material.icons.filled.FormatColorText
@@ -117,6 +119,8 @@ import checkit.shared.generated.resources.nested_zoom_out
 import com.checkit.domain.FocusPeriod
 import com.checkit.domain.NestedBorderShape
 import com.checkit.domain.NestedBorderStyle
+import com.checkit.domain.NestedCalloutStyle
+import com.checkit.domain.NestedCalloutLayout
 import com.checkit.domain.NestedColorToken
 import com.checkit.domain.NestedItemNode
 import com.checkit.domain.NestedListItem
@@ -233,12 +237,40 @@ internal fun BreadcrumbBar(
 
 // ---------------- formatting bar ----------------
 
+/**
+ * Compact row for the formatting bar's menus. Material's default dropdown row
+ * reserves 48dp; the toolbar itself is 32dp, so a slightly shorter row keeps the
+ * popup visually tied to the bar while leaving label and icon spacing intact.
+ */
+private val NestedFormattingMenuItemHeight = 40.dp
+
+@Composable
+private fun NestedFormattingMenuItem(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    leadingIcon: (@Composable () -> Unit)? = null,
+    trailingIcon: (@Composable () -> Unit)? = null
+) {
+    DropdownMenuItem(
+        text = { Text(text) },
+        onClick = onClick,
+        modifier = modifier.height(NestedFormattingMenuItemHeight),
+        enabled = enabled,
+        leadingIcon = leadingIcon,
+        trailingIcon = trailingIcon
+    )
+}
+
 @Composable
 internal fun NestedFormattingBar(
     item: NestedListItem,
     hasChildren: Boolean,
     onFormattingChange: (NestedTextStyle, NestedColorToken, NestedColorToken) -> Unit,
     onBorderChange: (NestedBorderShape, NestedBorderStyle, NestedColorToken) -> Unit,
+    onCalloutChange: (NestedCalloutStyle, String?) -> Unit,
+    onCalloutLayoutChange: (NestedCalloutLayout?) -> Unit = {},
     onLabelChange: (String?) -> Unit,
     onPriorityChange: (TaskPriority) -> Unit,
     onGuideDotChange: (String?) -> Unit,
@@ -259,6 +291,8 @@ internal fun NestedFormattingBar(
     var showEmojiPicker by remember { mutableStateOf(false) }
     var showDateDialog by remember { mutableStateOf(false) }
     var showLabelDialog by remember { mutableStateOf(false) }
+    var calloutExpanded by remember { mutableStateOf(false) }
+    var showCalloutTitleDialog by remember { mutableStateOf(false) }
     val subtleInactiveColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f)
 
     Surface(
@@ -294,8 +328,8 @@ internal fun NestedFormattingBar(
                 }
                 DropdownMenu(expanded = styleExpanded, onDismissRequest = { styleExpanded = false }) {
                     NestedTextStyle.entries.forEach { style ->
-                        DropdownMenuItem(
-                            text = { Text(style.name) },
+                        NestedFormattingMenuItem(
+                            text = style.name,
                             modifier = if (style == item.textStyle) {
                                 Modifier.background(MaterialTheme.colorScheme.secondaryContainer)
                             } else {
@@ -307,8 +341,12 @@ internal fun NestedFormattingBar(
                             }
                         )
                     }
-                    DropdownMenuItem(
-                        text = { Text("Checkbox") },
+                    HorizontalDivider(
+                        modifier = Modifier,
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                    )
+                    NestedFormattingMenuItem(
+                        text = "Checkbox",
                         modifier = if (item.checkboxEnabled) {
                             Modifier.background(MaterialTheme.colorScheme.secondaryContainer)
                         } else {
@@ -319,8 +357,8 @@ internal fun NestedFormattingBar(
                             onToggleCheckbox()
                         }
                     )
-                    DropdownMenuItem(
-                        text = { Text("Add checkbox for children") },
+                    NestedFormattingMenuItem(
+                        text = "Add checkbox for children",
                         enabled = hasChildren,
                         onClick = {
                             styleExpanded = false
@@ -346,6 +384,99 @@ internal fun NestedFormattingBar(
                 style = item.borderStyle,
                 color = item.borderColor
             ) { shape, style, color -> onBorderChange(shape, style, color) }
+
+            val calloutSpec = item.callout.spec()
+            Box {
+                IconButton(
+                    onClick = { calloutExpanded = true },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = nestedCalloutIcon(item.callout),
+                        contentDescription = "Callout",
+                        tint = calloutSpec?.accent?.let { nestedColor(it) } ?: subtleInactiveColor,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                DropdownMenu(
+                    expanded = calloutExpanded,
+                    onDismissRequest = { calloutExpanded = false }
+                ) {
+                    Text(
+                        text = "Callout",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    )
+                    NestedCalloutStyle.entries.forEach { style ->
+                        NestedFormattingMenuItem(
+                            text = style.displayName(),
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = nestedCalloutIcon(style),
+                                    contentDescription = null,
+                                    tint = style.spec()?.accent?.let { nestedColor(it) }
+                                        ?: subtleInactiveColor,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
+                            trailingIcon = if (style == item.callout) {
+                                { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                            } else {
+                                null
+                            },
+                            onClick = {
+                                calloutExpanded = false
+                                onCalloutChange(
+                                    style,
+                                    if (style == NestedCalloutStyle.None) null else item.calloutTitle
+                                )
+                            }
+                        )
+                    }
+                    if (item.callout != NestedCalloutStyle.None) {
+                        HorizontalDivider()
+                        Text(
+                            text = "Layout",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                        )
+                        val activeLayout = item.calloutLayout ?: item.callout.spec()?.layout
+                        NestedCalloutLayout.entries.forEach { layout ->
+                            NestedFormattingMenuItem(
+                                text = layout.name,
+                                trailingIcon = if (layout == activeLayout) {
+                                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                                } else null,
+                                onClick = {
+                                    calloutExpanded = false
+                                    onCalloutLayoutChange(
+                                        if (layout == item.callout.spec()?.layout) null else layout
+                                    )
+                                }
+                            )
+                        }
+                        HorizontalDivider()
+                        NestedFormattingMenuItem(
+                            text = "Title…",
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.EditNote,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
+                            onClick = {
+                                calloutExpanded = false
+                                showCalloutTitleDialog = true
+                            }
+                        )
+                    }
+                }
+            }
 
             // Dot color also owns the connector into this row and its descendant spine.
             Box {
@@ -395,8 +526,8 @@ internal fun NestedFormattingBar(
                     expanded = guideDotExpanded,
                     onDismissRequest = { guideDotExpanded = false }
                 ) {
-                    DropdownMenuItem(
-                        text = { Text("Default dot") },
+                    NestedFormattingMenuItem(
+                        text = "Default dot",
                         trailingIcon = if (item.guideDot == null) {
                             { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
                         } else {
@@ -407,8 +538,8 @@ internal fun NestedFormattingBar(
                             onGuideDotChange(null)
                         }
                     )
-                    DropdownMenuItem(
-                        text = { Text(if (item.guideDot == null) "Choose emoji…" else "Change emoji…") },
+                    NestedFormattingMenuItem(
+                        text = if (item.guideDot == null) "Choose emoji…" else "Change emoji…",
                         onClick = {
                             guideDotExpanded = false
                             showEmojiPicker = true
@@ -440,8 +571,8 @@ internal fun NestedFormattingBar(
                 }
                 DropdownMenu(expanded = priorityExpanded, onDismissRequest = { priorityExpanded = false }) {
                     TaskPriority.entries.forEach { priority ->
-                        DropdownMenuItem(
-                            text = { Text(priority.name) },
+                        NestedFormattingMenuItem(
+                            text = priority.name,
                             leadingIcon = {
                                 Icon(
                                     imageVector = Icons.Default.Flag,
@@ -642,6 +773,18 @@ internal fun NestedFormattingBar(
             onSave = { label ->
                 onLabelChange(label)
                 showLabelDialog = false
+            }
+        )
+    }
+
+    if (showCalloutTitleDialog) {
+        NestedCalloutTitleDialog(
+            initialTitle = item.calloutTitle,
+            defaultTitle = item.callout.displayName(),
+            onDismiss = { showCalloutTitleDialog = false },
+            onSave = { title ->
+                onCalloutChange(item.callout, title)
+                showCalloutTitleDialog = false
             }
         )
     }
@@ -896,6 +1039,9 @@ internal fun EditorToolbar(
     onManageDetails: () -> Unit,
     onAddToDailyPlan: () -> Unit,
     onCopyToTask: () -> Unit,
+    onCopySubtree: () -> Unit,
+    onPasteSubtree: () -> Unit,
+    canPasteSubtree: Boolean,
     onEnterSelection: () -> Unit,
     onSortChildren: () -> Unit,
     onMoveTo: () -> Unit,
@@ -989,6 +1135,12 @@ internal fun EditorToolbar(
                     }
                     ToolbarMenuItem("Copy to Task", Icons.Default.ContentCopy, hasSelection) {
                         showMore = false; onCopyToTask()
+                    }
+                    ToolbarMenuItem("Copy subtree", Icons.Default.FileCopy, hasSelection) {
+                        showMore = false; onCopySubtree()
+                    }
+                    ToolbarMenuItem("Paste subtree", Icons.Default.ContentPaste, canPasteSubtree) {
+                        showMore = false; onPasteSubtree()
                     }
                     ToolbarMenuItem(stringResource(Res.string.nested_batch_delete), Icons.Default.Delete, hasSelection) {
                         showMore = false; onDelete()

@@ -454,6 +454,59 @@ internal fun NestedLabelDialog(
 }
 
 @Composable
+internal fun NestedCalloutTitleDialog(
+    initialTitle: String?,
+    defaultTitle: String,
+    onDismiss: () -> Unit,
+    onSave: (String?) -> Unit
+) {
+    var value by remember(initialTitle) { mutableStateOf(initialTitle.orEmpty()) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Callout title",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                AppOutlinedTextField(
+                    value = value,
+                    onValueChange = { value = it },
+                    placeholder = defaultTitle,
+                    maxLines = 1
+                )
+                Text(
+                    text = "Leave empty to show \"$defaultTitle\".",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onSave(value.trim().takeIf { it.isNotBlank() }) }) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = {
+                    value = ""
+                    onSave(null)
+                }
+            ) {
+                Text("Use default")
+            }
+        }
+    )
+}
+
+@Composable
 internal fun ColorTokenMenu(
     icon: ImageVector,
     selected: NestedColorToken,

@@ -1,5 +1,6 @@
 package com.checkit.domain.usecase
 
+import com.checkit.domain.NestedCalloutStyle
 import com.checkit.domain.NestedDocument
 import com.checkit.domain.NestedDocumentTree
 import com.checkit.domain.NestedItemNode
@@ -34,8 +35,7 @@ class NestedListToMarkdownTest {
     )
 
     @Test
-    fun testSimpleListExport() {
-        val nodes = listOf(
+    fun testSimpleListExport() {        val nodes = listOf(
             NestedItemNode(item = item("1", "First item")),
             NestedItemNode(item = item("2", "Second item"))
         )
@@ -54,11 +54,25 @@ class NestedListToMarkdownTest {
     }
 
     @Test
+    fun testCalloutIsOmittedFromMarkdown() {
+        val item = item("1", "Heads up").copy(
+            callout = NestedCalloutStyle.Warning,
+            calloutTitle = "Read me before continuing"
+        )
+        val tree = NestedDocumentTree(
+            document = NestedDocument("doc-1", "Test Doc", 0L, 0L),
+            rootNodes = listOf(NestedItemNode(item = item))
+        )
+        val md = tree.toMarkdown()
+        assertEquals("- Heads up", md)
+    }
+
+    @Test
     fun testCheckboxAndNestingExport() {
         val child1 = NestedItemNode(item = item("2", "Subtask uncompleted", checkbox = true, checked = false))
         val child2 = NestedItemNode(item = item("3", "Subtask completed", checkbox = true, checked = true))
         val root = NestedItemNode(
-            item = item("1", "Parent Task", checkbox = true, checked = false, style = NestedTextStyle.Header),
+            item = item("1", "Parent Task", checkbox = true, checked = false, style = NestedTextStyle.Heading),
             children = listOf(child1, child2)
         )
         val tree = NestedDocumentTree(
@@ -108,5 +122,17 @@ class NestedListToMarkdownTest {
               - Grandchild
         """.trimIndent()
         assertEquals(expected, childMd)
+    }
+
+    @Test
+    fun testTextStyleExport() {
+        fun export(style: NestedTextStyle, text: String) =
+            NestedItemNode(item = item("1", text, style = style)).toMarkdown()
+
+        assertEquals("- Plain", export(NestedTextStyle.Body, "Plain"))
+        assertEquals("- ***Title***", export(NestedTextStyle.Title, "Title"))
+        assertEquals("- **Heading**", export(NestedTextStyle.Heading, "Heading"))
+        assertEquals("- *Subheading*", export(NestedTextStyle.Subheading, "Subheading"))
+        assertEquals("- `Mono`", export(NestedTextStyle.Monostyled, "Mono"))
     }
 }

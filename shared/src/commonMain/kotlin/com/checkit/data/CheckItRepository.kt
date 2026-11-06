@@ -24,6 +24,9 @@ import com.checkit.domain.NestedDocument
 import com.checkit.domain.NestedDocumentTree
 import com.checkit.domain.NestedBorderShape
 import com.checkit.domain.NestedBorderStyle
+import com.checkit.domain.NestedCalloutLayout
+import com.checkit.domain.NestedCalloutStyle
+import com.checkit.domain.normalizedTitle
 import com.checkit.domain.NestedItemMove
 import com.checkit.domain.NestedListItem
 import com.checkit.domain.NestedTextStyle
@@ -178,11 +181,19 @@ interface CheckItRepository {
     suspend fun deleteNestedDocument(documentId: String)
     suspend fun reorderNestedDocuments(documentIds: List<String>)
     suspend fun addNestedItem(documentId: String, parentId: String?, text: String, position: Int?): String
+    /**
+     * Inserts a pre-planned subtree (pre-order, parents before children) in a
+     * single transaction. Items already carry their new ids, parents and
+     * positions; [documentId] is forced onto every row.
+     */
+    suspend fun addNestedSubtree(documentId: String, items: List<NestedListItem>)
     suspend fun updateNestedItemText(itemId: String, text: String)
     suspend fun updateNestedItemNote(itemId: String, note: String?)
     suspend fun updateNestedItemLabel(itemId: String, label: String?)
     suspend fun updateNestedItemFormatting(itemId: String, textStyle: NestedTextStyle, textColor: NestedColorToken, backgroundColor: NestedColorToken)
     suspend fun updateNestedItemBorder(itemId: String, borderShape: NestedBorderShape, borderStyle: NestedBorderStyle, borderColor: NestedColorToken)
+    suspend fun updateNestedItemCallout(itemId: String, callout: NestedCalloutStyle, calloutTitle: String?)
+    suspend fun updateNestedItemCalloutLayout(itemId: String, layout: NestedCalloutLayout?)
     suspend fun updateNestedItemPriority(itemId: String, priority: TaskPriority)
     suspend fun updateNestedItemGuideDot(itemId: String, guideDot: String?)
     suspend fun updateNestedItemGuideDotColor(itemId: String, guideDotColor: NestedColorToken?)
@@ -1536,6 +1547,15 @@ class RoomCheckItRepository(
         return id
     }
 
+    override suspend fun addNestedSubtree(documentId: String, items: List<NestedListItem>) {
+        if (items.isEmpty()) return
+        val entities = items.map { item -> item.toNestedListItemEntity(documentId) }
+        val tagLinks = items.flatMap { item ->
+            item.tags.map { tag -> NestedItemTagEntity(itemId = item.id, tagId = tag.id) }
+        }.distinctBy { it.itemId to it.tagId }
+        dao.insertNestedSubtree(entities, tagLinks)
+    }
+
     override suspend fun updateNestedItemText(itemId: String, text: String) {
         dao.updateNestedItemText(itemId, text.trim(), Clock.System.now().toEpochMilliseconds())
     }
@@ -1572,6 +1592,30 @@ class RoomCheckItRepository(
         borderColor: NestedColorToken
     ) {
         dao.updateNestedItemBorder(itemId, borderShape.name, borderStyle.name, borderColor.name, Clock.System.now().toEpochMilliseconds())
+    }
+
+    override suspend fun updateNestedItemCallout(
+        itemId: String,
+        callout: NestedCalloutStyle,
+        calloutTitle: String?
+    ) {
+        dao.updateNestedItemCallout(
+            itemId,
+            callout.name,
+            callout.normalizedTitle(calloutTitle),
+            Clock.System.now().toEpochMilliseconds()
+        )
+    }
+
+    override suspend fun updateNestedItemCalloutLayout(
+        itemId: String,
+        layout: NestedCalloutLayout?
+    ) {
+        dao.updateNestedItemCalloutLayout(
+            itemId,
+            layout?.name,
+            Clock.System.now().toEpochMilliseconds()
+        )
     }
 
     override suspend fun updateNestedItemPriority(itemId: String, priority: TaskPriority) {
@@ -1740,6 +1784,9 @@ class RoomCheckItRepository(
         val itemTagLinks = mutableListOf<NestedItemTagEntity>()
 
         preparedItems.forEach { item ->
+            val calloutStyle = runCatching {
+                NestedCalloutStyle.valueOf(item.callout)
+            }.getOrDefault(NestedCalloutStyle.None)
             itemEntities.add(
                 NestedListItemEntity(
                     id = item.id,
@@ -1759,6 +1806,12 @@ class RoomCheckItRepository(
                     borderShape = runCatching { NestedBorderShape.valueOf(item.borderShape) }.getOrDefault(NestedBorderShape.Rounded).name,
                     borderStyle = runCatching { NestedBorderStyle.valueOf(item.borderStyle) }.getOrDefault(NestedBorderStyle.None).name,
                     borderColor = runCatching { NestedColorToken.valueOf(item.borderColor) }.getOrDefault(NestedColorToken.Default).name,
+                    callout = calloutStyle.name,
+                    calloutTitle = calloutStyle.normalizedTitle(item.calloutTitle),
+                    calloutLayout = item.calloutLayout
+                        ?.let { layout -> runCatching { NestedCalloutLayout.valueOf(layout) }.getOrNull() }
+                        ?.takeIf { calloutStyle != NestedCalloutStyle.None }
+                        ?.name,
                     guideDotColor = item.guideDotColor?.let { color ->
                         runCatching { NestedColorToken.valueOf(color) }.getOrNull()?.takeIf { it != NestedColorToken.Default }?.name
                     },
@@ -2137,9 +2190,7 @@ private fun NoteEntity.toDomain(
     trashedAtMillis = trashedAtMillis
 )
 
-private fun NestedListItemEntity.toNestedListItem(
-    tags: List<TagItem> = emptyList()
-) = NestedListItem(
+private fun NestedListItem.toNestedListItemEntity(documentId: String) = NestedListItemEntity(
     id = id,
     documentId = documentId,
     parentId = parentId,
@@ -2151,29 +2202,80 @@ private fun NestedListItemEntity.toNestedListItem(
     checked = checked,
     completedAtMillis = completedAtMillis,
     collapsed = collapsed,
-    textStyle = runCatching { com.checkit.domain.NestedTextStyle.valueOf(textStyle) }.getOrDefault(com.checkit.domain.NestedTextStyle.Body),
-    textColor = runCatching { com.checkit.domain.NestedColorToken.valueOf(textColor) }.getOrDefault(com.checkit.domain.NestedColorToken.Default),
-    backgroundColor = runCatching { com.checkit.domain.NestedColorToken.valueOf(backgroundColor) }.getOrDefault(com.checkit.domain.NestedColorToken.Default),
-    borderShape = runCatching { com.checkit.domain.NestedBorderShape.valueOf(borderShape) }.getOrDefault(com.checkit.domain.NestedBorderShape.Rounded),
-    borderStyle = runCatching { com.checkit.domain.NestedBorderStyle.valueOf(borderStyle) }.getOrDefault(com.checkit.domain.NestedBorderStyle.None),
-    borderColor = runCatching { com.checkit.domain.NestedColorToken.valueOf(borderColor) }.getOrDefault(com.checkit.domain.NestedColorToken.Default),
-    guideDotColor = guideDotColor?.let { value ->
-        runCatching { com.checkit.domain.NestedColorToken.valueOf(value) }.getOrNull()
-            ?.takeIf { it != com.checkit.domain.NestedColorToken.Default }
-    },
+    textStyle = textStyle.name,
+    textColor = textColor.name,
+    backgroundColor = backgroundColor.name,
+    borderShape = borderShape.name,
+    borderStyle = borderStyle.name,
+    borderColor = borderColor.name,
+    callout = callout.name,
+    calloutTitle = calloutTitle,
+    calloutLayout = calloutLayout?.name,
+    guideDotColor = guideDotColor?.takeIf { it != NestedColorToken.Default }?.name,
     guideDot = sanitizeGuideDot(guideDot),
-    startDate = startDateEpochDays?.let { LocalDate.fromEpochDays(it) },
-    endDate = endDateEpochDays?.let { LocalDate.fromEpochDays(it) },
-    priority = runCatching { TaskPriority.valueOf(priority) }.getOrDefault(TaskPriority.None),
-    tags = tags,
+    startDateEpochDays = startDate?.toEpochDays()?.toInt(),
+    endDateEpochDays = endDate?.toEpochDays()?.toInt(),
+    priority = priority.name,
     actualMinutes = actualMinutes,
-    metricRollupPolicy = runCatching { MetricRollupPolicy.valueOf(metricRollupPolicy) }
-        .getOrDefault(MetricRollupPolicy.IncludeChildren),
+    metricRollupPolicy = metricRollupPolicy.name,
     showTrackedMinutes = showTrackedMinutes,
     progressPercent = progressPercent,
-    manualMetrics = runCatching {
-        metricsJsonFormat.decodeFromString<List<MetricItem>>(manualMetricsJson)
-    }.getOrDefault(emptyList()),
     createdAtMillis = createdAtMillis,
-    updatedAtMillis = updatedAtMillis
+    updatedAtMillis = updatedAtMillis,
+    dirty = true,
+    deleted = false,
+    manualMetricsJson = if (manualMetrics.isNotEmpty()) {
+        metricsJsonFormat.encodeToString(manualMetrics)
+    } else "[]"
 )
+
+private fun NestedListItemEntity.toNestedListItem(
+    tags: List<TagItem> = emptyList()
+): NestedListItem {
+    val calloutStyle = runCatching {
+        com.checkit.domain.NestedCalloutStyle.valueOf(callout)
+    }.getOrDefault(com.checkit.domain.NestedCalloutStyle.None)
+    return NestedListItem(
+        id = id,
+        documentId = documentId,
+        parentId = parentId,
+        position = position,
+        text = text,
+        note = note,
+        label = label,
+        checkboxEnabled = checkboxEnabled,
+        checked = checked,
+        completedAtMillis = completedAtMillis,
+        collapsed = collapsed,
+        textStyle = runCatching { com.checkit.domain.NestedTextStyle.valueOf(textStyle) }.getOrDefault(com.checkit.domain.NestedTextStyle.Body),
+        textColor = runCatching { com.checkit.domain.NestedColorToken.valueOf(textColor) }.getOrDefault(com.checkit.domain.NestedColorToken.Default),
+        backgroundColor = runCatching { com.checkit.domain.NestedColorToken.valueOf(backgroundColor) }.getOrDefault(com.checkit.domain.NestedColorToken.Default),
+        borderShape = runCatching { com.checkit.domain.NestedBorderShape.valueOf(borderShape) }.getOrDefault(com.checkit.domain.NestedBorderShape.Rounded),
+        borderStyle = runCatching { com.checkit.domain.NestedBorderStyle.valueOf(borderStyle) }.getOrDefault(com.checkit.domain.NestedBorderStyle.None),
+        borderColor = runCatching { com.checkit.domain.NestedColorToken.valueOf(borderColor) }.getOrDefault(com.checkit.domain.NestedColorToken.Default),
+        callout = calloutStyle,
+        calloutTitle = calloutStyle.normalizedTitle(calloutTitle),
+        calloutLayout = calloutLayout
+            ?.takeIf { calloutStyle != NestedCalloutStyle.None }
+            ?.let { name -> runCatching { NestedCalloutLayout.valueOf(name) }.getOrNull() },
+        guideDotColor = guideDotColor?.let { value ->
+            runCatching { com.checkit.domain.NestedColorToken.valueOf(value) }.getOrNull()
+                ?.takeIf { it != com.checkit.domain.NestedColorToken.Default }
+        },
+        guideDot = sanitizeGuideDot(guideDot),
+        startDate = startDateEpochDays?.let { LocalDate.fromEpochDays(it) },
+        endDate = endDateEpochDays?.let { LocalDate.fromEpochDays(it) },
+        priority = runCatching { TaskPriority.valueOf(priority) }.getOrDefault(TaskPriority.None),
+        tags = tags,
+        actualMinutes = actualMinutes,
+        metricRollupPolicy = runCatching { MetricRollupPolicy.valueOf(metricRollupPolicy) }
+            .getOrDefault(MetricRollupPolicy.IncludeChildren),
+        showTrackedMinutes = showTrackedMinutes,
+        progressPercent = progressPercent,
+        manualMetrics = runCatching {
+            metricsJsonFormat.decodeFromString<List<MetricItem>>(manualMetricsJson)
+        }.getOrDefault(emptyList()),
+        createdAtMillis = createdAtMillis,
+        updatedAtMillis = updatedAtMillis
+    )
+}

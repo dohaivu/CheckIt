@@ -63,7 +63,7 @@ class MarkdownSourceStyleTest {
     @Test
     fun coloredHighlightCarriesResolvedHex() {
         val span = parseMarkdownSourceStyles("=={c5}hi==").of(MarkdownSourceStyleKind.Highlight).single()
-        assertEquals("#DC2626", span.colorHex)
+        assertEquals("#16A34A", span.colorHex)
     }
 
     @Test

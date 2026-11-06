@@ -11,6 +11,8 @@ import com.checkit.domain.MetricRollupPolicy
 import com.checkit.domain.NestedColorToken
 import com.checkit.domain.NestedBorderShape
 import com.checkit.domain.NestedBorderStyle
+import com.checkit.domain.NestedCalloutStyle
+import com.checkit.domain.NestedCalloutLayout
 import com.checkit.domain.NestedDocument
 import com.checkit.domain.NestedDocumentTree
 import com.checkit.domain.NestedItemNode
@@ -25,12 +27,15 @@ import com.checkit.domain.TagItem
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.usecase.AddNestedDocumentUseCase
 import com.checkit.domain.usecase.AddNestedItemUseCase
+import com.checkit.domain.usecase.CopyNestedSubtreeUseCase
 import com.checkit.domain.usecase.DeleteNestedDocumentUseCase
 import com.checkit.domain.usecase.DeleteNestedItemsUseCase
 import com.checkit.domain.usecase.MoveNestedItemsUseCase
+import com.checkit.domain.usecase.NestedSubtreeClipboard
 import com.checkit.domain.usecase.ObserveNestedDocumentTreeUseCase
 import com.checkit.domain.usecase.ObserveNestedDocumentsUseCase
 import com.checkit.domain.usecase.ObserveNestedTagsUseCase
+import com.checkit.domain.usecase.PasteNestedSubtreeUseCase
 import com.checkit.domain.usecase.RenameNestedDocumentUseCase
 import com.checkit.domain.usecase.ReplaceNestedManualMetricsUseCase
 import com.checkit.domain.usecase.SetNestedItemCheckboxEnabledUseCase
@@ -41,6 +46,8 @@ import com.checkit.domain.usecase.resolveCollapseScopeRoots
 import com.checkit.domain.usecase.UpdateNestedItemDateRangeUseCase
 import com.checkit.domain.usecase.UpdateNestedItemFormattingUseCase
 import com.checkit.domain.usecase.UpdateNestedItemBorderUseCase
+import com.checkit.domain.usecase.UpdateNestedItemCalloutUseCase
+import com.checkit.domain.usecase.UpdateNestedItemCalloutLayoutUseCase
 import com.checkit.domain.usecase.UpdateNestedItemGuideDotUseCase
 import com.checkit.domain.usecase.UpdateNestedItemGuideDotColorUseCase
 import com.checkit.domain.usecase.UpdateNestedItemLabelUseCase
@@ -143,7 +150,9 @@ sealed interface NestedEditorState {
          * Transient view mode: dim everything outside the selection branch.
          * Reset per document; never persisted or written to data.
          */
-        val focusSelectionEnabled: Boolean = false
+        val focusSelectionEnabled: Boolean = false,
+        /** True while the shared subtree clipboard holds a clip. */
+        val canPasteSubtree: Boolean = false
     ) : NestedEditorState {
         val focusedItem: NestedItemNode? get() = tree.nodeById[zoomPath.lastOrNull()]
         val selectedItem: NestedItemNode? get() = tree.nodeById[selectedItemId]
@@ -179,6 +188,8 @@ class NestedListsViewModel(
     private val updateItemLabelUseCase: UpdateNestedItemLabelUseCase,
     private val updateItemFormattingUseCase: UpdateNestedItemFormattingUseCase,
     private val updateItemBorderUseCase: UpdateNestedItemBorderUseCase,
+    private val updateItemCalloutUseCase: UpdateNestedItemCalloutUseCase,
+    private val updateItemCalloutLayoutUseCase: UpdateNestedItemCalloutLayoutUseCase,
     private val updateItemDateRangeUseCase: UpdateNestedItemDateRangeUseCase,
     private val updateItemPriorityUseCase: UpdateNestedItemPriorityUseCase,
     private val updateItemGuideDotUseCase: UpdateNestedItemGuideDotUseCase,
@@ -193,6 +204,9 @@ class NestedListsViewModel(
     private val setItemsCollapsedUseCase: SetNestedItemsCollapsedUseCase,
     private val moveItemsUseCase: MoveNestedItemsUseCase,
     private val deleteItemsUseCase: DeleteNestedItemsUseCase,
+    private val copySubtreeUseCase: CopyNestedSubtreeUseCase,
+    private val pasteSubtreeUseCase: PasteNestedSubtreeUseCase,
+    private val subtreeClipboard: NestedSubtreeClipboard,
     private val settingsRepository: SettingsRepository,
     private val syncManager: NestedSyncManager,
     private val accountManager: GoogleAccountManager
@@ -243,6 +257,11 @@ class NestedListsViewModel(
                 }
             }
         }
+        viewModelScope.launch {
+            subtreeClipboard.clip.collect { clip ->
+                updateActiveEditor { it.copy(canPasteSubtree = clip != null) }
+            }
+        }
     }
 
     private fun collectDocuments() {
@@ -282,7 +301,8 @@ class NestedListsViewModel(
                             documentId = documentId,
                             tree = tree,
                             availableTags = latestTags,
-                            filters = NestedFilterState(displayType = latestNestedDisplayType)
+                            filters = NestedFilterState(displayType = latestNestedDisplayType),
+                            canPasteSubtree = subtreeClipboard.clip.value != null
                         )
                         current.copy(editor = active.copy(tree = tree))
                     }
@@ -674,6 +694,43 @@ class NestedListsViewModel(
         }
     }
 
+    // --- Subtree clipboard ---
+
+    /** Copies the selected item and all of its descendants into the app clipboard. */
+    fun copySelectedSubtree() {
+        val active = getActiveEditor() ?: return
+        val itemId = active.selectedItemId ?: return
+        val clip = copySubtreeUseCase(active.tree, itemId) ?: return
+        _events.tryEmit(
+            UiEvent.ShowSnackbar(
+                if (clip.itemCount == 1) "Copied item" else "Copied ${clip.itemCount} items"
+            )
+        )
+    }
+
+    /** Pastes the clipboard under the selected item, or at the document root. */
+    fun pasteSubtree() {
+        val active = getActiveEditor() ?: return
+        val parentId = active.selectedItemId
+        viewModelScope.launch {
+            runCatching { pasteSubtreeUseCase(active.documentId, parentId, active.tree.flatItems) }
+                .onSuccess { count ->
+                    if (count == 0) return@onSuccess
+                    if (parentId != null && active.tree.nodeById[parentId]?.item?.collapsed == true) {
+                        runCatching { toggleCollapsedUseCase(parentId) }
+                    }
+                    _events.tryEmit(
+                        UiEvent.ShowSnackbar(
+                            if (count == 1) "Pasted item" else "Pasted $count items"
+                        )
+                    )
+                }
+                .onFailure { error ->
+                    _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to paste subtree"))
+                }
+        }
+    }
+
     // --- Formatting & Metadata ---
 
     fun updateItemLabel(itemId: String, label: String?) {
@@ -686,6 +743,14 @@ class NestedListsViewModel(
 
     fun updateItemBorder(itemId: String, shape: NestedBorderShape, style: NestedBorderStyle, color: NestedColorToken) {
         viewModelScope.launch { updateItemBorderUseCase(itemId, shape, style, color) }
+    }
+
+    fun updateItemCallout(itemId: String, callout: NestedCalloutStyle, title: String?) {
+        viewModelScope.launch { updateItemCalloutUseCase(itemId, callout, title) }
+    }
+
+    fun updateItemCalloutLayout(itemId: String, layout: NestedCalloutLayout?) {
+        viewModelScope.launch { updateItemCalloutLayoutUseCase(itemId, layout) }
     }
 
     fun updateItemDateRange(itemId: String, start: LocalDate?, end: LocalDate?) {

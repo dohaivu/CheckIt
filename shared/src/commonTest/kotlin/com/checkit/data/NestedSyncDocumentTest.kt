@@ -78,6 +78,9 @@ class NestedSyncDocumentTest {
             borderShape = "Cloud",
             borderStyle = "Dashed",
             borderColor = "Pink",
+            callout = "Caution",
+            calloutTitle = "Watch out",
+            calloutLayout = "Rail",
             guideDot = "🚀",
             startDateEpochDays = 20000,
             endDateEpochDays = 20001,
@@ -110,6 +113,9 @@ class NestedSyncDocumentTest {
         assertEquals("Cloud", remote?.borderShape)
         assertEquals("Dashed", remote?.borderStyle)
         assertEquals("Pink", remote?.borderColor)
+        assertEquals("Caution", remote?.callout)
+        assertEquals("Watch out", remote?.calloutTitle)
+        assertEquals("Rail", remote?.calloutLayout)
         assertEquals("🚀", remote?.guideDot)
         assertEquals("High", remote?.priority)
         assertEquals(25, remote?.actualMinutes)
@@ -117,6 +123,38 @@ class NestedSyncDocumentTest {
         assertEquals(listOf("tag-1", "tag-2"), remote?.tagIds)
         assertEquals(50, remote?.progressPercent)
         assertFalse(remote?.deleted ?: true)
+    }
+
+    @Test
+    fun itemMapDropsCalloutLayoutWithoutACallout() {
+        val map = NestedSyncDocument.itemToMap(
+            id = "item-1",
+            documentId = "doc-1",
+            parentId = null,
+            position = 0,
+            text = "x",
+            note = null,
+            checkboxEnabled = false,
+            checked = false,
+            textStyle = "Body",
+            textColor = "Default",
+            backgroundColor = "Default",
+            callout = "None",
+            calloutLayout = "Text",
+            startDateEpochDays = null,
+            endDateEpochDays = null,
+            priority = "None",
+            actualMinutes = 0,
+            metricRollupPolicy = "IncludeChildren",
+            showTrackedMinutes = false,
+            progressPercent = null,
+            manualMetricsJson = "[]",
+            tagIds = emptyList(),
+            createdAtMillis = 100L,
+            updatedAtMillis = 200L,
+            deleted = false,
+        )
+        assertNull(map[NestedSyncDocument.FIELD_CALLOUT_LAYOUT])
     }
 
     @Test

@@ -169,7 +169,7 @@ class MarkdownParsingTest {
         assertEquals(0, span.start)
         assertEquals(2, span.end)
         assertEquals(FontWeight.Bold, span.item.fontWeight)
-        assertEquals(Color(0xFF2563EB), span.item.color)
+        assertEquals(Color(0xFFDC2626), span.item.color)
     }
 
     @Test
@@ -198,7 +198,7 @@ class MarkdownParsingTest {
         val result = renderFullMarkdown(input)
 
         assertEquals("both", result.text)
-        assertTrue(result.spanStyles.any { it.item.color == Color(0xFFDC2626) })
+        assertTrue(result.spanStyles.any { it.item.color == Color(0xFF16A34A) })
     }
 
     @Test
@@ -209,7 +209,7 @@ class MarkdownParsingTest {
 
         assertEquals("Go =={c5}now==", transformed.text.text)
 
-        val highlightSpan = transformed.text.spanStyles.firstOrNull { it.item.color == Color(0xFFDC2626) }
+        val highlightSpan = transformed.text.spanStyles.firstOrNull { it.item.color == Color(0xFF16A34A) }
         assertTrue(highlightSpan != null, "Expected a colored highlight span style")
         assertEquals(3, highlightSpan.start)
         assertEquals(14, highlightSpan.end) // Includes raw "=={c5}now=="
