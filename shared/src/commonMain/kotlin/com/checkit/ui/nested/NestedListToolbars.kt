@@ -237,6 +237,32 @@ internal fun BreadcrumbBar(
 
 // ---------------- formatting bar ----------------
 
+/**
+ * Compact row for the formatting bar's menus. Material's default dropdown row
+ * reserves 48dp; the toolbar itself is 32dp, so a slightly shorter row keeps the
+ * popup visually tied to the bar while leaving label and icon spacing intact.
+ */
+private val NestedFormattingMenuItemHeight = 40.dp
+
+@Composable
+private fun NestedFormattingMenuItem(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    leadingIcon: (@Composable () -> Unit)? = null,
+    trailingIcon: (@Composable () -> Unit)? = null
+) {
+    DropdownMenuItem(
+        text = { Text(text) },
+        onClick = onClick,
+        modifier = modifier.height(NestedFormattingMenuItemHeight),
+        enabled = enabled,
+        leadingIcon = leadingIcon,
+        trailingIcon = trailingIcon
+    )
+}
+
 @Composable
 internal fun NestedFormattingBar(
     item: NestedListItem,
@@ -302,8 +328,8 @@ internal fun NestedFormattingBar(
                 }
                 DropdownMenu(expanded = styleExpanded, onDismissRequest = { styleExpanded = false }) {
                     NestedTextStyle.entries.forEach { style ->
-                        DropdownMenuItem(
-                            text = { Text(style.name) },
+                        NestedFormattingMenuItem(
+                            text = style.name,
                             modifier = if (style == item.textStyle) {
                                 Modifier.background(MaterialTheme.colorScheme.secondaryContainer)
                             } else {
@@ -319,8 +345,8 @@ internal fun NestedFormattingBar(
                         modifier = Modifier,
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
                     )
-                    DropdownMenuItem(
-                        text = { Text("Checkbox") },
+                    NestedFormattingMenuItem(
+                        text = "Checkbox",
                         modifier = if (item.checkboxEnabled) {
                             Modifier.background(MaterialTheme.colorScheme.secondaryContainer)
                         } else {
@@ -331,8 +357,8 @@ internal fun NestedFormattingBar(
                             onToggleCheckbox()
                         }
                     )
-                    DropdownMenuItem(
-                        text = { Text("Add checkbox for children") },
+                    NestedFormattingMenuItem(
+                        text = "Add checkbox for children",
                         enabled = hasChildren,
                         onClick = {
                             styleExpanded = false
@@ -384,8 +410,8 @@ internal fun NestedFormattingBar(
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                     )
                     NestedCalloutStyle.entries.forEach { style ->
-                        DropdownMenuItem(
-                            text = { Text(style.displayName()) },
+                        NestedFormattingMenuItem(
+                            text = style.displayName(),
                             leadingIcon = {
                                 Icon(
                                     imageVector = nestedCalloutIcon(style),
@@ -420,8 +446,8 @@ internal fun NestedFormattingBar(
                         )
                         val activeLayout = item.calloutLayout ?: item.callout.spec()?.layout
                         NestedCalloutLayout.entries.forEach { layout ->
-                            DropdownMenuItem(
-                                text = { Text(layout.name) },
+                            NestedFormattingMenuItem(
+                                text = layout.name,
                                 trailingIcon = if (layout == activeLayout) {
                                     { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
                                 } else null,
@@ -434,8 +460,8 @@ internal fun NestedFormattingBar(
                             )
                         }
                         HorizontalDivider()
-                        DropdownMenuItem(
-                            text = { Text("Title…") },
+                        NestedFormattingMenuItem(
+                            text = "Title…",
                             leadingIcon = {
                                 Icon(
                                     imageVector = Icons.Default.EditNote,
@@ -500,8 +526,8 @@ internal fun NestedFormattingBar(
                     expanded = guideDotExpanded,
                     onDismissRequest = { guideDotExpanded = false }
                 ) {
-                    DropdownMenuItem(
-                        text = { Text("Default dot") },
+                    NestedFormattingMenuItem(
+                        text = "Default dot",
                         trailingIcon = if (item.guideDot == null) {
                             { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
                         } else {
@@ -512,8 +538,8 @@ internal fun NestedFormattingBar(
                             onGuideDotChange(null)
                         }
                     )
-                    DropdownMenuItem(
-                        text = { Text(if (item.guideDot == null) "Choose emoji…" else "Change emoji…") },
+                    NestedFormattingMenuItem(
+                        text = if (item.guideDot == null) "Choose emoji…" else "Change emoji…",
                         onClick = {
                             guideDotExpanded = false
                             showEmojiPicker = true
@@ -545,8 +571,8 @@ internal fun NestedFormattingBar(
                 }
                 DropdownMenu(expanded = priorityExpanded, onDismissRequest = { priorityExpanded = false }) {
                     TaskPriority.entries.forEach { priority ->
-                        DropdownMenuItem(
-                            text = { Text(priority.name) },
+                        NestedFormattingMenuItem(
+                            text = priority.name,
                             leadingIcon = {
                                 Icon(
                                     imageVector = Icons.Default.Flag,
