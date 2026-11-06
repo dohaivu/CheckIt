@@ -209,6 +209,19 @@ internal fun NestedListScreen(
             val listState = rememberLazyListState()
             val haptics = LocalHapticFeedback.current
             val density = LocalDensity.current
+            val rowActions = remember(viewModel) {
+                NestedRowActions(
+                    toggleCollapsed = viewModel::toggleCollapsed,
+                    zoomToItem = viewModel::zoomToItem,
+                    selectItem = viewModel::selectItem,
+                    toggleSelect = viewModel::toggleSelect,
+                    startEditText = viewModel::startEditText,
+                    cancelAddItem = viewModel::cancelAddItem,
+                    toggleChecked = viewModel::toggleChecked,
+                    saveItemText = viewModel::saveItemText,
+                    startAddSibling = viewModel::startAddSibling
+                )
+            }
             var drag by remember { mutableStateOf<DragDropState?>(null) }
 
             val draggedDescendantIds = remember<Set<String>>(drag?.itemId, state.tree) {
@@ -233,6 +246,28 @@ internal fun NestedListScreen(
                     visibleRows.filterNot { it.node.item.id in draggedDescendantIds }
                 } else {
                     visibleRows
+                }
+            }
+            // Resolve each row's immutable inputs once per projection/editor
+            // change. Rows then receive stable values and can skip when their
+            // own snapshot is unchanged.
+            val rowSnapshots = remember(
+                effectiveVisibleRows,
+                state.tree,
+                state.selection,
+                state.selectedItemId,
+                state.editingTextItemId,
+                addingItem != null
+            ) {
+                effectiveVisibleRows.map { row ->
+                    nestedRowSnapshot(
+                        row = row,
+                        tree = state.tree,
+                        selection = state.selection,
+                        selectedItemId = state.selectedItemId,
+                        editingTextItemId = state.editingTextItemId,
+                        isAddingItem = addingItem != null
+                    )
                 }
             }
             val focusActive = state.focusSelectionEnabled && !state.selection.isActive
@@ -403,13 +438,8 @@ internal fun NestedListScreen(
                                         }
                                 ) {
                                     NestedItemRow(
-                                        node = row.node,
-                                        depth = row.depth,
-                                        isInCheckedBranch = row.isInCheckedBranch,
-                                        continuingLevels = row.continuingLevels,
-                                        continuingGuideOwners = row.continuingGuideOwners,
-                                        ancestorGuideOwners = row.ancestorGuideOwners,
-                                        isContext = row.isContext,
+                                        snapshot = rowSnapshots[index],
+                                        actions = rowActions,
                                         spineLevel = selectionBranch
                                             ?.takeIf { branch ->
                                                 index in branch.range &&
@@ -423,8 +453,6 @@ internal fun NestedListScreen(
                                             range = focusRange,
                                             ancestorIds = focusAncestors
                                         ),
-                                        state = state,
-                                        viewModel = viewModel,
                                         isDragActive = drag != null,
                                         isDragged = isDragged
                                     )

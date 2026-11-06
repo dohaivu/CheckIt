@@ -40,7 +40,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -78,7 +80,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.checkit.domain.NestedColorToken
 import com.checkit.domain.NestedCalloutLayout
-import com.checkit.domain.NestedItemNode
+import com.checkit.domain.NestedDocumentTree
 import com.checkit.domain.NestedListItem
 import com.checkit.domain.EffectiveRowVisuals
 import com.checkit.domain.NestedMetricSummary
@@ -158,6 +160,88 @@ private fun nestedPaletteColor(token: NestedColorToken): Color =
     token.hex()?.parseHexColorOrNull() ?: Color.Unspecified
 
 /**
+ * Immutable inputs for one row, resolved once from the editor snapshot.
+ *
+ * The row receives this instead of the whole [NestedEditorState.Active], so a
+ * selection or edit change only rewrites the affected row's inputs. The
+ * annotation is a promise that nothing in here is mutated after construction;
+ * [NestedListItem] is a read-model snapshot rebuilt by the repository.
+ */
+@Immutable
+internal data class NestedRowSnapshot(
+    val item: NestedListItem,
+    val hasChildren: Boolean,
+    val depth: Int,
+    val isInCheckedBranch: Boolean,
+    val isContext: Boolean,
+    val isSelected: Boolean,
+    val isEditing: Boolean,
+    val isSelectionActive: Boolean,
+    val isAddingItem: Boolean,
+    val summary: NestedMetricSummary,
+    val guideBaseColor: Color,
+    val continuingLevels: Set<Int>,
+    val branchBaseColor: Color,
+    val continuingGuideColors: Map<Int, Color>
+)
+
+/** Row events hoisted to the editor. One stable instance is shared by all rows. */
+@Stable
+internal class NestedRowActions(
+    val toggleCollapsed: (String) -> Unit,
+    val zoomToItem: (String) -> Unit,
+    val selectItem: (String) -> Unit,
+    val toggleSelect: (String) -> Unit,
+    val startEditText: (String) -> Unit,
+    val cancelAddItem: () -> Unit,
+    val toggleChecked: (String) -> Unit,
+    val saveItemText: (String, String) -> Unit,
+    val startAddSibling: (String) -> Unit
+)
+
+/**
+ * Resolve the immutable row inputs from the editor state. Called per visible
+ * row while the list projection is rebuilt, never from inside the row itself.
+ */
+internal fun nestedRowSnapshot(
+    row: VisibleNestedRow,
+    tree: NestedDocumentTree,
+    selection: SelectionState,
+    selectedItemId: String?,
+    editingTextItemId: String?,
+    isAddingItem: Boolean
+): NestedRowSnapshot {
+    val item = row.node.item
+    val isSelected = item.id in selection.selectedIds ||
+        (!selection.isActive && selectedItemId == item.id)
+    val branchBaseColor = (row.depth - 1).takeIf { it >= 0 }?.let { parentDepth ->
+        row.ancestorGuideOwners[parentDepth]?.let { parentId ->
+            tree.itemById[parentId]?.guideDotColor?.let(::nestedPaletteColor)
+        } ?: nestedDepthColor(parentDepth)
+    } ?: nestedDepthColor(0)
+    val continuingGuideColors = row.continuingGuideOwners.mapValues { (level, ownerId) ->
+        tree.itemById[ownerId]?.guideDotColor?.let(::nestedPaletteColor)
+            ?: nestedDepthColor(level)
+    }
+    return NestedRowSnapshot(
+        item = item,
+        hasChildren = row.node.hasChildren,
+        depth = row.depth,
+        isInCheckedBranch = row.isInCheckedBranch,
+        isContext = row.isContext,
+        isSelected = isSelected,
+        isEditing = editingTextItemId == item.id,
+        isSelectionActive = selection.isActive,
+        isAddingItem = isAddingItem,
+        summary = tree.metricSummaryById[item.id] ?: NestedMetricSummary(),
+        guideBaseColor = item.guideDotColor?.let(::nestedPaletteColor) ?: nestedDepthColor(row.depth),
+        continuingLevels = row.continuingLevels,
+        branchBaseColor = branchBaseColor,
+        continuingGuideColors = continuingGuideColors
+    )
+}
+
+/**
  * Guide-emoji text style. Emoji fonts ship a tall line box; trimming keeps the glyph optically centred.
  */
 internal val nestedGuideEmojiStyle = TextStyle(
@@ -173,41 +257,23 @@ internal val nestedGuideEmojiStyle = TextStyle(
 
 @Composable
 internal fun NestedItemRow(
-    node: NestedItemNode,
-    depth: Int,
-    isInCheckedBranch: Boolean,
-    continuingLevels: Set<Int>,
-    continuingGuideOwners: Map<Int, String>,
-    ancestorGuideOwners: Map<Int, String> = emptyMap(),
-    state: NestedEditorState.Active,
-    viewModel: NestedListsViewModel,
+    snapshot: NestedRowSnapshot,
+    actions: NestedRowActions,
     spineLevel: Int?,
     isSpineRoot: Boolean,
-    isContext: Boolean = false,
     focusTier: NestedFocusTier = NestedFocusTier.None,
     isDragActive: Boolean = false,
     isDragged: Boolean = false
 ) {
-    val item = node.item
-    val guideBaseColor = remember(item.guideDotColor, depth) {
-        item.guideDotColor?.let(::nestedPaletteColor) ?: nestedDepthColor(depth)
-    }
-    val branchBaseColor = remember(depth, ancestorGuideOwners, state.tree) {
-        (depth - 1).takeIf { it >= 0 }?.let { parentDepth ->
-            ancestorGuideOwners[parentDepth]?.let { parentId ->
-                state.tree.itemById[parentId]?.guideDotColor?.let(::nestedPaletteColor)
-            } ?: nestedDepthColor(parentDepth)
-        } ?: nestedDepthColor(0)
-    }
-    val continuingGuideColors = remember(continuingGuideOwners, state.tree) {
-        continuingGuideOwners.mapValues { (level, ownerId) ->
-            state.tree.itemById[ownerId]?.guideDotColor?.let(::nestedPaletteColor)
-                ?: nestedDepthColor(level)
-        }
-    }
-    val isSelected = item.id in state.selection.selectedIds ||
-            (!state.selection.isActive && state.selectedItemId == item.id)
-    val isEditing = state.editingTextItemId == item.id
+    val item = snapshot.item
+    val depth = snapshot.depth
+    val hasChildren = snapshot.hasChildren
+    val continuingLevels = snapshot.continuingLevels
+    val guideBaseColor = snapshot.guideBaseColor
+    val branchBaseColor = snapshot.branchBaseColor
+    val continuingGuideColors = snapshot.continuingGuideColors
+    val isSelected = snapshot.isSelected
+    val isEditing = snapshot.isEditing
     val isEmphasized = isSelected || isEditing
 
     val focusAlpha by animateFloatAsState(
@@ -220,8 +286,8 @@ internal fun NestedItemRow(
         label = "nestedFocusAlpha"
     )
     val baseTextColor = when {
-        isContext && !isEmphasized -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-        isInCheckedBranch -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.68f)
+        snapshot.isContext && !isEmphasized -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+        snapshot.isInCheckedBranch -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.68f)
         item.textColor != NestedColorToken.Default -> nestedColor(item.textColor)
         else -> MaterialTheme.colorScheme.onSurface
     }
@@ -229,8 +295,8 @@ internal fun NestedItemRow(
 
     val guideEmoji = item.guideDot
     val dotSize = when {
-        node.hasChildren && guideEmoji != null -> 22.dp
-        node.hasChildren -> 14.dp
+        hasChildren && guideEmoji != null -> 22.dp
+        hasChildren -> 14.dp
         guideEmoji != null -> 18.dp
         else -> 7.dp
     }
@@ -354,7 +420,7 @@ internal fun NestedItemRow(
                             )
                         }
 
-                        if (node.hasChildren && !item.collapsed) {
+                        if (hasChildren && !item.collapsed) {
                             val x = guideX(depth)
                             drawLine(
                                 color = nestedGuideColor(guideBaseColor, emphasized = isEmphasized || isSpineRoot, focusAlpha = focusAlpha),
@@ -378,9 +444,9 @@ internal fun NestedItemRow(
                         .width(24.dp)
                         .height(36.dp)
                         .noRippleClickable(
-                            enabled = node.hasChildren,
-                            onClick = { viewModel.toggleCollapsed(item.id) },
-                            onDoubleClick = { viewModel.zoomToItem(item.id) }
+                            enabled = hasChildren,
+                            onClick = { actions.toggleCollapsed(item.id) },
+                            onDoubleClick = { actions.zoomToItem(item.id) }
                         ),
                     contentAlignment = Alignment.TopStart
                 ) {
@@ -390,7 +456,6 @@ internal fun NestedItemRow(
                         focusAlpha = focusAlpha,
                         hasGuideEmoji = guideEmoji != null
                     )
-                    val hasChildren = node.hasChildren
                     val ringStroke = when {
                         guideEmoji != null && (isEmphasized || isSpineRoot) -> 1.25.dp
                         guideEmoji != null -> 1.dp
@@ -486,15 +551,15 @@ internal fun NestedItemRow(
                             )
                             .combinedClickable(
                                 onClick = {
-                                    if (state.selection.isActive) {
-                                        viewModel.toggleSelect(item.id)
+                                    if (snapshot.isSelectionActive) {
+                                        actions.toggleSelect(item.id)
                                     } else {
-                                        viewModel.selectItem(item.id)
-                                        if (state.overlay is NestedEditorOverlay.AddingItem) viewModel.cancelAddItem()
+                                        actions.selectItem(item.id)
+                                        if (snapshot.isAddingItem) actions.cancelAddItem()
                                     }
                                 },
                                 onDoubleClick = {
-                                    if (!state.selection.isActive) viewModel.startEditText(item.id)
+                                    if (!snapshot.isSelectionActive) actions.startEditText(item.id)
                                 }
                             )
                             .padding(
@@ -518,7 +583,7 @@ internal fun NestedItemRow(
                         if (item.checkboxEnabled) {
                             Checkbox(
                                 checked = item.checked,
-                                onCheckedChange = { viewModel.toggleChecked(item.id) },
+                                onCheckedChange = { actions.toggleChecked(item.id) },
                                 modifier = Modifier.size(28.dp).scale(0.7f).align(Alignment.Top),
                                 colors = CheckboxDefaults.colors(uncheckedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
                             )
@@ -547,7 +612,7 @@ internal fun NestedItemRow(
                                 DisposableEffect(item.id) {
                                     onDispose {
                                         if (text != item.text) {
-                                            viewModel.saveItemText(item.id, text)
+                                            actions.saveItemText(item.id, text)
                                         }
                                     }
                                 }
@@ -566,7 +631,7 @@ internal fun NestedItemRow(
                                         .focusRequester(focusRequester)
                                         .onFocusChanged { focusState ->
                                             if (!focusState.isFocused && isEditing && text != item.text) {
-                                                viewModel.saveItemText(item.id, text)
+                                                actions.saveItemText(item.id, text)
                                             }
                                         }
                                 )
@@ -578,7 +643,7 @@ internal fun NestedItemRow(
                                     style = nestedTextStyle(item.textStyle),
                                     textDecoration = if (item.checked) TextDecoration.LineThrough else TextDecoration.None,
                                     color = itemTextColor,
-                                    fontWeight = if (depth == 0 && !node.hasChildren) FontWeight.Bold else null
+                                    fontWeight = if (depth == 0 && !hasChildren) FontWeight.Bold else null
                                 )
                             }
                             Box(
@@ -590,9 +655,8 @@ internal fun NestedItemRow(
                             ) {
                                 NestedItemMetadataPreview(
                                     item = item,
-                                    summary = state.tree.metricSummaryById[item.id]
-                                        ?: NestedMetricSummary(),
-                                    isLeaf = !node.hasChildren
+                                    summary = snapshot.summary,
+                                    isLeaf = !hasChildren
                                 )
                             }
                         }
@@ -631,10 +695,10 @@ internal fun NestedItemRow(
                             }
                         }
 
-                        if (state.selection.isActive) {
+                        if (snapshot.isSelectionActive) {
                             Checkbox(
                                 checked = isSelected,
-                                onCheckedChange = { viewModel.toggleSelect(item.id) },
+                                onCheckedChange = { actions.toggleSelect(item.id) },
                                 modifier = Modifier.size(28.dp).scale(0.7f).align(Alignment.Top)
                             )
                         }
@@ -662,10 +726,10 @@ internal fun NestedItemRow(
 
             if (
                 isSelected &&
-                !state.selection.isActive &&
+                !snapshot.isSelectionActive &&
                 !isEditing &&
                 !isDragActive &&
-                state.overlay !is NestedEditorOverlay.AddingItem
+                !snapshot.isAddingItem
             ) {
                 Box(
                     modifier = Modifier
@@ -673,7 +737,7 @@ internal fun NestedItemRow(
                         .size(24.dp)
                         .clip(CircleShape)
                         .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.50f))
-                        .clickable { viewModel.startAddSibling(item.id) },
+                        .clickable { actions.startAddSibling(item.id) },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
