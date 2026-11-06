@@ -533,7 +533,7 @@ internal fun NestedItemRow(
                                     title = item.calloutTitle ?: item.callout.displayName(),
                                     accent = frameAccent,
                                     focusAlpha = focusAlpha,
-                                    overrideTitlePlacement = visuals.titlePlacement
+                                    placement = visuals.titlePlacementOrDefault
                                 )
                                 Spacer(Modifier.height(tabHeaderGap))
                             }
@@ -653,7 +653,7 @@ internal fun NestedItemRow(
                                 title = item.calloutTitle ?: item.callout.displayName(),
                                 accent = frameAccent,
                                 focusAlpha = focusAlpha,
-                                overrideTitlePlacement = visuals.titlePlacement
+                                placement = visuals.titlePlacementOrDefault
                             )
                         }
                     }

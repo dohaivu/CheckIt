@@ -71,10 +71,10 @@ internal fun nestedCalloutIcon(style: NestedCalloutStyle): ImageVector =
 internal val NestedCalloutTabBadgeHeight = 20.dp
 
 /**
- * Row title treatment. Panel uses an uppercase eyebrow, Tab a filled badge
- * sitting on the card's top border at the leading edge, and Rail an inline
+ * Row title treatment. Panel and Text use an uppercase eyebrow, Tab a filled
+ * badge sitting on the card's top border at the leading edge, and Rail an inline
  * accent label next to the icon. The accent color is shared with the frame so
- * all three read as one callout.
+ * every layout reads as one callout.
  */
 @Composable
 internal fun NestedCalloutHeader(
@@ -82,10 +82,9 @@ internal fun NestedCalloutHeader(
     title: String,
     accent: Color,
     focusAlpha: Float,
-    overrideTitlePlacement: NestedCalloutTitlePlacement? = null
+    placement: NestedCalloutTitlePlacement
 ) {
     val icon = nestedCalloutIcon(spec.iconKey)
-    val placement = overrideTitlePlacement ?: spec.titlePlacement
     when (placement) {
         NestedCalloutTitlePlacement.Eyebrow -> Row(
             modifier = Modifier.alpha(focusAlpha),

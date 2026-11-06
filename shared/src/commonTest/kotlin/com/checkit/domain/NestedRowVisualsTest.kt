@@ -41,6 +41,7 @@ class NestedRowVisualsTest {
         assertNull(visuals.calloutSpec)
         assertNull(visuals.layout)
         assertNull(visuals.titlePlacement)
+        assertEquals(NestedCalloutTitlePlacement.Eyebrow, visuals.titlePlacementOrDefault)
         assertEquals(NestedBorderShape.Rounded, visuals.shape)
         assertEquals(NestedBorderStyle.None, visuals.borderStyle)
         assertEquals(EffectiveRowVisuals.DEFAULT_BORDER_WIDTH_DP, visuals.borderWidthDp)
@@ -134,6 +135,20 @@ class NestedRowVisualsTest {
         assertEquals(NestedColorToken.Default, visuals.bgToken)
         assertEquals(0f, visuals.bgAlpha)
         assertEquals(important.accent, visuals.borderToken)
+    }
+
+    @Test
+    fun textPresetResolvesAsTextLayout() {
+        val idea = NestedCalloutStyle.Idea.spec()!!
+        val visuals = item(callout = NestedCalloutStyle.Idea).resolveVisuals()
+
+        assertEquals(NestedCalloutLayout.Text, visuals.layout)
+        assertEquals(NestedCalloutTitlePlacement.Eyebrow, visuals.titlePlacement)
+        assertEquals(NestedBorderStyle.None, visuals.borderStyle)
+        assertEquals(NestedBorderShape.Rounded, visuals.shape)
+        assertEquals(idea.accent, visuals.borderToken)
+        assertEquals(NestedColorToken.Default, visuals.bgToken)
+        assertEquals(0f, visuals.bgAlpha)
     }
 
     @Test

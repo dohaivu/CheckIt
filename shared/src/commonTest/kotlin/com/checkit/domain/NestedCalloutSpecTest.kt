@@ -49,8 +49,19 @@ class NestedCalloutSpecTest {
                 NestedCalloutTitlePlacement.TopTab,
                 NestedCalloutTitlePlacement.Inline
             ),
-            NestedCalloutStyle.entries.mapNotNull { it.spec()?.titlePlacement }.toSet()
+            NestedCalloutStyle.entries
+                .mapNotNull { it.spec()?.layout }
+                .map { it.titlePlacement() }
+                .toSet()
         )
+    }
+
+    @Test
+    fun layoutsPickTheirTitleTreatment() {
+        assertEquals(NestedCalloutTitlePlacement.Eyebrow, NestedCalloutLayout.Panel.titlePlacement())
+        assertEquals(NestedCalloutTitlePlacement.TopTab, NestedCalloutLayout.Tab.titlePlacement())
+        assertEquals(NestedCalloutTitlePlacement.Inline, NestedCalloutLayout.Rail.titlePlacement())
+        assertEquals(NestedCalloutTitlePlacement.Eyebrow, NestedCalloutLayout.Text.titlePlacement())
     }
 
     @Test
@@ -62,7 +73,7 @@ class NestedCalloutSpecTest {
 
         listOf(idea, summary).forEach {
             assertEquals(NestedCalloutLayout.Text, it.layout)
-            assertEquals(NestedCalloutTitlePlacement.Eyebrow, it.titlePlacement)
+            assertEquals(NestedCalloutTitlePlacement.Eyebrow, it.layout.titlePlacement())
             assertNull(it.shape)
             assertEquals(NestedBorderStyle.None, it.borderStyle)
         }
@@ -101,7 +112,7 @@ class NestedCalloutSpecTest {
 
         listOf(important, warning, caution).forEach {
             assertEquals(NestedCalloutLayout.Tab, it.layout)
-            assertEquals(NestedCalloutTitlePlacement.TopTab, it.titlePlacement)
+            assertEquals(NestedCalloutTitlePlacement.TopTab, it.layout.titlePlacement())
         }
         assertEquals(NestedColorToken.Purple, important.accent)
         assertEquals(NestedColorToken.Orange, warning.accent)
@@ -118,7 +129,7 @@ class NestedCalloutSpecTest {
 
         listOf(question, quote).forEach {
             assertEquals(NestedCalloutLayout.Rail, it.layout)
-            assertEquals(NestedCalloutTitlePlacement.Inline, it.titlePlacement)
+            assertEquals(NestedCalloutTitlePlacement.Inline, it.layout.titlePlacement())
             assertNull(it.shape)
             assertEquals(3f, it.borderWidthDp)
         }

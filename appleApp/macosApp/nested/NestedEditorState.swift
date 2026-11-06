@@ -50,6 +50,9 @@ struct NestedRow: Identifiable, Equatable {
     /// Equatable rendering key for the summary. Parent summaries may change
     /// when a descendant changes without altering the parent's item timestamp.
     let summaryRenderKey: String
+    /// Preset + explicit formatting resolved once when the row snapshot is
+    /// built, so SwiftUI bodies do not re-run `resolveVisuals()` per property.
+    let visuals: EffectiveRowVisuals
 
     static func == (lhs: NestedRow, rhs: NestedRow) -> Bool {
         lhs.id == rhs.id
@@ -476,7 +479,8 @@ final class NestedEditorState: ObservableObject {
                     isInCheckedBranch: inCheckedBranch,
                     isContext: contextIds.contains(node.item.id),
                     summary: summary,
-                    summaryRenderKey: "\(summary.doneTaskCount)|\(summary.totalTaskCount)|\(summary.trackedMinutes)"
+                    summaryRenderKey: "\(summary.doneTaskCount)|\(summary.totalTaskCount)|\(summary.trackedMinutes)",
+                    visuals: node.item.resolveVisuals()
                 )
             )
             if !node.item.collapsed {

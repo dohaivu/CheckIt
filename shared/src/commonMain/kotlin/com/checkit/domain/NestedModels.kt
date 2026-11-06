@@ -104,13 +104,14 @@ enum class NestedBorderStyle {
 }
 
 /**
- * Visual frame for one nested row. Persisted by [name], so entries are
- * append-only: renaming or removing one falls back to [None] on read.
+ * Visual frame for one nested row. Persisted by [name], so entries must never
+ * be renamed or removed; an unknown value reads back as [None].
  *
  * This is a style identifier, not a semantic tag. The frame is derived from
- * [spec] so Compose and macOS SwiftUI render the same recipe. A callout owns
- * the row's card shape, border and tint; the stored background/border fields
- * stay untouched and become visible again when the callout is removed.
+ * [spec] so Compose and macOS SwiftUI render the same recipe. Panel, Tab and
+ * Rail callouts own the row's card shape, border and tint; Text callouts add
+ * only an accented icon and eyebrow, leaving the stored background/border
+ * fields in charge. Those stored fields reappear when the callout is removed.
  */
 enum class NestedCalloutStyle {
     None,
@@ -140,7 +141,6 @@ enum class NestedCalloutStyle {
             shape = NestedBorderShape.Rounded,
             borderStyle = NestedBorderStyle.Solid,
             borderWidthDp = 1f,
-            titlePlacement = NestedCalloutTitlePlacement.Eyebrow,
             iconKey = "info"
         )
         Tip -> NestedCalloutSpec(
@@ -149,7 +149,6 @@ enum class NestedCalloutStyle {
             shape = NestedBorderShape.Leaf,
             borderStyle = NestedBorderStyle.Solid,
             borderWidthDp = 1f,
-            titlePlacement = NestedCalloutTitlePlacement.Eyebrow,
             iconKey = "lightbulb"
         )
         Idea -> NestedCalloutSpec(
@@ -158,7 +157,6 @@ enum class NestedCalloutStyle {
             shape = null,
             borderStyle = NestedBorderStyle.None,
             borderWidthDp = 1f,
-            titlePlacement = NestedCalloutTitlePlacement.Eyebrow,
             iconKey = "idea"
         )
         Example -> NestedCalloutSpec(
@@ -167,7 +165,6 @@ enum class NestedCalloutStyle {
             shape = NestedBorderShape.Rounded,
             borderStyle = NestedBorderStyle.Dotted,
             borderWidthDp = 1f,
-            titlePlacement = NestedCalloutTitlePlacement.Eyebrow,
             iconKey = "sparkles"
         )
         Summary -> NestedCalloutSpec(
@@ -176,7 +173,6 @@ enum class NestedCalloutStyle {
             shape = null,
             borderStyle = NestedBorderStyle.None,
             borderWidthDp = 1f,
-            titlePlacement = NestedCalloutTitlePlacement.Eyebrow,
             iconKey = "summary"
         )
         Important -> NestedCalloutSpec(
@@ -185,7 +181,6 @@ enum class NestedCalloutStyle {
             shape = NestedBorderShape.CutCorner,
             borderStyle = NestedBorderStyle.Solid,
             borderWidthDp = 1f,
-            titlePlacement = NestedCalloutTitlePlacement.TopTab,
             iconKey = "important"
         )
         Warning -> NestedCalloutSpec(
@@ -194,7 +189,6 @@ enum class NestedCalloutStyle {
             shape = NestedBorderShape.CutCorner,
             borderStyle = NestedBorderStyle.Dashed,
             borderWidthDp = 1f,
-            titlePlacement = NestedCalloutTitlePlacement.TopTab,
             iconKey = "warning"
         )
         Caution -> NestedCalloutSpec(
@@ -203,7 +197,6 @@ enum class NestedCalloutStyle {
             shape = NestedBorderShape.Rectangle,
             borderStyle = NestedBorderStyle.Solid,
             borderWidthDp = 2f,
-            titlePlacement = NestedCalloutTitlePlacement.TopTab,
             iconKey = "caution"
         )
         Question -> NestedCalloutSpec(
@@ -212,7 +205,6 @@ enum class NestedCalloutStyle {
             shape = null,
             borderStyle = NestedBorderStyle.Solid,
             borderWidthDp = 3f,
-            titlePlacement = NestedCalloutTitlePlacement.Inline,
             iconKey = "question"
         )
         Quote -> NestedCalloutSpec(
@@ -221,7 +213,6 @@ enum class NestedCalloutStyle {
             shape = null,
             borderStyle = NestedBorderStyle.Solid,
             borderWidthDp = 3f,
-            titlePlacement = NestedCalloutTitlePlacement.Inline,
             iconKey = "quote"
         )
     }
@@ -263,13 +254,23 @@ enum class NestedCalloutTitlePlacement {
     Inline
 }
 
+/** Title treatment implied by a layout; the only source of that mapping. */
+fun NestedCalloutLayout.titlePlacement(): NestedCalloutTitlePlacement = when (this) {
+    NestedCalloutLayout.Panel,
+    NestedCalloutLayout.Text -> NestedCalloutTitlePlacement.Eyebrow
+    NestedCalloutLayout.Tab -> NestedCalloutTitlePlacement.TopTab
+    NestedCalloutLayout.Rail -> NestedCalloutTitlePlacement.Inline
+}
+
 /**
  * One callout's visual recipe. Pure data so both platforms share the look and
  * the contract is unit-testable without a canvas.
  *
  * [shape] is null for [NestedCalloutLayout.Rail], which draws only a left
- * accent rail. [borderWidthDp] is the stroke width for cards and the rail
- * width for rails.
+ * accent rail, and for [NestedCalloutLayout.Text], which has no preset frame.
+ * [borderWidthDp] is the stroke width for cards and the rail width for rails.
+ * The title treatment is not stored here; it follows from [layout] via
+ * [NestedCalloutLayout.titlePlacement].
  */
 data class NestedCalloutSpec(
     val layout: NestedCalloutLayout,
@@ -277,7 +278,6 @@ data class NestedCalloutSpec(
     val shape: NestedBorderShape?,
     val borderStyle: NestedBorderStyle,
     val borderWidthDp: Float,
-    val titlePlacement: NestedCalloutTitlePlacement,
     val iconKey: String
 )
 
@@ -366,13 +366,7 @@ data class NestedListItem(
         // A layout override only means something with a callout; defensive
         // because stored/imported rows can outlive the callout being cleared.
         val layout = spec?.let { calloutLayout ?: it.layout }
-        val titlePlacement = when (layout) {
-            NestedCalloutLayout.Panel -> NestedCalloutTitlePlacement.Eyebrow
-            NestedCalloutLayout.Tab -> NestedCalloutTitlePlacement.TopTab
-            NestedCalloutLayout.Rail -> NestedCalloutTitlePlacement.Inline
-            NestedCalloutLayout.Text -> NestedCalloutTitlePlacement.Eyebrow
-            null -> null
-        }
+        val titlePlacement = layout?.titlePlacement()
         val isTextLayout = layout == NestedCalloutLayout.Text
 
         val hasBackground = backgroundColor != NestedColorToken.Default
@@ -464,6 +458,10 @@ data class EffectiveRowVisuals(
     /** Alpha for [bgToken]: an explicit fill reads stronger than a preset wash. */
     val bgAlpha: Float
 ) {
+    /** Header placement; safe fallback for the callout-less row that draws none. */
+    val titlePlacementOrDefault: NestedCalloutTitlePlacement
+        get() = titlePlacement ?: NestedCalloutTitlePlacement.Eyebrow
+
     companion object {
         /** Wash strength for a preset callout tint. */
         const val CALLOUT_BACKGROUND_ALPHA = 0.10f

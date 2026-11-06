@@ -126,6 +126,38 @@ class NestedSyncDocumentTest {
     }
 
     @Test
+    fun itemMapDropsCalloutLayoutWithoutACallout() {
+        val map = NestedSyncDocument.itemToMap(
+            id = "item-1",
+            documentId = "doc-1",
+            parentId = null,
+            position = 0,
+            text = "x",
+            note = null,
+            checkboxEnabled = false,
+            checked = false,
+            textStyle = "Body",
+            textColor = "Default",
+            backgroundColor = "Default",
+            callout = "None",
+            calloutLayout = "Text",
+            startDateEpochDays = null,
+            endDateEpochDays = null,
+            priority = "None",
+            actualMinutes = 0,
+            metricRollupPolicy = "IncludeChildren",
+            showTrackedMinutes = false,
+            progressPercent = null,
+            manualMetricsJson = "[]",
+            tagIds = emptyList(),
+            createdAtMillis = 100L,
+            updatedAtMillis = 200L,
+            deleted = false,
+        )
+        assertNull(map[NestedSyncDocument.FIELD_CALLOUT_LAYOUT])
+    }
+
+    @Test
     fun itemFromMapNullOnMissingRequiredFields() {
         val base = NestedSyncDocument.itemToMap(
             id = "item-1",

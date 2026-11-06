@@ -141,7 +141,7 @@ object NestedSyncDocument {
         FIELD_BORDER_COLOR to borderColor,
         FIELD_CALLOUT to callout,
         FIELD_CALLOUT_TITLE to calloutTitle,
-        FIELD_CALLOUT_LAYOUT to calloutLayout,
+        FIELD_CALLOUT_LAYOUT to calloutLayout?.takeIf { callout != "None" },
         FIELD_GUIDE_DOT_COLOR to guideDotColor,
         FIELD_GUIDE_DOT to guideDot,
         FIELD_START_DATE to startDateEpochDays,

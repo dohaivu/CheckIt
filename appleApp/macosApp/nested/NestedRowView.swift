@@ -73,19 +73,18 @@ func nestedCalloutMenuImage(_ style: NestedCalloutStyle) -> NSImage? {
 /// half can overhang.
 private let nestedCalloutBadgeHeight: CGFloat = 20
 
-/// Row title treatment. Panel uses an uppercase eyebrow, Tab a filled badge
-/// sitting on the card's top border at the leading edge, and Rail an inline
-/// accent label next to the icon.
+/// Row title treatment. Panel and Text use an uppercase eyebrow, Tab a filled
+/// badge sitting on the card's top border at the leading edge, and Rail an
+/// inline accent label next to the icon.
 @ViewBuilder
 func nestedCalloutHeader(
     _ spec: NestedCalloutSpec,
+    placement: NestedCalloutTitlePlacement,
     title: String,
     accent: Color,
-    focusOpacity: Double,
-    overrideTitlePlacement: NestedCalloutTitlePlacement? = nil
+    focusOpacity: Double
 ) -> some View {
     let icon = Image(systemName: nestedCalloutSymbol(spec.iconKey))
-    let placement = overrideTitlePlacement ?? spec.titlePlacement
     switch placement {
     case NestedCalloutTitlePlacement.eyebrow:
         HStack(spacing: 4) {
@@ -297,10 +296,10 @@ struct NestedRowView: View, Equatable {
                 if let spec = calloutSpec, !isTabCallout {
                     nestedCalloutHeader(
                         spec,
+                        placement: effectiveTitlePlacement,
                         title: item.calloutTitle ?? item.callout.displayName(),
                         accent: effectiveCalloutAccent,
-                        focusOpacity: focusOpacity,
-                        overrideTitlePlacement: effectiveTitlePlacement
+                        focusOpacity: focusOpacity
                     )
                 }
                 HStack(alignment: .center, spacing: 6) {
@@ -442,10 +441,10 @@ struct NestedRowView: View, Equatable {
                     HStack(spacing: 0) {
                         nestedCalloutHeader(
                             spec,
+                            placement: effectiveTitlePlacement,
                             title: item.calloutTitle ?? item.callout.displayName(),
                             accent: effectiveCalloutAccent,
-                            focusOpacity: focusOpacity,
-                            overrideTitlePlacement: effectiveTitlePlacement
+                            focusOpacity: focusOpacity
                         )
                         Spacer(minLength: 0)
                     }
@@ -629,9 +628,9 @@ struct NestedRowView: View, Equatable {
         return branch.depth
     }
 
-    /// Shared resolution of preset + explicit overrides, so the macOS row draws
-    /// the exact same frame as the Compose row (`NestedListItem.resolveVisuals`).
-    private var visuals: EffectiveRowVisuals { item.resolveVisuals() }
+    /// Resolved once into the row snapshot so every helper below reads the same
+    /// frame without re-crossing the Kotlin bridge.
+    private var visuals: EffectiveRowVisuals { row.visuals }
 
     private var calloutSpec: NestedCalloutSpec? { visuals.calloutSpec }
 
@@ -639,8 +638,8 @@ struct NestedRowView: View, Equatable {
 
     private var isTabCallout: Bool { visuals.layout == NestedCalloutLayout.tab }
 
-    private var effectiveTitlePlacement: NestedCalloutTitlePlacement? {
-        visuals.titlePlacement
+    private var effectiveTitlePlacement: NestedCalloutTitlePlacement {
+        visuals.titlePlacementOrDefault
     }
 
     /// Mirrors `NestedCalloutLayout.headerGapDp()`: Tab needs a little more
@@ -656,10 +655,7 @@ struct NestedRowView: View, Equatable {
 
     private var effectiveCalloutAccent: Color {
         let token = effectiveBorderColorToken
-        if token == NestedColorToken.default_ {
-            return calloutSpec.map { nestedTokenColor($0.accent) } ?? .secondary
-        }
-        return nestedTokenColor(token)
+        return token == NestedColorToken.default_ ? .secondary : nestedTokenColor(token)
     }
 
     private var rowBackground: Color {

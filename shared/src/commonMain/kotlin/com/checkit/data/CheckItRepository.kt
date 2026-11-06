@@ -2255,9 +2255,9 @@ private fun NestedListItemEntity.toNestedListItem(
         borderColor = runCatching { com.checkit.domain.NestedColorToken.valueOf(borderColor) }.getOrDefault(com.checkit.domain.NestedColorToken.Default),
         callout = calloutStyle,
         calloutTitle = calloutStyle.normalizedTitle(calloutTitle),
-        calloutLayout = calloutLayout?.let { name ->
-            runCatching { NestedCalloutLayout.valueOf(name) }.getOrNull()
-        },
+        calloutLayout = calloutLayout
+            ?.takeIf { calloutStyle != NestedCalloutStyle.None }
+            ?.let { name -> runCatching { NestedCalloutLayout.valueOf(name) }.getOrNull() },
         guideDotColor = guideDotColor?.let { value ->
             runCatching { com.checkit.domain.NestedColorToken.valueOf(value) }.getOrNull()
                 ?.takeIf { it != com.checkit.domain.NestedColorToken.Default }
