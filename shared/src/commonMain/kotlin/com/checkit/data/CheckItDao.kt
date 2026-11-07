@@ -741,7 +741,7 @@ interface CheckItDao {
         INSERT OR REPLACE INTO habit_daily_rollups(dateEpochDays, habitKey, title, doneMinutes)
         SELECT i.dateEpochDays,
                CASE WHEN i.taskId IS NOT NULL THEN 'task:' || i.taskId ELSE 'title:' || LOWER(TRIM(i.title)) END,
-               MAX(TRIM(i.title)),
+               MAX(TRIM(t.name)),
                SUM(
                    CASE
                        WHEN i.startTimeMinutes IS NOT NULL AND i.endTimeMinutes IS NOT NULL
@@ -750,6 +750,7 @@ interface CheckItDao {
                    END
                )
         FROM daily_plan_items AS i
+        JOIN tasks AS t ON t.id = i.taskId
         WHERE i.isHabit = 1 AND i.status = 'Done' AND i.deleted = 0
         GROUP BY i.dateEpochDays,
                  CASE WHEN i.taskId IS NOT NULL THEN 'task:' || i.taskId ELSE 'title:' || LOWER(TRIM(i.title)) END
