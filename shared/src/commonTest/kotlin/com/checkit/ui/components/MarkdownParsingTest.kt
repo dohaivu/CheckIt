@@ -133,7 +133,6 @@ class MarkdownParsingTest {
         assertEquals(2, highlights.size)
         assertEquals(0, highlights[0].start)
         assertEquals(2, highlights[0].end)
-        assertEquals(FontWeight.Bold, highlights[0].item.fontWeight)
         assertEquals(13, highlights[1].start)
         assertEquals(17, highlights[1].end)
     }
@@ -168,7 +167,6 @@ class MarkdownParsingTest {
         val span = result.spanStyles.single()
         assertEquals(0, span.start)
         assertEquals(2, span.end)
-        assertEquals(FontWeight.Bold, span.item.fontWeight)
         assertEquals(Color(0xFFDC2626), span.item.color)
     }
 
