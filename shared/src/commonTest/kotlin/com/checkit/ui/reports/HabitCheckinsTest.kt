@@ -3,6 +3,7 @@ package com.checkit.ui.reports
 import com.checkit.domain.HabitDailyRollup
 import com.checkit.ui.reflect.buildHabitCheckins
 import com.checkit.ui.reflect.buildHeatmapMonths
+import com.checkit.ui.reflect.buildHeatmapMonthsBetween
 import com.checkit.ui.reflect.calculateStreak
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
@@ -143,5 +144,33 @@ class HabitCheckinsTest {
         assertEquals(LocalDate(2026, 6, 1), months[0].monthStart)
         assertEquals(LocalDate(2026, 7, 1), months[1].monthStart)
         assertEquals(LocalDate(2026, 8, 1), months[2].monthStart)
+    }
+
+    @Test
+    fun buildHeatmapMonthsBetweenSpansFullHistoryOldestFirst() {
+        val months = buildHeatmapMonthsBetween(
+            firstMonthStart = LocalDate(2025, 11, 1),
+            lastMonthStart = LocalDate(2026, 2, 1)
+        )
+
+        assertEquals(
+            listOf(
+                LocalDate(2025, 11, 1),
+                LocalDate(2025, 12, 1),
+                LocalDate(2026, 1, 1),
+                LocalDate(2026, 2, 1)
+            ),
+            months.map { it.monthStart }
+        )
+    }
+
+    @Test
+    fun buildHeatmapMonthsBetweenReturnsEmptyWhenEndBeforeStart() {
+        val months = buildHeatmapMonthsBetween(
+            firstMonthStart = LocalDate(2026, 3, 1),
+            lastMonthStart = LocalDate(2026, 2, 1)
+        )
+
+        assertEquals(emptyList(), months)
     }
 }

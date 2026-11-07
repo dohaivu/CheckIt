@@ -133,6 +133,9 @@ interface CheckItRepository {
     fun observeDailyReflectStats(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<DailyReflectStat>>
     fun observeDailyTagRollups(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<DailyTagRollup>>
     fun observeHabitDailyRollups(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<HabitDailyRollup>>
+
+    /** Every recorded check-in for one habit key, oldest first. */
+    fun observeHabitDailyRollupsForHabit(habitKey: String): Flow<List<HabitDailyRollup>>
     fun observeDoneItemSummaries(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<DoneItemSummary>>
     fun observeJournalEntriesInRange(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<JournalEntry>>
     fun observeJournalEntriesFiltered(
@@ -1168,6 +1171,19 @@ class RoomCheckItRepository(
         endDateInclusive: LocalDate
     ): Flow<List<HabitDailyRollup>> =
         dao.observeHabitDailyRollups(startDate.toEpochDays().toInt(), endDateInclusive.toEpochDays().toInt())
+            .map { entities ->
+                entities.map {
+                    HabitDailyRollup(
+                        dateEpochDays = it.dateEpochDays,
+                        habitKey = it.habitKey,
+                        title = it.title,
+                        doneMinutes = it.doneMinutes
+                    )
+                }
+            }
+
+    override fun observeHabitDailyRollupsForHabit(habitKey: String): Flow<List<HabitDailyRollup>> =
+        dao.observeHabitDailyRollupsForHabit(habitKey)
             .map { entities ->
                 entities.map {
                     HabitDailyRollup(

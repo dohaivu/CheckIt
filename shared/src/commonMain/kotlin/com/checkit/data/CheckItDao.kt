@@ -620,6 +620,11 @@ interface CheckItDao {
     )
     fun observeHabitDailyRollups(startEpochDays: Int, endEpochDays: Int): Flow<List<HabitDailyRollupEntity>>
 
+    @Query(
+        "SELECT * FROM habit_daily_rollups WHERE habitKey = :habitKey ORDER BY dateEpochDays ASC"
+    )
+    fun observeHabitDailyRollupsForHabit(habitKey: String): Flow<List<HabitDailyRollupEntity>>
+
     // ---------------- Routines ----------------
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)

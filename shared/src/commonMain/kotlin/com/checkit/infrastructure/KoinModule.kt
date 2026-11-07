@@ -64,6 +64,7 @@ import com.checkit.domain.usecase.IsTagNameTakenUseCase
 import com.checkit.domain.usecase.MoveNestedItemsUseCase
 import com.checkit.domain.usecase.NestedSubtreeClipboard
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
+import com.checkit.domain.usecase.ObserveHabitDailyRollupsForHabitUseCase
 import com.checkit.domain.usecase.ObserveJournalEntriesUseCase
 import com.checkit.domain.usecase.ObserveNestedDocumentTreeUseCase
 import com.checkit.domain.usecase.ObserveNestedDocumentsUseCase
@@ -149,6 +150,7 @@ import com.checkit.ui.quicknote.QuickNoteViewModel
 import com.checkit.ui.myday.MyDayViewModel
 import com.checkit.ui.nested.NestedListsViewModel
 import com.checkit.ui.nested.NestedAppleHelper
+import com.checkit.ui.reflect.HabitHeatmapViewModel
 import com.checkit.ui.reflect.ReflectViewModel
 import com.checkit.ui.journal.JournalHistoryViewModel
 import com.checkit.ui.quicknote.QuickNoteMenuHelper
@@ -248,6 +250,7 @@ val provideInteractorModule = module {
     single { BuildDayCloseSummaryUseCase(get()) }
     single { CarryOverDailyPlanItemsUseCase(get(), get()) }
     single { ObservePeriodGoalsUseCase(get()) }
+    single { ObserveHabitDailyRollupsForHabitUseCase(get()) }
     single { ObserveGoalHistoryUseCase(get()) }
     single { SavePeriodGoalUseCase(get()) }
     single { RebuildReflectStatsUseCase(get()) }
@@ -469,6 +472,7 @@ val provideViewModelModule = module {
             observeRoutineLogs = get()
         )
     }
+    viewModel { HabitHeatmapViewModel(get()) }
     viewModel { SettingsViewModel(get(), get(), get(), get<AppReminderScheduler>(), get(), get()) }
     viewModel { GuidelinesViewModel(get(), get()) }
     viewModel {

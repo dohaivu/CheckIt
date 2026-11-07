@@ -658,6 +658,26 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
                 .toList()
         }
 
+    override fun observeHabitDailyRollupsForHabit(habitKey: String): Flow<List<HabitDailyRollup>> =
+        dailyPlansFlow.map { plans ->
+            plans.asSequence()
+                .flatMap { plan ->
+                    plan.items.asSequence()
+                        .filter { it.isHabit && it.status == DailyPlanItemStatus.Done }
+                        .filter { habitKeyFor(it) == habitKey }
+                        .map {
+                            HabitDailyRollup(
+                                dateEpochDays = plan.date.toEpochDays().toInt(),
+                                habitKey = habitKey,
+                                title = it.title,
+                                doneMinutes = it.workMinutes()
+                            )
+                        }
+                }
+                .sortedBy { it.dateEpochDays }
+                .toList()
+        }
+
     override fun observeDoneItemSummaries(
         startDate: LocalDate,
         endDateInclusive: LocalDate
