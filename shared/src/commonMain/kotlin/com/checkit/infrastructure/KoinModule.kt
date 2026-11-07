@@ -40,6 +40,7 @@ import com.checkit.domain.usecase.CompleteDayCloseUseCase
 import com.checkit.domain.usecase.CompleteNoteUseCase
 import com.checkit.domain.usecase.CompleteTaskUseCase
 import com.checkit.domain.usecase.CopyNestedSubtreeUseCase
+import com.checkit.domain.usecase.DuplicateNestedItemUseCase
 import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
 import com.checkit.domain.usecase.DeleteJournalEntryUseCase
 import com.checkit.domain.usecase.DeleteListUseCase
@@ -292,6 +293,7 @@ val provideInteractorModule = module {
     single { NestedSubtreeClipboard() }
     single { CopyNestedSubtreeUseCase(get()) }
     single { PasteNestedSubtreeUseCase(get(), get()) }
+    single { DuplicateNestedItemUseCase(get()) }
     single { ExportNestedListToMarkdownUseCase() }
     single { ExportNestedDocumentJsonUseCase(get()) }
     single { ImportNestedDocumentJsonUseCase(get()) }
@@ -328,6 +330,7 @@ val provideInteractorModule = module {
             deleteItems = get(),
             copySubtreeUseCase = get(),
             pasteSubtreeUseCase = get(),
+            duplicateItemUseCase = get(),
             subtreeClipboard = get(),
             exportDocumentJsonUseCase = get(),
             importDocumentJsonUseCase = get()
@@ -500,6 +503,7 @@ val provideViewModelModule = module {
             deleteItemsUseCase = get(),
             copySubtreeUseCase = get(),
             pasteSubtreeUseCase = get(),
+            duplicateItemUseCase = get(),
             subtreeClipboard = get(),
             settingsRepository = get(),
             syncManager = get(),

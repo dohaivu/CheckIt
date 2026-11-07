@@ -723,13 +723,20 @@ struct NestedListsWindowView: View {
                         Label("Paste Subtree", systemImage: "doc.on.clipboard")
                     }
                     .disabled(!state.hasSubtreeClipboard)
+                    Divider()
+                    Button {
+                        if let id = sel { state.duplicateItem(id: id) }
+                    } label: {
+                        Label("Duplicate", systemImage: "plus.square.on.square")
+                    }
+                    .disabled(sel == nil)
                 } label: {
                     EditorBarButtonLabel(system: "doc.on.doc", shortcut: nil, active: false)
                 }
                 .menuStyle(.borderlessButton)
                 .fixedSize()
-                .accessibilityLabel("Copy and paste")
-                .help("Copy as Markdown (⌘C), or copy and paste subtrees")
+                .accessibilityLabel("Copy, paste, and duplicate")
+                .help("Copy as Markdown (⌘C), copy and paste subtrees, or duplicate")
                 Button {
                     moveDestinationId = defaultMoveDestinationId()
                     showMoveSheet = true
@@ -958,6 +965,11 @@ struct NestedListsWindowView: View {
                                 state.startAddSibling(of: row.id)
                             } label: {
                                 Label("Add Sibling Below", systemImage: "text.badge.plus")
+                            }
+                            Button {
+                                state.duplicateItem(id: row.id)
+                            } label: {
+                                Label("Duplicate", systemImage: "plus.square.on.square")
                             }
                             Button {
                                 state.selectedId = row.id

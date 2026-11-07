@@ -28,6 +28,7 @@ import com.checkit.domain.TaskPriority
 import com.checkit.domain.usecase.AddNestedDocumentUseCase
 import com.checkit.domain.usecase.AddNestedItemUseCase
 import com.checkit.domain.usecase.CopyNestedSubtreeUseCase
+import com.checkit.domain.usecase.DuplicateNestedItemUseCase
 import com.checkit.domain.usecase.DeleteNestedDocumentUseCase
 import com.checkit.domain.usecase.DeleteNestedItemsUseCase
 import com.checkit.domain.usecase.MoveNestedItemsUseCase
@@ -206,6 +207,7 @@ class NestedListsViewModel(
     private val deleteItemsUseCase: DeleteNestedItemsUseCase,
     private val copySubtreeUseCase: CopyNestedSubtreeUseCase,
     private val pasteSubtreeUseCase: PasteNestedSubtreeUseCase,
+    private val duplicateItemUseCase: DuplicateNestedItemUseCase,
     private val subtreeClipboard: NestedSubtreeClipboard,
     private val settingsRepository: SettingsRepository,
     private val syncManager: NestedSyncManager,
@@ -727,6 +729,27 @@ class NestedListsViewModel(
                 }
                 .onFailure { error ->
                     _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to paste subtree"))
+                }
+        }
+    }
+
+    /** Inserts a copy of the selected item as its next sibling, without children. */
+    fun duplicateSelected() {
+        val active = getActiveEditor() ?: return
+        val itemId = active.selectedItemId ?: return
+        viewModelScope.launch {
+            runCatching { duplicateItemUseCase(active.tree.flatItems, itemId) }
+                .onSuccess { newId ->
+                    if (newId == null) return@onSuccess
+                    updateActiveEditor {
+                        it.copy(selectedItemId = newId, editingTextItemId = null)
+                    }
+                    _events.tryEmit(UiEvent.ShowSnackbar("Duplicated item"))
+                }
+                .onFailure { error ->
+                    _events.tryEmit(
+                        UiEvent.ShowSnackbar(error.message ?: "Unable to duplicate item")
+                    )
                 }
         }
     }

@@ -206,7 +206,7 @@ private fun RichSpan.toSpanStyle(defaultHighlight: Color): SpanStyle {
         RichSpanKind.Bold -> SpanStyle(fontWeight = FontWeight.Bold)
         RichSpanKind.Italic -> SpanStyle(fontStyle = FontStyle.Italic)
         RichSpanKind.Strikethrough -> SpanStyle(textDecoration = TextDecoration.LineThrough)
-        RichSpanKind.Highlight -> SpanStyle(fontWeight = FontWeight.Bold, color = highlight)
+        RichSpanKind.Highlight -> SpanStyle(color = highlight)
         RichSpanKind.Code -> SpanStyle(fontFamily = FontFamily.Monospace, background = MarkdownCodeBackgroundColor)
     }
 }

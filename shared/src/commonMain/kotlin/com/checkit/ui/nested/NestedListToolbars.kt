@@ -44,6 +44,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.ContentPaste
+import androidx.compose.material.icons.filled.ControlPointDuplicate
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Done
@@ -107,6 +108,7 @@ import checkit.shared.generated.resources.nested_add_child
 import checkit.shared.generated.resources.nested_add_sibling
 import checkit.shared.generated.resources.nested_batch_delete
 import checkit.shared.generated.resources.nested_collapse_all
+import checkit.shared.generated.resources.nested_duplicate
 import checkit.shared.generated.resources.nested_expand_all
 import checkit.shared.generated.resources.nested_focus_selection
 import checkit.shared.generated.resources.nested_indent
@@ -1041,6 +1043,7 @@ internal fun EditorToolbar(
     onCopyToTask: () -> Unit,
     onCopySubtree: () -> Unit,
     onPasteSubtree: () -> Unit,
+    onDuplicate: () -> Unit,
     canPasteSubtree: Boolean,
     onEnterSelection: () -> Unit,
     onSortChildren: () -> Unit,
@@ -1141,6 +1144,9 @@ internal fun EditorToolbar(
                     }
                     ToolbarMenuItem("Paste subtree", Icons.Default.ContentPaste, canPasteSubtree) {
                         showMore = false; onPasteSubtree()
+                    }
+                    ToolbarMenuItem(stringResource(Res.string.nested_duplicate), Icons.Default.ControlPointDuplicate, hasSelection) {
+                        showMore = false; onDuplicate()
                     }
                     ToolbarMenuItem(stringResource(Res.string.nested_batch_delete), Icons.Default.Delete, hasSelection) {
                         showMore = false; onDelete()

@@ -18,6 +18,7 @@ import com.checkit.domain.NestedCalloutStyle
 import com.checkit.domain.NestedCalloutLayout
 import com.checkit.domain.MetricRollupPolicy
 import com.checkit.domain.captureNestedSubtree
+import com.checkit.domain.planNestedItemDuplicate
 import com.checkit.domain.planNestedSubtreePaste
 
 import com.checkit.domain.TaskPriority
@@ -151,6 +152,28 @@ class PasteNestedSubtreeUseCase(
         if (items.isEmpty()) return 0
         repository.addNestedSubtree(documentId, items)
         return items.size
+    }
+}
+
+/**
+ * Inserts a copy of [itemId] as its next sibling, excluding descendants.
+ * Returns the new item id, or null when the source is not in [items].
+ */
+class DuplicateNestedItemUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(
+        items: List<NestedListItem>,
+        itemId: String
+    ): String? {
+        val duplicate = planNestedItemDuplicate(
+            items = items,
+            itemId = itemId,
+            newId = Uuid.random().toString(),
+            nowMillis = Clock.System.now().toEpochMilliseconds()
+        ) ?: return null
+        repository.addNestedSubtree(duplicate.documentId, listOf(duplicate))
+        return duplicate.id
     }
 }
 

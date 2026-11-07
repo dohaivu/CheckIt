@@ -1231,6 +1231,21 @@ final class NestedEditorState: ObservableObject {
         }
     }
 
+    // MARK: - Duplicate
+
+    /// Duplicates [id] as its next sibling. Descendants are not copied and
+    /// execution state (checked, tracked minutes) is reset by the shared use case.
+    func duplicateItem(id: String) {
+        guard !selectedDocId.isEmpty else { return }
+        helper.duplicateItem(documentId: selectedDocId, itemId: id) { [weak self] newId in
+            DispatchQueue.main.async {
+                guard let self, !newId.isEmpty else { return }
+                self.selectedId = newId
+                self.showToast("Duplicated item")
+            }
+        }
+    }
+
     // MARK: - Markdown export
 
     func markdown(includeTitle: Bool = false) -> String {

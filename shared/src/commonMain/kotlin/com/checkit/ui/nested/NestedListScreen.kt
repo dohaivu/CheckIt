@@ -194,6 +194,7 @@ internal fun NestedListScreen(
                     },
                     onCopySubtree = viewModel::copySelectedSubtree,
                     onPasteSubtree = viewModel::pasteSubtree,
+                    onDuplicate = viewModel::duplicateSelected,
                     canPasteSubtree = state.canPasteSubtree
                 )
             }

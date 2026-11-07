@@ -198,7 +198,6 @@ private func applyingRichSpans(
         case .strikethrough:
             out[range].strikethroughStyle = .single
         case .highlight:
-            out[range].inlinePresentationIntent = .stronglyEmphasized
             out[range].foregroundColor = highlightColor(hex: span.colorHex, default: highlight)
         case .code:
             out[range].inlinePresentationIntent = .code

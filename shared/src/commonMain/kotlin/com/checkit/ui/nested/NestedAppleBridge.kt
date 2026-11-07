@@ -26,6 +26,7 @@ import com.checkit.ui.tasks.PredefinedLabels
 import com.checkit.domain.usecase.AddNestedDocumentUseCase
 import com.checkit.domain.usecase.AddNestedItemUseCase
 import com.checkit.domain.usecase.CopyNestedSubtreeUseCase
+import com.checkit.domain.usecase.DuplicateNestedItemUseCase
 import com.checkit.domain.usecase.DeleteNestedDocumentUseCase
 import com.checkit.domain.usecase.DeleteNestedItemsUseCase
 import com.checkit.domain.usecase.MoveNestedItemsUseCase
@@ -133,6 +134,7 @@ class NestedAppleHelper(
     private val deleteItems: DeleteNestedItemsUseCase,
     private val copySubtreeUseCase: CopyNestedSubtreeUseCase,
     private val pasteSubtreeUseCase: PasteNestedSubtreeUseCase,
+    private val duplicateItemUseCase: DuplicateNestedItemUseCase,
     private val subtreeClipboard: NestedSubtreeClipboard,
     private val exportDocumentJsonUseCase: ExportNestedDocumentJsonUseCase,
     private val importDocumentJsonUseCase: ImportNestedDocumentJsonUseCase,
@@ -216,6 +218,18 @@ class NestedAppleHelper(
             val (resolvedParent, position) = computeNestedInsertPosition(items, anchor, parent)
             val id = runCatching { addItem(documentId, resolvedParent, trimmed, position) }.getOrNull() ?: ""
             onDone(id)
+        }
+    }
+
+    /**
+     * Inserts a copy of [itemId] as its next sibling, excluding descendants.
+     * [onDone] receives the new item id, or blank on failure.
+     */
+    fun duplicateItem(documentId: String, itemId: String, onDone: (String) -> Unit) {
+        scope.launch {
+            val items = latestTrees[documentId]?.flatItems.orEmpty()
+            val newId = runCatching { duplicateItemUseCase(items, itemId) }.getOrNull() ?: ""
+            onDone(newId)
         }
     }
 
