@@ -880,6 +880,79 @@ struct NestedFormattingBar: View {
     }
 }
 
+// MARK: - Picker primitives
+
+/// Shared section header for the horizontal picker popovers (Border,
+/// Callout). Keeps the columns visually consistent without duplicating
+/// the text style in each picker.
+struct NestedPickerHeader: View {
+    let title: String
+
+    var body: some View {
+        Text(title)
+            .font(.caption)
+            .fontWeight(.bold)
+            .foregroundStyle(.secondary)
+    }
+}
+
+/// One tappable option row inside a picker column: checkmark (or clear
+/// placeholder) + optional icon + title, with no focus ring so the
+/// popover never flashes a "focused" rectangle on the first row.
+struct NestedPickerRow: View {
+    let title: String
+    var icon: NSImage? = nil
+    var selected: Bool
+    var action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 4) {
+                if selected {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 10, weight: .semibold))
+                } else {
+                    Color.clear.frame(width: 12, height: 12)
+                }
+                if let icon {
+                    Image(nsImage: icon)
+                        .resizable()
+                        .frame(width: 16, height: 16)
+                }
+                Text(title)
+                    .font(.system(size: 12))
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 6)
+            .padding(.vertical, 3)
+            .background(selected ? Color.accentColor.opacity(0.12) : Color.clear, in: RoundedRectangle(cornerRadius: 6))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .focusable(false)
+        .opacity(selected ? 1 : 0.75)
+    }
+}
+
+/// One horizontal section column: header on top, options below. Pass a
+/// `width` for columns whose longest label would otherwise truncate
+/// (e.g. Shape's "Cut corner").
+struct NestedPickerColumn<Content: View>: View {
+    let title: String
+    var width: CGFloat? = nil
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            NestedPickerHeader(title: title)
+            content()
+        }
+        .frame(width: width, alignment: .leading)
+    }
+}
+
 // MARK: - Border picker (horizontal sections)
 
 /// Border controls shown side by side in a popover instead of one tall
@@ -890,69 +963,33 @@ struct NestedBorderPickerView: View {
     let item: NestedListItem
     let onChange: (NestedBorderShape, NestedBorderStyle, NestedColorToken, NestedBorderWidth?) -> Void
 
-    private func row(title: String, selected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 4) {
-                if selected {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 10, weight: .semibold))
-                } else {
-                    Color.clear.frame(width: 12, height: 12)
-                }
-                Text(title)
-                    .font(.system(size: 12))
-                    .lineLimit(1)
-                    .fixedSize(horizontal: true, vertical: false)
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, 6)
-            .padding(.vertical, 3)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .focusable(false)
-        .opacity(selected ? 1 : 0.75)
-    }
-
-    private func header(_ title: String) -> some View {
-        Text(title)
-            .font(.caption)
-            .fontWeight(.semibold)
-            .foregroundStyle(.secondary)
-    }
-
     var body: some View {
         HStack(alignment: .top, spacing: 16) {
-                VStack(alignment: .leading, spacing: 2) {
-                    header("Style")
-                    ForEach(NestedBorderStyle.entries, id: \.self) { s in
-                        row(title: s.displayName(), selected: s == item.borderStyle) {
-                            onChange(item.borderShape, s, item.borderColor, item.borderWidth)
-                        }
+            NestedPickerColumn(title: "Style") {
+                ForEach(NestedBorderStyle.entries, id: \.self) { s in
+                    NestedPickerRow(title: s.displayName(), selected: s == item.borderStyle) {
+                        onChange(item.borderShape, s, item.borderColor, item.borderWidth)
                     }
                 }
-                VStack(alignment: .leading, spacing: 2) {
-                    header("Width")
-                    row(title: "Inherit", selected: item.borderWidth == nil) {
-                        onChange(item.borderShape, item.borderStyle, item.borderColor, nil)
-                    }
-                    ForEach(NestedBorderWidth.entries, id: \.self) { w in
-                        row(title: w.displayName(), selected: w == item.borderWidth) {
-                            onChange(item.borderShape, item.borderStyle, item.borderColor, w)
-                        }
+            }
+            NestedPickerColumn(title: "Width") {
+                NestedPickerRow(title: "Inherit", selected: item.borderWidth == nil) {
+                    onChange(item.borderShape, item.borderStyle, item.borderColor, nil)
+                }
+                ForEach(NestedBorderWidth.entries, id: \.self) { w in
+                    NestedPickerRow(title: w.displayName(), selected: w == item.borderWidth) {
+                        onChange(item.borderShape, item.borderStyle, item.borderColor, w)
                     }
                 }
-                VStack(alignment: .leading, spacing: 2) {
-                    header("Shape")
-                    ForEach(NestedBorderShape.entries, id: \.self) { s in
-                        row(title: s.displayName(), selected: s == item.borderShape) {
-                            onChange(s, item.borderStyle, item.borderColor, item.borderWidth)
-                        }
+            }
+            NestedPickerColumn(title: "Shape", width: 100) {
+                ForEach(NestedBorderShape.entries, id: \.self) { s in
+                    NestedPickerRow(title: s.displayName(), selected: s == item.borderShape) {
+                        onChange(s, item.borderStyle, item.borderColor, item.borderWidth)
                     }
                 }
-                .frame(width: 100, alignment: .leading)
-                VStack(alignment: .leading, spacing: 2) {
-                    header("Color")
+            }
+            NestedPickerColumn(title: "Color") {
                     LazyVGrid(columns: [GridItem(.fixed(26)), GridItem(.fixed(26))], spacing: 6) {
                         ForEach(NestedColorToken.entries, id: \.self) { t in
                             let selected = t == item.borderColor
@@ -986,8 +1023,8 @@ struct NestedBorderPickerView: View {
                         }
                     }
                     .padding(.top, 2)
-                }
             }
+        }
         .padding(10)
     }
 }
@@ -1005,71 +1042,33 @@ struct NestedCalloutPickerView: View {
     let onShowTitleEditor: () -> Void
     let onReset: () -> Void
 
-    private func row(title: String, icon: NSImage? = nil, selected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 4) {
-                if selected {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 10, weight: .semibold))
-                } else {
-                    Color.clear.frame(width: 12, height: 12)
-                }
-                if let icon {
-                    Image(nsImage: icon)
-                        .resizable()
-                        .frame(width: 16, height: 16)
-                }
-                Text(title)
-                    .font(.system(size: 12))
-                    .lineLimit(1)
-                    .fixedSize(horizontal: true, vertical: false)
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, 6)
-            .padding(.vertical, 3)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .focusable(false)
-        .opacity(selected ? 1 : 0.75)
-    }
-
-    private func header(_ title: String) -> some View {
-        Text(title)
-            .font(.caption)
-            .fontWeight(.semibold)
-            .foregroundStyle(.secondary)
-    }
-
     var body: some View {
         HStack(alignment: .top, spacing: 16) {
-            VStack(alignment: .leading, spacing: 2) {
-                header("Callout")
+            NestedPickerColumn(title: "Callout", width: 120) {
                 ForEach(NestedCalloutStyle.entries, id: \.self) { s in
-                    row(title: s.displayName(), icon: nestedCalloutMenuImage(s), selected: s == item.callout) {
+                    NestedPickerRow(title: s.displayName(), icon: nestedCalloutMenuImage(s), selected: s == item.callout) {
                         onCallout(s)
                     }
                 }
             }
-            .frame(width: 120, alignment: .leading)
             if item.callout != NestedCalloutStyle.none {
                 VStack(alignment: .leading, spacing: 2) {
-                    header("Layout")
+                    NestedPickerHeader(title: "Layout")
                     ForEach(NestedCalloutLayout.entries, id: \.self) { l in
                         let activeLayout = item.calloutLayout ?? item.callout.spec()?.layout
                         let defaultLayout = item.callout.spec()?.layout
-                        row(title: l.name, selected: l == activeLayout) {
+                        NestedPickerRow(title: l.name, selected: l == activeLayout) {
                             onLayout(l == defaultLayout ? nil : l)
                         }
                     }
-                    header("Title & icon")
+                    NestedPickerHeader(title: "Title & icon")
                         .padding(.top, 6)
-                    row(title: "Custom title & icon…", selected: item.calloutTitle != nil || item.calloutIcon != nil) {
+                    NestedPickerRow(title: "Custom title & icon…", selected: item.calloutTitle != nil || item.calloutIcon != nil) {
                         onShowTitleEditor()
                     }
                     Divider()
                         .padding(.vertical, 4)
-                    row(title: "Reset to callout defaults", selected: false) {
+                    NestedPickerRow(title: "Reset to callout defaults", selected: false) {
                         onReset()
                     }
                 }
