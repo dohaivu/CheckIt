@@ -554,6 +554,7 @@ struct NestedFormattingBar: View {
     @State private var showEmojiPicker = false
     @State private var showBorderPicker = false
     @State private var showCalloutPicker = false
+    @State private var showGuidePicker = false
     @State private var startDate = Date()
     @State private var endDate = Date()
     @State private var hasStart = false
@@ -712,26 +713,41 @@ struct NestedFormattingBar: View {
                     }
                 )
             }
-            // Guide dot: emoji inside the row's dot (parents keep the ring).
-            NestedMenuButton(rows: {
-                [
-                    .item(title: "Default dot", selected: item.guideDot == nil) {
-                        state.updateGuideDot(id: item.id, emoji: nil)
-                    },
-                    .item(title: item.guideDot == nil ? "Choose emoji…" : "Change emoji…") {
-                        // Let the menu finish dismissing before the popover opens.
-                        DispatchQueue.main.async { showEmojiPicker = true }
-                    },
-                ]
-            }, label: {
+            // Guide dot + color in one popover (Dot | Color side by side).
+            // The emoji popover is presented after the guide popover is
+            // dismissed to avoid presenting one popover from another.
+            Button {
+                showGuidePicker.toggle()
+            } label: {
                 NestedMenuTrigger(
                     symbol: "circle.dotted",
                     emoji: item.guideDot,
-                    tint: item.guideDot == nil ? .secondary : .accentColor
+                    tint: {
+                        if let color = item.guideDotColor {
+                            return nestedTokenColor(color)
+                        }
+                        return item.guideDot == nil ? .secondary : .accentColor
+                    }()
                 )
-            })
-            .accessibilityLabel("Guide dot")
-            .help("Guide dot")
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel("Guide dot and color")
+            .help("Guide dot and color")
+            .popover(isPresented: $showGuidePicker, arrowEdge: .bottom) {
+                NestedGuidePickerView(
+                    item: item,
+                    onGuideDot: { emoji in
+                        state.updateGuideDot(id: item.id, emoji: emoji)
+                    },
+                    onGuideDotColor: { color in
+                        state.updateGuideDotColor(id: item.id, color: color)
+                    },
+                    onShowEmojiPicker: {
+                        showGuidePicker = false
+                        DispatchQueue.main.async { showEmojiPicker = true }
+                    }
+                )
+            }
             .popover(isPresented: $showEmojiPicker, arrowEdge: .bottom) {
                 EmojiPickerView(
                     selectedEmoji: guideEmojiBinding,
@@ -739,21 +755,6 @@ struct NestedFormattingBar: View {
                 )
                 .frame(width: 340, height: 420)
             }
-            // Dot color owns this row's connector and its descendant spine.
-            NestedMenuButton(rows: {
-                NestedColorToken.entries.map { t in
-                    NestedMenuRow.color(t, selected: t == (item.guideDotColor ?? NestedColorToken.default_)) {
-                        state.updateGuideDotColor(id: item.id, color: t == NestedColorToken.default_ ? nil : t)
-                    }
-                }
-            }, label: {
-                NestedMenuTrigger(
-                    symbol: "circle.lefthalf.filled",
-                    tint: item.guideDotColor == nil ? .secondary : nestedTokenColor(item.guideDotColor!)
-                )
-            })
-            .accessibilityLabel("Dot and guide color")
-            .help("Dot and guide color")
             // Priority
             NestedMenuButton(rows: {
                 TaskPriority.entries.map { p in
@@ -953,6 +954,52 @@ struct NestedPickerColumn<Content: View>: View {
     }
 }
 
+/// Shared 2-column color dots used by the Border and Guide pickers.
+/// `selected` is the concrete token (`.default_` means theme-following
+/// hollow ring); callers map to/from their nullable storage.
+struct NestedColorSwatchGrid: View {
+    let selected: NestedColorToken
+    let onSelect: (NestedColorToken) -> Void
+
+    var body: some View {
+        LazyVGrid(columns: [GridItem(.fixed(26)), GridItem(.fixed(26))], spacing: 6) {
+            ForEach(NestedColorToken.entries, id: \.self) { t in
+                let isSelected = t == selected
+                Button {
+                    onSelect(t)
+                } label: {
+                    Group {
+                        if t == NestedColorToken.default_ {
+                            Circle()
+                                .strokeBorder(Color.secondary, lineWidth: 1.5)
+                                .background(Circle().fill(Color.clear))
+                        } else {
+                            Circle()
+                                .fill(nestedTokenColor(t))
+                                .strokeBorder(Color.secondary.opacity(0.4), lineWidth: 1)
+                        }
+                    }
+                    .frame(width: 18, height: 18)
+                    .contentShape(Circle())
+                    .overlay {
+                        if isSelected {
+                            Circle()
+                                .strokeBorder(Color.accentColor, lineWidth: 2)
+                                .frame(width: 24, height: 24)
+                        }
+                    }
+                }
+                .buttonStyle(.plain)
+                .contentShape(Rectangle())
+                .focusable(false)
+                .help(t.name)
+                .accessibilityLabel(t.name)
+            }
+        }
+        .padding(.top, 2)
+    }
+}
+
 // MARK: - Border picker (horizontal sections)
 
 /// Border controls shown side by side in a popover instead of one tall
@@ -990,39 +1037,9 @@ struct NestedBorderPickerView: View {
                 }
             }
             NestedPickerColumn(title: "Color") {
-                    LazyVGrid(columns: [GridItem(.fixed(26)), GridItem(.fixed(26))], spacing: 6) {
-                        ForEach(NestedColorToken.entries, id: \.self) { t in
-                            let selected = t == item.borderColor
-                            Button {
-                                onChange(item.borderShape, item.borderStyle, t, item.borderWidth)
-                            } label: {
-                                Group {
-                                    if t == NestedColorToken.default_ {
-                                        Circle()
-                                            .strokeBorder(Color.secondary, lineWidth: 1.5)
-                                            .background(Circle().fill(Color.clear))
-                                    } else {
-                                        Circle()
-                                            .fill(nestedTokenColor(t))
-                                            .strokeBorder(Color.secondary.opacity(0.4), lineWidth: 1)
-                                    }
-                                }
-                                .frame(width: 18, height: 18)
-                                .overlay {
-                                    if selected {
-                                        Circle()
-                                            .strokeBorder(Color.accentColor, lineWidth: 2)
-                                            .frame(width: 24, height: 24)
-                                    }
-                                }
-                            }
-                            .buttonStyle(.plain)
-                            .focusable(false)
-                            .help(t.name)
-                            .accessibilityLabel(t.name)
-                        }
-                    }
-                    .padding(.top, 2)
+                NestedColorSwatchGrid(selected: item.borderColor) { t in
+                    onChange(item.borderShape, item.borderStyle, t, item.borderWidth)
+                }
             }
         }
         .padding(10)
@@ -1073,6 +1090,38 @@ struct NestedCalloutPickerView: View {
                     }
                 }
                 .frame(width: 180, alignment: .leading)
+            }
+        }
+        .padding(10)
+    }
+}
+
+// MARK: - Guide picker (horizontal sections)
+
+/// Dot + color controls shown side by side in a popover instead of two
+/// `NSMenu`s. The emoji picker is deliberately *not* nested: tapping
+/// "Choose emoji…" dismisses this popover first, then the caller presents
+/// the emoji popover from the toolbar button's anchor.
+struct NestedGuidePickerView: View {
+    let item: NestedListItem
+    let onGuideDot: (String?) -> Void
+    let onGuideDotColor: (NestedColorToken?) -> Void
+    let onShowEmojiPicker: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 16) {
+            NestedPickerColumn(title: "Dot") {
+                NestedPickerRow(title: "Default dot", selected: item.guideDot == nil) {
+                    onGuideDot(nil)
+                }
+                NestedPickerRow(title: item.guideDot == nil ? "Choose emoji…" : "Change emoji…", selected: false) {
+                    onShowEmojiPicker()
+                }
+            }
+            NestedPickerColumn(title: "Color") {
+                NestedColorSwatchGrid(selected: item.guideDotColor ?? NestedColorToken.default_) { t in
+                    onGuideDotColor(t == NestedColorToken.default_ ? nil : t)
+                }
             }
         }
         .padding(10)
