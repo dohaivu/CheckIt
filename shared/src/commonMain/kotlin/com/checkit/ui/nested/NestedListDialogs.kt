@@ -27,6 +27,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BorderStyle
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.outlined.EmojiEmotions
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.CheckBox
@@ -62,6 +63,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.cancel
@@ -790,6 +792,79 @@ internal fun BorderMenu(
                 ColorTokenSwatches(selected = color) {
                     expanded = false
                     onSelected(shape, style, it, width)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun GuideMenu(
+    emoji: String?,
+    guideDotColor: NestedColorToken?,
+    onDotChange: (String?) -> Unit,
+    onColorChange: (NestedColorToken) -> Unit,
+    onChooseEmoji: () -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val subtleInactiveColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f)
+    Box {
+        IconButton(
+            onClick = { expanded = true },
+            modifier = Modifier.size(32.dp)
+        ) {
+            if (emoji != null) {
+                Text(text = emoji, fontSize = 15.sp)
+            } else {
+                Icon(
+                    imageVector = Icons.Outlined.EmojiEmotions,
+                    contentDescription = "Guide dot and color",
+                    tint = guideDotColor?.let { nestedColor(it) } ?: subtleInactiveColor,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            Column(
+                modifier = Modifier
+                    .widthIn(max = 320.dp)
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Text(
+                    text = "Dot",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    SelectableChip(
+                        label = "Default dot",
+                        selected = emoji == null
+                    ) {
+                        expanded = false
+                        onDotChange(null)
+                    }
+                    SelectableChip(
+                        label = if (emoji == null) "Choose emoji…" else "Change emoji…",
+                        selected = false
+                    ) {
+                        expanded = false
+                        onChooseEmoji()
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = "Color",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                ColorTokenSwatches(selected = guideDotColor ?: NestedColorToken.Default) { token ->
+                    expanded = false
+                    onColorChange(token)
                 }
             }
         }

@@ -54,7 +54,6 @@ import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.FormatColorFill
 import androidx.compose.material.icons.filled.FormatColorText
 import androidx.compose.material.icons.filled.FormatSize
-import androidx.compose.material.icons.filled.InvertColors
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
@@ -67,7 +66,6 @@ import androidx.compose.material.icons.filled.UnfoldMore
 import androidx.compose.material.icons.filled.Work
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material.icons.filled.ZoomOut
-import androidx.compose.material.icons.outlined.EmojiEmotions
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.LocalOffer
 import androidx.compose.material3.AlertDialog
@@ -305,8 +303,6 @@ internal fun NestedFormattingBar(
 ) {
     var priorityExpanded by remember { mutableStateOf(false) }
     var styleExpanded by remember { mutableStateOf(false) }
-    var guideDotExpanded by remember { mutableStateOf(false) }
-    var guideDotColorExpanded by remember { mutableStateOf(false) }
     var showEmojiPicker by remember { mutableStateOf(false) }
     var showDateDialog by remember { mutableStateOf(false) }
     var showLabelDialog by remember { mutableStateOf(false) }
@@ -513,75 +509,15 @@ internal fun NestedFormattingBar(
                 }
             }
 
-            // Dot color also owns the connector into this row and its descendant spine.
-            Box {
-                IconButton(
-                    onClick = { guideDotColorExpanded = true },
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.InvertColors,
-                        contentDescription = "Dot and guide color",
-                        tint = item.guideDotColor?.let { nestedColor(it) } ?: subtleInactiveColor,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-                DropdownMenu(
-                    expanded = guideDotColorExpanded,
-                    onDismissRequest = { guideDotColorExpanded = false }
-                ) {
-                    ColorTokenSwatches(selected = item.guideDotColor ?: NestedColorToken.Default) { token ->
-                        guideDotColorExpanded = false
-                        onGuideDotColorChange(token.takeIf { it != NestedColorToken.Default })
-                    }
-                }
-            }
-
-            // Guide dot: an emoji replaces the row's dot (parents keep the ring).
-            Box {
-                IconButton(
-                    onClick = { guideDotExpanded = true },
-                    modifier = Modifier
-                        .size(32.dp)
-                        .semantics { contentDescription = "Guide dot" }
-                ) {
-                    val emoji = item.guideDot
-                    if (emoji != null) {
-                        Text(text = emoji, fontSize = 15.sp)
-                    } else {
-                        Icon(
-                            imageVector = Icons.Outlined.EmojiEmotions,
-                            contentDescription = "Guide dot",
-                            tint = subtleInactiveColor,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                }
-                DropdownMenu(
-                    expanded = guideDotExpanded,
-                    onDismissRequest = { guideDotExpanded = false }
-                ) {
-                    NestedMenuItem(
-                        label = "Default dot",
-                        trailingIcon = if (item.guideDot == null) {
-                            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
-                        } else {
-                            null
-                        },
-                        onClick = {
-                            guideDotExpanded = false
-                            onGuideDotChange(null)
-                        }
-                    )
-                    NestedMenuItem(
-                        label = if (item.guideDot == null) "Choose emoji…" else "Change emoji…",
-                        onClick = {
-                            guideDotExpanded = false
-                            showEmojiPicker = true
-                        }
-                    )
-                }
-            }
+            // Guide dot and color in one menu: dot owns the row's dot
+            // (parents keep the ring); color owns the connector and spine.
+            GuideMenu(
+                emoji = item.guideDot,
+                guideDotColor = item.guideDotColor,
+                onDotChange = { emoji -> onGuideDotChange(emoji) },
+                onColorChange = { token -> onGuideDotColorChange(token.takeIf { it != NestedColorToken.Default }) },
+                onChooseEmoji = { showEmojiPicker = true }
+            )
 
             VerticalDivider(
                 modifier = Modifier
