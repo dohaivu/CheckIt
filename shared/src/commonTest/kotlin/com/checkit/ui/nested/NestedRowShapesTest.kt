@@ -76,5 +76,17 @@ class NestedRowShapesTest {
         assertEquals(4f, NestedBorderStyle.Solid.toStroke(4f, density)?.width)
         assertNotNull(NestedBorderStyle.Dashed.toStroke(4f, density)?.pathEffect)
         assertNotNull(NestedBorderStyle.Dotted.toStroke(4f, density)?.pathEffect)
+        assertNotNull(NestedBorderStyle.LongDash.toStroke(4f, density)?.pathEffect)
+        assertNotNull(NestedBorderStyle.DashDot.toStroke(4f, density)?.pathEffect)
+    }
+
+    @Test
+    fun borderStyleDisplayNames() {
+        assertEquals("None", NestedBorderStyle.None.displayName())
+        assertEquals("Solid", NestedBorderStyle.Solid.displayName())
+        assertEquals("Dashed", NestedBorderStyle.Dashed.displayName())
+        assertEquals("Dotted", NestedBorderStyle.Dotted.displayName())
+        assertEquals("Long dash", NestedBorderStyle.LongDash.displayName())
+        assertEquals("Dash dot", NestedBorderStyle.DashDot.displayName())
     }
 }

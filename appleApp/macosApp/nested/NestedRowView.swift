@@ -717,6 +717,8 @@ struct NestedRowView: View, Equatable {
         switch style {
         case NestedBorderStyle.dashed: return [4.5, 3]
         case NestedBorderStyle.dotted: return [0.5, 2.8]
+        case NestedBorderStyle.longdash: return [9, 4]
+        case NestedBorderStyle.dashdot: return [9, 4, 1.5, 4]
         default: return []
         }
     }

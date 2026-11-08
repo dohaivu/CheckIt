@@ -655,7 +655,7 @@ struct NestedFormattingBar: View {
             NestedMenuButton(rows: {
                 var rows: [NestedMenuRow] = [.header("Style")]
                 for s in NestedBorderStyle.entries {
-                    rows.append(.item(title: s.name, selected: s == item.borderStyle) {
+                    rows.append(.item(title: s.displayName(), selected: s == item.borderStyle) {
                         state.updateBorder(id: item.id, shape: item.borderShape, style: s, color: item.borderColor)
                     })
                 }

@@ -100,7 +100,19 @@ enum class NestedBorderStyle {
     None,
     Solid,
     Dashed,
-    Dotted
+    Dotted,
+    LongDash,
+    DashDot;
+
+    /**
+     * Menu label. The enum name is the persisted value, so this is
+     * presentational only and shared by both platforms.
+     */
+    fun displayName(): String = when (this) {
+        LongDash -> "Long dash"
+        DashDot -> "Dash dot"
+        else -> name
+    }
 }
 
 /**

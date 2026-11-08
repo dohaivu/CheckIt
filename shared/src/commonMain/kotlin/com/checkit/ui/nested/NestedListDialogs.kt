@@ -715,10 +715,13 @@ internal fun BorderMenu(
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
                     NestedBorderStyle.entries.forEach { option ->
                         SelectableChip(
-                            label = option.name,
+                            label = option.displayName(),
                             selected = option == style
                         ) {
                             expanded = false
