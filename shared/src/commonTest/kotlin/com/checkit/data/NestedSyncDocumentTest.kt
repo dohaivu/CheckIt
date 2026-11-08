@@ -78,6 +78,7 @@ class NestedSyncDocumentTest {
             borderShape = "Cloud",
             borderStyle = "Dashed",
             borderColor = "Pink",
+            borderWidth = "Thick",
             callout = "Caution",
             calloutTitle = "Watch out",
             calloutIcon = "lightbulb",
@@ -114,6 +115,7 @@ class NestedSyncDocumentTest {
         assertEquals("Cloud", remote?.borderShape)
         assertEquals("Dashed", remote?.borderStyle)
         assertEquals("Pink", remote?.borderColor)
+        assertEquals("Thick", remote?.borderWidth)
         assertEquals("Caution", remote?.callout)
         assertEquals("Watch out", remote?.calloutTitle)
         assertEquals("lightbulb", remote?.calloutIcon)
@@ -237,6 +239,42 @@ class NestedSyncDocumentTest {
         )
 
         assertNull(legacy?.guideDot)
+    }
+
+    @Test
+    fun itemFromMapDefaultsBorderWidthToNullWhenMissing() {
+        val base = NestedSyncDocument.itemToMap(
+            id = "item-1",
+            documentId = "doc-1",
+            parentId = null,
+            position = 0,
+            text = "x",
+            note = null,
+            checkboxEnabled = false,
+            checked = false,
+            textStyle = "Body",
+            textColor = "Default",
+            backgroundColor = "Default",
+            startDateEpochDays = null,
+            endDateEpochDays = null,
+            priority = "None",
+            actualMinutes = 0,
+            metricRollupPolicy = "IncludeChildren",
+            showTrackedMinutes = false,
+            progressPercent = null,
+            manualMetricsJson = "[]",
+            tagIds = emptyList(),
+            createdAtMillis = 100L,
+            updatedAtMillis = 200L,
+            deleted = false,
+        )
+
+        val legacy = NestedSyncDocument.itemFromMap(
+            "doc-1",
+            base - NestedSyncDocument.FIELD_BORDER_WIDTH,
+        )
+
+        assertNull(legacy?.borderWidth)
     }
 
     @Test

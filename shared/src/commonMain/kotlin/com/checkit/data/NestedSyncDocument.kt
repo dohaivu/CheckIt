@@ -57,6 +57,7 @@ object NestedSyncDocument {
     const val FIELD_BORDER_SHAPE = "borderShape"
     const val FIELD_BORDER_STYLE = "borderStyle"
     const val FIELD_BORDER_COLOR = "borderColor"
+    const val FIELD_BORDER_WIDTH = "borderWidth"
     const val FIELD_CALLOUT = "callout"
     const val FIELD_CALLOUT_TITLE = "calloutTitle"
     const val FIELD_CALLOUT_ICON = "calloutIcon"
@@ -106,6 +107,7 @@ object NestedSyncDocument {
         borderShape: String = "Rounded",
         borderStyle: String = "None",
         borderColor: String = "Default",
+        borderWidth: String? = null,
         callout: String = "None",
         calloutTitle: String? = null,
         calloutIcon: String? = null,
@@ -141,6 +143,7 @@ object NestedSyncDocument {
         FIELD_BORDER_SHAPE to borderShape,
         FIELD_BORDER_STYLE to borderStyle,
         FIELD_BORDER_COLOR to borderColor,
+        FIELD_BORDER_WIDTH to borderWidth,
         FIELD_CALLOUT to callout,
         FIELD_CALLOUT_TITLE to calloutTitle,
         FIELD_CALLOUT_ICON to calloutIcon?.takeIf { callout != "None" },
@@ -199,6 +202,7 @@ object NestedSyncDocument {
             borderShape = map[FIELD_BORDER_SHAPE] as? String ?: "Rounded",
             borderStyle = map[FIELD_BORDER_STYLE] as? String ?: "None",
             borderColor = map[FIELD_BORDER_COLOR] as? String ?: "Default",
+            borderWidth = map[FIELD_BORDER_WIDTH] as? String,
             callout = map[FIELD_CALLOUT] as? String ?: "None",
             calloutTitle = map[FIELD_CALLOUT_TITLE] as? String,
             calloutIcon = map[FIELD_CALLOUT_ICON] as? String,
@@ -356,6 +360,7 @@ data class RemoteNestedItem(
     val borderShape: String = "Rounded",
     val borderStyle: String = "None",
     val borderColor: String = "Default",
+    val borderWidth: String? = null,
     val callout: String = "None",
     val calloutTitle: String? = null,
     val calloutIcon: String? = null,

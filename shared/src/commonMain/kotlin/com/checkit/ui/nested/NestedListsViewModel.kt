@@ -11,6 +11,7 @@ import com.checkit.domain.MetricRollupPolicy
 import com.checkit.domain.NestedColorToken
 import com.checkit.domain.NestedBorderShape
 import com.checkit.domain.NestedBorderStyle
+import com.checkit.domain.NestedBorderWidth
 import com.checkit.domain.NestedCalloutStyle
 import com.checkit.domain.NestedCalloutLayout
 import com.checkit.domain.NestedDocument
@@ -766,8 +767,8 @@ class NestedListsViewModel(
         viewModelScope.launch { updateItemFormattingUseCase(itemId, style, text, bg) }
     }
 
-    fun updateItemBorder(itemId: String, shape: NestedBorderShape, style: NestedBorderStyle, color: NestedColorToken) {
-        viewModelScope.launch { updateItemBorderUseCase(itemId, shape, style, color) }
+    fun updateItemBorder(itemId: String, shape: NestedBorderShape, style: NestedBorderStyle, color: NestedColorToken, width: NestedBorderWidth?) {
+        viewModelScope.launch { updateItemBorderUseCase(itemId, shape, style, color, width) }
     }
 
     fun updateItemCallout(itemId: String, callout: NestedCalloutStyle, title: String?, icon: String?) {

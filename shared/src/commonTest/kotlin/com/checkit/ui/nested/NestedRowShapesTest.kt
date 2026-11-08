@@ -6,6 +6,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import com.checkit.domain.NestedBorderShape
 import com.checkit.domain.NestedBorderStyle
+import com.checkit.domain.NestedBorderWidth
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -88,5 +89,13 @@ class NestedRowShapesTest {
         assertEquals("Dotted", NestedBorderStyle.Dotted.displayName())
         assertEquals("Long dash", NestedBorderStyle.LongDash.displayName())
         assertEquals("Dash dot", NestedBorderStyle.DashDot.displayName())
+    }
+
+    @Test
+    fun borderWidthDisplayNames() {
+        assertEquals("Thin", NestedBorderWidth.Thin.displayName())
+        assertEquals("Standard", NestedBorderWidth.Standard.displayName())
+        assertEquals("Thick", NestedBorderWidth.Thick.displayName())
+        assertEquals("Extra thick", NestedBorderWidth.ExtraThick.displayName())
     }
 }

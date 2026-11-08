@@ -22,6 +22,7 @@ class NestedCalloutResetTest {
         borderShape = NestedBorderShape.Hexagon,
         borderStyle = NestedBorderStyle.Dotted,
         borderColor = NestedColorToken.Blue,
+        borderWidth = NestedBorderWidth.ExtraThick,
         callout = NestedCalloutStyle.Warning,
         calloutTitle = "Custom title",
         calloutIcon = "heart",
@@ -40,6 +41,7 @@ class NestedCalloutResetTest {
         assertEquals(NestedCalloutDefaults.borderShape, reset.borderShape)
         assertEquals(NestedCalloutDefaults.borderStyle, reset.borderStyle)
         assertEquals(NestedCalloutDefaults.borderColor, reset.borderColor)
+        assertEquals(NestedCalloutDefaults.borderWidth, reset.borderWidth)
         assertNull(reset.calloutLayout)
         assertNull(reset.calloutTitle)
         assertNull(reset.calloutIcon)

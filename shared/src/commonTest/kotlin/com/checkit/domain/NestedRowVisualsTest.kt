@@ -18,7 +18,8 @@ class NestedRowVisualsTest {
         backgroundColor: NestedColorToken = NestedColorToken.Default,
         borderColor: NestedColorToken = NestedColorToken.Default,
         borderShape: NestedBorderShape = NestedBorderShape.Rounded,
-        borderStyle: NestedBorderStyle = NestedBorderStyle.None
+        borderStyle: NestedBorderStyle = NestedBorderStyle.None,
+        borderWidth: NestedBorderWidth? = null
     ) = NestedListItem(
         id = "item-1",
         documentId = "doc-1",
@@ -28,6 +29,7 @@ class NestedRowVisualsTest {
         borderShape = borderShape,
         borderStyle = borderStyle,
         borderColor = borderColor,
+        borderWidth = borderWidth,
         callout = callout,
         calloutLayout = calloutLayout,
         createdAtMillis = 0L,
@@ -187,8 +189,54 @@ class NestedRowVisualsTest {
         assertEquals(NestedColorToken.Red, visuals.bgToken)
         // A hand-picked fill reads stronger than the preset wash.
         assertEquals(EffectiveRowVisuals.EXPLICIT_BACKGROUND_ALPHA, visuals.bgAlpha)
-        // Stroke width has no row-level property, so it stays with the preset.
+        // Null width inherits the preset.
         assertEquals(note.borderWidthDp, visuals.borderWidthDp)
+    }
+
+    @Test
+    fun explicitBorderWidthOverridesThePreset() {
+        val visuals = item(
+            callout = NestedCalloutStyle.Note,
+            borderWidth = NestedBorderWidth.ExtraThick
+        ).resolveVisuals()
+
+        assertEquals(NestedBorderWidth.ExtraThick.widthDp(), visuals.borderWidthDp)
+    }
+
+    @Test
+    fun explicitBorderWidthOverridesPlainDefault() {
+        val visuals = item(
+            borderStyle = NestedBorderStyle.Solid,
+            borderWidth = NestedBorderWidth.Thin
+        ).resolveVisuals()
+
+        assertEquals(1f, visuals.borderWidthDp)
+    }
+
+    @Test
+    fun explicitBorderWidthOverridesRailPreset() {
+        // Question is a 3dp rail preset; an explicit Thin shrinks the rail.
+        val visuals = item(
+            callout = NestedCalloutStyle.Question,
+            borderWidth = NestedBorderWidth.Thin
+        ).resolveVisuals()
+
+        assertEquals(1f, visuals.borderWidthDp)
+    }
+
+    @Test
+    fun nullBorderWidthKeepsPlainDefault() {
+        val visuals = item(borderStyle = NestedBorderStyle.Solid).resolveVisuals()
+
+        assertEquals(EffectiveRowVisuals.DEFAULT_BORDER_WIDTH_DP, visuals.borderWidthDp)
+    }
+
+    @Test
+    fun borderWidthDpMapping() {
+        assertEquals(1f, NestedBorderWidth.Thin.widthDp())
+        assertEquals(1.5f, NestedBorderWidth.Standard.widthDp())
+        assertEquals(2f, NestedBorderWidth.Thick.widthDp())
+        assertEquals(3f, NestedBorderWidth.ExtraThick.widthDp())
     }
 
     @Test

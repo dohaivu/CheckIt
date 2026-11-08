@@ -107,6 +107,7 @@ class NestedDuplicateTest {
             borderShape = NestedBorderShape.Pill,
             borderStyle = NestedBorderStyle.Dashed,
             borderColor = NestedColorToken.Green,
+            borderWidth = NestedBorderWidth.ExtraThick,
             callout = NestedCalloutStyle.Tip,
             calloutTitle = "Tip",
             guideDot = "⭐️",
@@ -139,6 +140,7 @@ class NestedDuplicateTest {
         assertEquals(source.borderShape, duplicate.borderShape)
         assertEquals(source.borderStyle, duplicate.borderStyle)
         assertEquals(source.borderColor, duplicate.borderColor)
+        assertEquals(source.borderWidth, duplicate.borderWidth)
         assertEquals(source.callout, duplicate.callout)
         assertEquals(source.calloutTitle, duplicate.calloutTitle)
         assertEquals(source.guideDot, duplicate.guideDot)

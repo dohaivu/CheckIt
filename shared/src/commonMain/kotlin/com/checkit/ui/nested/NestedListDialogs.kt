@@ -71,6 +71,7 @@ import com.checkit.domain.MetricRollupPolicy
 import com.checkit.domain.MoveDestinations
 import com.checkit.domain.NestedBorderShape
 import com.checkit.domain.NestedBorderStyle
+import com.checkit.domain.NestedBorderWidth
 import com.checkit.domain.NestedColorToken
 import com.checkit.domain.NestedItemNode
 import com.checkit.domain.NestedListItem
@@ -681,7 +682,8 @@ internal fun BorderMenu(
     shape: NestedBorderShape,
     style: NestedBorderStyle,
     color: NestedColorToken,
-    onSelected: (NestedBorderShape, NestedBorderStyle, NestedColorToken) -> Unit
+    width: NestedBorderWidth?,
+    onSelected: (NestedBorderShape, NestedBorderStyle, NestedColorToken, NestedBorderWidth?) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
     val active = style != NestedBorderStyle.None
@@ -725,7 +727,35 @@ internal fun BorderMenu(
                             selected = option == style
                         ) {
                             expanded = false
-                            onSelected(shape, option, color)
+                            onSelected(shape, option, color, width)
+                        }
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = "Width",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    SelectableChip(
+                        label = "Inherit",
+                        selected = width == null
+                    ) {
+                        expanded = false
+                        onSelected(shape, style, color, null)
+                    }
+                    NestedBorderWidth.entries.forEach { option ->
+                        SelectableChip(
+                            label = option.displayName(),
+                            selected = option == width
+                        ) {
+                            expanded = false
+                            onSelected(shape, style, color, option)
                         }
                     }
                 }
@@ -746,7 +776,7 @@ internal fun BorderMenu(
                             selected = option == shape
                         ) {
                             expanded = false
-                            onSelected(option, style, color)
+                            onSelected(option, style, color, width)
                         }
                     }
                 }
@@ -759,7 +789,7 @@ internal fun BorderMenu(
                 )
                 ColorTokenSwatches(selected = color) {
                     expanded = false
-                    onSelected(shape, style, it)
+                    onSelected(shape, style, it, width)
                 }
             }
         }

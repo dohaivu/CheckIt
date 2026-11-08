@@ -24,6 +24,7 @@ import com.checkit.domain.NestedDocument
 import com.checkit.domain.NestedDocumentTree
 import com.checkit.domain.NestedBorderShape
 import com.checkit.domain.NestedBorderStyle
+import com.checkit.domain.NestedBorderWidth
 import com.checkit.domain.NestedCalloutLayout
 import com.checkit.domain.NestedCalloutDefaults
 import com.checkit.domain.NestedCalloutStyle
@@ -196,7 +197,7 @@ interface CheckItRepository {
     suspend fun updateNestedItemNote(itemId: String, note: String?)
     suspend fun updateNestedItemLabel(itemId: String, label: String?)
     suspend fun updateNestedItemFormatting(itemId: String, textStyle: NestedTextStyle, textColor: NestedColorToken, backgroundColor: NestedColorToken)
-    suspend fun updateNestedItemBorder(itemId: String, borderShape: NestedBorderShape, borderStyle: NestedBorderStyle, borderColor: NestedColorToken)
+    suspend fun updateNestedItemBorder(itemId: String, borderShape: NestedBorderShape, borderStyle: NestedBorderStyle, borderColor: NestedColorToken, borderWidth: NestedBorderWidth?)
     suspend fun updateNestedItemCallout(itemId: String, callout: NestedCalloutStyle, calloutTitle: String?, calloutIcon: String?)
     suspend fun updateNestedItemCalloutLayout(itemId: String, layout: NestedCalloutLayout?)
     suspend fun resetNestedItemCalloutToDefaults(itemId: String)
@@ -1608,9 +1609,10 @@ class RoomCheckItRepository(
         itemId: String,
         borderShape: NestedBorderShape,
         borderStyle: NestedBorderStyle,
-        borderColor: NestedColorToken
+        borderColor: NestedColorToken,
+        borderWidth: NestedBorderWidth?
     ) {
-        dao.updateNestedItemBorder(itemId, borderShape.name, borderStyle.name, borderColor.name, Clock.System.now().toEpochMilliseconds())
+        dao.updateNestedItemBorder(itemId, borderShape.name, borderStyle.name, borderColor.name, borderWidth?.name, Clock.System.now().toEpochMilliseconds())
     }
 
     override suspend fun updateNestedItemCallout(
@@ -1646,6 +1648,7 @@ class RoomCheckItRepository(
             borderShape = NestedCalloutDefaults.borderShape.name,
             borderStyle = NestedCalloutDefaults.borderStyle.name,
             borderColor = NestedCalloutDefaults.borderColor.name,
+            borderWidth = NestedCalloutDefaults.borderWidth?.name,
             updatedAtMillis = Clock.System.now().toEpochMilliseconds()
         )
     }
@@ -1838,6 +1841,7 @@ class RoomCheckItRepository(
                     borderShape = runCatching { NestedBorderShape.valueOf(item.borderShape) }.getOrDefault(NestedBorderShape.Rounded).name,
                     borderStyle = runCatching { NestedBorderStyle.valueOf(item.borderStyle) }.getOrDefault(NestedBorderStyle.None).name,
                     borderColor = runCatching { NestedColorToken.valueOf(item.borderColor) }.getOrDefault(NestedColorToken.Default).name,
+                    borderWidth = item.borderWidth?.let { value -> runCatching { NestedBorderWidth.valueOf(value) }.getOrNull()?.name },
                     callout = calloutStyle.name,
                     calloutTitle = calloutStyle.normalizedTitle(item.calloutTitle),
                     calloutIcon = calloutStyle.normalizedIcon(item.calloutIcon),
@@ -2241,6 +2245,7 @@ private fun NestedListItem.toNestedListItemEntity(documentId: String) = NestedLi
     borderShape = borderShape.name,
     borderStyle = borderStyle.name,
     borderColor = borderColor.name,
+    borderWidth = borderWidth?.name,
     callout = callout.name,
     calloutTitle = calloutTitle,
     calloutIcon = callout.normalizedIcon(calloutIcon),
@@ -2287,6 +2292,7 @@ private fun NestedListItemEntity.toNestedListItem(
         borderShape = runCatching { com.checkit.domain.NestedBorderShape.valueOf(borderShape) }.getOrDefault(com.checkit.domain.NestedBorderShape.Rounded),
         borderStyle = runCatching { com.checkit.domain.NestedBorderStyle.valueOf(borderStyle) }.getOrDefault(com.checkit.domain.NestedBorderStyle.None),
         borderColor = runCatching { com.checkit.domain.NestedColorToken.valueOf(borderColor) }.getOrDefault(com.checkit.domain.NestedColorToken.Default),
+        borderWidth = borderWidth?.let { value -> runCatching { com.checkit.domain.NestedBorderWidth.valueOf(value) }.getOrNull() },
         callout = calloutStyle,
         calloutTitle = calloutStyle.normalizedTitle(calloutTitle),
         calloutIcon = calloutStyle.normalizedIcon(calloutIcon),

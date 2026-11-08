@@ -122,6 +122,7 @@ import checkit.shared.generated.resources.nested_zoom_out
 import com.checkit.domain.FocusPeriod
 import com.checkit.domain.NestedBorderShape
 import com.checkit.domain.NestedBorderStyle
+import com.checkit.domain.NestedBorderWidth
 import com.checkit.domain.NestedCalloutStyle
 import com.checkit.domain.NestedCalloutLayout
 import com.checkit.domain.NestedColorToken
@@ -285,7 +286,7 @@ internal fun NestedFormattingBar(
     item: NestedListItem,
     hasChildren: Boolean,
     onFormattingChange: (NestedTextStyle, NestedColorToken, NestedColorToken) -> Unit,
-    onBorderChange: (NestedBorderShape, NestedBorderStyle, NestedColorToken) -> Unit,
+    onBorderChange: (NestedBorderShape, NestedBorderStyle, NestedColorToken, NestedBorderWidth?) -> Unit,
     onCalloutChange: (NestedCalloutStyle, String?, String?) -> Unit,
     onCalloutLayoutChange: (NestedCalloutLayout?) -> Unit = {},
     onCalloutReset: () -> Unit = {},
@@ -400,8 +401,9 @@ internal fun NestedFormattingBar(
             BorderMenu(
                 shape = item.borderShape,
                 style = item.borderStyle,
-                color = item.borderColor
-            ) { shape, style, color -> onBorderChange(shape, style, color) }
+                color = item.borderColor,
+                width = item.borderWidth
+            ) { shape, style, color, width -> onBorderChange(shape, style, color, width) }
 
             val calloutSpec = item.callout.spec()
             Box {

@@ -5,6 +5,7 @@ import com.checkit.domain.MetricRollupPolicy
 import com.checkit.domain.NestedColorToken
 import com.checkit.domain.NestedBorderShape
 import com.checkit.domain.NestedBorderStyle
+import com.checkit.domain.NestedBorderWidth
 import com.checkit.domain.NestedCalloutStyle
 import com.checkit.domain.NestedCalloutLayout
 import com.checkit.domain.NestedDocument
@@ -270,15 +271,16 @@ class NestedAppleHelper(
         }
     }
 
-    /** Border shape/style/color, string-based for the SwiftUI editor. */
-    fun updateBorderByName(itemId: String, shapeName: String, styleName: String, borderColorName: String) {
+    /** Border shape/style/color/width, string-based for the SwiftUI editor. Null width inherits the preset. */
+    fun updateBorderByName(itemId: String, shapeName: String, styleName: String, borderColorName: String, borderWidthName: String?) {
         scope.launch {
             runCatching {
                 updateItemBorder(
                     itemId,
                     NestedBorderShape.valueOf(shapeName),
                     NestedBorderStyle.valueOf(styleName),
-                    NestedColorToken.valueOf(borderColorName)
+                    NestedColorToken.valueOf(borderColorName),
+                    borderWidthName?.let { NestedBorderWidth.valueOf(it) }
                 )
             }
         }

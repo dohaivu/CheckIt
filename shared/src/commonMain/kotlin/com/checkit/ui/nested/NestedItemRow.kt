@@ -311,7 +311,8 @@ internal fun NestedItemRow(
         item.backgroundColor,
         item.borderColor,
         item.borderShape,
-        item.borderStyle
+        item.borderStyle,
+        item.borderWidth
     ) {
         item.resolveVisuals()
     }

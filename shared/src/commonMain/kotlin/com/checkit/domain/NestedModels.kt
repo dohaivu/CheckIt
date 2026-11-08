@@ -116,6 +116,33 @@ enum class NestedBorderStyle {
 }
 
 /**
+ * Stroke width for a nested row's border (and rail width for Rail callouts).
+ * Persisted by [name] in Room and sync payloads; entries are append-only and
+ * an unknown value reads back as null (inherit the preset/default).
+ *
+ * [Standard] is the plain-row default; the callout presets supply their own
+ * widths, so null (inherit) is usually the right choice when a callout is set.
+ */
+enum class NestedBorderWidth {
+    Thin,
+    Standard,
+    Thick,
+    ExtraThick;
+
+    fun displayName(): String = when (this) {
+        ExtraThick -> "Extra thick"
+        else -> name
+    }
+
+    fun widthDp(): Float = when (this) {
+        Thin -> 1f
+        Standard -> EffectiveRowVisuals.DEFAULT_BORDER_WIDTH_DP
+        Thick -> 2f
+        ExtraThick -> 3f
+    }
+}
+
+/**
  * Visual frame for one nested row. Persisted by [name], so entries must never
  * be renamed or removed; an unknown value reads back as [None].
  *
@@ -288,7 +315,8 @@ fun NestedCalloutLayout.titlePlacement(): NestedCalloutTitlePlacement = when (th
  *
  * [shape] is null for [NestedCalloutLayout.Rail], which draws only a left
  * accent rail, and for [NestedCalloutLayout.Text], which has no preset frame.
- * [borderWidthDp] is the stroke width for cards and the rail width for rails.
+ * [borderWidthDp] is the stroke width for cards and the rail width for rails,
+ * unless [NestedListItem.borderWidth] overrides it per row.
  * The title treatment is not stored here; it follows from [layout] via
  * [NestedCalloutLayout.titlePlacement].
  */
@@ -335,6 +363,7 @@ object NestedCalloutDefaults {
     val borderShape: NestedBorderShape = NestedBorderShape.Rounded
     val borderStyle: NestedBorderStyle = NestedBorderStyle.None
     val borderColor: NestedColorToken = NestedColorToken.Default
+    val borderWidth: NestedBorderWidth? = null
 }
 
 /**
@@ -360,6 +389,8 @@ data class NestedListItem(
     val borderShape: NestedBorderShape = NestedCalloutDefaults.borderShape,
     val borderStyle: NestedBorderStyle = NestedCalloutDefaults.borderStyle,
     val borderColor: NestedColorToken = NestedCalloutDefaults.borderColor,
+    /** Stroke width; null inherits the callout preset (or 1.5dp default). */
+    val borderWidth: NestedBorderWidth? = NestedCalloutDefaults.borderWidth,
     /** Visual frame; [NestedCalloutStyle.None] renders the plain row. */
     val callout: NestedCalloutStyle = NestedCalloutStyle.None,
     /** Optional override for the callout title; null shows the style name. */
@@ -448,7 +479,8 @@ data class NestedListItem(
             else -> NestedBorderStyle.None
         }
 
-        val borderWidthDp = spec?.borderWidthDp
+        val borderWidthDp = borderWidth?.widthDp()
+            ?: spec?.borderWidthDp
             ?: EffectiveRowVisuals.DEFAULT_BORDER_WIDTH_DP
 
         return EffectiveRowVisuals(
@@ -474,6 +506,7 @@ data class NestedListItem(
         borderShape = NestedCalloutDefaults.borderShape,
         borderStyle = NestedCalloutDefaults.borderStyle,
         borderColor = NestedCalloutDefaults.borderColor,
+        borderWidth = NestedCalloutDefaults.borderWidth,
         calloutLayout = null,
         calloutTitle = null,
         calloutIcon = null
@@ -499,14 +532,13 @@ data class NestedListItem(
  *
  * Explicit item properties ([NestedListItem.backgroundColor],
  * [NestedListItem.borderColor], [NestedListItem.borderShape],
- * [NestedListItem.borderStyle]) override the callout preset so a single callout
- * can be recolored or reshaped per row; the preset supplies the defaults.
+ * [NestedListItem.borderStyle], [NestedListItem.borderWidth]) override the
+ * callout preset so a single callout can be recolored, reshaped or reweighted
+ * per row; the preset supplies the defaults. A null [NestedListItem.borderWidth]
+ * inherits the preset width (or the plain 1.5dp default).
  *
  * A [NestedCalloutLayout.Text] callout contributes typography only: no preset
  * stroke and no preset wash, unless the row sets those properties explicitly.
- *
- * The stroke width has no item-level counterpart: it always comes from the
- * preset (or the plain 1.5dp default when the row has no callout).
  */
 data class EffectiveRowVisuals(
     val calloutSpec: NestedCalloutSpec?,

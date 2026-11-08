@@ -14,6 +14,7 @@ import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.NestedColorToken
 import com.checkit.domain.NestedBorderShape
 import com.checkit.domain.NestedBorderStyle
+import com.checkit.domain.NestedBorderWidth
 import com.checkit.domain.NestedCalloutStyle
 import com.checkit.domain.NestedCalloutLayout
 import com.checkit.domain.MetricRollupPolicy
@@ -219,8 +220,9 @@ class UpdateNestedItemBorderUseCase(
         itemId: String,
         borderShape: NestedBorderShape,
         borderStyle: NestedBorderStyle,
-        borderColor: NestedColorToken
-    ) = repository.updateNestedItemBorder(itemId, borderShape, borderStyle, borderColor)
+        borderColor: NestedColorToken,
+        borderWidth: NestedBorderWidth?
+    ) = repository.updateNestedItemBorder(itemId, borderShape, borderStyle, borderColor, borderWidth)
 }
 
 class UpdateNestedItemCalloutUseCase(

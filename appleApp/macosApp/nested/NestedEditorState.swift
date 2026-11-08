@@ -1048,12 +1048,13 @@ final class NestedEditorState: ObservableObject {
         )
     }
 
-    func updateBorder(id: String, shape: NestedBorderShape, style: NestedBorderStyle, color: NestedColorToken) {
+    func updateBorder(id: String, shape: NestedBorderShape, style: NestedBorderStyle, color: NestedColorToken, width: NestedBorderWidth?) {
         helper.updateBorderByName(
             itemId: id,
             shapeName: shape.name,
             styleName: style.name,
-            borderColorName: color.name
+            borderColorName: color.name,
+            borderWidthName: width?.name
         )
     }
 

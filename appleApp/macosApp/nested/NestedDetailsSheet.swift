@@ -651,24 +651,33 @@ struct NestedFormattingBar: View {
             })
             .accessibilityLabel("Background color")
             .help("Background color")
-            // Border: shape + line style + color in one menu.
+            // Border: shape + line style + width + color in one menu.
             NestedMenuButton(rows: {
                 var rows: [NestedMenuRow] = [.header("Style")]
                 for s in NestedBorderStyle.entries {
                     rows.append(.item(title: s.displayName(), selected: s == item.borderStyle) {
-                        state.updateBorder(id: item.id, shape: item.borderShape, style: s, color: item.borderColor)
+                        state.updateBorder(id: item.id, shape: item.borderShape, style: s, color: item.borderColor, width: item.borderWidth)
+                    })
+                }
+                rows.append(.header("Width"))
+                rows.append(.item(title: "Inherit", selected: item.borderWidth == nil) {
+                    state.updateBorder(id: item.id, shape: item.borderShape, style: item.borderStyle, color: item.borderColor, width: nil)
+                })
+                for w in NestedBorderWidth.entries {
+                    rows.append(.item(title: w.displayName(), selected: w == item.borderWidth) {
+                        state.updateBorder(id: item.id, shape: item.borderShape, style: item.borderStyle, color: item.borderColor, width: w)
                     })
                 }
                 rows.append(.header("Shape"))
                 for s in NestedBorderShape.entries {
                     rows.append(.item(title: s.displayName(), selected: s == item.borderShape) {
-                        state.updateBorder(id: item.id, shape: s, style: item.borderStyle, color: item.borderColor)
+                        state.updateBorder(id: item.id, shape: s, style: item.borderStyle, color: item.borderColor, width: item.borderWidth)
                     })
                 }
                 rows.append(.header("Color"))
                 for t in NestedColorToken.entries {
                     rows.append(.color(t, selected: t == item.borderColor) {
-                        state.updateBorder(id: item.id, shape: item.borderShape, style: item.borderStyle, color: t)
+                        state.updateBorder(id: item.id, shape: item.borderShape, style: item.borderStyle, color: t, width: item.borderWidth)
                     })
                 }
                 return rows

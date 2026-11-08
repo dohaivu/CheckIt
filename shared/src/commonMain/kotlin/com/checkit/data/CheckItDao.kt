@@ -1237,12 +1237,13 @@ interface CheckItDao {
         updatedAtMillis: Long
     )
 
-    @Query("UPDATE nested_list_items SET borderShape = :borderShape, borderStyle = :borderStyle, borderColor = :borderColor, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
+    @Query("UPDATE nested_list_items SET borderShape = :borderShape, borderStyle = :borderStyle, borderColor = :borderColor, borderWidth = :borderWidth, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
     suspend fun updateNestedItemBorder(
         itemId: String,
         borderShape: String,
         borderStyle: String,
         borderColor: String,
+        borderWidth: String?,
         updatedAtMillis: Long
     )
 
@@ -1272,6 +1273,7 @@ interface CheckItDao {
             borderShape = :borderShape,
             borderStyle = :borderStyle,
             borderColor = :borderColor,
+            borderWidth = :borderWidth,
             calloutLayout = NULL,
             calloutTitle = NULL,
             calloutIcon = NULL,
@@ -1285,6 +1287,7 @@ interface CheckItDao {
         borderShape: String,
         borderStyle: String,
         borderColor: String,
+        borderWidth: String?,
         updatedAtMillis: Long
     )
 
