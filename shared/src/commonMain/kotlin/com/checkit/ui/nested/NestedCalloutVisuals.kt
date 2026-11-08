@@ -9,17 +9,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
-import androidx.compose.material.icons.outlined.Dangerous
-import androidx.compose.material.icons.outlined.FormatQuote
-import androidx.compose.material.icons.outlined.HelpOutline
-import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.Lightbulb
-import androidx.compose.material.icons.outlined.PriorityHigh
-import androidx.compose.material.icons.outlined.Psychology
-import androidx.compose.material.icons.outlined.StarOutline
-import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -39,25 +29,13 @@ import com.checkit.domain.NestedCalloutLayout
 import com.checkit.domain.NestedCalloutSpec
 import com.checkit.domain.NestedCalloutStyle
 import com.checkit.domain.NestedCalloutTitlePlacement
+import com.checkit.ui.theme.AppSymbols
 
 /**
  * Maps the shared [com.checkit.domain.NestedCalloutSpec.iconKey] to a Compose
- * vector. Both the formatting picker and the row header use the same lookup so
- * a kind cannot drift between the menu and the canvas.
+ * vector using the central [AppSymbols] registry.
  */
-internal fun nestedCalloutIcon(iconKey: String): ImageVector = when (iconKey) {
-    "info" -> Icons.Outlined.Info
-    "lightbulb" -> Icons.Outlined.Lightbulb
-    "idea" -> Icons.Outlined.Psychology
-    "sparkles" -> Icons.Outlined.AutoAwesome
-    "summary" -> Icons.Outlined.StarOutline
-    "important" -> Icons.Outlined.PriorityHigh
-    "warning" -> Icons.Outlined.Warning
-    "caution" -> Icons.Outlined.Dangerous
-    "question" -> Icons.Outlined.HelpOutline
-    "quote" -> Icons.Outlined.FormatQuote
-    else -> Icons.Outlined.Info
-}
+internal fun nestedCalloutIcon(iconKey: String): ImageVector = AppSymbols.materialIcon(iconKey)
 
 /** Icon for a callout; [NestedCalloutStyle.None] falls back to the picker glyph. */
 internal fun nestedCalloutIcon(style: NestedCalloutStyle): ImageVector =

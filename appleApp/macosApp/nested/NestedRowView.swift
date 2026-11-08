@@ -27,23 +27,16 @@ func nestedRowFont(_ styleName: String) -> Font {
     }
 }
 
-// MARK: - Callout display mappings (mirror NestedCalloutVisuals.kt)
+// MARK: - Symbol & Callout display mappings (mirror AppSymbols.kt & NestedCalloutVisuals.kt)
+
+/// Global SF Symbol lookup via the shared central `AppSymbols` registry.
+func appSymbol(_ key: String) -> String {
+    AppSymbols.shared.sfSymbol(key: key)
+}
 
 /// SF Symbol for the shared `NestedCalloutSpec.iconKey`.
 func nestedCalloutSymbol(_ key: String) -> String {
-    switch key {
-    case "info": "info.circle"
-    case "lightbulb": "lightbulb"
-    case "idea": "brain.head.profile"
-    case "sparkles": "sparkles"
-    case "summary": "star"
-    case "important": "exclamationmark.circle"
-    case "warning": "exclamationmark.triangle"
-    case "caution": "exclamationmark.octagon"
-    case "question": "questionmark.circle"
-    case "quote": "quote.opening"
-    default: "info.circle"
-    }
+    appSymbol(key)
 }
 
 /// Tinted symbol for the callout picker rows. `None` keeps a muted icon so the
