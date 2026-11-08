@@ -58,6 +58,7 @@ import androidx.compose.material.icons.filled.InvertColors
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.SortByAlpha
 import androidx.compose.material.icons.filled.Today
@@ -287,6 +288,7 @@ internal fun NestedFormattingBar(
     onBorderChange: (NestedBorderShape, NestedBorderStyle, NestedColorToken) -> Unit,
     onCalloutChange: (NestedCalloutStyle, String?, String?) -> Unit,
     onCalloutLayoutChange: (NestedCalloutLayout?) -> Unit = {},
+    onCalloutReset: () -> Unit = {},
     onLabelChange: (String?) -> Unit,
     onPriorityChange: (TaskPriority) -> Unit,
     onGuideDotChange: (String?) -> Unit,
@@ -489,6 +491,20 @@ internal fun NestedFormattingBar(
                             onClick = {
                                 calloutExpanded = false
                                 showCalloutTitleDialog = true
+                            }
+                        )
+                        NestedMenuItem(
+                            label = "Reset to callout defaults",
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.RestartAlt,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
+                            onClick = {
+                                calloutExpanded = false
+                                onCalloutReset()
                             }
                         )
                     }

@@ -10,6 +10,7 @@ import SwiftUI
 /// One row of a `NestedMenuButton` menu.
 enum NestedMenuRow {
     case header(String)
+    case separator
     case item(
         title: String,
         icon: NSImage? = nil,
@@ -85,6 +86,8 @@ struct NestedMenuButton<Label: View>: View {
                 )
                 item.isEnabled = false
                 menu.addItem(item)
+            case .separator:
+                menu.addItem(.separator())
             case .item(let title, let icon, let selected, let action):
                 let item = NSMenuItem(
                     title: title,

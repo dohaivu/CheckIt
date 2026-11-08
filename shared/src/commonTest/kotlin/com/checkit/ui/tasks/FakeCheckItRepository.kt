@@ -1018,6 +1018,10 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
     override suspend fun updateNestedItemBorder(itemId: String, borderShape: com.checkit.domain.NestedBorderShape, borderStyle: com.checkit.domain.NestedBorderStyle, borderColor: NestedColorToken) {}
     override suspend fun updateNestedItemCallout(itemId: String, callout: com.checkit.domain.NestedCalloutStyle, calloutTitle: String?, calloutIcon: String?) {}
     override suspend fun updateNestedItemCalloutLayout(itemId: String, layout: com.checkit.domain.NestedCalloutLayout?) {}
+    val resetCalloutItemIds = mutableListOf<String>()
+    override suspend fun resetNestedItemCalloutToDefaults(itemId: String) {
+        resetCalloutItemIds += itemId
+    }
     override suspend fun updateNestedItemGuideDot(itemId: String, guideDot: String?) {}
     override suspend fun updateNestedItemGuideDotColor(itemId: String, guideDotColor: NestedColorToken?) {}
     override suspend fun updateNestedItemPriority(itemId: String, priority: TaskPriority) {}

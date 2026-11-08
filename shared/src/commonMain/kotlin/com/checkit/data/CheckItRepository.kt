@@ -25,6 +25,7 @@ import com.checkit.domain.NestedDocumentTree
 import com.checkit.domain.NestedBorderShape
 import com.checkit.domain.NestedBorderStyle
 import com.checkit.domain.NestedCalloutLayout
+import com.checkit.domain.NestedCalloutDefaults
 import com.checkit.domain.NestedCalloutStyle
 import com.checkit.domain.normalizedIcon
 import com.checkit.domain.normalizedTitle
@@ -198,6 +199,7 @@ interface CheckItRepository {
     suspend fun updateNestedItemBorder(itemId: String, borderShape: NestedBorderShape, borderStyle: NestedBorderStyle, borderColor: NestedColorToken)
     suspend fun updateNestedItemCallout(itemId: String, callout: NestedCalloutStyle, calloutTitle: String?, calloutIcon: String?)
     suspend fun updateNestedItemCalloutLayout(itemId: String, layout: NestedCalloutLayout?)
+    suspend fun resetNestedItemCalloutToDefaults(itemId: String)
     suspend fun updateNestedItemPriority(itemId: String, priority: TaskPriority)
     suspend fun updateNestedItemGuideDot(itemId: String, guideDot: String?)
     suspend fun updateNestedItemGuideDotColor(itemId: String, guideDotColor: NestedColorToken?)
@@ -1634,6 +1636,17 @@ class RoomCheckItRepository(
             itemId,
             layout?.name,
             Clock.System.now().toEpochMilliseconds()
+        )
+    }
+
+    override suspend fun resetNestedItemCalloutToDefaults(itemId: String) {
+        dao.resetNestedItemCalloutToDefaults(
+            itemId = itemId,
+            backgroundColor = NestedCalloutDefaults.backgroundColor.name,
+            borderShape = NestedCalloutDefaults.borderShape.name,
+            borderStyle = NestedCalloutDefaults.borderStyle.name,
+            borderColor = NestedCalloutDefaults.borderColor.name,
+            updatedAtMillis = Clock.System.now().toEpochMilliseconds()
         )
     }
 

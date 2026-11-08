@@ -47,6 +47,7 @@ import com.checkit.domain.usecase.UpdateNestedItemFormattingUseCase
 import com.checkit.domain.usecase.UpdateNestedItemBorderUseCase
 import com.checkit.domain.usecase.UpdateNestedItemCalloutUseCase
 import com.checkit.domain.usecase.UpdateNestedItemCalloutLayoutUseCase
+import com.checkit.domain.usecase.ResetNestedItemCalloutToDefaultsUseCase
 import com.checkit.domain.usecase.UpdateNestedItemGuideDotUseCase
 import com.checkit.domain.usecase.UpdateNestedItemGuideDotColorUseCase
 import com.checkit.domain.usecase.UpdateNestedItemLabelUseCase
@@ -118,6 +119,7 @@ class NestedAppleHelper(
     private val updateItemBorder: UpdateNestedItemBorderUseCase,
     private val updateItemCallout: UpdateNestedItemCalloutUseCase,
     private val updateItemCalloutLayout: UpdateNestedItemCalloutLayoutUseCase,
+    private val resetItemCalloutToDefaults: ResetNestedItemCalloutToDefaultsUseCase,
     private val updateItemDateRange: UpdateNestedItemDateRangeUseCase,
     private val updateItemPriority: UpdateNestedItemPriorityUseCase,
     private val updateItemGuideDot: UpdateNestedItemGuideDotUseCase,
@@ -310,6 +312,11 @@ class NestedAppleHelper(
                 updateItemCalloutLayout(itemId, layout)
             }
         }
+    }
+
+    /** Clears item visual overrides so the selected callout preset shows through. */
+    fun resetCalloutToDefaults(itemId: String) {
+        scope.launch { runCatching { resetItemCalloutToDefaults(itemId) } }
     }
 
     /**

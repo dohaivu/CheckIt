@@ -720,11 +720,10 @@ struct NestedFormattingBar: View {
                     ) {
                         DispatchQueue.main.async { showCalloutTitle = true }
                     })
-                    if item.calloutTitle != nil || item.calloutIcon != nil {
-                        rows.append(.item(title: "Use default title & icon", selected: false) {
-                            state.updateCallout(id: item.id, style: item.callout, title: nil, icon: nil)
-                        })
-                    }
+                    rows.append(.separator)
+                    rows.append(.item(title: "Reset to callout defaults", selected: false) {
+                        state.resetCalloutToDefaults(id: item.id)
+                    })
                 }
                 return rows
             }, label: {

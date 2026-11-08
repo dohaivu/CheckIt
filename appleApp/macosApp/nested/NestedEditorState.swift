@@ -1075,6 +1075,12 @@ final class NestedEditorState: ObservableObject {
         )
     }
 
+    /// Clears background, border, layout, title and icon overrides so the
+    /// selected callout's preset shows through again.
+    func resetCalloutToDefaults(id: String) {
+        helper.resetCalloutToDefaults(itemId: id)
+    }
+
     func updatePriority(id: String, priority: TaskPriority) {
         helper.updatePriorityByName(itemId: id, priorityName: priority.name)
     }

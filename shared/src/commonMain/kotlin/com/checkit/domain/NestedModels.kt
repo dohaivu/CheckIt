@@ -314,6 +314,18 @@ data class NestedDocument(
 )
 
 /**
+ * Item-level visual overrides that defer to the selected callout preset.
+ * Writing these values restores the preset's background, border, layout,
+ * title and icon.
+ */
+object NestedCalloutDefaults {
+    val backgroundColor: NestedColorToken = NestedColorToken.Default
+    val borderShape: NestedBorderShape = NestedBorderShape.Rounded
+    val borderStyle: NestedBorderStyle = NestedBorderStyle.None
+    val borderColor: NestedColorToken = NestedColorToken.Default
+}
+
+/**
  * One node of a [NestedDocument] tree. Uniform line; checkbox style is per-item.
  * [parentId] null means the item sits at the document root level.
  */
@@ -332,10 +344,10 @@ data class NestedListItem(
     val collapsed: Boolean = false,
     val textStyle: NestedTextStyle = NestedTextStyle.Body,
     val textColor: NestedColorToken = NestedColorToken.Default,
-    val backgroundColor: NestedColorToken = NestedColorToken.Default,
-    val borderShape: NestedBorderShape = NestedBorderShape.Rounded,
-    val borderStyle: NestedBorderStyle = NestedBorderStyle.None,
-    val borderColor: NestedColorToken = NestedColorToken.Default,
+    val backgroundColor: NestedColorToken = NestedCalloutDefaults.backgroundColor,
+    val borderShape: NestedBorderShape = NestedCalloutDefaults.borderShape,
+    val borderStyle: NestedBorderStyle = NestedCalloutDefaults.borderStyle,
+    val borderColor: NestedColorToken = NestedCalloutDefaults.borderColor,
     /** Visual frame; [NestedCalloutStyle.None] renders the plain row. */
     val callout: NestedCalloutStyle = NestedCalloutStyle.None,
     /** Optional override for the callout title; null shows the style name. */
@@ -382,7 +394,7 @@ data class NestedListItem(
         val titlePlacement = layout?.titlePlacement()
         val isTextLayout = layout == NestedCalloutLayout.Text
 
-        val hasBackground = backgroundColor != NestedColorToken.Default
+        val hasBackground = backgroundColor != NestedCalloutDefaults.backgroundColor
         val bgToken = when {
             hasBackground -> backgroundColor
             // Text carries the accent in the eyebrow, not in a card wash.
@@ -398,7 +410,7 @@ data class NestedListItem(
         }
 
         val borderToken = when {
-            borderColor != NestedColorToken.Default -> borderColor
+            borderColor != NestedCalloutDefaults.borderColor -> borderColor
             spec != null -> spec.accent
             else -> NestedColorToken.Default
         }
@@ -410,14 +422,14 @@ data class NestedListItem(
             // shape so a decorative preset shape cannot clip the content.
             isTextLayout -> borderShape
             // "Rounded" is the default, so it means "keep the preset shape".
-            borderShape != NestedBorderShape.Rounded -> borderShape
+            borderShape != NestedCalloutDefaults.borderShape -> borderShape
             spec?.shape != null -> spec.shape
             else -> borderShape
         }
 
         val borderStyle = when {
             // "None" is the default, so it means "keep the preset stroke".
-            borderStyle != NestedBorderStyle.None -> borderStyle
+            borderStyle != NestedCalloutDefaults.borderStyle -> borderStyle
             // Text has no preset frame; an explicit style above still wins.
             isTextLayout -> NestedBorderStyle.None
             spec != null -> spec.borderStyle
@@ -439,6 +451,21 @@ data class NestedListItem(
             bgAlpha = bgAlpha
         )
     }
+
+    /**
+     * Copy with every item-level visual override cleared, so the row renders
+     * the selected [callout] preset's background, border, layout, title and
+     * icon. Text style and text color are intentionally kept.
+     */
+    fun withCalloutDefaults(): NestedListItem = copy(
+        backgroundColor = NestedCalloutDefaults.backgroundColor,
+        borderShape = NestedCalloutDefaults.borderShape,
+        borderStyle = NestedCalloutDefaults.borderStyle,
+        borderColor = NestedCalloutDefaults.borderColor,
+        calloutLayout = null,
+        calloutTitle = null,
+        calloutIcon = null
+    )
 
     /**
      * Icon key the row should draw for its callout: null when there is no

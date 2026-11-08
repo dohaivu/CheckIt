@@ -499,6 +499,9 @@ internal fun NestedListScreen(
                             onCalloutLayoutChange = { layout ->
                                 viewModel.updateItemCalloutLayout(selectedItem.id, layout)
                             },
+                            onCalloutReset = {
+                                viewModel.resetItemCalloutToDefaults(selectedItem.id)
+                            },
                             onLabelChange = { label ->
                                 viewModel.updateItemLabel(selectedItem.id, label)
                             },

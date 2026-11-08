@@ -49,6 +49,7 @@ import com.checkit.domain.usecase.UpdateNestedItemFormattingUseCase
 import com.checkit.domain.usecase.UpdateNestedItemBorderUseCase
 import com.checkit.domain.usecase.UpdateNestedItemCalloutUseCase
 import com.checkit.domain.usecase.UpdateNestedItemCalloutLayoutUseCase
+import com.checkit.domain.usecase.ResetNestedItemCalloutToDefaultsUseCase
 import com.checkit.domain.usecase.UpdateNestedItemGuideDotUseCase
 import com.checkit.domain.usecase.UpdateNestedItemGuideDotColorUseCase
 import com.checkit.domain.usecase.UpdateNestedItemLabelUseCase
@@ -191,6 +192,7 @@ class NestedListsViewModel(
     private val updateItemBorderUseCase: UpdateNestedItemBorderUseCase,
     private val updateItemCalloutUseCase: UpdateNestedItemCalloutUseCase,
     private val updateItemCalloutLayoutUseCase: UpdateNestedItemCalloutLayoutUseCase,
+    private val resetItemCalloutToDefaultsUseCase: ResetNestedItemCalloutToDefaultsUseCase,
     private val updateItemDateRangeUseCase: UpdateNestedItemDateRangeUseCase,
     private val updateItemPriorityUseCase: UpdateNestedItemPriorityUseCase,
     private val updateItemGuideDotUseCase: UpdateNestedItemGuideDotUseCase,
@@ -774,6 +776,10 @@ class NestedListsViewModel(
 
     fun updateItemCalloutLayout(itemId: String, layout: NestedCalloutLayout?) {
         viewModelScope.launch { updateItemCalloutLayoutUseCase(itemId, layout) }
+    }
+
+    fun resetItemCalloutToDefaults(itemId: String) {
+        viewModelScope.launch { resetItemCalloutToDefaultsUseCase(itemId) }
     }
 
     fun updateItemDateRange(itemId: String, start: LocalDate?, end: LocalDate?) {

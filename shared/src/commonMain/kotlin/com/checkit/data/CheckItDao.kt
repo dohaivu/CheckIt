@@ -1262,6 +1262,32 @@ interface CheckItDao {
         updatedAtMillis: Long
     )
 
+    /**
+     * Clears every item-level visual override in one statement so the selected
+     * callout preset shows through again. The callout style itself is untouched.
+     */
+    @Query("""
+        UPDATE nested_list_items
+        SET backgroundColor = :backgroundColor,
+            borderShape = :borderShape,
+            borderStyle = :borderStyle,
+            borderColor = :borderColor,
+            calloutLayout = NULL,
+            calloutTitle = NULL,
+            calloutIcon = NULL,
+            updatedAtMillis = :updatedAtMillis,
+            dirty = 1
+        WHERE id = :itemId
+    """)
+    suspend fun resetNestedItemCalloutToDefaults(
+        itemId: String,
+        backgroundColor: String,
+        borderShape: String,
+        borderStyle: String,
+        borderColor: String,
+        updatedAtMillis: Long
+    )
+
     @Query("UPDATE nested_list_items SET priority = :priority, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
     suspend fun updateNestedItemPriority(
         itemId: String,

@@ -243,6 +243,17 @@ class UpdateNestedItemCalloutLayoutUseCase(
     ) = repository.updateNestedItemCalloutLayout(itemId, layout)
 }
 
+/**
+ * Clears the item's visual overrides so the selected callout preset shows
+ * through. The callout style, text style and text color are left untouched.
+ */
+class ResetNestedItemCalloutToDefaultsUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(itemId: String) =
+        repository.resetNestedItemCalloutToDefaults(itemId)
+}
+
 class UpdateNestedItemPriorityUseCase(
     private val repository: CheckItRepository
 ) {
