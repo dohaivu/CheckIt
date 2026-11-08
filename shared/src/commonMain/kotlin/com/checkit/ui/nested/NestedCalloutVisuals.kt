@@ -26,7 +26,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.checkit.domain.NestedCalloutLayout
-import com.checkit.domain.NestedCalloutSpec
 import com.checkit.domain.NestedCalloutStyle
 import com.checkit.domain.NestedCalloutTitlePlacement
 import com.checkit.ui.theme.AppSymbols
@@ -56,20 +55,26 @@ internal val NestedCalloutTabBadgeHeight = 20.dp
  */
 @Composable
 internal fun NestedCalloutHeader(
-    spec: NestedCalloutSpec,
+    iconKey: String?,
     title: String,
     accent: Color,
     focusAlpha: Float,
     placement: NestedCalloutTitlePlacement
 ) {
-    val icon = nestedCalloutIcon(spec.iconKey)
     when (placement) {
         NestedCalloutTitlePlacement.Eyebrow -> Row(
             modifier = Modifier.alpha(focusAlpha),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(13.dp))
-            Spacer(Modifier.width(4.dp))
+            iconKey?.let { key ->
+                Icon(
+                    nestedCalloutIcon(key),
+                    contentDescription = null,
+                    tint = accent,
+                    modifier = Modifier.size(13.dp)
+                )
+                Spacer(Modifier.width(4.dp))
+            }
             Text(
                 text = title.uppercase(),
                 style = MaterialTheme.typography.labelSmall,
@@ -95,8 +100,15 @@ internal fun NestedCalloutHeader(
                     modifier = Modifier.alpha(focusAlpha),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(13.dp))
-                    Spacer(Modifier.width(4.dp))
+                    iconKey?.let { key ->
+                        Icon(
+                            nestedCalloutIcon(key),
+                            contentDescription = null,
+                            tint = accent,
+                            modifier = Modifier.size(13.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                    }
                     Text(
                         text = title,
                         style = MaterialTheme.typography.labelSmall,
@@ -113,8 +125,15 @@ internal fun NestedCalloutHeader(
             modifier = Modifier.alpha(focusAlpha),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(14.dp))
-            Spacer(Modifier.width(5.dp))
+            iconKey?.let { key ->
+                Icon(
+                    nestedCalloutIcon(key),
+                    contentDescription = null,
+                    tint = accent,
+                    modifier = Modifier.size(14.dp)
+                )
+                Spacer(Modifier.width(5.dp))
+            }
             Text(
                 text = title,
                 style = MaterialTheme.typography.labelMedium,

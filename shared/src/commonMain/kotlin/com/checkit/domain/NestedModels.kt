@@ -226,6 +226,14 @@ enum class NestedCalloutStyle {
 fun NestedCalloutStyle.normalizedTitle(title: String?): String? =
     if (this == NestedCalloutStyle.None) null else title?.trim()?.takeIf { it.isNotBlank() }
 
+/**
+ * Keeps an icon override only while a callout is applied. A blank string is
+ * intentionally preserved: it means "draw no icon", while null means "use the
+ * style's default icon".
+ */
+fun NestedCalloutStyle.normalizedIcon(icon: String?): String? =
+    if (this == NestedCalloutStyle.None) null else icon?.trim()?.lowercase()
+
 /** How a callout is laid out around the row. */
 enum class NestedCalloutLayout {
     /** Full card with the title as a small eyebrow above the text. */
@@ -332,6 +340,11 @@ data class NestedListItem(
     val callout: NestedCalloutStyle = NestedCalloutStyle.None,
     /** Optional override for the callout title; null shows the style name. */
     val calloutTitle: String? = null,
+    /**
+     * Optional override for the callout icon (an [com.checkit.ui.theme.AppSymbols]
+     * key); null uses the style icon and an empty string hides the icon.
+     */
+    val calloutIcon: String? = null,
     /** Optional override for the callout layout; null uses callout.spec().layout. */
     val calloutLayout: NestedCalloutLayout? = null,
     /** Optional palette override for this row's dot and owned guide segments. */
@@ -425,6 +438,20 @@ data class NestedListItem(
             bgToken = bgToken,
             bgAlpha = bgAlpha
         )
+    }
+
+    /**
+     * Icon key the row should draw for its callout: null when there is no
+     * callout or the user explicitly hid the icon, otherwise the custom key or
+     * the style's default.
+     */
+    fun effectiveCalloutIconKey(): String? {
+        if (callout == NestedCalloutStyle.None) return null
+        return when (val custom = calloutIcon?.trim()?.lowercase()) {
+            null -> callout.spec()?.iconKey
+            "" -> null
+            else -> custom
+        }
     }
 }
 

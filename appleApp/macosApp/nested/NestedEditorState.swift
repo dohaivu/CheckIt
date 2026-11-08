@@ -1057,12 +1057,14 @@ final class NestedEditorState: ObservableObject {
         )
     }
 
-    /// Callout style and optional title override; nil title shows the style name.
-    func updateCallout(id: String, style: NestedCalloutStyle, title: String?) {
+    /// Callout style plus optional title/icon overrides; nil title shows the
+    /// style name and nil icon shows the style icon ("" hides the icon).
+    func updateCallout(id: String, style: NestedCalloutStyle, title: String?, icon: String?) {
         helper.updateCalloutByName(
             itemId: id,
             calloutName: style.name,
-            calloutTitle: title
+            calloutTitle: title,
+            calloutIcon: icon
         )
     }
 

@@ -28,6 +28,7 @@ class NestedListJsonTest {
             borderColor = com.checkit.domain.NestedColorToken.Green,
             callout = com.checkit.domain.NestedCalloutStyle.Important,
             calloutTitle = "Read this first",
+            calloutIcon = "warning",
             calloutLayout = com.checkit.domain.NestedCalloutLayout.Text,
             guideDot = "🔥",
             createdAtMillis = 1000L,
@@ -69,6 +70,7 @@ class NestedListJsonTest {
         assertEquals("Green", decoded.items[0].borderColor)
         assertEquals("Important", decoded.items[0].callout)
         assertEquals("Read this first", decoded.items[0].calloutTitle)
+        assertEquals("warning", decoded.items[0].calloutIcon)
         assertEquals("Text", decoded.items[0].calloutLayout)
         assertEquals("🔥", decoded.items[0].guideDot)
         assertEquals(1, decoded.items[0].children.size)

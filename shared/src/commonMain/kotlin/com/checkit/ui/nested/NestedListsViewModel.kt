@@ -768,8 +768,8 @@ class NestedListsViewModel(
         viewModelScope.launch { updateItemBorderUseCase(itemId, shape, style, color) }
     }
 
-    fun updateItemCallout(itemId: String, callout: NestedCalloutStyle, title: String?) {
-        viewModelScope.launch { updateItemCalloutUseCase(itemId, callout, title) }
+    fun updateItemCallout(itemId: String, callout: NestedCalloutStyle, title: String?, icon: String?) {
+        viewModelScope.launch { updateItemCalloutUseCase(itemId, callout, title, icon) }
     }
 
     fun updateItemCalloutLayout(itemId: String, layout: NestedCalloutLayout?) {

@@ -493,8 +493,8 @@ internal fun NestedListScreen(
                             onBorderChange = { shape, style, color ->
                                 viewModel.updateItemBorder(selectedItem.id, shape, style, color)
                             },
-                            onCalloutChange = { callout, title ->
-                                viewModel.updateItemCallout(selectedItem.id, callout, title)
+                            onCalloutChange = { callout, title, icon ->
+                                viewModel.updateItemCallout(selectedItem.id, callout, title, icon)
                             },
                             onCalloutLayoutChange = { layout ->
                                 viewModel.updateItemCalloutLayout(selectedItem.id, layout)

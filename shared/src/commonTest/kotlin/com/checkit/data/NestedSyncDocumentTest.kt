@@ -80,6 +80,7 @@ class NestedSyncDocumentTest {
             borderColor = "Pink",
             callout = "Caution",
             calloutTitle = "Watch out",
+            calloutIcon = "lightbulb",
             calloutLayout = "Rail",
             guideDot = "🚀",
             startDateEpochDays = 20000,
@@ -115,6 +116,7 @@ class NestedSyncDocumentTest {
         assertEquals("Pink", remote?.borderColor)
         assertEquals("Caution", remote?.callout)
         assertEquals("Watch out", remote?.calloutTitle)
+        assertEquals("lightbulb", remote?.calloutIcon)
         assertEquals("Rail", remote?.calloutLayout)
         assertEquals("🚀", remote?.guideDot)
         assertEquals("High", remote?.priority)
@@ -140,6 +142,7 @@ class NestedSyncDocumentTest {
             textColor = "Default",
             backgroundColor = "Default",
             callout = "None",
+            calloutIcon = "star",
             calloutLayout = "Text",
             startDateEpochDays = null,
             endDateEpochDays = null,
@@ -154,6 +157,7 @@ class NestedSyncDocumentTest {
             updatedAtMillis = 200L,
             deleted = false,
         )
+        assertNull(map[NestedSyncDocument.FIELD_CALLOUT_ICON])
         assertNull(map[NestedSyncDocument.FIELD_CALLOUT_LAYOUT])
     }
 

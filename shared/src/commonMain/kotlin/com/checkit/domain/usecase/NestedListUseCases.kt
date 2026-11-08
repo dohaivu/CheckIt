@@ -229,8 +229,9 @@ class UpdateNestedItemCalloutUseCase(
     suspend operator fun invoke(
         itemId: String,
         callout: NestedCalloutStyle,
-        calloutTitle: String?
-    ) = repository.updateNestedItemCallout(itemId, callout, calloutTitle)
+        calloutTitle: String?,
+        calloutIcon: String?
+    ) = repository.updateNestedItemCallout(itemId, callout, calloutTitle, calloutIcon)
 }
 
 class UpdateNestedItemCalloutLayoutUseCase(

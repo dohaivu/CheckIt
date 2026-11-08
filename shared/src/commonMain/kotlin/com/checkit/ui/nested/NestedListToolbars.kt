@@ -285,7 +285,7 @@ internal fun NestedFormattingBar(
     hasChildren: Boolean,
     onFormattingChange: (NestedTextStyle, NestedColorToken, NestedColorToken) -> Unit,
     onBorderChange: (NestedBorderShape, NestedBorderStyle, NestedColorToken) -> Unit,
-    onCalloutChange: (NestedCalloutStyle, String?) -> Unit,
+    onCalloutChange: (NestedCalloutStyle, String?, String?) -> Unit,
     onCalloutLayoutChange: (NestedCalloutLayout?) -> Unit = {},
     onLabelChange: (String?) -> Unit,
     onPriorityChange: (TaskPriority) -> Unit,
@@ -446,7 +446,8 @@ internal fun NestedFormattingBar(
                                 calloutExpanded = false
                                 onCalloutChange(
                                     style,
-                                    if (style == NestedCalloutStyle.None) null else item.calloutTitle
+                                    if (style == NestedCalloutStyle.None) null else item.calloutTitle,
+                                    if (style == NestedCalloutStyle.None) null else item.calloutIcon
                                 )
                             }
                         )
@@ -477,7 +478,7 @@ internal fun NestedFormattingBar(
                         }
                         HorizontalDivider()
                         NestedMenuItem(
-                            label = "Title…",
+                            label = "Title & icon…",
                             leadingIcon = {
                                 Icon(
                                     imageVector = Icons.Default.EditNote,
@@ -797,9 +798,11 @@ internal fun NestedFormattingBar(
         NestedCalloutTitleDialog(
             initialTitle = item.calloutTitle,
             defaultTitle = item.callout.displayName(),
+            initialIcon = item.calloutIcon,
+            defaultIconKey = item.callout.spec()?.iconKey ?: "info",
             onDismiss = { showCalloutTitleDialog = false },
-            onSave = { title ->
-                onCalloutChange(item.callout, title)
+            onSave = { title, icon ->
+                onCalloutChange(item.callout, title, icon)
                 showCalloutTitleDialog = false
             }
         )

@@ -693,7 +693,8 @@ struct NestedFormattingBar: View {
                         state.updateCallout(
                             id: item.id,
                             style: s,
-                            title: s == NestedCalloutStyle.none ? nil : item.calloutTitle
+                            title: s == NestedCalloutStyle.none ? nil : item.calloutTitle,
+                            icon: s == NestedCalloutStyle.none ? nil : item.calloutIcon
                         )
                     })
                 }
@@ -712,16 +713,16 @@ struct NestedFormattingBar: View {
                             )
                         })
                     }
-                    rows.append(.header("Title"))
+                    rows.append(.header("Title & icon"))
                     rows.append(.item(
-                        title: "Custom title…",
-                        selected: item.calloutTitle != nil
+                        title: "Custom title & icon…",
+                        selected: item.calloutTitle != nil || item.calloutIcon != nil
                     ) {
                         DispatchQueue.main.async { showCalloutTitle = true }
                     })
-                    if item.calloutTitle != nil {
-                        rows.append(.item(title: "Use default title", selected: false) {
-                            state.updateCallout(id: item.id, style: item.callout, title: nil)
+                    if item.calloutTitle != nil || item.calloutIcon != nil {
+                        rows.append(.item(title: "Use default title & icon", selected: false) {
+                            state.updateCallout(id: item.id, style: item.callout, title: nil, icon: nil)
                         })
                     }
                 }
@@ -887,13 +888,15 @@ struct NestedFormattingBar: View {
         .sheet(isPresented: $showCalloutTitle) {
             NestedCalloutTitleSheet(
                 initialTitle: item.calloutTitle,
+                initialIcon: item.calloutIcon,
                 defaultTitle: item.callout.displayName(),
-                onSave: { title in
-                    state.updateCallout(id: item.id, style: item.callout, title: title)
+                defaultIconKey: item.callout.spec()?.iconKey ?? "info",
+                onSave: { title, icon in
+                    state.updateCallout(id: item.id, style: item.callout, title: title, icon: icon)
                     showCalloutTitle = false
                 },
                 onUseDefault: {
-                    state.updateCallout(id: item.id, style: item.callout, title: nil)
+                    state.updateCallout(id: item.id, style: item.callout, title: nil, icon: nil)
                     showCalloutTitle = false
                 },
                 onCancel: { showCalloutTitle = false }
@@ -984,24 +987,38 @@ struct NestedLabelSheet: View {
 
 struct NestedCalloutTitleSheet: View {
     let defaultTitle: String
-    let onSave: (String?) -> Void
+    let defaultIconKey: String
+    let onSave: (String?, String?) -> Void
     let onUseDefault: () -> Void
     let onCancel: () -> Void
 
     @State private var text: String
+    @State private var selectedIcon: String?
+
+    /// Every unique key in the shared AppSymbols registry.
+    private static let symbolKeys: [String] = {
+        var seen = Set<String>()
+        return AppSymbols.shared.allSymbols.compactMap { spec in
+            seen.insert(spec.key).inserted ? spec.key : nil
+        }
+    }()
 
     init(
         initialTitle: String?,
+        initialIcon: String?,
         defaultTitle: String,
-        onSave: @escaping (String?) -> Void,
+        defaultIconKey: String,
+        onSave: @escaping (String?, String?) -> Void,
         onUseDefault: @escaping () -> Void,
         onCancel: @escaping () -> Void
     ) {
         self.defaultTitle = defaultTitle
+        self.defaultIconKey = defaultIconKey
         self.onSave = onSave
         self.onUseDefault = onUseDefault
         self.onCancel = onCancel
         _text = State(initialValue: initialTitle ?? "")
+        _selectedIcon = State(initialValue: initialIcon)
     }
 
     private var trimmed: String {
@@ -1010,7 +1027,7 @@ struct NestedCalloutTitleSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Callout title")
+            Text("Callout title & icon")
                 .font(.headline)
             TextField(defaultTitle, text: $text)
                 .textFieldStyle(.roundedBorder)
@@ -1018,8 +1035,50 @@ struct NestedCalloutTitleSheet: View {
             Text("Leave empty to show \"\(defaultTitle)\".")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+            Text("Icon")
+                .font(.caption.weight(.semibold))
+            HStack(spacing: 8) {
+                iconChip(
+                    title: "Default",
+                    symbol: appSymbol(defaultIconKey),
+                    selected: selectedIcon == nil
+                ) {
+                    selectedIcon = nil
+                }
+                iconChip(title: "No icon", symbol: nil, selected: selectedIcon == "") {
+                    selectedIcon = ""
+                }
+            }
+            ScrollView {
+                LazyVGrid(
+                    columns: [GridItem(.adaptive(minimum: 30), spacing: 6)],
+                    spacing: 6
+                ) {
+                    ForEach(Self.symbolKeys, id: \.self) { key in
+                        let selected = selectedIcon == key
+                        Button {
+                            selectedIcon = key
+                        } label: {
+                            Image(systemName: appSymbol(key))
+                                .font(.system(size: 14))
+                                .frame(width: 30, height: 30)
+                                .background(
+                                    selected
+                                        ? Color.accentColor.opacity(0.22)
+                                        : Color.secondary.opacity(0.10),
+                                    in: RoundedRectangle(cornerRadius: 7)
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        .help(key)
+                        .accessibilityLabel(key)
+                    }
+                }
+                .padding(.vertical, 2)
+            }
+            .frame(height: 168)
             HStack {
-                Button("Use default") { onUseDefault() }
+                Button("Use defaults") { onUseDefault() }
                 Spacer()
                 Button("Cancel") { onCancel() }
                     .keyboardShortcut(.cancelAction)
@@ -1028,10 +1087,37 @@ struct NestedCalloutTitleSheet: View {
             }
         }
         .padding(20)
-        .frame(width: 380)
+        .frame(width: 420)
+    }
+
+    private func iconChip(
+        title: String,
+        symbol: String?,
+        selected: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 4) {
+                if let symbol {
+                    Image(systemName: symbol)
+                        .font(.system(size: 12))
+                }
+                Text(title)
+                    .font(.caption)
+            }
+            .padding(.horizontal, 9)
+            .padding(.vertical, 5)
+            .background(
+                selected
+                    ? Color.accentColor.opacity(0.22)
+                    : Color.secondary.opacity(0.10),
+                in: Capsule()
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     private func save() {
-        onSave(trimmed.isEmpty ? nil : trimmed)
+        onSave(trimmed.isEmpty ? nil : trimmed, selectedIcon)
     }
 }

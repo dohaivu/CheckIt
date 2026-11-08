@@ -594,7 +594,7 @@ internal fun NestedItemRow(
                         Column(modifier = Modifier.weight(1f)) {
                             if (calloutSpec != null && frameAccent != null && !isTabCallout) {
                                 NestedCalloutHeader(
-                                    spec = calloutSpec,
+                                    iconKey = item.effectiveCalloutIconKey(),
                                     title = item.calloutTitle ?: item.callout.displayName(),
                                     accent = frameAccent,
                                     focusAlpha = focusAlpha,
@@ -713,7 +713,7 @@ internal fun NestedItemRow(
                             contentAlignment = Alignment.TopStart
                         ) {
                             NestedCalloutHeader(
-                                spec = calloutSpec,
+                                iconKey = item.effectiveCalloutIconKey(),
                                 title = item.calloutTitle ?: item.callout.displayName(),
                                 accent = frameAccent,
                                 focusAlpha = focusAlpha,

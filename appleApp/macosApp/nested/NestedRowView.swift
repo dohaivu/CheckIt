@@ -71,17 +71,19 @@ private let nestedCalloutBadgeHeight: CGFloat = 20
 /// inline accent label next to the icon.
 @ViewBuilder
 func nestedCalloutHeader(
-    _ spec: NestedCalloutSpec,
+    iconKey: String?,
     placement: NestedCalloutTitlePlacement,
     title: String,
     accent: Color,
     focusOpacity: Double
 ) -> some View {
-    let icon = Image(systemName: nestedCalloutSymbol(spec.iconKey))
     switch placement {
     case NestedCalloutTitlePlacement.eyebrow:
         HStack(spacing: 4) {
-            icon.font(.system(size: 10, weight: .semibold))
+            if let iconKey {
+                Image(systemName: nestedCalloutSymbol(iconKey))
+                    .font(.system(size: 10, weight: .semibold))
+            }
             Text(title.uppercased())
                 .font(.system(size: 10, weight: .bold))
                 .tracking(0.8)
@@ -90,7 +92,10 @@ func nestedCalloutHeader(
         .opacity(focusOpacity)
     case NestedCalloutTitlePlacement.toptab:
         HStack(spacing: 4) {
-            icon.font(.system(size: 10, weight: .semibold))
+            if let iconKey {
+                Image(systemName: nestedCalloutSymbol(iconKey))
+                    .font(.system(size: 10, weight: .semibold))
+            }
             Text(title)
                 .font(.system(size: 10, weight: .semibold))
                 .lineLimit(1)
@@ -109,7 +114,10 @@ func nestedCalloutHeader(
         }
     case NestedCalloutTitlePlacement.inline_:
         HStack(spacing: 5) {
-            icon.font(.system(size: 11, weight: .semibold))
+            if let iconKey {
+                Image(systemName: nestedCalloutSymbol(iconKey))
+                    .font(.system(size: 11, weight: .semibold))
+            }
             Text(title).font(.system(size: 11, weight: .semibold))
         }
         .foregroundStyle(accent)
@@ -286,9 +294,9 @@ struct NestedRowView: View, Equatable {
             VStack(alignment: .leading, spacing: calloutHeaderSpacing) {
                 // Tab's badge lives on the card border (see the overlay
                 // below), so it is not part of the content column.
-                if let spec = calloutSpec, !isTabCallout {
+                if calloutSpec != nil, !isTabCallout {
                     nestedCalloutHeader(
-                        spec,
+                        iconKey: item.effectiveCalloutIconKey(),
                         placement: effectiveTitlePlacement,
                         title: item.calloutTitle ?? item.callout.displayName(),
                         accent: effectiveCalloutAccent,
@@ -430,10 +438,10 @@ struct NestedRowView: View, Equatable {
             // clip so the shape cannot cut the badge.
             .padding(.top, isTabCallout ? nestedCalloutBadgeHeight / 2 : 0)
             .overlay(alignment: .topLeading) {
-                if isTabCallout, let spec = calloutSpec {
+                if isTabCallout, calloutSpec != nil {
                     HStack(spacing: 0) {
                         nestedCalloutHeader(
-                            spec,
+                            iconKey: item.effectiveCalloutIconKey(),
                             placement: effectiveTitlePlacement,
                             title: item.calloutTitle ?? item.callout.displayName(),
                             accent: effectiveCalloutAccent,

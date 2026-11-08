@@ -9,6 +9,7 @@ import com.checkit.domain.NestedDocumentTree
 import com.checkit.domain.NestedItemNode
 import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.TaskPriority
+import com.checkit.domain.normalizedIcon
 import com.checkit.domain.normalizedTitle
 import kotlin.time.Clock
 import kotlin.uuid.Uuid
@@ -66,6 +67,7 @@ data class NestedItemExportData(
     val borderColor: String = "Default",
     val callout: String = "None",
     val calloutTitle: String? = null,
+    val calloutIcon: String? = null,
     val calloutLayout: String? = null,
     val guideDotColor: String? = null,
     val guideDot: String? = null,
@@ -116,6 +118,7 @@ fun NestedItemNode.toExportData(): NestedItemExportData =
         borderColor = item.borderColor.name,
         callout = item.callout.name,
         calloutTitle = item.callout.normalizedTitle(item.calloutTitle),
+        calloutIcon = item.callout.normalizedIcon(item.calloutIcon),
         calloutLayout = item.calloutLayout
             ?.takeIf { item.callout != NestedCalloutStyle.None }
             ?.name,

@@ -35,6 +35,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -82,6 +83,7 @@ import com.checkit.ui.components.MarkdownTextField
 import com.checkit.ui.components.MetricsSection
 import com.checkit.ui.components.asMarkdownAnnotatedString
 import com.checkit.ui.isValidForSave
+import com.checkit.ui.theme.AppSymbols
 import com.checkit.ui.tasks.PredefinedLabels
 import com.checkit.ui.toDateTimeLabel
 import org.jetbrains.compose.resources.stringResource
@@ -457,15 +459,18 @@ internal fun NestedLabelDialog(
 internal fun NestedCalloutTitleDialog(
     initialTitle: String?,
     defaultTitle: String,
+    initialIcon: String?,
+    defaultIconKey: String,
     onDismiss: () -> Unit,
-    onSave: (String?) -> Unit
+    onSave: (String?, String?) -> Unit
 ) {
     var value by remember(initialTitle) { mutableStateOf(initialTitle.orEmpty()) }
+    var selectedIcon by remember(initialIcon) { mutableStateOf(initialIcon) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "Callout title",
+                text = "Callout title & icon",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
@@ -473,7 +478,7 @@ internal fun NestedCalloutTitleDialog(
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 AppOutlinedTextField(
                     value = value,
@@ -486,10 +491,24 @@ internal fun NestedCalloutTitleDialog(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                Text(
+                    text = "Icon",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                CalloutIconPicker(
+                    selectedIcon = selectedIcon,
+                    defaultIconKey = defaultIconKey,
+                    onSelect = { selectedIcon = it }
+                )
             }
         },
         confirmButton = {
-            TextButton(onClick = { onSave(value.trim().takeIf { it.isNotBlank() }) }) {
+            TextButton(
+                onClick = {
+                    onSave(value.trim().takeIf { it.isNotBlank() }, selectedIcon)
+                }
+            ) {
                 Text("Save")
             }
         },
@@ -497,13 +516,90 @@ internal fun NestedCalloutTitleDialog(
             TextButton(
                 onClick = {
                     value = ""
-                    onSave(null)
+                    onSave(null, null)
                 }
             ) {
-                Text("Use default")
+                Text("Use defaults")
+            }
+        },
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    )
+}
+
+/** All registry symbols plus explicit Default and No icon choices. */
+private val CalloutIconKeys: List<String> by lazy {
+    AppSymbols.allSymbols.map { it.key }.distinct()
+}
+
+@Composable
+private fun CalloutIconPicker(
+    selectedIcon: String?,
+    defaultIconKey: String,
+    onSelect: (String?) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(
+                selected = selectedIcon == null,
+                onClick = { onSelect(null) },
+                label = { Text("Default") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = nestedCalloutIcon(defaultIconKey),
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            )
+            FilterChip(
+                selected = selectedIcon == "",
+                onClick = { onSelect("") },
+                label = { Text("No icon") }
+            )
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 250.dp)
+                .verticalScroll(rememberScrollState())
+        ) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                CalloutIconKeys.forEach { key ->
+                    val selected = selectedIcon == key
+                    val shape = RoundedCornerShape(8.dp)
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(shape)
+                            .then(
+                                if (selected) {
+                                    Modifier.border(1.dp, MaterialTheme.colorScheme.primary, shape)
+                                        .background(MaterialTheme.colorScheme.primaryContainer)
+                                } else {
+                                    Modifier
+                                }
+                            )
+                            .clickable { onSelect(key) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = nestedCalloutIcon(key),
+                            contentDescription = key,
+                            tint = if (selected) {
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
             }
         }
-    )
+    }
 }
 
 @Composable

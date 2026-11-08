@@ -282,12 +282,22 @@ class NestedAppleHelper(
         }
     }
 
-    /** Callout style plus optional title override; blank title means default. */
-    fun updateCalloutByName(itemId: String, calloutName: String, calloutTitle: String?) {
+    /** Callout style plus optional title/icon overrides; blank title means default. */
+    fun updateCalloutByName(
+        itemId: String,
+        calloutName: String,
+        calloutTitle: String?,
+        calloutIcon: String?
+    ) {
         scope.launch {
             runCatching {
                 val title = calloutTitle?.trim()?.takeIf { it.isNotBlank() }
-                updateItemCallout(itemId, NestedCalloutStyle.valueOf(calloutName), title)
+                updateItemCallout(
+                    itemId,
+                    NestedCalloutStyle.valueOf(calloutName),
+                    title,
+                    calloutIcon
+                )
             }
         }
     }
