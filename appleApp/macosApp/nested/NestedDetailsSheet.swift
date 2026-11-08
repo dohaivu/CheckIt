@@ -552,6 +552,8 @@ struct NestedFormattingBar: View {
     @State private var showLabel = false
     @State private var showCalloutTitle = false
     @State private var showEmojiPicker = false
+    @State private var showBorderPicker = false
+    @State private var showCalloutPicker = false
     @State private var startDate = Date()
     @State private var endDate = Date()
     @State private var hasStart = false
@@ -651,100 +653,65 @@ struct NestedFormattingBar: View {
             })
             .accessibilityLabel("Background color")
             .help("Background color")
-            // Border: shape + line style + width + color in one menu.
-            NestedMenuButton(rows: {
-                var rows: [NestedMenuRow] = [.header("Style")]
-                for s in NestedBorderStyle.entries {
-                    rows.append(.item(title: s.displayName(), selected: s == item.borderStyle) {
-                        state.updateBorder(id: item.id, shape: item.borderShape, style: s, color: item.borderColor, width: item.borderWidth)
-                    })
-                }
-                rows.append(.header("Width"))
-                rows.append(.item(title: "Inherit", selected: item.borderWidth == nil) {
-                    state.updateBorder(id: item.id, shape: item.borderShape, style: item.borderStyle, color: item.borderColor, width: nil)
-                })
-                for w in NestedBorderWidth.entries {
-                    rows.append(.item(title: w.displayName(), selected: w == item.borderWidth) {
-                        state.updateBorder(id: item.id, shape: item.borderShape, style: item.borderStyle, color: item.borderColor, width: w)
-                    })
-                }
-                rows.append(.header("Shape"))
-                for s in NestedBorderShape.entries {
-                    rows.append(.item(title: s.displayName(), selected: s == item.borderShape) {
-                        state.updateBorder(id: item.id, shape: s, style: item.borderStyle, color: item.borderColor, width: item.borderWidth)
-                    })
-                }
-                rows.append(.header("Color"))
-                for t in NestedColorToken.entries {
-                    rows.append(.color(t, selected: t == item.borderColor) {
-                        state.updateBorder(id: item.id, shape: item.borderShape, style: item.borderStyle, color: t, width: item.borderWidth)
-                    })
-                }
-                return rows
-            }, label: {
+            // Border: Style + Width + Shape + Color side by side so the 4
+            // groups do not stack into a 38-row menu. NSMenu is strictly
+            // vertical, so this uses a SwiftUI popover with a horizontal
+            // 4-column layout (mirrors Android's chip FlowRow sections).
+            Button {
+                showBorderPicker.toggle()
+            } label: {
                 NestedMenuTrigger(
                     symbol: "square.dashed",
                     tint: item.borderStyle == NestedBorderStyle.none ? .secondary : .accentColor
                 )
-            })
+            }
+            .buttonStyle(.borderless)
             .accessibilityLabel("Border")
             .help("Border")
+            .popover(isPresented: $showBorderPicker, arrowEdge: .bottom) {
+                NestedBorderPickerView(item: item, onChange: { shape, style, color, width in
+                    state.updateBorder(id: item.id, shape: shape, style: style, color: color, width: width)
+                })
+            }
             // Callout: a visual frame that owns the row's card and can carry
-            // a custom title (defaults to the style name).
-            NestedMenuButton(rows: {
-                var rows: [NestedMenuRow] = [.header("Callout")]
-                for s in NestedCalloutStyle.entries {
-                    rows.append(.item(
-                        title: s.displayName(),
-                        icon: nestedCalloutMenuImage(s),
-                        selected: s == item.callout
-                    ) {
-                        state.updateCallout(
-                            id: item.id,
-                            style: s,
-                            title: s == NestedCalloutStyle.none ? nil : item.calloutTitle,
-                            icon: s == NestedCalloutStyle.none ? nil : item.calloutIcon
-                        )
-                    })
-                }
-                if item.callout != NestedCalloutStyle.none {
-                    rows.append(.header("Layout"))
-                    let activeLayout = item.calloutLayout ?? item.callout.spec()?.layout
-                    for l in NestedCalloutLayout.entries {
-                        rows.append(.item(
-                            title: l.name,
-                            selected: l == activeLayout
-                        ) {
-                            let defaultLayout = item.callout.spec()?.layout
-                            state.updateCalloutLayout(
-                                id: item.id,
-                                layout: l == defaultLayout ? nil : l
-                            )
-                        })
-                    }
-                    rows.append(.header("Title & icon"))
-                    rows.append(.item(
-                        title: "Custom title & icon…",
-                        selected: item.calloutTitle != nil || item.calloutIcon != nil
-                    ) {
-                        DispatchQueue.main.async { showCalloutTitle = true }
-                    })
-                    rows.append(.separator)
-                    rows.append(.item(title: "Reset to callout defaults", selected: false) {
-                        state.resetCalloutToDefaults(id: item.id)
-                    })
-                }
-                return rows
-            }, label: {
+            // a custom title (defaults to the style name). Side-by-side
+            // popover (Callout | Layout/Actions) instead of a 21-row menu.
+            Button {
+                showCalloutPicker.toggle()
+            } label: {
                 NestedMenuTrigger(
                     symbol: "text.bubble",
                     tint: item.callout == NestedCalloutStyle.none
                         ? .secondary
                         : nestedTokenColor(item.callout.spec()?.accent ?? NestedColorToken.default_)
                 )
-            })
+            }
+            .buttonStyle(.borderless)
             .accessibilityLabel("Callout")
             .help("Callout")
+            .popover(isPresented: $showCalloutPicker, arrowEdge: .bottom) {
+                NestedCalloutPickerView(
+                    item: item,
+                    onCallout: { style in
+                        state.updateCallout(
+                            id: item.id,
+                            style: style,
+                            title: style == NestedCalloutStyle.none ? nil : item.calloutTitle,
+                            icon: style == NestedCalloutStyle.none ? nil : item.calloutIcon
+                        )
+                    },
+                    onLayout: { layout in
+                        state.updateCalloutLayout(id: item.id, layout: layout)
+                    },
+                    onShowTitleEditor: {
+                        showCalloutPicker = false
+                        DispatchQueue.main.async { showCalloutTitle = true }
+                    },
+                    onReset: {
+                        state.resetCalloutToDefaults(id: item.id)
+                    }
+                )
+            }
             // Guide dot: emoji inside the row's dot (parents keep the ring).
             NestedMenuButton(rows: {
                 [
@@ -910,6 +877,206 @@ struct NestedFormattingBar: View {
                 onCancel: { showCalloutTitle = false }
             )
         }
+    }
+}
+
+// MARK: - Border picker (horizontal sections)
+
+/// Border controls shown side by side in a popover instead of one tall
+/// `NSMenu` (Style 6 + Width 5 + Shape 9 + Color 14 = 38 rows). The
+/// columns stay open while picking so Style, Width, Shape and Color can
+/// be tuned in one pass; clicking outside dismisses.
+struct NestedBorderPickerView: View {
+    let item: NestedListItem
+    let onChange: (NestedBorderShape, NestedBorderStyle, NestedColorToken, NestedBorderWidth?) -> Void
+
+    private func row(title: String, selected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 4) {
+                if selected {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 10, weight: .semibold))
+                } else {
+                    Color.clear.frame(width: 12, height: 12)
+                }
+                Text(title)
+                    .font(.system(size: 12))
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 6)
+            .padding(.vertical, 3)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .focusable(false)
+        .opacity(selected ? 1 : 0.75)
+    }
+
+    private func header(_ title: String) -> some View {
+        Text(title)
+            .font(.caption)
+            .fontWeight(.semibold)
+            .foregroundStyle(.secondary)
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 16) {
+                VStack(alignment: .leading, spacing: 2) {
+                    header("Style")
+                    ForEach(NestedBorderStyle.entries, id: \.self) { s in
+                        row(title: s.displayName(), selected: s == item.borderStyle) {
+                            onChange(item.borderShape, s, item.borderColor, item.borderWidth)
+                        }
+                    }
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    header("Width")
+                    row(title: "Inherit", selected: item.borderWidth == nil) {
+                        onChange(item.borderShape, item.borderStyle, item.borderColor, nil)
+                    }
+                    ForEach(NestedBorderWidth.entries, id: \.self) { w in
+                        row(title: w.displayName(), selected: w == item.borderWidth) {
+                            onChange(item.borderShape, item.borderStyle, item.borderColor, w)
+                        }
+                    }
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    header("Shape")
+                    ForEach(NestedBorderShape.entries, id: \.self) { s in
+                        row(title: s.displayName(), selected: s == item.borderShape) {
+                            onChange(s, item.borderStyle, item.borderColor, item.borderWidth)
+                        }
+                    }
+                }
+                .frame(width: 100, alignment: .leading)
+                VStack(alignment: .leading, spacing: 2) {
+                    header("Color")
+                    LazyVGrid(columns: [GridItem(.fixed(26)), GridItem(.fixed(26))], spacing: 6) {
+                        ForEach(NestedColorToken.entries, id: \.self) { t in
+                            let selected = t == item.borderColor
+                            Button {
+                                onChange(item.borderShape, item.borderStyle, t, item.borderWidth)
+                            } label: {
+                                Group {
+                                    if t == NestedColorToken.default_ {
+                                        Circle()
+                                            .strokeBorder(Color.secondary, lineWidth: 1.5)
+                                            .background(Circle().fill(Color.clear))
+                                    } else {
+                                        Circle()
+                                            .fill(nestedTokenColor(t))
+                                            .strokeBorder(Color.secondary.opacity(0.4), lineWidth: 1)
+                                    }
+                                }
+                                .frame(width: 18, height: 18)
+                                .overlay {
+                                    if selected {
+                                        Circle()
+                                            .strokeBorder(Color.accentColor, lineWidth: 2)
+                                            .frame(width: 24, height: 24)
+                                    }
+                                }
+                            }
+                            .buttonStyle(.plain)
+                            .focusable(false)
+                            .help(t.name)
+                            .accessibilityLabel(t.name)
+                        }
+                    }
+                    .padding(.top, 2)
+                }
+            }
+        .padding(10)
+    }
+}
+
+// MARK: - Callout picker (horizontal sections)
+
+/// Callout controls shown side by side in a popover instead of one tall
+/// `NSMenu` (Callout 11 + Layout 4 + Title & Reset = 21 rows). Layout and
+/// actions sit beside the style list; the popover stays open while picking
+/// and dismisses on click outside.
+struct NestedCalloutPickerView: View {
+    let item: NestedListItem
+    let onCallout: (NestedCalloutStyle) -> Void
+    let onLayout: (NestedCalloutLayout?) -> Void
+    let onShowTitleEditor: () -> Void
+    let onReset: () -> Void
+
+    private func row(title: String, icon: NSImage? = nil, selected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 4) {
+                if selected {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 10, weight: .semibold))
+                } else {
+                    Color.clear.frame(width: 12, height: 12)
+                }
+                if let icon {
+                    Image(nsImage: icon)
+                        .resizable()
+                        .frame(width: 16, height: 16)
+                }
+                Text(title)
+                    .font(.system(size: 12))
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 6)
+            .padding(.vertical, 3)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .focusable(false)
+        .opacity(selected ? 1 : 0.75)
+    }
+
+    private func header(_ title: String) -> some View {
+        Text(title)
+            .font(.caption)
+            .fontWeight(.semibold)
+            .foregroundStyle(.secondary)
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 16) {
+            VStack(alignment: .leading, spacing: 2) {
+                header("Callout")
+                ForEach(NestedCalloutStyle.entries, id: \.self) { s in
+                    row(title: s.displayName(), icon: nestedCalloutMenuImage(s), selected: s == item.callout) {
+                        onCallout(s)
+                    }
+                }
+            }
+            .frame(width: 120, alignment: .leading)
+            if item.callout != NestedCalloutStyle.none {
+                VStack(alignment: .leading, spacing: 2) {
+                    header("Layout")
+                    ForEach(NestedCalloutLayout.entries, id: \.self) { l in
+                        let activeLayout = item.calloutLayout ?? item.callout.spec()?.layout
+                        let defaultLayout = item.callout.spec()?.layout
+                        row(title: l.name, selected: l == activeLayout) {
+                            onLayout(l == defaultLayout ? nil : l)
+                        }
+                    }
+                    header("Title & icon")
+                        .padding(.top, 6)
+                    row(title: "Custom title & icon…", selected: item.calloutTitle != nil || item.calloutIcon != nil) {
+                        onShowTitleEditor()
+                    }
+                    Divider()
+                        .padding(.vertical, 4)
+                    row(title: "Reset to callout defaults", selected: false) {
+                        onReset()
+                    }
+                }
+                .frame(width: 180, alignment: .leading)
+            }
+        }
+        .padding(10)
     }
 }
 

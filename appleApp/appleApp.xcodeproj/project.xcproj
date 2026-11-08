@@ -213,6 +213,7 @@
         "CODE_SIGN_ENTITLEMENTS": "macosApp/macosApp.entitlements",
         "CODE_SIGN_STYLE": "Automatic",
         "COMBINE_HIDPI_IMAGES": "YES",
+        "COMPILATION_CACHE_ENABLE_CACHING": "YES",
         "CURRENT_PROJECT_VERSION": "2",
         "DEVELOPMENT_TEAM": "CGP4V9RVVW",
         "ENABLE_APP_SANDBOX": "YES",
