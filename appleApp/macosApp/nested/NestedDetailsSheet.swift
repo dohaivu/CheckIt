@@ -995,13 +995,8 @@ struct NestedCalloutTitleSheet: View {
     @State private var text: String
     @State private var selectedIcon: String?
 
-    /// Every unique key in the shared AppSymbols registry.
-    private static let symbolKeys: [String] = {
-        var seen = Set<String>()
-        return AppSymbols.shared.allSymbols.compactMap { spec in
-            seen.insert(spec.key).inserted ? spec.key : nil
-        }
-    }()
+    /// Every callout-capable key in the shared AppSymbols registry.
+    private static let symbolKeys: [String] = AppSymbols.shared.calloutIconKeys
 
     init(
         initialTitle: String?,

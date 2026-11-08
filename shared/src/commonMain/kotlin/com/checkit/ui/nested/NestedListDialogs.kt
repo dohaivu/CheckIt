@@ -526,10 +526,8 @@ internal fun NestedCalloutTitleDialog(
     )
 }
 
-/** All registry symbols plus explicit Default and No icon choices. */
-private val CalloutIconKeys: List<String> by lazy {
-    AppSymbols.allSymbols.map { it.key }.distinct()
-}
+/** Callout-capable registry symbols, in registry order. */
+private val CalloutIconKeys: List<String> by lazy { AppSymbols.calloutIconKeys }
 
 @Composable
 private fun CalloutIconPicker(

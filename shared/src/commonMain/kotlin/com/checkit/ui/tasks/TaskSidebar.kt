@@ -59,7 +59,7 @@ internal fun TaskSidebar(
         item {
             SidebarItem(
                 title = "All tasks",
-                icon = materialIcon("AllInclusive"),
+                icon = materialIcon("infinity"),
                 color = MaterialTheme.colorScheme.primary,
                 selected = isBoardSelected,
                 count = allTasksCount,
@@ -98,7 +98,7 @@ internal fun TaskSidebar(
             SidebarSectionDivider()
             SidebarItem(
                 title = "Tags",
-                icon = materialIcon("LocalOffer"),
+                icon = materialIcon("tag"),
                 color = MaterialTheme.colorScheme.primary,
                 selected = isTagsSelected,
                 onClick = onTagsClick

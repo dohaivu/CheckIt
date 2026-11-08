@@ -114,7 +114,7 @@ internal fun TaskScreen(
                                 titleText = state.selectedTag.name
                             }
                             else -> {
-                                titleIcon = materialIcon("AllInclusive")
+                                titleIcon = materialIcon("infinity")
                                 titleColor = MaterialTheme.colorScheme.primary
                                 titleText = "All tasks"
                             }
