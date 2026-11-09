@@ -200,6 +200,34 @@ final class NestedEditorState: ObservableObject {
     @Published var lastError: String? = nil
     @Published var draggedId: String? = nil
     @Published var dropTarget: NestedDropTarget? = nil
+
+    private func aboveRow(for target: NestedDropTarget) -> NestedRow? {
+        guard let idx = visibleRows.firstIndex(where: { $0.id == target.displayRowId }) else { return nil }
+        return target.below ? visibleRows[idx] : (idx > 0 ? visibleRows[idx - 1] : nil)
+    }
+
+    /// Human-readable destination for the drop line, e.g.
+    /// `As child of “Foo”`, `In “Bar”`, or `At top level`. Names the parent
+    /// that depth alone cannot distinguish.
+    var dropTargetLabel: String? {
+        guard let t = dropTarget else { return nil }
+        if visibleRows.firstIndex(where: { $0.id == t.displayRowId }) == nil { return "Drop here" }
+        let above = aboveRow(for: t)
+        if let pid = t.parentId, !pid.isEmpty {
+            let trimmed = (indexById[pid]?.item.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            let display = trimmed.isEmpty ? "Untitled item" : (trimmed.count > 30 ? String(trimmed.prefix(30)) + "…" : trimmed)
+            return above?.node.item.id == pid ? "As child of “\(display)”" : "In “\(display)”"
+        }
+        return "At top level"
+    }
+
+    /// Hint shown beside the label when the gap could still nest deeper.
+    var dropTargetHint: String? {
+        guard let t = dropTarget,
+              !NSEvent.modifierFlags.contains(.option),
+              let ab = aboveRow(for: t) else { return nil }
+        return ab.depth + 1 > t.depth ? "Hold ⌥ to nest" : nil
+    }
     @Published var docDropTargetId: String? = nil
     @Published var docDropBelow: Bool = false
     @Published private(set) var visibleRows: [NestedRow] = []
@@ -281,25 +309,50 @@ final class NestedEditorState: ObservableObject {
         hostWindow = window
         guard window != nil else { return }
         tabMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .leftMouseUp]) { [weak self] event in
-            guard let self,
-                  let window = self.hostWindow,
-                  event.window == window,
-                  window.attachedSheet == nil
-            else { return event }
+            guard let self else { return event }
 
+            // Mouse-up is handled even when `event.window != hostWindow`
+            // (or nil): a drag released outside the window (desktop,
+            // title bar) never satisfies the window check, so the
+            // cancelled-drag sweep below would never run and `draggedId`
+            // / `dropTarget` would strand the dimmed row + indicator.
             if event.type == .leftMouseUp {
-                if self.draggedId != nil || self.dropTarget != nil ||
-                    self.docDropTargetId != nil {
-                    MainActor.assumeIsolated {
-                        self.draggedId = nil
-                        self.dropTarget = nil
-                        self.clearDocDropTarget()
+                // Previously this cleared `draggedId/dropTarget` synchronously
+                // on mouse-up, racing `DropDelegate.performDrop`, which
+                // parses the drag payload asynchronously *after* the same
+                // mouse-up. Depending on AppKit vs SwiftUI ordering, the
+                // clear could run before or after the drop computed its
+                // target — the "sometimes doesn't move" flake. Drop
+                // handling now resolves fresh and owns cleanup, so only
+                // sweep cancelled drags, and only if the handling that ran
+                // since (performDrop/executeDrop) didn't already clear or
+                // replace them.
+                let oldDragged = self.draggedId
+                let oldTarget = self.dropTarget
+                let oldDocTarget = self.docDropTargetId
+                if oldDragged != nil || oldTarget != nil || oldDocTarget != nil {
+                    DispatchQueue.main.async { [weak self] in
+                        MainActor.assumeIsolated { [weak self] in
+                            guard let self else { return }
+                            if self.draggedId == oldDragged {
+                                self.draggedId = nil
+                            }
+                            if self.dropTarget == oldTarget {
+                                self.dropTarget = nil
+                            }
+                            if self.docDropTargetId == oldDocTarget {
+                                self.clearDocDropTarget()
+                            }
+                        }
                     }
                 }
                 return event
             }
 
-            guard event.keyCode == 48, // Tab
+            guard let window = self.hostWindow,
+                  event.window == window,
+                  window.attachedSheet == nil,
+                  event.keyCode == 48, // Tab
                   !(window.firstResponder is NSText)
             else { return event }
             let handled = MainActor.assumeIsolated { self.handleTabKey(shift: event.modifierFlags.contains(.shift)) }
@@ -879,7 +932,17 @@ final class NestedEditorState: ObservableObject {
         guard let tree else { return nil }
 
         let rows = visibleRows
-        guard let hoveredRowIdx = rows.firstIndex(where: { $0.id == hoveredRow.id }) else { return nil }
+        // `hoveredRow.index` is already the position during a drag (the
+        // tree doesn't move until release); fall back to a scan only if
+        // the snapshot went stale mid-drag.
+        let hoveredRowIdx: Int
+        if rows.indices.contains(hoveredRow.index), rows[hoveredRow.index].id == hoveredRow.id {
+            hoveredRowIdx = hoveredRow.index
+        } else if let idx = rows.firstIndex(where: { $0.id == hoveredRow.id }) {
+            hoveredRowIdx = idx
+        } else {
+            return nil
+        }
 
         let aboveRow: NestedRow?
         let belowRow: NestedRow?
@@ -895,14 +958,14 @@ final class NestedEditorState: ObservableObject {
         let maxDepth = (aboveRow != nil) ? (aboveRow!.depth + 1) : 0
         let effectiveMinDepth = min(minDepth, maxDepth)
 
-        // Indentation calculation: 16pt per depth level.
-        // Option modifier forces max allowed depth (nest as child).
-        let isOptionPressed = NSEvent.modifierFlags.contains(.option)
+        // Depth snapped to the nearest guide dot (center at
+        // depth*nestedIndentWidth + nestedDotCenterOffset), so hovering
+        // near a dot selects its depth. Option forces max depth.
         let targetDepth: Int
-        if isOptionPressed {
+        if NSEvent.modifierFlags.contains(.option) {
             targetDepth = maxDepth
         } else {
-            let rawDepth = max(0, Int((pointerX - 4) / 16))
+            let rawDepth = max(0, Int(((pointerX - nestedDotCenterOffset) / nestedIndentWidth).rounded()))
             targetDepth = min(max(rawDepth, effectiveMinDepth), maxDepth)
         }
 
@@ -1005,23 +1068,6 @@ final class NestedEditorState: ObservableObject {
         )
         self.dropTarget = nil
         self.draggedId = nil
-    }
-
-    /// Drop draggedId onto targetId's gap: sibling just above target.
-    /// Own-subtree drops are refused by shared moveToPosition (no-op).
-    func drop(draggedId: String, onto targetId: String) {
-        guard let row = visibleRows.first(where: { $0.id == targetId }) else { return }
-        if let dt = resolveDropTarget(hoveredRow: row, isBelow: false, pointerX: 0, draggedItemId: draggedId) {
-            executeDrop(target: dt, draggedId: draggedId)
-        }
-    }
-
-    /// Drop draggedId as last child of targetId.
-    func dropAsChild(draggedId: String, onto targetId: String) {
-        guard let row = visibleRows.first(where: { $0.id == targetId }) else { return }
-        if let dt = resolveDropTarget(hoveredRow: row, isBelow: true, pointerX: 200, draggedItemId: draggedId) {
-            executeDrop(target: dt, draggedId: draggedId)
-        }
     }
 
     // MARK: - Metadata mutations (thin wrappers over shared use cases)

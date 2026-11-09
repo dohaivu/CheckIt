@@ -169,6 +169,12 @@ let nestedGuideSubtleOpacity = 0.18
 let nestedGuideStrongOpacity = 0.92
 let nestedDotSubtleOpacity = 0.5
 
+/// Horizontal indent per outline depth. Single source so the row guides,
+/// drop indicator, and `resolveDropTarget` depth snapping cannot drift.
+let nestedIndentWidth: CGFloat = 16
+/// Guide-dot center at depth 0, as positioned by the toggle slot.
+let nestedDotCenterOffset: CGFloat = 11
+
 func nestedDepthColor(_ depth: Int) -> Color {
     nestedDepthSolids[depth % nestedDepthSolids.count]
 }
@@ -237,7 +243,6 @@ struct NestedRowView: View, Equatable {
     let row: NestedRow
     let isEditing: Bool
     let isSelected: Bool
-    let isDragged: Bool
     let noteLineLimit: Int
     let focusTier: NestedFocusTier
     let selectionBranch: NestedSelectionBranch?
@@ -470,13 +475,14 @@ struct NestedRowView: View, Equatable {
             }
         }
         .background(nestedCanvasColor)
-        .opacity(isDragged ? 0.35 : 1.0)
         .background(
             GeometryReader { geo in
                 Color.clear
-                    .onAppear { rowHeight = geo.size.height }
+                    .onAppear { if state.draggedId == nil { rowHeight = geo.size.height } }
                     .onChange(of: geo.size.height) { _, newH in
-                        if abs(rowHeight - newH) > 1 { rowHeight = newH }
+                        // Frozen mid-drag so theme/metadata shifts don't
+                        // move the above/below boundary.
+                        if state.draggedId == nil, abs(rowHeight - newH) > 1 { rowHeight = newH }
                     }
             }
         )
@@ -897,7 +903,6 @@ struct NestedRowView: View, Equatable {
             && lhs.row == rhs.row
             && lhs.isEditing == rhs.isEditing
             && lhs.isSelected == rhs.isSelected
-            && lhs.isDragged == rhs.isDragged
             && lhs.noteLineLimit == rhs.noteLineLimit
             && lhs.focusTier == rhs.focusTier
             && lhs.selectionBranch == rhs.selectionBranch
@@ -908,27 +913,44 @@ struct NestedRowView: View, Equatable {
 
 struct DropIndicatorLine: View {
     let depth: Int
+    var label: String? = nil
+    var hint: String? = nil
 
     var body: some View {
-        HStack(alignment: .center, spacing: 0) {
-            ForEach(0..<depth, id: \.self) { level in
-                Rectangle()
-                    .fill(nestedGuideColor(level))
-                    .frame(width: 1)
-                    .padding(.leading, 10)
-                    .frame(width: 16, alignment: .leading)
+        HStack(alignment: .center, spacing: 6) {
+            HStack(alignment: .center, spacing: 0) {
+                ForEach(0..<depth, id: \.self) { level in
+                    Rectangle()
+                        .fill(nestedGuideColor(level))
+                        .frame(width: 1)
+                        .padding(.leading, 10)
+                        .frame(width: 16, alignment: .leading)
+                }
+                Circle()
+                    .fill(Color.accentColor)
+                    .frame(width: 7, height: 7)
+                    .frame(width: 16)
+                    .padding(.leading, 3)
+                Capsule()
+                    .fill(Color.accentColor)
+                    .frame(height: 2.5)
+                    .padding(.trailing, 6)
             }
-            Circle()
-                .fill(Color.accentColor)
-                .frame(width: 7, height: 7)
-                .frame(width: 16)
-                .padding(.leading, 3)
-            Capsule()
-                .fill(Color.accentColor)
-                .frame(height: 2.5)
-                .padding(.trailing, 12)
+            if let label {
+                Text(label)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
+            if let hint {
+                Text(hint)
+                    .font(.caption)
+                    .foregroundStyle(.secondary.opacity(0.85))
+                    .lineLimit(1)
+            }
         }
-        .frame(height: 8)
+        .frame(height: 14)
         .padding(.vertical, 1)
         .background(nestedCanvasColor)
         .animation(.spring(response: 0.22, dampingFraction: 0.82), value: depth)
@@ -936,6 +958,42 @@ struct DropIndicatorLine: View {
 }
 
 // MARK: - Drop Delegates
+
+/// Shared proposal for every outline drop view: a resolved target means a
+/// move, an invalid/self target means forbidden (AppKit shows ❌).
+private func nestedDropProposal(state: NestedEditorState) -> DropProposal {
+    state.dropTarget != nil ? DropProposal(operation: .move) : DropProposal(operation: .forbidden)
+}
+
+/// Shared `performDrop` body: synchronously capture the release point in
+/// `resolve`, then async-load the `nested:<id>` payload and always resolve
+/// fresh from that point (never reuse a snapshot `dropTarget`, which can
+/// lag fast drags). Returns `false` when no provider is present.
+private func nestedPerformDrop(
+    info: DropInfo,
+    state: NestedEditorState,
+    resolve: @escaping (String) -> NestedDropTarget?
+) -> Bool {
+    guard let provider = info.itemProviders(for: [.text]).first else {
+        state.clearDropTarget()
+        return false
+    }
+    _ = provider.loadObject(ofClass: NSString.self) { payload, _ in
+        guard let s = payload as? String, s.hasPrefix("nested:") else {
+            DispatchQueue.main.async { state.clearDropTarget() }
+            return
+        }
+        let dragged = String(s.dropFirst("nested:".count))
+        DispatchQueue.main.async {
+            guard let target = resolve(dragged) else {
+                state.clearDropTarget()
+                return
+            }
+            state.executeDrop(target: target, draggedId: dragged)
+        }
+    }
+    return true
+}
 
 struct NestedRowDropDelegate: DropDelegate {
     let row: NestedRow
@@ -952,11 +1010,7 @@ struct NestedRowDropDelegate: DropDelegate {
 
     func dropUpdated(info: DropInfo) -> DropProposal? {
         updateTarget(info: info)
-        if state.dropTarget != nil {
-            return DropProposal(operation: .move)
-        } else {
-            return DropProposal(operation: .forbidden)
-        }
+        return nestedDropProposal(state: state)
     }
 
     func dropExited(info: DropInfo) {
@@ -966,40 +1020,34 @@ struct NestedRowDropDelegate: DropDelegate {
     }
 
     func performDrop(info: DropInfo) -> Bool {
-        guard let provider = info.itemProviders(for: [.text]).first else {
-            state.clearDropTarget()
-            return false
-        }
-
-        let isBelow = info.location.y > (rowHeight / 2)
+        // Fresh resolve at release (never a snapshotted `dropTarget`,
+        // which can lag fast drags to the previous gap).
+        let isBelow = isBelowTarget(locationY: info.location.y)
         let locX = info.location.x
-        let currentTarget = state.dropTarget
-
-        _ = provider.loadObject(ofClass: NSString.self) { payload, _ in
-            guard let s = payload as? String, s.hasPrefix("nested:") else {
-                DispatchQueue.main.async { state.clearDropTarget() }
-                return
-            }
-            let dragged = String(s.dropFirst("nested:".count))
-            DispatchQueue.main.async {
-                let target = currentTarget ?? state.resolveDropTarget(
-                    hoveredRow: row,
-                    isBelow: isBelow,
-                    pointerX: locX,
-                    draggedItemId: dragged
-                )
-                if let target = target {
-                    state.executeDrop(target: target, draggedId: dragged)
-                } else {
-                    state.clearDropTarget()
-                }
-            }
+        return nestedPerformDrop(info: info, state: state) { dragged in
+            state.resolveDropTarget(hoveredRow: row, isBelow: isBelow, pointerX: locX, draggedItemId: dragged)
         }
-        return true
+    }
+
+    /// Fixed-snapping with hysteresis + Tab-badge compensation. The raw
+    /// half-height split would flicker on the boundary (and sit ~10pt high
+    /// on Tab rows, whose top badges the measurement includes): keep the
+    /// previous side inside the middle 30% so the line only flips when the
+    /// pointer clearly crosses.
+    private func isBelowTarget(locationY: CGFloat) -> Bool {
+        let topReserve: CGFloat = (row.visuals.layout == NestedCalloutLayout.tab) ? nestedCalloutBadgeHeight / 2 : 0
+        let effectiveHeight = max(1, rowHeight - topReserve)
+        let half = topReserve + effectiveHeight / 2
+        if let prev = state.dropTarget, prev.displayRowId == row.id {
+            let low = topReserve + effectiveHeight * 0.35
+            let high = topReserve + effectiveHeight * 0.65
+            if locationY >= low, locationY <= high { return prev.below }
+        }
+        return locationY > half
     }
 
     private func updateTarget(info: DropInfo) {
-        let isBelow = info.location.y > (rowHeight / 2)
+        let isBelow = isBelowTarget(locationY: info.location.y)
         state.updateDropTarget(
             hoveredRow: row,
             isBelow: isBelow,
@@ -1022,7 +1070,7 @@ struct OutlineBottomDropDelegate: DropDelegate {
 
     func dropUpdated(info: DropInfo) -> DropProposal? {
         updateTarget(info: info)
-        return state.dropTarget != nil ? DropProposal(operation: .move) : DropProposal(operation: .forbidden)
+        return nestedDropProposal(state: state)
     }
 
     func dropExited(info: DropInfo) {
@@ -1032,44 +1080,11 @@ struct OutlineBottomDropDelegate: DropDelegate {
     }
 
     func performDrop(info: DropInfo) -> Bool {
-        guard let provider = info.itemProviders(for: [.text]).first else {
-            state.clearDropTarget()
-            return false
-        }
-        let currentTarget = state.dropTarget
         let locX = info.location.x
-        let rows = state.visibleRows
-        let lastRow = rows.last
-
-        _ = provider.loadObject(ofClass: NSString.self) { payload, _ in
-            guard let s = payload as? String, s.hasPrefix("nested:") else {
-                DispatchQueue.main.async { state.clearDropTarget() }
-                return
-            }
-            let dragged = String(s.dropFirst("nested:".count))
-            DispatchQueue.main.async {
-                let target: NestedDropTarget?
-                if let current = currentTarget {
-                    target = current
-                } else if let last = lastRow {
-                    target = state.resolveDropTarget(
-                        hoveredRow: last,
-                        isBelow: true,
-                        pointerX: locX,
-                        draggedItemId: dragged
-                    )
-                } else {
-                    target = nil
-                }
-
-                if let target = target {
-                    state.executeDrop(target: target, draggedId: dragged)
-                } else {
-                    state.clearDropTarget()
-                }
-            }
+        return nestedPerformDrop(info: info, state: state) { dragged in
+            guard let last = state.visibleRows.last else { return nil }
+            return state.resolveDropTarget(hoveredRow: last, isBelow: true, pointerX: locX, draggedItemId: dragged)
         }
-        return true
     }
 
     private func updateTarget(info: DropInfo) {
@@ -1080,6 +1095,83 @@ struct OutlineBottomDropDelegate: DropDelegate {
             pointerX: info.location.x,
             draggedItemId: nil
         )
+    }
+}
+
+/// Drop delegate for the indicator line itself. The line is the gap the
+/// row delegates only *visualize*: releasing exactly on the line (between
+/// the two row frames) hit neither row delegate, so the session cancelled
+/// and the line stayed stuck. `isBelow` is fixed by which gap the line
+/// represents; only `pointerX` still selects depth.
+struct GapDropDelegate: DropDelegate {
+    let hoveredRow: NestedRow
+    let isBelow: Bool
+    let state: NestedEditorState
+
+    func validateDrop(info: DropInfo) -> Bool {
+        info.hasItemsConforming(to: [.text])
+    }
+
+    func dropEntered(info: DropInfo) {
+        updateTarget(info: info)
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        updateTarget(info: info)
+        return nestedDropProposal(state: state)
+    }
+
+    func dropExited(info: DropInfo) {
+        if state.dropTarget?.displayRowId == hoveredRow.id {
+            state.clearDropTarget()
+        }
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        let locX = info.location.x
+        return nestedPerformDrop(info: info, state: state) { dragged in
+            state.resolveDropTarget(hoveredRow: hoveredRow, isBelow: isBelow, pointerX: locX, draggedItemId: dragged)
+        }
+    }
+
+    private func updateTarget(info: DropInfo) {
+        state.updateDropTarget(
+            hoveredRow: hoveredRow,
+            isBelow: isBelow,
+            pointerX: info.location.x,
+            draggedItemId: nil
+        )
+    }
+}
+
+/// Catch-all for drags that leave the outline (inspector, sidebar,
+/// toolbars, empty window canvas). Inner row/gap delegates win while the
+/// pointer is over them; this delegate only receives events when the
+/// pointer is outside all inner drop views — exactly the outside case
+/// where the indicator previously stayed stranded. Dropping here is a
+/// cancel (`.forbidden`), not a move.
+struct OutlineOutsideDropDelegate: DropDelegate {
+    let state: NestedEditorState
+
+    func validateDrop(info: DropInfo) -> Bool {
+        info.hasItemsConforming(to: [.text])
+    }
+
+    func dropEntered(info: DropInfo) {
+        state.clearDropTarget()
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        state.clearDropTarget()
+        return DropProposal(operation: .forbidden)
+    }
+
+    func dropExited(info: DropInfo) {}
+
+    func performDrop(info: DropInfo) -> Bool {
+        state.clearDropTarget()
+        state.draggedId = nil
+        return false
     }
 }
 

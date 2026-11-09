@@ -88,6 +88,11 @@ struct NestedListsWindowView: View {
                     .frame(width: 350)
             }
         }
+        // Catch-all for drags that leave the outline (inspector, sidebar,
+        // toolbar, empty canvas): inner row/gap delegates win while over
+        // them, so this only fires outside — clearing the stranded drop
+        // line instead of freezing it.
+        .onDrop(of: [.text], delegate: OutlineOutsideDropDelegate(state: state))
         .frame(minWidth: Self.minContentWidth, minHeight: Self.minContentHeight)
         // Pin the outline to the light theme: the bright canvas/cream
         // selection assume dark ink, so every component inside resolves
@@ -910,7 +915,9 @@ struct NestedListsWindowView: View {
                     ForEach(rows) { row in
                         VStack(alignment: .leading, spacing: 0) {
                             if state.dropTarget?.displayRowId == row.id && !state.dropTarget!.below {
-                                DropIndicatorLine(depth: state.dropTarget!.depth)
+                                DropIndicatorLine(depth: state.dropTarget!.depth, label: state.dropTargetLabel, hint: state.dropTargetHint)
+                                    .contentShape(Rectangle())
+                                    .onDrop(of: [.text], delegate: GapDropDelegate(hoveredRow: row, isBelow: false, state: state))
                                     .transition(.opacity)
                             }
                             NestedRowView(
@@ -918,14 +925,18 @@ struct NestedListsWindowView: View {
                                 row: row,
                                 isEditing: state.editingId == row.id,
                                 isSelected: state.selectedId == row.id,
-                                isDragged: state.draggedId == row.id,
                                 noteLineLimit: state.noteLineLimit,
                                 focusTier: state.focusSnapshot.tier(for: row),
                                 selectionBranch: state.selectionBranch
                             )
                             .equatable()
+                            // Outside the row so dimming the dragged source
+                            // doesn't rebuild the drag source view mid-drag.
+                            .opacity(state.draggedId == row.id ? 0.35 : 1.0)
                             if state.dropTarget?.displayRowId == row.id && state.dropTarget!.below {
-                                DropIndicatorLine(depth: state.dropTarget!.depth)
+                                DropIndicatorLine(depth: state.dropTarget!.depth, label: state.dropTargetLabel, hint: state.dropTargetHint)
+                                    .contentShape(Rectangle())
+                                    .onDrop(of: [.text], delegate: GapDropDelegate(hoveredRow: row, isBelow: true, state: state))
                                     .transition(.opacity)
                             }
                             if state.draft?.anchorId == row.id, let d = state.draft {
