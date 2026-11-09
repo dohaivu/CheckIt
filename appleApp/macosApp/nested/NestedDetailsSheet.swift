@@ -962,35 +962,44 @@ struct NestedColorSwatchGrid: View {
     let onSelect: (NestedColorToken) -> Void
 
     var body: some View {
-        LazyVGrid(columns: [GridItem(.fixed(26)), GridItem(.fixed(26))], spacing: 6) {
+        LazyVGrid(columns: [GridItem(.fixed(92), alignment: .leading), GridItem(.fixed(92), alignment: .leading)], spacing: 6) {
             ForEach(NestedColorToken.entries, id: \.self) { t in
                 let isSelected = t == selected
                 Button {
                     onSelect(t)
                 } label: {
-                    Group {
-                        if t == NestedColorToken.default_ {
-                            Circle()
-                                .strokeBorder(Color.secondary, lineWidth: 1.5)
-                                .background(Circle().fill(Color.clear))
-                        } else {
-                            Circle()
-                                .fill(nestedTokenColor(t))
-                                .strokeBorder(Color.secondary.opacity(0.4), lineWidth: 1)
+                    HStack(spacing: 6) {
+                        Group {
+                            if t == NestedColorToken.default_ {
+                                Circle()
+                                    .strokeBorder(Color.secondary, lineWidth: 1.5)
+                                    .background(Circle().fill(Color.clear))
+                            } else {
+                                Circle()
+                                    .fill(nestedTokenColor(t))
+                                    .strokeBorder(Color.secondary.opacity(0.4), lineWidth: 1)
+                            }
                         }
-                    }
-                    .frame(width: 18, height: 18)
-                    .contentShape(Circle())
-                    .overlay {
-                        if isSelected {
-                            Circle()
-                                .strokeBorder(Color.accentColor, lineWidth: 2)
-                                .frame(width: 24, height: 24)
+                        .frame(width: 16, height: 16)
+                        .contentShape(Circle())
+                        .overlay {
+                            if isSelected {
+                                Circle()
+                                    .strokeBorder(Color.accentColor, lineWidth: 2)
+                                    .frame(width: 22, height: 22)
+                            }
                         }
+                        Text(t.name)
+                            .font(.system(size: 12))
+                            .foregroundStyle(isSelected ? Color.accentColor : Color.primary)
+                            .lineLimit(1)
                     }
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(isSelected ? Color.accentColor.opacity(0.12) : Color.clear, in: RoundedRectangle(cornerRadius: 6))
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .contentShape(Rectangle())
                 .focusable(false)
                 .help(t.name)
                 .accessibilityLabel(t.name)
