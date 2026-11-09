@@ -555,6 +555,7 @@ struct NestedFormattingBar: View {
     @State private var showBorderPicker = false
     @State private var showCalloutPicker = false
     @State private var showGuidePicker = false
+    @State private var showColorPicker = false
     @State private var startDate = Date()
     @State private var endDate = Date()
     @State private var hasStart = false
@@ -624,36 +625,33 @@ struct NestedFormattingBar: View {
             .frame(width: 28, height: 28)
             .accessibilityLabel("Text style")
             .help("Text style")
-            // Text color
-            NestedMenuButton(rows: {
-                NestedColorToken.entries.map { t in
-                    NestedMenuRow.color(t, selected: t == item.textColor) {
-                        state.updateFormatting(id: item.id, style: item.textStyle, textColor: t, background: item.backgroundColor)
-                    }
-                }
-            }, label: {
-                NestedMenuTrigger(
-                    symbol: "paintbrush",
-                    tint: item.textColor == NestedColorToken.default_ ? .secondary : .accentColor
-                )
-            })
-            .accessibilityLabel("Text color")
-            .help("Text color")
-            // Background
-            NestedMenuButton(rows: {
-                NestedColorToken.entries.map { t in
-                    NestedMenuRow.color(t, selected: t == item.backgroundColor) {
-                        state.updateFormatting(id: item.id, style: item.textStyle, textColor: item.textColor, background: t)
-                    }
-                }
-            }, label: {
+            // Text + background color in one popover (Text | Background side
+            // by side). The popover stays open while picking so both colors
+            // can be tuned in one pass; clicking outside dismisses.
+            Button {
+                showColorPicker.toggle()
+            } label: {
                 NestedMenuTrigger(
                     symbol: "paintpalette",
-                    tint: item.backgroundColor == NestedColorToken.default_ ? .secondary : .accentColor
+                    tint: (item.textColor == NestedColorToken.default_ && item.backgroundColor == NestedColorToken.default_)
+                        ? .secondary
+                        : .accentColor
                 )
-            })
-            .accessibilityLabel("Background color")
-            .help("Background color")
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel("Text and background color")
+            .help("Text and background color")
+            .popover(isPresented: $showColorPicker, arrowEdge: .bottom) {
+                NestedColorPickerView(
+                    item: item,
+                    onTextColor: { color in
+                        state.updateFormatting(id: item.id, style: item.textStyle, textColor: color, background: item.backgroundColor)
+                    },
+                    onBackgroundColor: { color in
+                        state.updateFormatting(id: item.id, style: item.textStyle, textColor: item.textColor, background: color)
+                    }
+                )
+            }
             // Border: Style + Width + Shape + Color side by side so the 4
             // groups do not stack into a 38-row menu. NSMenu is strictly
             // vertical, so this uses a SwiftUI popover with a horizontal
@@ -954,7 +952,7 @@ struct NestedPickerColumn<Content: View>: View {
     }
 }
 
-/// Shared 2-column color dots used by the Border and Guide pickers.
+/// Shared 2-column color dots used by the Border, Guide, and Text/Background pickers.
 /// `selected` is the concrete token (`.default_` means theme-following
 /// hollow ring); callers map to/from their nullable storage.
 struct NestedColorSwatchGrid: View {
@@ -1130,6 +1128,33 @@ struct NestedGuidePickerView: View {
             NestedPickerColumn(title: "Color") {
                 NestedColorSwatchGrid(selected: item.guideDotColor ?? NestedColorToken.default_) { t in
                     onGuideDotColor(t == NestedColorToken.default_ ? nil : t)
+                }
+            }
+        }
+        .padding(10)
+    }
+}
+
+// MARK: - Color picker (horizontal sections)
+
+/// Text + background color controls shown side by side in a popover
+/// instead of two `NSMenu`s. The columns stay open while picking so both
+/// colors can be tuned in one pass; clicking outside dismisses.
+struct NestedColorPickerView: View {
+    let item: NestedListItem
+    let onTextColor: (NestedColorToken) -> Void
+    let onBackgroundColor: (NestedColorToken) -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 16) {
+            NestedPickerColumn(title: "Text") {
+                NestedColorSwatchGrid(selected: item.textColor) { t in
+                    onTextColor(t)
+                }
+            }
+            NestedPickerColumn(title: "Background") {
+                NestedColorSwatchGrid(selected: item.backgroundColor) { t in
+                    onBackgroundColor(t)
                 }
             }
         }
