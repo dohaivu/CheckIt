@@ -251,6 +251,13 @@ internal fun MoveToDialog(
                     selectedId = selectedId,
                     onSelect = { selectedId = it }
                 )
+                MoveDestinationGroup(
+                    title = "Ancestors",
+                    items = destinations.ancestors,
+                    childCounts = childCounts,
+                    selectedId = selectedId,
+                    onSelect = { selectedId = it }
+                )
             }
         },
         confirmButton = {

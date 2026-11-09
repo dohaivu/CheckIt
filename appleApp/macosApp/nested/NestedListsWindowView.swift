@@ -1385,6 +1385,7 @@ struct NestedListsWindowView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     moveDestinationGroup(title: "Siblings", items: groups?.siblings ?? [])
                     moveDestinationGroup(title: "Parent's siblings", items: groups?.parentSiblings ?? [])
+                    moveDestinationGroup(title: "Ancestors", items: groups?.ancestors ?? [])
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }

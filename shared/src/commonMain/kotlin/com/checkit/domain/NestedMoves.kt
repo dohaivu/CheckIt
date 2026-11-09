@@ -32,19 +32,23 @@ fun computeNestedInsertPosition(
     return parentId to position
 }
 
-/** Candidate parents for "move under": siblings and parent-siblings, in display order. */
+/** Candidate parents for "move under": siblings, parent-siblings, and ancestors, in display order. */
 data class MoveDestinations(
     val siblings: List<NestedListItem>,
-    val parentSiblings: List<NestedListItem>
+    val parentSiblings: List<NestedListItem>,
+    /** Grandparent up to root, nearest-first. Empty for roots and depth-1 items. */
+    val ancestors: List<NestedListItem> = emptyList()
 ) {
-    val isEmpty: Boolean get() = siblings.isEmpty() && parentSiblings.isEmpty()
+    val isEmpty: Boolean get() = siblings.isEmpty() && parentSiblings.isEmpty() && ancestors.isEmpty()
 }
 
 /**
- * Lists where [itemId] may move under: its siblings (excluding itself) and
- * its parent's siblings (excluding its parent). Roots have no parent-siblings.
- * Siblings and uncles can never sit inside the moved subtree, so the set is
- * inherently cycle-safe. Pure for UI reuse on both platforms.
+ * Lists where [itemId] may move under: its siblings (excluding itself),
+ * its parent's siblings (excluding its parent), and its ancestors from
+ * the grandparent up to root, nearest-first. Roots have no
+ * parent-siblings and no ancestors. None of these can sit inside the
+ * moved subtree, so the set is inherently cycle-safe. Pure for UI reuse
+ * on both platforms.
  */
 fun moveDestinations(items: List<NestedListItem>, itemId: String): MoveDestinations {
     val item = items.firstOrNull { it.id == itemId }
@@ -61,5 +65,17 @@ fun moveDestinations(items: List<NestedListItem>, itemId: String): MoveDestinati
             .filter { it.parentId == parent.parentId && it.id != parent.id }
             .sortedWith(inGroupOrder)
     }
-    return MoveDestinations(siblings, parentSiblings)
+    // Grandparent upward: the current parent is excluded (moving under it
+    // would only reorder within the current group); root ancestors let a
+    // deep item outdent several levels in one move.
+    val ancestors = mutableListOf<NestedListItem>()
+    var cursorId = parent?.parentId
+    val seen = mutableSetOf(item.id)
+    while (cursorId != null) {
+        if (!seen.add(cursorId)) break // defensive against corrupt cycles
+        val ancestor = items.firstOrNull { it.id == cursorId } ?: break
+        ancestors.add(ancestor)
+        cursorId = ancestor.parentId
+    }
+    return MoveDestinations(siblings, parentSiblings, ancestors)
 }

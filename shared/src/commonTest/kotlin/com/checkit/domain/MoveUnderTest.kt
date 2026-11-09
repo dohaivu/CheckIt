@@ -42,6 +42,54 @@ class MoveUnderTest {
         val dest = moveDestinations(items, "p")
         assertEquals(listOf("u"), dest.siblings.map { it.id })
         assertTrue(dest.parentSiblings.isEmpty())
+        assertTrue(dest.ancestors.isEmpty())
+    }
+
+    @Test
+    fun destinationsListAncestorsNearestFirst() {
+        // p (children a, b); a (children a1, a2); a1 (child ax).
+        val deep = items + listOf(
+            item("a1", "a", 0),
+            item("a2", "a", 1),
+            item("ax", "a1", 0),
+        )
+        assertTrue(moveDestinations(deep, "ax").siblings.isEmpty())
+        assertEquals(listOf("a2"), moveDestinations(deep, "ax").parentSiblings.map { it.id })
+        assertEquals(listOf("a", "p"), moveDestinations(deep, "ax").ancestors.map { it.id })
+    }
+
+    @Test
+    fun destinationsAncestorsEmptyForShallowItems() {
+        // Roots and depth-1 items have no grandparent chain.
+        assertTrue(moveDestinations(items, "p").ancestors.isEmpty())
+        assertTrue(moveDestinations(items, "a").ancestors.isEmpty())
+        assertTrue(moveDestinations(items, "c").ancestors.isEmpty())
+    }
+
+    @Test
+    fun destinationsAncestorsCycleSafe() {
+        // Corrupt self-parent cycle must terminate, not loop forever.
+        // Here the grandparent chain immediately loops back to the item
+        // itself, so it is excluded and ancestors is empty.
+        val cyclic = listOf(
+            item("x", "y", 0),
+            item("y", "x", 0),
+        )
+        assertTrue(moveDestinations(cyclic, "x").ancestors.isEmpty())
+    }
+
+    @Test
+    fun moveUnderAncestorOutdents() {
+        // ax under a (grandparent): becomes a's last child at index 2.
+        val deep = items + listOf(
+            item("a1", "a", 0),
+            item("a2", "a", 1),
+            item("ax", "a1", 0),
+        )
+        assertEquals(
+            listOf(NestedItemMove("ax", "a", 2)),
+            moves.moveUnder(deep, "ax", "a")
+        )
     }
 
     @Test
