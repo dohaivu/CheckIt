@@ -237,27 +237,34 @@ internal fun MoveToDialog(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                MoveDestinationGroup(
-                    title = "Siblings",
-                    items = destinations.siblings,
-                    childCounts = childCounts,
-                    selectedId = selectedId,
-                    onSelect = { selectedId = it }
-                )
-                MoveDestinationGroup(
-                    title = "Parent's siblings",
-                    items = destinations.parentSiblings,
-                    childCounts = childCounts,
-                    selectedId = selectedId,
-                    onSelect = { selectedId = it }
-                )
-                MoveDestinationGroup(
-                    title = "Ancestors",
-                    items = destinations.ancestors,
-                    childCounts = childCounts,
-                    selectedId = selectedId,
-                    onSelect = { selectedId = it }
-                )
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                    modifier = Modifier
+                        .heightIn(max = 320.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    MoveDestinationGroup(
+                        title = "Siblings",
+                        items = destinations.siblings,
+                        childCounts = childCounts,
+                        selectedId = selectedId,
+                        onSelect = { selectedId = it }
+                    )
+                    MoveDestinationGroup(
+                        title = "Parent's siblings",
+                        items = destinations.parentSiblings,
+                        childCounts = childCounts,
+                        selectedId = selectedId,
+                        onSelect = { selectedId = it }
+                    )
+                    MoveDestinationGroup(
+                        title = "Ancestors",
+                        items = destinations.ancestors,
+                        childCounts = childCounts,
+                        selectedId = selectedId,
+                        onSelect = { selectedId = it }
+                    )
+                }
             }
         },
         confirmButton = {
