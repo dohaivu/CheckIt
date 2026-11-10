@@ -9,7 +9,7 @@ enum class MarkdownTableAlignment {
 
 /**
  * A block-level markdown element. [parseMarkdownBlocks] splits a document into
- * blocks so the UI can render tables with real layout while keeping
+ * blocks so the UI can render tables and code with real layout while keeping
  * [Text] blocks on the existing [parseRichText]-based renderer.
  *
  * [Text.markdown] is the verbatim source of the block (blank lines included),
@@ -25,6 +25,16 @@ sealed interface MarkdownBlock {
         val alignments: List<MarkdownTableAlignment>,
         val rows: List<List<String>>,
     ) : MarkdownBlock
+
+    /**
+     * A fenced code block (``` or `~~~`). [code] is verbatim: no inline or
+     * line-based markdown is parsed inside it.
+     */
+    data class Code(
+        /** Info string after the opening fence (`kotlin` in ```` ```kotlin ````), empty when absent. */
+        val language: String,
+        val code: String,
+    ) : MarkdownBlock
 }
 
 /**
@@ -35,19 +45,61 @@ sealed interface MarkdownBlock {
 private const val MaxTableColumns = 12
 private const val MaxTableRows = 200
 
+/** CommonMark requires at least three fence characters. */
+private const val MinFenceLength = 3
+
 private val DelimiterCell = Regex("^:?-+:?$")
+
+/** An opening code fence: its character, run length and info string. */
+internal class MarkdownFence(
+    val char: Char,
+    val length: Int,
+    val info: String,
+)
+
+/**
+ * Returns the fence marker when [line] opens a fenced code block, null for
+ * prose. Leading indentation is tolerated; an info string containing a
+ * backtick is not a fence (it would be an inline `` `code` `` span instead).
+ */
+internal fun openingFenceMarker(line: String): MarkdownFence? {
+    val trimmed = line.trimStart()
+    val char = trimmed.firstOrNull() ?: return null
+    if (char != '`' && char != '~') return null
+    val runLength = trimmed.takeWhile { it == char }.length
+    if (runLength < MinFenceLength) return null
+    val info = trimmed.substring(runLength).trim()
+    if (char == '`' && info.indexOf('`') >= 0) return null
+    return MarkdownFence(char, runLength, info)
+}
+
+/** True when [line] closes [fence]: same character, run at least as long, nothing else. */
+internal fun isClosingFenceLine(line: String, fence: MarkdownFence): Boolean {
+    val trimmed = line.trimStart()
+    if (trimmed.firstOrNull() != fence.char) return false
+    val runLength = trimmed.takeWhile { it == fence.char }.length
+    if (runLength < fence.length) return false
+    return trimmed.substring(runLength).isBlank()
+}
+
+private fun String.hasFenceMarker(): Boolean =
+    indexOf("```") >= 0 || indexOf("~~~") >= 0
+
 
 /**
  * Splits [markdown] into text and table blocks.
  *
- * Only the GFM subset the app needs is supported: a header row plus delimiter
- * row (`---`, `:---`, `:---:`, `---:`), followed by non-blank rows. Escaped
- * pipes (`\|`) and pipes inside code spans stay inside the cell. Ragged rows
- * are padded (or truncated) to the header width.
+ * Only the GFM subset the app needs is supported: fenced code blocks (``` or
+ * `~~~`), and tables made of a header row plus delimiter row (`---`, `:---`,
+ * `:---:`, `---:`), followed by non-blank rows. Escaped pipes (`\|`) and pipes
+ * inside code spans stay inside the cell. Ragged rows are padded (or
+ * truncated) to the header width.
+ *
+ * Fences are detected before tables and before inline parsing, so a `|` or
+ * `**bold**` inside code stays literal.
  *
  * Deliberate limitations, kept simple on purpose:
- * - tables inside code fences are not detected (the renderer has no fenced
- *   code support either);
+ * - indented (4-space) code blocks are not supported;
  * - a single-column table still needs a `|` in the delimiter row, so prose
  *   followed by a `---` rule is never mistaken for a table;
  * - `\\|` is treated as `\|` (escaped pipe), not as an escaped backslash.
@@ -56,8 +108,11 @@ private val DelimiterCell = Regex("^:?-+:?$")
  */
 fun parseMarkdownBlocks(markdown: String): List<MarkdownBlock> {
     if (markdown.isEmpty()) return emptyList()
-    // Fast path: no pipe, no table. Keeps the common case at a single scan.
-    if (markdown.indexOf('|') < 0) return listOf(MarkdownBlock.Text(markdown))
+    // Fast path: neither a table nor a fence can start. One scan for the
+    // common case; inline code with a single backtick still takes it.
+    if (markdown.indexOf('|') < 0 && !markdown.hasFenceMarker()) {
+        return listOf(MarkdownBlock.Text(markdown))
+    }
 
     val lines = markdown.split('\n')
     val blocks = mutableListOf<MarkdownBlock>()
@@ -71,6 +126,13 @@ fun parseMarkdownBlocks(markdown: String): List<MarkdownBlock> {
     }
 
     while (index < lines.size) {
+        val fence = parseFenceAt(lines, index)
+        if (fence != null) {
+            flushText()
+            blocks.add(fence.block)
+            index = fence.endExclusive
+            continue
+        }
         val table = parseTableAt(lines, index)
         if (table == null) {
             textLines.add(lines[index])
@@ -83,6 +145,33 @@ fun parseMarkdownBlocks(markdown: String): List<MarkdownBlock> {
     }
     flushText()
     return blocks
+}
+
+private class ParsedFence(val block: MarkdownBlock.Code, val endExclusive: Int)
+
+private fun parseFenceAt(lines: List<String>, start: Int): ParsedFence? {
+    val marker = openingFenceMarker(lines[start]) ?: return null
+    var index = start + 1
+    while (index < lines.size) {
+        if (isClosingFenceLine(lines[index], marker)) {
+            return ParsedFence(
+                block = MarkdownBlock.Code(
+                    language = marker.info,
+                    code = lines.subList(start + 1, index).joinToString("\n"),
+                ),
+                endExclusive = index + 1,
+            )
+        }
+        index++
+    }
+    // Unclosed fence: the rest of the document is code.
+    return ParsedFence(
+        block = MarkdownBlock.Code(
+            language = marker.info,
+            code = lines.subList(start + 1, lines.size).joinToString("\n"),
+        ),
+        endExclusive = lines.size,
+    )
 }
 
 private class ParsedTable(val block: MarkdownBlock.Table, val endExclusive: Int)

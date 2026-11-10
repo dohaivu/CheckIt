@@ -34,6 +34,8 @@ struct MarkdownBodyView: View {
                         highlight: highlight,
                         cellLineLimit: cellLineLimit
                     )
+                } else if block.kind == "code" {
+                    MarkdownCodeBlockView(code: block.text, language: block.language)
                 } else {
                     Text(renderFullMarkdown(block.text, highlight: highlight))
                         .font(font)
@@ -191,6 +193,31 @@ private struct WeightedRowLayout: Layout {
             return Array(repeating: available / CGFloat(count), count: count)
         }
         return active.map { available * ($0 / total) }
+    }
+}
+
+/// Full-width code card: monospace, preserved whitespace, optional language
+/// caption. No syntax highlighting; long lines wrap (v1 choice) rather than
+/// scrolling, so the block stays safe inside intrinsic-measured parents.
+private struct MarkdownCodeBlockView: View {
+    let code: String
+    let language: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if !language.trimmingCharacters(in: .whitespaces).isEmpty {
+                Text(language)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            Text(code)
+                .font(.system(.body, design: .monospaced))
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(Color.secondary.opacity(0.12), in: RoundedRectangle(cornerRadius: 6))
+        .padding(.vertical, 4)
     }
 }
 

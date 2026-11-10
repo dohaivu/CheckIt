@@ -7,10 +7,10 @@ package com.checkit.domain
  *
  * The dialect is deliberately small (see [parseRichText] and
  * [parseMarkdownSourceStyles]), so constructs without a representation are
- * flattened to plain text: links keep their text, images are dropped, code
- * fences become plain lines and nested list levels collapse to one level.
- * Tables survive as GFM pipe tables with a `---` delimiter row so the shared
- * renderer can lay them out.
+ * flattened to plain text: links keep their text, images are dropped, and
+ * nested list levels collapse to one level. Tables survive as GFM pipe tables
+ * with a `---` delimiter row, and `<pre>` becomes a fenced code block, so the
+ * shared renderer can lay both out.
  *
  * This lives in shared code so the macOS editor (pasting rich clipboard
  * content) uses the same conversion Android can, and so the logic is unit
@@ -205,7 +205,7 @@ private fun renderElement(element: HtmlNode.Element): String = when (element.tag
     "ol" -> renderList(element, ordered = true)
     "li" -> renderChildren(element).trim() + "\n"
     "blockquote" -> renderBlockquote(element)
-    "pre" -> plainText(element).trim('\n') + "\n\n"
+    "pre" -> renderCodeBlock(element)
     "table" -> renderTable(element)
     else -> if (element.tag in BLOCK_TAGS) renderChildren(element) + "\n\n" else renderChildren(element)
 }
@@ -291,6 +291,32 @@ private fun tableRowLine(cells: List<String>): String =
 
 private fun escapeTableCell(cell: String): String = cell.replace("|", "\\|")
 
+/**
+ * Emits a fenced code block. The fence is longer than any backtick run inside
+ * the code, so content containing ``` cannot close it early. No language info
+ * string is emitted: this HTML parser drops attributes.
+ */
+private fun renderCodeBlock(element: HtmlNode.Element): String {
+    val code = plainText(element).trim('\n')
+    if (code.isEmpty()) return ""
+    val fence = "`".repeat(maxOf(3, longestBacktickRun(code) + 1))
+    return "$fence\n$code\n$fence\n\n"
+}
+
+private fun longestBacktickRun(text: String): Int {
+    var longest = 0
+    var current = 0
+    for (char in text) {
+        if (char == '`') {
+            current++
+            if (current > longest) longest = current
+        } else {
+            current = 0
+        }
+    }
+    return longest
+}
+
 private fun collectRows(element: HtmlNode.Element, out: MutableList<List<String>>) {
     for (child in element.children) {
         if (child !is HtmlNode.Element) continue
@@ -358,11 +384,32 @@ private fun codePointToString(codePoint: Int): String = when {
     else -> ""
 }
 
-/** Trims trailing spaces, collapses blank-line runs and drops outer newlines. */
+/**
+ * Trims trailing spaces, collapses blank-line runs and drops outer newlines.
+ * Fenced code blocks are copied verbatim: collapsing or trimming their lines
+ * would destroy indentation and intentional blank lines.
+ */
 private fun normalizeMarkdown(raw: String): String {
     val result = StringBuilder()
     var blankRun = 0
+    var fence: MarkdownFence? = null
     for (line in raw.split('\n')) {
+        val openFence = fence
+        if (openFence != null) {
+            result.append(line).append('\n')
+            if (isClosingFenceLine(line, openFence)) {
+                fence = null
+                blankRun = 0
+            }
+            continue
+        }
+        val marker = openingFenceMarker(line)
+        if (marker != null) {
+            fence = marker
+            blankRun = 0
+            result.append(line.trimEnd()).append('\n')
+            continue
+        }
         val trimmed = line.trimEnd()
         if (trimmed.isBlank()) {
             blankRun++

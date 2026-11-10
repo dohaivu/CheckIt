@@ -208,4 +208,86 @@ class MarkdownBlocksTest {
 
         assertEquals(listOf(MarkdownBlock.Text(input)), parseMarkdownBlocks(input))
     }
+
+    @Test
+    fun fencedCodeBlockWithInfoString() {
+        val input = "```kotlin\nval x = 1\n```"
+        assertEquals(
+            listOf(MarkdownBlock.Code(language = "kotlin", code = "val x = 1")),
+            parseMarkdownBlocks(input),
+        )
+    }
+
+    @Test
+    fun tildeFenceIsSupported() {
+        assertEquals(
+            listOf(MarkdownBlock.Code(language = "", code = "a\nb")),
+            parseMarkdownBlocks("~~~\na\nb\n~~~"),
+        )
+    }
+
+    @Test
+    fun unclosedFenceRunsToEndOfDocument() {
+        assertEquals(
+            listOf(MarkdownBlock.Code(language = "", code = "a\nb")),
+            parseMarkdownBlocks("```\na\nb"),
+        )
+    }
+
+    @Test
+    fun codeContentIsVerbatim() {
+        // No headers, inline spans or tables inside code.
+        val input = "```\n# not a header\n**not bold**\n| a | b |\n- not a bullet\n```"
+        assertEquals(
+            listOf(
+                MarkdownBlock.Code(
+                    language = "",
+                    code = "# not a header\n**not bold**\n| a | b |\n- not a bullet",
+                )
+            ),
+            parseMarkdownBlocks(input),
+        )
+    }
+
+    @Test
+    fun blankLinesInsideCodeArePreserved() {
+        assertEquals(
+            listOf(MarkdownBlock.Code(language = "", code = "a\n\nb")),
+            parseMarkdownBlocks("```\na\n\nb\n```"),
+        )
+    }
+
+    @Test
+    fun codeBlockBetweenTextBlocks() {
+        val blocks = parseMarkdownBlocks("before\n```\nx\n```\nafter")
+
+        assertEquals(3, blocks.size)
+        assertEquals(MarkdownBlock.Text("before"), blocks[0])
+        assertEquals(MarkdownBlock.Code(language = "", code = "x"), blocks[1])
+        assertEquals(MarkdownBlock.Text("after"), blocks[2])
+    }
+
+    @Test
+    fun longerFenceContainsShorterRuns() {
+        val input = "````\n```\nx\n```\n````"
+        assertEquals(
+            listOf(MarkdownBlock.Code(language = "", code = "```\nx\n```")),
+            parseMarkdownBlocks(input),
+        )
+    }
+
+    @Test
+    fun indentedFenceIsSupported() {
+        // Fence indentation is tolerated; content indentation is preserved.
+        assertEquals(
+            listOf(MarkdownBlock.Code(language = "", code = "  x")),
+            parseMarkdownBlocks("  ```\n  x\n  ```"),
+        )
+    }
+
+    @Test
+    fun inlineBacktickLineIsNotAFence() {
+        val input = "Use ```inline``` here"
+        assertEquals(listOf(MarkdownBlock.Text(input)), parseMarkdownBlocks(input))
+    }
 }

@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -36,6 +37,8 @@ private const val MaxColumnWeight = 24f
  * everything the app already supports (headers, quotes, bullets, inline spans,
  * `=={cN}==` colors) renders exactly as before. [MarkdownBlock.Table] blocks get
  * real layout: wrapping cells, weighted columns, a header band, and row rules.
+ * [MarkdownBlock.Code] blocks get a full-width monospace card (no syntax
+ * highlighting) with preserved whitespace.
  *
  * Non-lazy `Column`: safe inside `verticalScroll` content and `LazyColumn`
  * items, and it does not measure children with intrinsics. Do not place a table
@@ -77,6 +80,11 @@ fun MarkdownBody(
                     color = color,
                     highlightColor = highlightColor,
                     cellMaxLines = cellMaxLines,
+                )
+                is MarkdownBlock.Code -> MarkdownCodeBlock(
+                    block = block,
+                    style = style,
+                    color = color,
                 )
             }
         }
@@ -173,6 +181,41 @@ private fun MarkdownTableAlignment.toTextAlign(): TextAlign = when (this) {
     MarkdownTableAlignment.Start -> TextAlign.Start
     MarkdownTableAlignment.Center -> TextAlign.Center
     MarkdownTableAlignment.End -> TextAlign.End
+}
+
+/**
+ * Full-width code card: monospace, preserved whitespace, optional language
+ * caption. No syntax highlighting; long lines wrap (v1 choice) rather than
+ * scrolling, so the block stays safe inside intrinsic-measured parents.
+ */
+@Composable
+private fun MarkdownCodeBlock(
+    block: MarkdownBlock.Code,
+    style: TextStyle,
+    color: Color,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .clip(RoundedCornerShape(6.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+    ) {
+        if (block.language.isNotBlank()) {
+            Text(
+                text = block.language,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 4.dp),
+            )
+        }
+        Text(
+            text = block.code,
+            style = style.copy(fontFamily = FontFamily.Monospace),
+            color = color,
+        )
+    }
 }
 
 /**

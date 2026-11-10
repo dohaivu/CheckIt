@@ -119,8 +119,34 @@ func renderFullMarkdown(_ raw: String?, highlight: Color = Color.orange) -> Attr
     guard let raw, !raw.isEmpty else { return AttributedString("") }
     var result = AttributedString()
     let lines = raw.components(separatedBy: "\n")
+    var hasOutput = false
+    var fence: CodeFenceMarker?
 
-    for (index, line) in lines.enumerated() {
+    // Separate lines lazily so dropped fence lines never leave blank gaps.
+    func separate() {
+        if hasOutput { result.append(AttributedString("\n")) }
+        hasOutput = true
+    }
+
+    for line in lines {
+        // 0. Fenced code blocks: verbatim, no inline or line-based parsing.
+        if let openFence = fence {
+            if isClosingFence(line, marker: openFence) {
+                fence = nil
+            } else {
+                separate()
+                var codeText = AttributedString(line)
+                codeText.font = .system(.body, design: .monospaced)
+                codeText.backgroundColor = Color.secondary.opacity(0.15)
+                result.append(codeText)
+            }
+            continue
+        }
+        if let marker = openingFence(line) {
+            fence = marker
+            continue
+        }
+
         var content = line
         var prefix: AttributedString?
         var headerFont: Font?
@@ -158,11 +184,42 @@ func renderFullMarkdown(_ raw: String?, highlight: Color = Color.orange) -> Attr
         if isQuote { lineText.inlinePresentationIntent = .emphasized }
         lineText = applyingRichSpans(parsed, to: lineText, highlight: highlight)
 
+        separate()
         if let prefix { result.append(prefix) }
         result.append(lineText)
-        if index < lines.count - 1 { result.append(AttributedString("\n")) }
     }
+    // An unclosed fence runs to the end of the document; already appended.
     return result
+}
+
+/// An opening code fence: its character, run length and info string.
+private struct CodeFenceMarker {
+    let char: Character
+    let length: Int
+    let info: String
+}
+
+/// Returns the fence marker when `line` opens a fenced code block, nil for
+/// prose. Mirrors `openingFenceMarker` in the shared MarkdownBlocks.kt.
+private func openingFence(_ line: String) -> CodeFenceMarker? {
+    let trimmed = line.drop(while: { $0.isWhitespace })
+    guard let char = trimmed.first, char == "`" || char == "~" else { return nil }
+    let runLength = trimmed.prefix(while: { $0 == char }).count
+    guard runLength >= 3 else { return nil }
+    let info = String(trimmed.dropFirst(runLength)).trimmingCharacters(in: .whitespaces)
+    // A backtick info string would be an inline `code` span, not a fence.
+    if char == "`" && info.contains("`") { return nil }
+    return CodeFenceMarker(char: char, length: runLength, info: info)
+}
+
+/// True when `line` closes `marker`: same character, run at least as long,
+/// nothing else on the line. Mirrors `isClosingFenceLine` in MarkdownBlocks.kt.
+private func isClosingFence(_ line: String, marker: CodeFenceMarker) -> Bool {
+    let trimmed = line.drop(while: { $0.isWhitespace })
+    guard trimmed.first == marker.char else { return false }
+    let runLength = trimmed.prefix(while: { $0 == marker.char }).count
+    guard runLength >= marker.length else { return false }
+    return String(trimmed.dropFirst(runLength)).trimmingCharacters(in: .whitespaces).isEmpty
 }
 
 /// Bold monospace `│  ` marker for blockquote lines.

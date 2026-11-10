@@ -13,13 +13,15 @@ import com.checkit.domain.parseMarkdownBlocks
  * `"start"` / `"center"` / `"end"` for the same reason.
  */
 data class MarkdownBlockDto(
-    /** `"text"` or `"table"`. */
+    /** `"text"`, `"table"` or `"code"`. */
     val kind: String,
-    /** Verbatim markdown for [kind] = `"text"`; empty for tables. */
+    /** Verbatim markdown for [kind] = `"text"`, code for `"code"`; empty for tables. */
     val text: String,
     val header: List<String>,
     val alignments: List<String>,
     val rows: List<List<String>>,
+    /** Code fence info string (`kotlin`), empty when absent. */
+    val language: String,
 )
 
 /** Block-level markdown access for the macOS renderer (parity with `MarkdownBody`). */
@@ -33,6 +35,7 @@ object MarkdownAppleBridge {
                     header = emptyList(),
                     alignments = emptyList(),
                     rows = emptyList(),
+                    language = "",
                 )
                 is MarkdownBlock.Table -> MarkdownBlockDto(
                     kind = "table",
@@ -40,6 +43,15 @@ object MarkdownAppleBridge {
                     header = block.header,
                     alignments = block.alignments.map { it.toBridgeValue() },
                     rows = block.rows,
+                    language = "",
+                )
+                is MarkdownBlock.Code -> MarkdownBlockDto(
+                    kind = "code",
+                    text = block.code,
+                    header = emptyList(),
+                    alignments = emptyList(),
+                    rows = emptyList(),
+                    language = block.language,
                 )
             }
         }

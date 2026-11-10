@@ -75,8 +75,35 @@ class HtmlToMarkdownTest {
     }
 
     @Test
-    fun preKeepsPlainText() {
-        assertEquals("a\n  b", htmlToMarkdown("<pre>a\n  b</pre>"))
+    fun preBecomesFencedCodeBlock() {
+        assertEquals("```\na\n  b\n```", htmlToMarkdown("<pre>a\n  b</pre>"))
+        assertEquals("```\nval x = 1\n```", htmlToMarkdown("<pre><code>val x = 1</code></pre>"))
+    }
+
+    @Test
+    fun preKeepsBlankLinesAndIndentation() {
+        assertEquals(
+            "```\na\n\n\nb\n```",
+            htmlToMarkdown("<pre>a\n\n\nb</pre>"),
+        )
+    }
+
+    @Test
+    fun preFenceGrowsPastBacktickRuns() {
+        assertEquals(
+            "````\n```\nfenced\n```\n````",
+            htmlToMarkdown("<pre>```\nfenced\n```</pre>"),
+        )
+    }
+
+    @Test
+    fun preOutputParsesAsCodeBlock() {
+        val markdown = htmlToMarkdown("<pre># not a heading</pre>")
+
+        assertEquals(
+            MarkdownBlock.Code(language = "", code = "# not a heading"),
+            parseMarkdownBlocks(markdown).single(),
+        )
     }
 
     @Test
