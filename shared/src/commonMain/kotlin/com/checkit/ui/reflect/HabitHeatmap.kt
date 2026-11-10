@@ -2,6 +2,7 @@ package com.checkit.ui.reflect
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -82,16 +83,18 @@ internal fun EmptyHabitsCard(modifier: Modifier = Modifier) {
 internal fun HabitHeatmapSection(
     checkins: List<HabitCheckin>,
     modifier: Modifier = Modifier,
-    monthCount: Int = DefaultHeatmapMonthCount
+    monthCount: Int = DefaultHeatmapMonthCount,
+    onHabitClick: (HabitCheckin) -> Unit = {}
 ) {
     if (checkins.isEmpty()) return
+    val checkinsByKey = remember(checkins) { checkins.associateBy { it.habitKey } }
     val series = remember(checkins) {
         checkins.map { checkin ->
             HeatmapSeries(
                 key = checkin.habitKey,
                 title = checkin.title,
                 intensityByDate = checkin.doneMinutesByDate.mapValues { (_, minutes) ->
-                    (minutes.toFloat() / HeatmapMaxMinutes).coerceIn(0f, 1f)
+                    heatmapIntensity(minutes)
                 },
                 streak = checkin.streak,
                 totalDone = checkin.totalDone
@@ -104,7 +107,8 @@ internal fun HabitHeatmapSection(
         series = series,
         baseColor = HabitHeatmapDone,
         modifier = modifier,
-        monthCount = monthCount
+        monthCount = monthCount,
+        onSeriesTitleClick = { row -> checkinsByKey[row.key]?.let(onHabitClick) }
     )
 }
 
@@ -132,7 +136,8 @@ private fun HeatmapSeriesSection(
     series: List<HeatmapSeries>,
     baseColor: Color,
     modifier: Modifier = Modifier,
-    monthCount: Int = DefaultHeatmapMonthCount
+    monthCount: Int = DefaultHeatmapMonthCount,
+    onSeriesTitleClick: ((HeatmapSeries) -> Unit)? = null
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -170,7 +175,12 @@ private fun HeatmapSeriesSection(
                 if (index > 0) {
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
                 }
-                HeatmapSeriesCard(series = row, baseColor = row.baseColor ?: baseColor, monthCount = monthCount)
+                HeatmapSeriesCard(
+                    series = row,
+                    baseColor = row.baseColor ?: baseColor,
+                    monthCount = monthCount,
+                    onTitleClick = onSeriesTitleClick?.let { click -> { click(row) } }
+                )
             }
         }
     }
@@ -189,11 +199,18 @@ private fun HeatmapSeriesCard(
     series: HeatmapSeries,
     baseColor: Color,
     modifier: Modifier = Modifier,
-    monthCount: Int = DefaultHeatmapMonthCount
+    monthCount: Int = DefaultHeatmapMonthCount,
+    onTitleClick: (() -> Unit)? = null
 ) {
     val today = today()
     val months = remember(series.intensityByDate, today, monthCount) { buildHeatmapMonths(today, monthCount) }
-    HeatmapSeriesCard(series = series, baseColor = baseColor, months = months, modifier = modifier)
+    HeatmapSeriesCard(
+        series = series,
+        baseColor = baseColor,
+        months = months,
+        modifier = modifier,
+        onTitleClick = onTitleClick
+    )
 }
 
 @Composable
@@ -201,7 +218,8 @@ private fun HeatmapSeriesCard(
     series: HeatmapSeries,
     baseColor: Color,
     months: List<HeatmapMonth>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onTitleClick: (() -> Unit)? = null
 ) {
     val today = today()
     Column(
@@ -217,7 +235,9 @@ private fun HeatmapSeriesCard(
         ) {
             Text(
                 text = series.title,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable(enabled = onTitleClick != null) { onTitleClick?.invoke() },
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
@@ -249,7 +269,7 @@ private fun HeatmapSeriesCard(
 }
 
 @Composable
-private fun HeatmapMonthColumn(
+internal fun HeatmapMonthColumn(
     month: HeatmapMonth,
     intensityByDate: Map<LocalDate, Float>,
     baseColor: Color,
@@ -318,6 +338,10 @@ private fun HeatmapCell(
     )
 }
 
+/** Maps a habit's done minutes to heatmap intensity in the 0..1 range. */
+internal fun heatmapIntensity(minutes: Int): Float =
+    (minutes.toFloat() / HeatmapMaxMinutes).coerceIn(0f, 1f)
+
 private fun fractionIntensityColor(fraction: Float, baseColor: Color): Color {
     val clamped = fraction.coerceIn(0f, 1f)
     val alpha = HeatmapMinAlpha + (HeatmapMaxAlpha - HeatmapMinAlpha) * clamped
@@ -325,7 +349,7 @@ private fun fractionIntensityColor(fraction: Float, baseColor: Color): Color {
 }
 
 @Composable
-private fun HabitStreakBadge(
+internal fun HabitStreakBadge(
     streak: Int,
     modifier: Modifier = Modifier
 ) {
@@ -348,25 +372,42 @@ internal fun buildHeatmapMonths(
 ): List<HeatmapMonth> {
     val currentMonthStart = LocalDate(today.year, today.month, 1)
     val firstMonthStart = currentMonthStart.minus(monthCount.coerceAtLeast(1) - 1, DateTimeUnit.MONTH)
-    return (0 until monthCount.coerceAtLeast(1)).map { offset ->
-        val monthStart = firstMonthStart.plus(offset, DateTimeUnit.MONTH)
-        val monthEnd = monthStart.plus(1, DateTimeUnit.MONTH).minus(1, DateTimeUnit.DAY)
-        val firstWeekStart = monthStart.minus(monthStart.dayOfWeek.ordinal, DateTimeUnit.DAY)
-        val weeks = buildList {
-            var weekStart = firstWeekStart
-            while (weekStart <= monthEnd) {
-                add((0 until 7).map { row ->
-                    val date = weekStart.plus(row, DateTimeUnit.DAY)
-                    if (date >= monthStart && date <= monthEnd) date else null
-                })
-                weekStart = weekStart.plus(7, DateTimeUnit.DAY)
-            }
-        }
-        HeatmapMonth(monthStart = monthStart, weeks = weeks)
-    }
+    return buildHeatmapMonthsBetween(firstMonthStart, currentMonthStart)
 }
 
-private val HabitHeatmapDone = Color(0xFF2EC995)
+/**
+ * Builds every month in [firstMonthStart]..[lastMonthStart] inclusive, oldest
+ * first. Used by the full-history habit heatmap; the section heatmap uses the
+ * fixed-window [buildHeatmapMonths] above.
+ */
+internal fun buildHeatmapMonthsBetween(
+    firstMonthStart: LocalDate,
+    lastMonthStart: LocalDate
+): List<HeatmapMonth> {
+    if (lastMonthStart < firstMonthStart) return emptyList()
+    return generateSequence(firstMonthStart) { it.plus(1, DateTimeUnit.MONTH) }
+        .takeWhile { it <= lastMonthStart }
+        .map { monthStart -> heatmapMonth(monthStart) }
+        .toList()
+}
+
+private fun heatmapMonth(monthStart: LocalDate): HeatmapMonth {
+    val monthEnd = monthStart.plus(1, DateTimeUnit.MONTH).minus(1, DateTimeUnit.DAY)
+    val firstWeekStart = monthStart.minus(monthStart.dayOfWeek.ordinal, DateTimeUnit.DAY)
+    val weeks = buildList {
+        var weekStart = firstWeekStart
+        while (weekStart <= monthEnd) {
+            add((0 until 7).map { row ->
+                val date = weekStart.plus(row, DateTimeUnit.DAY)
+                if (date >= monthStart && date <= monthEnd) date else null
+            })
+            weekStart = weekStart.plus(7, DateTimeUnit.DAY)
+        }
+    }
+    return HeatmapMonth(monthStart = monthStart, weeks = weeks)
+}
+
+internal val HabitHeatmapDone = Color(0xFF2EC995)
 private val HabitHeatmapStreak = Color(0xFF0E9F73)
 private val RoutineHeatmapDone = Color(0xFF8B5CF6)
 

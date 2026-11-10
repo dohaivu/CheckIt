@@ -9,17 +9,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
-import androidx.compose.material.icons.outlined.Dangerous
-import androidx.compose.material.icons.outlined.FormatQuote
-import androidx.compose.material.icons.outlined.HelpOutline
-import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.Lightbulb
-import androidx.compose.material.icons.outlined.PriorityHigh
-import androidx.compose.material.icons.outlined.Psychology
-import androidx.compose.material.icons.outlined.StarOutline
-import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -36,28 +26,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.checkit.domain.NestedCalloutLayout
-import com.checkit.domain.NestedCalloutSpec
 import com.checkit.domain.NestedCalloutStyle
 import com.checkit.domain.NestedCalloutTitlePlacement
+import com.checkit.ui.theme.AppSymbols
 
 /**
  * Maps the shared [com.checkit.domain.NestedCalloutSpec.iconKey] to a Compose
- * vector. Both the formatting picker and the row header use the same lookup so
- * a kind cannot drift between the menu and the canvas.
+ * vector using the central [AppSymbols] registry.
  */
-internal fun nestedCalloutIcon(iconKey: String): ImageVector = when (iconKey) {
-    "info" -> Icons.Outlined.Info
-    "lightbulb" -> Icons.Outlined.Lightbulb
-    "idea" -> Icons.Outlined.Psychology
-    "sparkles" -> Icons.Outlined.AutoAwesome
-    "summary" -> Icons.Outlined.StarOutline
-    "important" -> Icons.Outlined.PriorityHigh
-    "warning" -> Icons.Outlined.Warning
-    "caution" -> Icons.Outlined.Dangerous
-    "question" -> Icons.Outlined.HelpOutline
-    "quote" -> Icons.Outlined.FormatQuote
-    else -> Icons.Outlined.Info
-}
+internal fun nestedCalloutIcon(iconKey: String): ImageVector = AppSymbols.materialIcon(iconKey)
 
 /** Icon for a callout; [NestedCalloutStyle.None] falls back to the picker glyph. */
 internal fun nestedCalloutIcon(style: NestedCalloutStyle): ImageVector =
@@ -78,20 +55,26 @@ internal val NestedCalloutTabBadgeHeight = 20.dp
  */
 @Composable
 internal fun NestedCalloutHeader(
-    spec: NestedCalloutSpec,
+    iconKey: String?,
     title: String,
     accent: Color,
     focusAlpha: Float,
     placement: NestedCalloutTitlePlacement
 ) {
-    val icon = nestedCalloutIcon(spec.iconKey)
     when (placement) {
         NestedCalloutTitlePlacement.Eyebrow -> Row(
             modifier = Modifier.alpha(focusAlpha),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(13.dp))
-            Spacer(Modifier.width(4.dp))
+            iconKey?.let { key ->
+                Icon(
+                    nestedCalloutIcon(key),
+                    contentDescription = null,
+                    tint = accent,
+                    modifier = Modifier.size(13.dp)
+                )
+                Spacer(Modifier.width(4.dp))
+            }
             Text(
                 text = title.uppercase(),
                 style = MaterialTheme.typography.labelSmall,
@@ -117,8 +100,15 @@ internal fun NestedCalloutHeader(
                     modifier = Modifier.alpha(focusAlpha),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(13.dp))
-                    Spacer(Modifier.width(4.dp))
+                    iconKey?.let { key ->
+                        Icon(
+                            nestedCalloutIcon(key),
+                            contentDescription = null,
+                            tint = accent,
+                            modifier = Modifier.size(13.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                    }
                     Text(
                         text = title,
                         style = MaterialTheme.typography.labelSmall,
@@ -135,8 +125,15 @@ internal fun NestedCalloutHeader(
             modifier = Modifier.alpha(focusAlpha),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(14.dp))
-            Spacer(Modifier.width(5.dp))
+            iconKey?.let { key ->
+                Icon(
+                    nestedCalloutIcon(key),
+                    contentDescription = null,
+                    tint = accent,
+                    modifier = Modifier.size(14.dp)
+                )
+                Spacer(Modifier.width(5.dp))
+            }
             Text(
                 text = title,
                 style = MaterialTheme.typography.labelMedium,

@@ -620,6 +620,11 @@ interface CheckItDao {
     )
     fun observeHabitDailyRollups(startEpochDays: Int, endEpochDays: Int): Flow<List<HabitDailyRollupEntity>>
 
+    @Query(
+        "SELECT * FROM habit_daily_rollups WHERE habitKey = :habitKey ORDER BY dateEpochDays ASC"
+    )
+    fun observeHabitDailyRollupsForHabit(habitKey: String): Flow<List<HabitDailyRollupEntity>>
+
     // ---------------- Routines ----------------
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -741,7 +746,7 @@ interface CheckItDao {
         INSERT OR REPLACE INTO habit_daily_rollups(dateEpochDays, habitKey, title, doneMinutes)
         SELECT i.dateEpochDays,
                CASE WHEN i.taskId IS NOT NULL THEN 'task:' || i.taskId ELSE 'title:' || LOWER(TRIM(i.title)) END,
-               MAX(TRIM(i.title)),
+               MAX(TRIM(t.name)),
                SUM(
                    CASE
                        WHEN i.startTimeMinutes IS NOT NULL AND i.endTimeMinutes IS NOT NULL
@@ -750,6 +755,7 @@ interface CheckItDao {
                    END
                )
         FROM daily_plan_items AS i
+        JOIN tasks AS t ON t.id = i.taskId
         WHERE i.isHabit = 1 AND i.status = 'Done' AND i.deleted = 0
         GROUP BY i.dateEpochDays,
                  CASE WHEN i.taskId IS NOT NULL THEN 'task:' || i.taskId ELSE 'title:' || LOWER(TRIM(i.title)) END
@@ -1231,20 +1237,22 @@ interface CheckItDao {
         updatedAtMillis: Long
     )
 
-    @Query("UPDATE nested_list_items SET borderShape = :borderShape, borderStyle = :borderStyle, borderColor = :borderColor, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
+    @Query("UPDATE nested_list_items SET borderShape = :borderShape, borderStyle = :borderStyle, borderColor = :borderColor, borderWidth = :borderWidth, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
     suspend fun updateNestedItemBorder(
         itemId: String,
         borderShape: String,
         borderStyle: String,
         borderColor: String,
+        borderWidth: String?,
         updatedAtMillis: Long
     )
 
-    @Query("UPDATE nested_list_items SET callout = :callout, calloutTitle = :calloutTitle, calloutLayout = CASE WHEN :callout = 'None' THEN NULL ELSE calloutLayout END, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
+    @Query("UPDATE nested_list_items SET callout = :callout, calloutTitle = :calloutTitle, calloutIcon = :calloutIcon, calloutLayout = CASE WHEN :callout = 'None' THEN NULL ELSE calloutLayout END, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
     suspend fun updateNestedItemCallout(
         itemId: String,
         callout: String,
         calloutTitle: String?,
+        calloutIcon: String?,
         updatedAtMillis: Long
     )
 
@@ -1252,6 +1260,34 @@ interface CheckItDao {
     suspend fun updateNestedItemCalloutLayout(
         itemId: String,
         calloutLayout: String?,
+        updatedAtMillis: Long
+    )
+
+    /**
+     * Clears every item-level visual override in one statement so the selected
+     * callout preset shows through again. The callout style itself is untouched.
+     */
+    @Query("""
+        UPDATE nested_list_items
+        SET backgroundColor = :backgroundColor,
+            borderShape = :borderShape,
+            borderStyle = :borderStyle,
+            borderColor = :borderColor,
+            borderWidth = :borderWidth,
+            calloutLayout = NULL,
+            calloutTitle = NULL,
+            calloutIcon = NULL,
+            updatedAtMillis = :updatedAtMillis,
+            dirty = 1
+        WHERE id = :itemId
+    """)
+    suspend fun resetNestedItemCalloutToDefaults(
+        itemId: String,
+        backgroundColor: String,
+        borderShape: String,
+        borderStyle: String,
+        borderColor: String,
+        borderWidth: String?,
         updatedAtMillis: Long
     )
 

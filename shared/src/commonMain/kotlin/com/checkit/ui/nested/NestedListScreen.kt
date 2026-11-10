@@ -194,6 +194,7 @@ internal fun NestedListScreen(
                     },
                     onCopySubtree = viewModel::copySelectedSubtree,
                     onPasteSubtree = viewModel::pasteSubtree,
+                    onDuplicate = viewModel::duplicateSelected,
                     canPasteSubtree = state.canPasteSubtree
                 )
             }
@@ -489,14 +490,17 @@ internal fun NestedListScreen(
                             onFormattingChange = { style, textColor, backgroundColor ->
                                 viewModel.updateItemFormatting(selectedItem.id, style, textColor, backgroundColor)
                             },
-                            onBorderChange = { shape, style, color ->
-                                viewModel.updateItemBorder(selectedItem.id, shape, style, color)
+                            onBorderChange = { shape, style, color, width ->
+                                viewModel.updateItemBorder(selectedItem.id, shape, style, color, width)
                             },
-                            onCalloutChange = { callout, title ->
-                                viewModel.updateItemCallout(selectedItem.id, callout, title)
+                            onCalloutChange = { callout, title, icon ->
+                                viewModel.updateItemCallout(selectedItem.id, callout, title, icon)
                             },
                             onCalloutLayoutChange = { layout ->
                                 viewModel.updateItemCalloutLayout(selectedItem.id, layout)
+                            },
+                            onCalloutReset = {
+                                viewModel.resetItemCalloutToDefaults(selectedItem.id)
                             },
                             onLabelChange = { label ->
                                 viewModel.updateItemLabel(selectedItem.id, label)

@@ -11,6 +11,7 @@ import com.checkit.domain.MetricRollupPolicy
 import com.checkit.domain.NestedColorToken
 import com.checkit.domain.NestedBorderShape
 import com.checkit.domain.NestedBorderStyle
+import com.checkit.domain.NestedBorderWidth
 import com.checkit.domain.NestedCalloutStyle
 import com.checkit.domain.NestedCalloutLayout
 import com.checkit.domain.NestedDocument
@@ -28,6 +29,7 @@ import com.checkit.domain.TaskPriority
 import com.checkit.domain.usecase.AddNestedDocumentUseCase
 import com.checkit.domain.usecase.AddNestedItemUseCase
 import com.checkit.domain.usecase.CopyNestedSubtreeUseCase
+import com.checkit.domain.usecase.DuplicateNestedItemUseCase
 import com.checkit.domain.usecase.DeleteNestedDocumentUseCase
 import com.checkit.domain.usecase.DeleteNestedItemsUseCase
 import com.checkit.domain.usecase.MoveNestedItemsUseCase
@@ -48,6 +50,7 @@ import com.checkit.domain.usecase.UpdateNestedItemFormattingUseCase
 import com.checkit.domain.usecase.UpdateNestedItemBorderUseCase
 import com.checkit.domain.usecase.UpdateNestedItemCalloutUseCase
 import com.checkit.domain.usecase.UpdateNestedItemCalloutLayoutUseCase
+import com.checkit.domain.usecase.ResetNestedItemCalloutToDefaultsUseCase
 import com.checkit.domain.usecase.UpdateNestedItemGuideDotUseCase
 import com.checkit.domain.usecase.UpdateNestedItemGuideDotColorUseCase
 import com.checkit.domain.usecase.UpdateNestedItemLabelUseCase
@@ -190,6 +193,7 @@ class NestedListsViewModel(
     private val updateItemBorderUseCase: UpdateNestedItemBorderUseCase,
     private val updateItemCalloutUseCase: UpdateNestedItemCalloutUseCase,
     private val updateItemCalloutLayoutUseCase: UpdateNestedItemCalloutLayoutUseCase,
+    private val resetItemCalloutToDefaultsUseCase: ResetNestedItemCalloutToDefaultsUseCase,
     private val updateItemDateRangeUseCase: UpdateNestedItemDateRangeUseCase,
     private val updateItemPriorityUseCase: UpdateNestedItemPriorityUseCase,
     private val updateItemGuideDotUseCase: UpdateNestedItemGuideDotUseCase,
@@ -206,6 +210,7 @@ class NestedListsViewModel(
     private val deleteItemsUseCase: DeleteNestedItemsUseCase,
     private val copySubtreeUseCase: CopyNestedSubtreeUseCase,
     private val pasteSubtreeUseCase: PasteNestedSubtreeUseCase,
+    private val duplicateItemUseCase: DuplicateNestedItemUseCase,
     private val subtreeClipboard: NestedSubtreeClipboard,
     private val settingsRepository: SettingsRepository,
     private val syncManager: NestedSyncManager,
@@ -731,6 +736,27 @@ class NestedListsViewModel(
         }
     }
 
+    /** Inserts a copy of the selected item as its next sibling, without children. */
+    fun duplicateSelected() {
+        val active = getActiveEditor() ?: return
+        val itemId = active.selectedItemId ?: return
+        viewModelScope.launch {
+            runCatching { duplicateItemUseCase(active.tree.flatItems, itemId) }
+                .onSuccess { newId ->
+                    if (newId == null) return@onSuccess
+                    updateActiveEditor {
+                        it.copy(selectedItemId = newId, editingTextItemId = null)
+                    }
+                    _events.tryEmit(UiEvent.ShowSnackbar("Duplicated item"))
+                }
+                .onFailure { error ->
+                    _events.tryEmit(
+                        UiEvent.ShowSnackbar(error.message ?: "Unable to duplicate item")
+                    )
+                }
+        }
+    }
+
     // --- Formatting & Metadata ---
 
     fun updateItemLabel(itemId: String, label: String?) {
@@ -741,16 +767,20 @@ class NestedListsViewModel(
         viewModelScope.launch { updateItemFormattingUseCase(itemId, style, text, bg) }
     }
 
-    fun updateItemBorder(itemId: String, shape: NestedBorderShape, style: NestedBorderStyle, color: NestedColorToken) {
-        viewModelScope.launch { updateItemBorderUseCase(itemId, shape, style, color) }
+    fun updateItemBorder(itemId: String, shape: NestedBorderShape, style: NestedBorderStyle, color: NestedColorToken, width: NestedBorderWidth?) {
+        viewModelScope.launch { updateItemBorderUseCase(itemId, shape, style, color, width) }
     }
 
-    fun updateItemCallout(itemId: String, callout: NestedCalloutStyle, title: String?) {
-        viewModelScope.launch { updateItemCalloutUseCase(itemId, callout, title) }
+    fun updateItemCallout(itemId: String, callout: NestedCalloutStyle, title: String?, icon: String?) {
+        viewModelScope.launch { updateItemCalloutUseCase(itemId, callout, title, icon) }
     }
 
     fun updateItemCalloutLayout(itemId: String, layout: NestedCalloutLayout?) {
         viewModelScope.launch { updateItemCalloutLayoutUseCase(itemId, layout) }
+    }
+
+    fun resetItemCalloutToDefaults(itemId: String) {
+        viewModelScope.launch { resetItemCalloutToDefaultsUseCase(itemId) }
     }
 
     fun updateItemDateRange(itemId: String, start: LocalDate?, end: LocalDate?) {

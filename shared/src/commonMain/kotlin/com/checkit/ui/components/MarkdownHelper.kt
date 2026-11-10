@@ -14,10 +14,13 @@ import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.sp
+import com.checkit.domain.MarkdownFence
 import com.checkit.domain.MarkdownSourceStyleKind
 import com.checkit.domain.MarkdownSourceStyleSpan
 import com.checkit.domain.RichSpan
 import com.checkit.domain.RichSpanKind
+import com.checkit.domain.isClosingFenceLine
+import com.checkit.domain.openingFenceMarker
 import com.checkit.domain.parseMarkdownSourceStyles
 import com.checkit.domain.parseRichText
 import com.checkit.ui.theme.parseHexColorOrNull
@@ -76,9 +79,43 @@ fun renderFullMarkdown(
 ): AnnotatedString {
     if (markdown.isNullOrEmpty()) return AnnotatedString("")
     return buildAnnotatedString {
+        val builder = this
         val lines = markdown.split('\n')
+        var hasOutput = false
+        var fence: MarkdownFence? = null
+        var codeStartIndex = -1
 
-        lines.forEachIndexed { index, line ->
+        // Separate lines lazily so dropped fence lines never leave blank gaps.
+        fun separate(): Int {
+            if (hasOutput) builder.append("\n")
+            hasOutput = true
+            return builder.length
+        }
+
+        lines.forEach { line ->
+            // 0. Fenced code blocks: verbatim content, no inline or line-based parsing.
+            val openFence = fence
+            if (openFence != null) {
+                if (isClosingFenceLine(line, openFence)) {
+                    if (codeStartIndex >= 0 && length > codeStartIndex) {
+                        addStyle(MarkdownCodeBlockSpan, codeStartIndex, length)
+                    }
+                    fence = null
+                    codeStartIndex = -1
+                } else {
+                    val start = separate()
+                    if (codeStartIndex < 0) codeStartIndex = start
+                    append(line)
+                }
+                return@forEach
+            }
+            val marker = openingFenceMarker(line)
+            if (marker != null) {
+                fence = marker
+                codeStartIndex = -1
+                return@forEach
+            }
+
             var cleanLine = line
             var isHeader = false
             var isQuote = false
@@ -115,7 +152,7 @@ fun renderFullMarkdown(
             }
 
             // Track exactly where this line starts in our main builder string
-            val lineStartIndex = this.length
+            val lineStartIndex = separate()
 
             // 2. Clear markdown inline symbols and calculate exact styling positions
             val (finalLineText, stylesToApply) = processInlineStyles(cleanLine, highlightColor)
@@ -154,11 +191,11 @@ fun renderFullMarkdown(
                     end = lineStartIndex + styleMarker.end
                 )
             }
+        }
 
-            // Add a newline character for all lines except the last one
-            if (index < lines.lastIndex) {
-                append("\n")
-            }
+        // An unclosed fence runs to the end of the document.
+        if (fence != null && codeStartIndex >= 0 && length > codeStartIndex) {
+            addStyle(MarkdownCodeBlockSpan, codeStartIndex, length)
         }
     }
 }
@@ -197,6 +234,14 @@ internal val MarkdownCodeBackgroundColor: Color = Color(0x20808080)
 // content starts at a fixed column.
 private const val QuoteIndicator = "│  "
 
+// Fenced code in the flat-text renderer: monospace and a soft shared
+// background. The background hugs each line's glyphs (spans cannot paint a
+// full-width card); prose surfaces use `MarkdownBody` for the card layout.
+private val MarkdownCodeBlockSpan = SpanStyle(
+    fontFamily = FontFamily.Monospace,
+    background = MarkdownCodeBackgroundColor
+)
+
 // A simple helper data class to store layout positions
 private data class StyleMarker(val style: SpanStyle, val start: Int, val end: Int)
 
@@ -206,7 +251,7 @@ private fun RichSpan.toSpanStyle(defaultHighlight: Color): SpanStyle {
         RichSpanKind.Bold -> SpanStyle(fontWeight = FontWeight.Bold)
         RichSpanKind.Italic -> SpanStyle(fontStyle = FontStyle.Italic)
         RichSpanKind.Strikethrough -> SpanStyle(textDecoration = TextDecoration.LineThrough)
-        RichSpanKind.Highlight -> SpanStyle(fontWeight = FontWeight.Bold, color = highlight)
+        RichSpanKind.Highlight -> SpanStyle(color = highlight)
         RichSpanKind.Code -> SpanStyle(fontFamily = FontFamily.Monospace, background = MarkdownCodeBackgroundColor)
     }
 }

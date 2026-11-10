@@ -15,13 +15,13 @@
       "kind": "remote",
       "repository": "https://github.com/firebase/firebase-ios-sdk",
       "version": {
-        "up-to-next-major-version": "12.19.2",
+        "up-to-next-major-version": "13.1.1",
       },
     }, {
       "kind": "remote",
       "repository": "https://github.com/google/GoogleSignIn-iOS",
       "version": {
-        "up-to-next-major-version": "10.0.0",
+        "up-to-next-major-version": "10.1.0",
       },
     }, {
       "kind": "remote",
@@ -213,6 +213,7 @@
         "CODE_SIGN_ENTITLEMENTS": "macosApp/macosApp.entitlements",
         "CODE_SIGN_STYLE": "Automatic",
         "COMBINE_HIDPI_IMAGES": "YES",
+        "COMPILATION_CACHE_ENABLE_CACHING": "YES",
         "CURRENT_PROJECT_VERSION": "2",
         "DEVELOPMENT_TEAM": "CGP4V9RVVW",
         "ENABLE_APP_SANDBOX": "YES",

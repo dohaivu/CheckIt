@@ -34,6 +34,7 @@ class NestedForceSyncTest {
         position: Int = 0,
         text: String = id,
         label: String? = null,
+        borderWidth: String? = null,
         createdAt: Long = 1_100L,
         updatedAt: Long = 2_100L,
         dirty: Boolean = false,
@@ -45,6 +46,7 @@ class NestedForceSyncTest {
         position = position,
         text = text,
         label = label,
+        borderWidth = borderWidth,
         createdAtMillis = createdAt,
         updatedAtMillis = updatedAt,
         dirty = dirty,
@@ -58,6 +60,7 @@ class NestedForceSyncTest {
         position: Int = 0,
         text: String = id,
         label: String? = null,
+        borderWidth: String? = null,
         tagIds: List<String> = emptyList(),
         createdAt: Long = 3_000L,
         updatedAt: Long = 4_000L,
@@ -75,6 +78,7 @@ class NestedForceSyncTest {
         textStyle = "Body",
         textColor = "Default",
         backgroundColor = "Default",
+        borderWidth = borderWidth,
         startDateEpochDays = null,
         endDateEpochDays = null,
         priority = "None",
@@ -110,6 +114,7 @@ class NestedForceSyncTest {
                 position = 4,
                 text = "Buy milk",
                 label = "🔥 TOP 3",
+                borderWidth = "Thick",
             ),
             tagIds = listOf("tag-a", "tag-b"),
             nowMillis = now,
@@ -121,6 +126,7 @@ class NestedForceSyncTest {
         assertEquals(4L, (map[NestedSyncDocument.FIELD_POSITION] as Number).toLong())
         assertEquals("Buy milk", map[NestedSyncDocument.FIELD_TEXT])
         assertEquals("🔥 TOP 3", map[NestedSyncDocument.FIELD_LABEL])
+        assertEquals("Thick", map[NestedSyncDocument.FIELD_BORDER_WIDTH])
         assertEquals(listOf("tag-a", "tag-b"), map[NestedSyncDocument.FIELD_TAG_IDS])
         assertEquals(1_100L, (map[NestedSyncDocument.FIELD_CREATED_AT] as Number).toLong())
         assertEquals(now, (map[NestedSyncDocument.FIELD_UPDATED_AT] as Number).toLong())
@@ -254,6 +260,7 @@ class NestedForceSyncTest {
                     id = "live",
                     documentId = "stale-doc",
                     text = "Cloud text",
+                    borderWidth = "ExtraThick",
                     createdAt = 3_000L,
                     updatedAt = 4_000L,
                 )
@@ -265,6 +272,7 @@ class NestedForceSyncTest {
         val item = pulled.single().item
         assertEquals("doc-1", item.documentId)
         assertEquals("Cloud text", item.text)
+        assertEquals("ExtraThick", item.borderWidth)
         assertEquals(3_000L, item.createdAtMillis)
         assertEquals(4_000L, item.updatedAtMillis)
         assertTrue(!item.dirty)

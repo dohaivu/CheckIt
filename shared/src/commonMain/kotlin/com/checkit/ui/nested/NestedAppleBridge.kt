@@ -5,6 +5,7 @@ import com.checkit.domain.MetricRollupPolicy
 import com.checkit.domain.NestedColorToken
 import com.checkit.domain.NestedBorderShape
 import com.checkit.domain.NestedBorderStyle
+import com.checkit.domain.NestedBorderWidth
 import com.checkit.domain.NestedCalloutStyle
 import com.checkit.domain.NestedCalloutLayout
 import com.checkit.domain.NestedDocument
@@ -26,6 +27,7 @@ import com.checkit.ui.tasks.PredefinedLabels
 import com.checkit.domain.usecase.AddNestedDocumentUseCase
 import com.checkit.domain.usecase.AddNestedItemUseCase
 import com.checkit.domain.usecase.CopyNestedSubtreeUseCase
+import com.checkit.domain.usecase.DuplicateNestedItemUseCase
 import com.checkit.domain.usecase.DeleteNestedDocumentUseCase
 import com.checkit.domain.usecase.DeleteNestedItemsUseCase
 import com.checkit.domain.usecase.MoveNestedItemsUseCase
@@ -46,6 +48,7 @@ import com.checkit.domain.usecase.UpdateNestedItemFormattingUseCase
 import com.checkit.domain.usecase.UpdateNestedItemBorderUseCase
 import com.checkit.domain.usecase.UpdateNestedItemCalloutUseCase
 import com.checkit.domain.usecase.UpdateNestedItemCalloutLayoutUseCase
+import com.checkit.domain.usecase.ResetNestedItemCalloutToDefaultsUseCase
 import com.checkit.domain.usecase.UpdateNestedItemGuideDotUseCase
 import com.checkit.domain.usecase.UpdateNestedItemGuideDotColorUseCase
 import com.checkit.domain.usecase.UpdateNestedItemLabelUseCase
@@ -117,6 +120,7 @@ class NestedAppleHelper(
     private val updateItemBorder: UpdateNestedItemBorderUseCase,
     private val updateItemCallout: UpdateNestedItemCalloutUseCase,
     private val updateItemCalloutLayout: UpdateNestedItemCalloutLayoutUseCase,
+    private val resetItemCalloutToDefaults: ResetNestedItemCalloutToDefaultsUseCase,
     private val updateItemDateRange: UpdateNestedItemDateRangeUseCase,
     private val updateItemPriority: UpdateNestedItemPriorityUseCase,
     private val updateItemGuideDot: UpdateNestedItemGuideDotUseCase,
@@ -133,6 +137,7 @@ class NestedAppleHelper(
     private val deleteItems: DeleteNestedItemsUseCase,
     private val copySubtreeUseCase: CopyNestedSubtreeUseCase,
     private val pasteSubtreeUseCase: PasteNestedSubtreeUseCase,
+    private val duplicateItemUseCase: DuplicateNestedItemUseCase,
     private val subtreeClipboard: NestedSubtreeClipboard,
     private val exportDocumentJsonUseCase: ExportNestedDocumentJsonUseCase,
     private val importDocumentJsonUseCase: ImportNestedDocumentJsonUseCase,
@@ -219,6 +224,18 @@ class NestedAppleHelper(
         }
     }
 
+    /**
+     * Inserts a copy of [itemId] as its next sibling, excluding descendants.
+     * [onDone] receives the new item id, or blank on failure.
+     */
+    fun duplicateItem(documentId: String, itemId: String, onDone: (String) -> Unit) {
+        scope.launch {
+            val items = latestTrees[documentId]?.flatItems.orEmpty()
+            val newId = runCatching { duplicateItemUseCase(items, itemId) }.getOrNull() ?: ""
+            onDone(newId)
+        }
+    }
+
     fun saveItemText(itemId: String, text: String) {
         scope.launch { runCatching { updateItemText(itemId, text) } }
     }
@@ -254,26 +271,37 @@ class NestedAppleHelper(
         }
     }
 
-    /** Border shape/style/color, string-based for the SwiftUI editor. */
-    fun updateBorderByName(itemId: String, shapeName: String, styleName: String, borderColorName: String) {
+    /** Border shape/style/color/width, string-based for the SwiftUI editor. Null width inherits the preset. */
+    fun updateBorderByName(itemId: String, shapeName: String, styleName: String, borderColorName: String, borderWidthName: String?) {
         scope.launch {
             runCatching {
                 updateItemBorder(
                     itemId,
                     NestedBorderShape.valueOf(shapeName),
                     NestedBorderStyle.valueOf(styleName),
-                    NestedColorToken.valueOf(borderColorName)
+                    NestedColorToken.valueOf(borderColorName),
+                    borderWidthName?.let { NestedBorderWidth.valueOf(it) }
                 )
             }
         }
     }
 
-    /** Callout style plus optional title override; blank title means default. */
-    fun updateCalloutByName(itemId: String, calloutName: String, calloutTitle: String?) {
+    /** Callout style plus optional title/icon overrides; blank title means default. */
+    fun updateCalloutByName(
+        itemId: String,
+        calloutName: String,
+        calloutTitle: String?,
+        calloutIcon: String?
+    ) {
         scope.launch {
             runCatching {
                 val title = calloutTitle?.trim()?.takeIf { it.isNotBlank() }
-                updateItemCallout(itemId, NestedCalloutStyle.valueOf(calloutName), title)
+                updateItemCallout(
+                    itemId,
+                    NestedCalloutStyle.valueOf(calloutName),
+                    title,
+                    calloutIcon
+                )
             }
         }
     }
@@ -286,6 +314,11 @@ class NestedAppleHelper(
                 updateItemCalloutLayout(itemId, layout)
             }
         }
+    }
+
+    /** Clears item visual overrides so the selected callout preset shows through. */
+    fun resetCalloutToDefaults(itemId: String) {
+        scope.launch { runCatching { resetItemCalloutToDefaults(itemId) } }
     }
 
     /**

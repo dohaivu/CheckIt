@@ -40,6 +40,7 @@ import com.checkit.domain.usecase.CompleteDayCloseUseCase
 import com.checkit.domain.usecase.CompleteNoteUseCase
 import com.checkit.domain.usecase.CompleteTaskUseCase
 import com.checkit.domain.usecase.CopyNestedSubtreeUseCase
+import com.checkit.domain.usecase.DuplicateNestedItemUseCase
 import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
 import com.checkit.domain.usecase.DeleteJournalEntryUseCase
 import com.checkit.domain.usecase.DeleteListUseCase
@@ -63,6 +64,7 @@ import com.checkit.domain.usecase.IsTagNameTakenUseCase
 import com.checkit.domain.usecase.MoveNestedItemsUseCase
 import com.checkit.domain.usecase.NestedSubtreeClipboard
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
+import com.checkit.domain.usecase.ObserveHabitDailyRollupsForHabitUseCase
 import com.checkit.domain.usecase.ObserveJournalEntriesUseCase
 import com.checkit.domain.usecase.ObserveNestedDocumentTreeUseCase
 import com.checkit.domain.usecase.ObserveNestedDocumentsUseCase
@@ -114,6 +116,7 @@ import com.checkit.domain.usecase.UpdateNestedItemFormattingUseCase
 import com.checkit.domain.usecase.UpdateNestedItemBorderUseCase
 import com.checkit.domain.usecase.UpdateNestedItemCalloutUseCase
 import com.checkit.domain.usecase.UpdateNestedItemCalloutLayoutUseCase
+import com.checkit.domain.usecase.ResetNestedItemCalloutToDefaultsUseCase
 import com.checkit.domain.usecase.UpdateNestedItemGuideDotUseCase
 import com.checkit.domain.usecase.UpdateNestedItemGuideDotColorUseCase
 import com.checkit.domain.usecase.UpdateNestedItemLabelUseCase
@@ -148,6 +151,7 @@ import com.checkit.ui.quicknote.QuickNoteViewModel
 import com.checkit.ui.myday.MyDayViewModel
 import com.checkit.ui.nested.NestedListsViewModel
 import com.checkit.ui.nested.NestedAppleHelper
+import com.checkit.ui.reflect.HabitHeatmapViewModel
 import com.checkit.ui.reflect.ReflectViewModel
 import com.checkit.ui.journal.JournalHistoryViewModel
 import com.checkit.ui.quicknote.QuickNoteMenuHelper
@@ -247,6 +251,7 @@ val provideInteractorModule = module {
     single { BuildDayCloseSummaryUseCase(get()) }
     single { CarryOverDailyPlanItemsUseCase(get(), get()) }
     single { ObservePeriodGoalsUseCase(get()) }
+    single { ObserveHabitDailyRollupsForHabitUseCase(get()) }
     single { ObserveGoalHistoryUseCase(get()) }
     single { SavePeriodGoalUseCase(get()) }
     single { RebuildReflectStatsUseCase(get()) }
@@ -275,6 +280,7 @@ val provideInteractorModule = module {
     single { UpdateNestedItemBorderUseCase(get()) }
     single { UpdateNestedItemCalloutUseCase(get()) }
     single { UpdateNestedItemCalloutLayoutUseCase(get()) }
+    single { ResetNestedItemCalloutToDefaultsUseCase(get()) }
     single { UpdateNestedItemPriorityUseCase(get()) }
     single { UpdateNestedItemGuideDotUseCase(get()) }
     single { UpdateNestedItemGuideDotColorUseCase(get()) }
@@ -292,6 +298,7 @@ val provideInteractorModule = module {
     single { NestedSubtreeClipboard() }
     single { CopyNestedSubtreeUseCase(get()) }
     single { PasteNestedSubtreeUseCase(get(), get()) }
+    single { DuplicateNestedItemUseCase(get()) }
     single { ExportNestedListToMarkdownUseCase() }
     single { ExportNestedDocumentJsonUseCase(get()) }
     single { ImportNestedDocumentJsonUseCase(get()) }
@@ -312,6 +319,7 @@ val provideInteractorModule = module {
             updateItemBorder = get(),
             updateItemCallout = get(),
             updateItemCalloutLayout = get(),
+            resetItemCalloutToDefaults = get(),
             updateItemDateRange = get(),
             updateItemPriority = get(),
             updateItemGuideDot = get(),
@@ -328,6 +336,7 @@ val provideInteractorModule = module {
             deleteItems = get(),
             copySubtreeUseCase = get(),
             pasteSubtreeUseCase = get(),
+            duplicateItemUseCase = get(),
             subtreeClipboard = get(),
             exportDocumentJsonUseCase = get(),
             importDocumentJsonUseCase = get()
@@ -466,6 +475,7 @@ val provideViewModelModule = module {
             observeRoutineLogs = get()
         )
     }
+    viewModel { HabitHeatmapViewModel(get()) }
     viewModel { SettingsViewModel(get(), get(), get(), get<AppReminderScheduler>(), get(), get()) }
     viewModel { GuidelinesViewModel(get(), get()) }
     viewModel {
@@ -484,6 +494,7 @@ val provideViewModelModule = module {
             updateItemBorderUseCase = get(),
             updateItemCalloutUseCase = get(),
             updateItemCalloutLayoutUseCase = get(),
+            resetItemCalloutToDefaultsUseCase = get(),
             updateItemDateRangeUseCase = get(),
             updateItemPriorityUseCase = get(),
             updateItemGuideDotUseCase = get(),
@@ -500,6 +511,7 @@ val provideViewModelModule = module {
             deleteItemsUseCase = get(),
             copySubtreeUseCase = get(),
             pasteSubtreeUseCase = get(),
+            duplicateItemUseCase = get(),
             subtreeClipboard = get(),
             settingsRepository = get(),
             syncManager = get(),

@@ -24,8 +24,11 @@ import com.checkit.domain.NestedDocument
 import com.checkit.domain.NestedDocumentTree
 import com.checkit.domain.NestedBorderShape
 import com.checkit.domain.NestedBorderStyle
+import com.checkit.domain.NestedBorderWidth
 import com.checkit.domain.NestedCalloutLayout
+import com.checkit.domain.NestedCalloutDefaults
 import com.checkit.domain.NestedCalloutStyle
+import com.checkit.domain.normalizedIcon
 import com.checkit.domain.normalizedTitle
 import com.checkit.domain.NestedItemMove
 import com.checkit.domain.NestedListItem
@@ -133,6 +136,9 @@ interface CheckItRepository {
     fun observeDailyReflectStats(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<DailyReflectStat>>
     fun observeDailyTagRollups(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<DailyTagRollup>>
     fun observeHabitDailyRollups(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<HabitDailyRollup>>
+
+    /** Every recorded check-in for one habit key, oldest first. */
+    fun observeHabitDailyRollupsForHabit(habitKey: String): Flow<List<HabitDailyRollup>>
     fun observeDoneItemSummaries(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<DoneItemSummary>>
     fun observeJournalEntriesInRange(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<JournalEntry>>
     fun observeJournalEntriesFiltered(
@@ -191,9 +197,10 @@ interface CheckItRepository {
     suspend fun updateNestedItemNote(itemId: String, note: String?)
     suspend fun updateNestedItemLabel(itemId: String, label: String?)
     suspend fun updateNestedItemFormatting(itemId: String, textStyle: NestedTextStyle, textColor: NestedColorToken, backgroundColor: NestedColorToken)
-    suspend fun updateNestedItemBorder(itemId: String, borderShape: NestedBorderShape, borderStyle: NestedBorderStyle, borderColor: NestedColorToken)
-    suspend fun updateNestedItemCallout(itemId: String, callout: NestedCalloutStyle, calloutTitle: String?)
+    suspend fun updateNestedItemBorder(itemId: String, borderShape: NestedBorderShape, borderStyle: NestedBorderStyle, borderColor: NestedColorToken, borderWidth: NestedBorderWidth?)
+    suspend fun updateNestedItemCallout(itemId: String, callout: NestedCalloutStyle, calloutTitle: String?, calloutIcon: String?)
     suspend fun updateNestedItemCalloutLayout(itemId: String, layout: NestedCalloutLayout?)
+    suspend fun resetNestedItemCalloutToDefaults(itemId: String)
     suspend fun updateNestedItemPriority(itemId: String, priority: TaskPriority)
     suspend fun updateNestedItemGuideDot(itemId: String, guideDot: String?)
     suspend fun updateNestedItemGuideDotColor(itemId: String, guideDotColor: NestedColorToken?)
@@ -1179,6 +1186,19 @@ class RoomCheckItRepository(
                 }
             }
 
+    override fun observeHabitDailyRollupsForHabit(habitKey: String): Flow<List<HabitDailyRollup>> =
+        dao.observeHabitDailyRollupsForHabit(habitKey)
+            .map { entities ->
+                entities.map {
+                    HabitDailyRollup(
+                        dateEpochDays = it.dateEpochDays,
+                        habitKey = it.habitKey,
+                        title = it.title,
+                        doneMinutes = it.doneMinutes
+                    )
+                }
+            }
+
     override fun observeDoneItemSummaries(
         startDate: LocalDate,
         endDateInclusive: LocalDate
@@ -1589,20 +1609,23 @@ class RoomCheckItRepository(
         itemId: String,
         borderShape: NestedBorderShape,
         borderStyle: NestedBorderStyle,
-        borderColor: NestedColorToken
+        borderColor: NestedColorToken,
+        borderWidth: NestedBorderWidth?
     ) {
-        dao.updateNestedItemBorder(itemId, borderShape.name, borderStyle.name, borderColor.name, Clock.System.now().toEpochMilliseconds())
+        dao.updateNestedItemBorder(itemId, borderShape.name, borderStyle.name, borderColor.name, borderWidth?.name, Clock.System.now().toEpochMilliseconds())
     }
 
     override suspend fun updateNestedItemCallout(
         itemId: String,
         callout: NestedCalloutStyle,
-        calloutTitle: String?
+        calloutTitle: String?,
+        calloutIcon: String?
     ) {
         dao.updateNestedItemCallout(
             itemId,
             callout.name,
             callout.normalizedTitle(calloutTitle),
+            callout.normalizedIcon(calloutIcon),
             Clock.System.now().toEpochMilliseconds()
         )
     }
@@ -1615,6 +1638,18 @@ class RoomCheckItRepository(
             itemId,
             layout?.name,
             Clock.System.now().toEpochMilliseconds()
+        )
+    }
+
+    override suspend fun resetNestedItemCalloutToDefaults(itemId: String) {
+        dao.resetNestedItemCalloutToDefaults(
+            itemId = itemId,
+            backgroundColor = NestedCalloutDefaults.backgroundColor.name,
+            borderShape = NestedCalloutDefaults.borderShape.name,
+            borderStyle = NestedCalloutDefaults.borderStyle.name,
+            borderColor = NestedCalloutDefaults.borderColor.name,
+            borderWidth = NestedCalloutDefaults.borderWidth?.name,
+            updatedAtMillis = Clock.System.now().toEpochMilliseconds()
         )
     }
 
@@ -1806,8 +1841,10 @@ class RoomCheckItRepository(
                     borderShape = runCatching { NestedBorderShape.valueOf(item.borderShape) }.getOrDefault(NestedBorderShape.Rounded).name,
                     borderStyle = runCatching { NestedBorderStyle.valueOf(item.borderStyle) }.getOrDefault(NestedBorderStyle.None).name,
                     borderColor = runCatching { NestedColorToken.valueOf(item.borderColor) }.getOrDefault(NestedColorToken.Default).name,
+                    borderWidth = item.borderWidth?.let { value -> runCatching { NestedBorderWidth.valueOf(value) }.getOrNull()?.name },
                     callout = calloutStyle.name,
                     calloutTitle = calloutStyle.normalizedTitle(item.calloutTitle),
+                    calloutIcon = calloutStyle.normalizedIcon(item.calloutIcon),
                     calloutLayout = item.calloutLayout
                         ?.let { layout -> runCatching { NestedCalloutLayout.valueOf(layout) }.getOrNull() }
                         ?.takeIf { calloutStyle != NestedCalloutStyle.None }
@@ -2208,8 +2245,10 @@ private fun NestedListItem.toNestedListItemEntity(documentId: String) = NestedLi
     borderShape = borderShape.name,
     borderStyle = borderStyle.name,
     borderColor = borderColor.name,
+    borderWidth = borderWidth?.name,
     callout = callout.name,
     calloutTitle = calloutTitle,
+    calloutIcon = callout.normalizedIcon(calloutIcon),
     calloutLayout = calloutLayout?.name,
     guideDotColor = guideDotColor?.takeIf { it != NestedColorToken.Default }?.name,
     guideDot = sanitizeGuideDot(guideDot),
@@ -2253,8 +2292,10 @@ private fun NestedListItemEntity.toNestedListItem(
         borderShape = runCatching { com.checkit.domain.NestedBorderShape.valueOf(borderShape) }.getOrDefault(com.checkit.domain.NestedBorderShape.Rounded),
         borderStyle = runCatching { com.checkit.domain.NestedBorderStyle.valueOf(borderStyle) }.getOrDefault(com.checkit.domain.NestedBorderStyle.None),
         borderColor = runCatching { com.checkit.domain.NestedColorToken.valueOf(borderColor) }.getOrDefault(com.checkit.domain.NestedColorToken.Default),
+        borderWidth = borderWidth?.let { value -> runCatching { com.checkit.domain.NestedBorderWidth.valueOf(value) }.getOrNull() },
         callout = calloutStyle,
         calloutTitle = calloutStyle.normalizedTitle(calloutTitle),
+        calloutIcon = calloutStyle.normalizedIcon(calloutIcon),
         calloutLayout = calloutLayout
             ?.takeIf { calloutStyle != NestedCalloutStyle.None }
             ?.let { name -> runCatching { NestedCalloutLayout.valueOf(name) }.getOrNull() },

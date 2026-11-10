@@ -658,6 +658,26 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
                 .toList()
         }
 
+    override fun observeHabitDailyRollupsForHabit(habitKey: String): Flow<List<HabitDailyRollup>> =
+        dailyPlansFlow.map { plans ->
+            plans.asSequence()
+                .flatMap { plan ->
+                    plan.items.asSequence()
+                        .filter { it.isHabit && it.status == DailyPlanItemStatus.Done }
+                        .filter { habitKeyFor(it) == habitKey }
+                        .map {
+                            HabitDailyRollup(
+                                dateEpochDays = plan.date.toEpochDays().toInt(),
+                                habitKey = habitKey,
+                                title = it.title,
+                                doneMinutes = it.workMinutes()
+                            )
+                        }
+                }
+                .sortedBy { it.dateEpochDays }
+                .toList()
+        }
+
     override fun observeDoneItemSummaries(
         startDate: LocalDate,
         endDateInclusive: LocalDate
@@ -995,9 +1015,13 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
     override suspend fun updateNestedItemNote(itemId: String, note: String?) {}
     override suspend fun updateNestedItemLabel(itemId: String, label: String?) {}
     override suspend fun updateNestedItemFormatting(itemId: String, textStyle: NestedTextStyle, textColor: NestedColorToken, backgroundColor: NestedColorToken) {}
-    override suspend fun updateNestedItemBorder(itemId: String, borderShape: com.checkit.domain.NestedBorderShape, borderStyle: com.checkit.domain.NestedBorderStyle, borderColor: NestedColorToken) {}
-    override suspend fun updateNestedItemCallout(itemId: String, callout: com.checkit.domain.NestedCalloutStyle, calloutTitle: String?) {}
+    override suspend fun updateNestedItemBorder(itemId: String, borderShape: com.checkit.domain.NestedBorderShape, borderStyle: com.checkit.domain.NestedBorderStyle, borderColor: NestedColorToken, borderWidth: com.checkit.domain.NestedBorderWidth?) {}
+    override suspend fun updateNestedItemCallout(itemId: String, callout: com.checkit.domain.NestedCalloutStyle, calloutTitle: String?, calloutIcon: String?) {}
     override suspend fun updateNestedItemCalloutLayout(itemId: String, layout: com.checkit.domain.NestedCalloutLayout?) {}
+    val resetCalloutItemIds = mutableListOf<String>()
+    override suspend fun resetNestedItemCalloutToDefaults(itemId: String) {
+        resetCalloutItemIds += itemId
+    }
     override suspend fun updateNestedItemGuideDot(itemId: String, guideDot: String?) {}
     override suspend fun updateNestedItemGuideDotColor(itemId: String, guideDotColor: NestedColorToken?) {}
     override suspend fun updateNestedItemPriority(itemId: String, priority: TaskPriority) {}

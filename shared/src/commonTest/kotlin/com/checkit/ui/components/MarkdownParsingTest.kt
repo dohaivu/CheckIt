@@ -133,7 +133,6 @@ class MarkdownParsingTest {
         assertEquals(2, highlights.size)
         assertEquals(0, highlights[0].start)
         assertEquals(2, highlights[0].end)
-        assertEquals(FontWeight.Bold, highlights[0].item.fontWeight)
         assertEquals(13, highlights[1].start)
         assertEquals(17, highlights[1].end)
     }
@@ -168,7 +167,6 @@ class MarkdownParsingTest {
         val span = result.spanStyles.single()
         assertEquals(0, span.start)
         assertEquals(2, span.end)
-        assertEquals(FontWeight.Bold, span.item.fontWeight)
         assertEquals(Color(0xFFDC2626), span.item.color)
     }
 
@@ -331,5 +329,68 @@ class MarkdownParsingTest {
         assertTrue(italicSpan != null, "Expected italic style for quote line")
         assertEquals(0, italicSpan.start)
         assertEquals(19, italicSpan.end)
+    }
+
+    @Test
+    fun renderFullMarkdown_rendersFencedCodeAsMonospaceBlock() {
+        val result = renderFullMarkdown("```\nval x = 1\n```")
+
+        assertEquals("val x = 1", result.text)
+        val codeSpan = result.spanStyles.single()
+        assertEquals(0, codeSpan.start)
+        assertEquals(9, codeSpan.end)
+        assertEquals(FontFamily.Monospace, codeSpan.item.fontFamily)
+        assertEquals(MarkdownCodeBackgroundColor, codeSpan.item.background)
+    }
+
+    @Test
+    fun renderFullMarkdown_dropsFenceAndInfoString() {
+        val result = renderFullMarkdown("```kotlin\nval x = 1\n```")
+
+        assertEquals("val x = 1", result.text)
+        assertEquals(MarkdownCodeBackgroundColor, result.spanStyles.single().item.background)
+    }
+
+    @Test
+    fun renderFullMarkdown_doesNotParseMarkersInsideCode() {
+        val result = renderFullMarkdown("```\n**bold**\n# header\n```")
+
+        assertEquals("**bold**\n# header", result.text)
+        // Only the code block span; no bold span and no header sizing.
+        assertEquals(1, result.spanStyles.size)
+        assertTrue(result.spanStyles.none { it.item.fontWeight == FontWeight.Bold })
+        assertEquals(MarkdownCodeBackgroundColor, result.spanStyles.single().item.background)
+    }
+
+    @Test
+    fun renderFullMarkdown_codeBetweenProseKeepsLineBreaks() {
+        val result = renderFullMarkdown("before\n```\nx\n```\nafter")
+
+        assertEquals("before\nx\nafter", result.text)
+        val codeSpan = result.spanStyles.single()
+        assertEquals(7, codeSpan.start)
+        assertEquals(8, codeSpan.end)
+    }
+
+    @Test
+    fun renderFullMarkdown_unclosedFenceRunsToEnd() {
+        val result = renderFullMarkdown("```\nx\ny")
+
+        assertEquals("x\ny", result.text)
+        assertEquals(MarkdownCodeBackgroundColor, result.spanStyles.single().item.background)
+        assertEquals(0, result.spanStyles.single().start)
+        assertEquals(3, result.spanStyles.single().end)
+    }
+
+    @Test
+    fun renderFullMarkdown_singleBacktickIsStillInlineCode() {
+        val result = renderFullMarkdown("`x`\ny")
+
+        assertEquals("x\ny", result.text)
+        // Inline code styles only its run; a fence block would cover both lines.
+        val codeSpan = result.spanStyles.single()
+        assertEquals(0, codeSpan.start)
+        assertEquals(1, codeSpan.end)
+        assertEquals(FontFamily.Monospace, codeSpan.item.fontFamily)
     }
 }

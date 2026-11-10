@@ -288,6 +288,32 @@ fun NestedBorderStyle.toStroke(widthPx: Float, density: Density): Stroke? = when
         ),
         cap = StrokeCap.Round
     )
+
+    NestedBorderStyle.LongDash -> Stroke(
+        width = widthPx,
+        pathEffect = PathEffect.dashPathEffect(
+            floatArrayOf(
+                with(density) { 9.dp.toPx() },
+                with(density) { 4.dp.toPx() }
+            ),
+            0f
+        ),
+        cap = StrokeCap.Round
+    )
+
+    NestedBorderStyle.DashDot -> Stroke(
+        width = widthPx,
+        pathEffect = PathEffect.dashPathEffect(
+            floatArrayOf(
+                with(density) { 9.dp.toPx() },
+                with(density) { 4.dp.toPx() },
+                with(density) { 1.5.dp.toPx() },
+                with(density) { 4.dp.toPx() }
+            ),
+            0f
+        ),
+        cap = StrokeCap.Round
+    )
 }
 
 /**

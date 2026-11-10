@@ -100,7 +100,46 @@ enum class NestedBorderStyle {
     None,
     Solid,
     Dashed,
-    Dotted
+    Dotted,
+    LongDash,
+    DashDot;
+
+    /**
+     * Menu label. The enum name is the persisted value, so this is
+     * presentational only and shared by both platforms.
+     */
+    fun displayName(): String = when (this) {
+        LongDash -> "Long dash"
+        DashDot -> "Dash dot"
+        else -> name
+    }
+}
+
+/**
+ * Stroke width for a nested row's border (and rail width for Rail callouts).
+ * Persisted by [name] in Room and sync payloads; entries are append-only and
+ * an unknown value reads back as null (inherit the preset/default).
+ *
+ * [Standard] is the plain-row default; the callout presets supply their own
+ * widths, so null (inherit) is usually the right choice when a callout is set.
+ */
+enum class NestedBorderWidth {
+    Thin,
+    Standard,
+    Thick,
+    ExtraThick;
+
+    fun displayName(): String = when (this) {
+        ExtraThick -> "Extra thick"
+        else -> name
+    }
+
+    fun widthDp(): Float = when (this) {
+        Thin -> 1f
+        Standard -> EffectiveRowVisuals.DEFAULT_BORDER_WIDTH_DP
+        Thick -> 2f
+        ExtraThick -> 3f
+    }
 }
 
 /**
@@ -226,6 +265,14 @@ enum class NestedCalloutStyle {
 fun NestedCalloutStyle.normalizedTitle(title: String?): String? =
     if (this == NestedCalloutStyle.None) null else title?.trim()?.takeIf { it.isNotBlank() }
 
+/**
+ * Keeps an icon override only while a callout is applied. A blank string is
+ * intentionally preserved: it means "draw no icon", while null means "use the
+ * style's default icon".
+ */
+fun NestedCalloutStyle.normalizedIcon(icon: String?): String? =
+    if (this == NestedCalloutStyle.None) null else icon?.trim()?.lowercase()
+
 /** How a callout is laid out around the row. */
 enum class NestedCalloutLayout {
     /** Full card with the title as a small eyebrow above the text. */
@@ -268,7 +315,8 @@ fun NestedCalloutLayout.titlePlacement(): NestedCalloutTitlePlacement = when (th
  *
  * [shape] is null for [NestedCalloutLayout.Rail], which draws only a left
  * accent rail, and for [NestedCalloutLayout.Text], which has no preset frame.
- * [borderWidthDp] is the stroke width for cards and the rail width for rails.
+ * [borderWidthDp] is the stroke width for cards and the rail width for rails,
+ * unless [NestedListItem.borderWidth] overrides it per row.
  * The title treatment is not stored here; it follows from [layout] via
  * [NestedCalloutLayout.titlePlacement].
  */
@@ -306,6 +354,19 @@ data class NestedDocument(
 )
 
 /**
+ * Item-level visual overrides that defer to the selected callout preset.
+ * Writing these values restores the preset's background, border, layout,
+ * title and icon.
+ */
+object NestedCalloutDefaults {
+    val backgroundColor: NestedColorToken = NestedColorToken.Default
+    val borderShape: NestedBorderShape = NestedBorderShape.Rounded
+    val borderStyle: NestedBorderStyle = NestedBorderStyle.None
+    val borderColor: NestedColorToken = NestedColorToken.Default
+    val borderWidth: NestedBorderWidth? = null
+}
+
+/**
  * One node of a [NestedDocument] tree. Uniform line; checkbox style is per-item.
  * [parentId] null means the item sits at the document root level.
  */
@@ -324,14 +385,21 @@ data class NestedListItem(
     val collapsed: Boolean = false,
     val textStyle: NestedTextStyle = NestedTextStyle.Body,
     val textColor: NestedColorToken = NestedColorToken.Default,
-    val backgroundColor: NestedColorToken = NestedColorToken.Default,
-    val borderShape: NestedBorderShape = NestedBorderShape.Rounded,
-    val borderStyle: NestedBorderStyle = NestedBorderStyle.None,
-    val borderColor: NestedColorToken = NestedColorToken.Default,
+    val backgroundColor: NestedColorToken = NestedCalloutDefaults.backgroundColor,
+    val borderShape: NestedBorderShape = NestedCalloutDefaults.borderShape,
+    val borderStyle: NestedBorderStyle = NestedCalloutDefaults.borderStyle,
+    val borderColor: NestedColorToken = NestedCalloutDefaults.borderColor,
+    /** Stroke width; null inherits the callout preset (or 1.5dp default). */
+    val borderWidth: NestedBorderWidth? = NestedCalloutDefaults.borderWidth,
     /** Visual frame; [NestedCalloutStyle.None] renders the plain row. */
     val callout: NestedCalloutStyle = NestedCalloutStyle.None,
     /** Optional override for the callout title; null shows the style name. */
     val calloutTitle: String? = null,
+    /**
+     * Optional override for the callout icon (an [com.checkit.ui.theme.AppSymbols]
+     * key); null uses the style icon and an empty string hides the icon.
+     */
+    val calloutIcon: String? = null,
     /** Optional override for the callout layout; null uses callout.spec().layout. */
     val calloutLayout: NestedCalloutLayout? = null,
     /** Optional palette override for this row's dot and owned guide segments. */
@@ -369,7 +437,7 @@ data class NestedListItem(
         val titlePlacement = layout?.titlePlacement()
         val isTextLayout = layout == NestedCalloutLayout.Text
 
-        val hasBackground = backgroundColor != NestedColorToken.Default
+        val hasBackground = backgroundColor != NestedCalloutDefaults.backgroundColor
         val bgToken = when {
             hasBackground -> backgroundColor
             // Text carries the accent in the eyebrow, not in a card wash.
@@ -385,7 +453,7 @@ data class NestedListItem(
         }
 
         val borderToken = when {
-            borderColor != NestedColorToken.Default -> borderColor
+            borderColor != NestedCalloutDefaults.borderColor -> borderColor
             spec != null -> spec.accent
             else -> NestedColorToken.Default
         }
@@ -397,21 +465,22 @@ data class NestedListItem(
             // shape so a decorative preset shape cannot clip the content.
             isTextLayout -> borderShape
             // "Rounded" is the default, so it means "keep the preset shape".
-            borderShape != NestedBorderShape.Rounded -> borderShape
+            borderShape != NestedCalloutDefaults.borderShape -> borderShape
             spec?.shape != null -> spec.shape
             else -> borderShape
         }
 
         val borderStyle = when {
             // "None" is the default, so it means "keep the preset stroke".
-            borderStyle != NestedBorderStyle.None -> borderStyle
+            borderStyle != NestedCalloutDefaults.borderStyle -> borderStyle
             // Text has no preset frame; an explicit style above still wins.
             isTextLayout -> NestedBorderStyle.None
             spec != null -> spec.borderStyle
             else -> NestedBorderStyle.None
         }
 
-        val borderWidthDp = spec?.borderWidthDp
+        val borderWidthDp = borderWidth?.widthDp()
+            ?: spec?.borderWidthDp
             ?: EffectiveRowVisuals.DEFAULT_BORDER_WIDTH_DP
 
         return EffectiveRowVisuals(
@@ -426,6 +495,36 @@ data class NestedListItem(
             bgAlpha = bgAlpha
         )
     }
+
+    /**
+     * Copy with every item-level visual override cleared, so the row renders
+     * the selected [callout] preset's background, border, layout, title and
+     * icon. Text style and text color are intentionally kept.
+     */
+    fun withCalloutDefaults(): NestedListItem = copy(
+        backgroundColor = NestedCalloutDefaults.backgroundColor,
+        borderShape = NestedCalloutDefaults.borderShape,
+        borderStyle = NestedCalloutDefaults.borderStyle,
+        borderColor = NestedCalloutDefaults.borderColor,
+        borderWidth = NestedCalloutDefaults.borderWidth,
+        calloutLayout = null,
+        calloutTitle = null,
+        calloutIcon = null
+    )
+
+    /**
+     * Icon key the row should draw for its callout: null when there is no
+     * callout or the user explicitly hid the icon, otherwise the custom key or
+     * the style's default.
+     */
+    fun effectiveCalloutIconKey(): String? {
+        if (callout == NestedCalloutStyle.None) return null
+        return when (val custom = calloutIcon?.trim()?.lowercase()) {
+            null -> callout.spec()?.iconKey
+            "" -> null
+            else -> custom
+        }
+    }
 }
 
 /**
@@ -433,14 +532,13 @@ data class NestedListItem(
  *
  * Explicit item properties ([NestedListItem.backgroundColor],
  * [NestedListItem.borderColor], [NestedListItem.borderShape],
- * [NestedListItem.borderStyle]) override the callout preset so a single callout
- * can be recolored or reshaped per row; the preset supplies the defaults.
+ * [NestedListItem.borderStyle], [NestedListItem.borderWidth]) override the
+ * callout preset so a single callout can be recolored, reshaped or reweighted
+ * per row; the preset supplies the defaults. A null [NestedListItem.borderWidth]
+ * inherits the preset width (or the plain 1.5dp default).
  *
  * A [NestedCalloutLayout.Text] callout contributes typography only: no preset
  * stroke and no preset wash, unless the row sets those properties explicitly.
- *
- * The stroke width has no item-level counterpart: it always comes from the
- * preset (or the plain 1.5dp default when the row has no callout).
  */
 data class EffectiveRowVisuals(
     val calloutSpec: NestedCalloutSpec?,

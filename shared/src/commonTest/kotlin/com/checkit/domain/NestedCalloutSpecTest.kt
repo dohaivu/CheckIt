@@ -22,6 +22,33 @@ class NestedCalloutSpecTest {
     }
 
     @Test
+    fun onlyAnAppliedCalloutKeepsAnIconOverride() {
+        assertNull(NestedCalloutStyle.None.normalizedIcon("lightbulb"))
+        assertEquals("lightbulb", NestedCalloutStyle.Note.normalizedIcon("  Lightbulb  "))
+        assertEquals("", NestedCalloutStyle.Note.normalizedIcon(""))
+        assertNull(NestedCalloutStyle.Note.normalizedIcon(null))
+    }
+
+    @Test
+    fun effectiveCalloutIconFallsBackToTheStyleAndSupportsNoIcon() {
+        val note = NestedCalloutStyle.Note
+        assertEquals("info", note.item().effectiveCalloutIconKey())
+        assertEquals("star", note.item("Star").effectiveCalloutIconKey())
+        assertNull(note.item("").effectiveCalloutIconKey())
+        assertNull(NestedCalloutStyle.None.item("star").effectiveCalloutIconKey())
+    }
+
+    private fun NestedCalloutStyle.item(icon: String? = null) = NestedListItem(
+        documentId = "doc",
+        position = 0,
+        text = "x",
+        callout = this,
+        calloutIcon = icon,
+        createdAtMillis = 0L,
+        updatedAtMillis = 0L
+    )
+
+    @Test
     fun everyKindHasARecipeAndDefaultTitle() {
         val kinds = NestedCalloutStyle.entries.filter { it != NestedCalloutStyle.None }
         assertEquals(10, kinds.size)

@@ -44,6 +44,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.ContentPaste
+import androidx.compose.material.icons.filled.ControlPointDuplicate
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Done
@@ -53,10 +54,10 @@ import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.FormatColorFill
 import androidx.compose.material.icons.filled.FormatColorText
 import androidx.compose.material.icons.filled.FormatSize
-import androidx.compose.material.icons.filled.InvertColors
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.SortByAlpha
 import androidx.compose.material.icons.filled.Today
@@ -65,7 +66,6 @@ import androidx.compose.material.icons.filled.UnfoldMore
 import androidx.compose.material.icons.filled.Work
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material.icons.filled.ZoomOut
-import androidx.compose.material.icons.outlined.EmojiEmotions
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.LocalOffer
 import androidx.compose.material3.AlertDialog
@@ -107,6 +107,7 @@ import checkit.shared.generated.resources.nested_add_child
 import checkit.shared.generated.resources.nested_add_sibling
 import checkit.shared.generated.resources.nested_batch_delete
 import checkit.shared.generated.resources.nested_collapse_all
+import checkit.shared.generated.resources.nested_duplicate
 import checkit.shared.generated.resources.nested_expand_all
 import checkit.shared.generated.resources.nested_focus_selection
 import checkit.shared.generated.resources.nested_indent
@@ -119,6 +120,7 @@ import checkit.shared.generated.resources.nested_zoom_out
 import com.checkit.domain.FocusPeriod
 import com.checkit.domain.NestedBorderShape
 import com.checkit.domain.NestedBorderStyle
+import com.checkit.domain.NestedBorderWidth
 import com.checkit.domain.NestedCalloutStyle
 import com.checkit.domain.NestedCalloutLayout
 import com.checkit.domain.NestedColorToken
@@ -238,27 +240,41 @@ internal fun BreadcrumbBar(
 // ---------------- formatting bar ----------------
 
 /**
- * Compact row for the formatting bar's menus. Material's default dropdown row
- * reserves 48dp; the toolbar itself is 32dp, so a slightly shorter row keeps the
- * popup visually tied to the bar while leaving label and icon spacing intact.
+ * Compact row shared by the formatting bar and editor toolbar menus. Material's
+ * default dropdown row reserves 48dp; both bars are ~32dp, so a shorter row
+ * keeps the popup visually tied to its trigger while leaving spacing intact.
  */
-private val NestedFormattingMenuItemHeight = 40.dp
+private val NestedMenuItemHeight = 40.dp
 
 @Composable
-private fun NestedFormattingMenuItem(
-    text: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
+private fun NestedMenuItem(
+    label: String,
+    icon: ImageVector? = null,
     enabled: Boolean = true,
+    modifier: Modifier = Modifier,
     leadingIcon: (@Composable () -> Unit)? = null,
-    trailingIcon: (@Composable () -> Unit)? = null
+    trailingIcon: (@Composable () -> Unit)? = null,
+    onClick: () -> Unit
 ) {
     DropdownMenuItem(
-        text = { Text(text) },
+        text = { Text(label, style = MaterialTheme.typography.bodyMedium) },
         onClick = onClick,
-        modifier = modifier.height(NestedFormattingMenuItemHeight),
+        modifier = modifier.height(NestedMenuItemHeight),
         enabled = enabled,
-        leadingIcon = leadingIcon,
+        leadingIcon = leadingIcon ?: icon?.let { image ->
+            {
+                Icon(
+                    imageVector = image,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = if (enabled) {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                    }
+                )
+            }
+        },
         trailingIcon = trailingIcon
     )
 }
@@ -268,9 +284,10 @@ internal fun NestedFormattingBar(
     item: NestedListItem,
     hasChildren: Boolean,
     onFormattingChange: (NestedTextStyle, NestedColorToken, NestedColorToken) -> Unit,
-    onBorderChange: (NestedBorderShape, NestedBorderStyle, NestedColorToken) -> Unit,
-    onCalloutChange: (NestedCalloutStyle, String?) -> Unit,
+    onBorderChange: (NestedBorderShape, NestedBorderStyle, NestedColorToken, NestedBorderWidth?) -> Unit,
+    onCalloutChange: (NestedCalloutStyle, String?, String?) -> Unit,
     onCalloutLayoutChange: (NestedCalloutLayout?) -> Unit = {},
+    onCalloutReset: () -> Unit = {},
     onLabelChange: (String?) -> Unit,
     onPriorityChange: (TaskPriority) -> Unit,
     onGuideDotChange: (String?) -> Unit,
@@ -286,8 +303,6 @@ internal fun NestedFormattingBar(
 ) {
     var priorityExpanded by remember { mutableStateOf(false) }
     var styleExpanded by remember { mutableStateOf(false) }
-    var guideDotExpanded by remember { mutableStateOf(false) }
-    var guideDotColorExpanded by remember { mutableStateOf(false) }
     var showEmojiPicker by remember { mutableStateOf(false) }
     var showDateDialog by remember { mutableStateOf(false) }
     var showLabelDialog by remember { mutableStateOf(false) }
@@ -328,8 +343,8 @@ internal fun NestedFormattingBar(
                 }
                 DropdownMenu(expanded = styleExpanded, onDismissRequest = { styleExpanded = false }) {
                     NestedTextStyle.entries.forEach { style ->
-                        NestedFormattingMenuItem(
-                            text = style.name,
+                        NestedMenuItem(
+                            label = style.name,
                             modifier = if (style == item.textStyle) {
                                 Modifier.background(MaterialTheme.colorScheme.secondaryContainer)
                             } else {
@@ -345,8 +360,8 @@ internal fun NestedFormattingBar(
                         modifier = Modifier,
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
                     )
-                    NestedFormattingMenuItem(
-                        text = "Checkbox",
+                    NestedMenuItem(
+                        label = "Checkbox",
                         modifier = if (item.checkboxEnabled) {
                             Modifier.background(MaterialTheme.colorScheme.secondaryContainer)
                         } else {
@@ -357,8 +372,8 @@ internal fun NestedFormattingBar(
                             onToggleCheckbox()
                         }
                     )
-                    NestedFormattingMenuItem(
-                        text = "Add checkbox for children",
+                    NestedMenuItem(
+                        label = "Add checkbox for children",
                         enabled = hasChildren,
                         onClick = {
                             styleExpanded = false
@@ -382,8 +397,9 @@ internal fun NestedFormattingBar(
             BorderMenu(
                 shape = item.borderShape,
                 style = item.borderStyle,
-                color = item.borderColor
-            ) { shape, style, color -> onBorderChange(shape, style, color) }
+                color = item.borderColor,
+                width = item.borderWidth
+            ) { shape, style, color, width -> onBorderChange(shape, style, color, width) }
 
             val calloutSpec = item.callout.spec()
             Box {
@@ -410,8 +426,8 @@ internal fun NestedFormattingBar(
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                     )
                     NestedCalloutStyle.entries.forEach { style ->
-                        NestedFormattingMenuItem(
-                            text = style.displayName(),
+                        NestedMenuItem(
+                            label = style.displayName(),
                             leadingIcon = {
                                 Icon(
                                     imageVector = nestedCalloutIcon(style),
@@ -430,7 +446,8 @@ internal fun NestedFormattingBar(
                                 calloutExpanded = false
                                 onCalloutChange(
                                     style,
-                                    if (style == NestedCalloutStyle.None) null else item.calloutTitle
+                                    if (style == NestedCalloutStyle.None) null else item.calloutTitle,
+                                    if (style == NestedCalloutStyle.None) null else item.calloutIcon
                                 )
                             }
                         )
@@ -446,8 +463,8 @@ internal fun NestedFormattingBar(
                         )
                         val activeLayout = item.calloutLayout ?: item.callout.spec()?.layout
                         NestedCalloutLayout.entries.forEach { layout ->
-                            NestedFormattingMenuItem(
-                                text = layout.name,
+                            NestedMenuItem(
+                                label = layout.name,
                                 trailingIcon = if (layout == activeLayout) {
                                     { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
                                 } else null,
@@ -460,8 +477,8 @@ internal fun NestedFormattingBar(
                             )
                         }
                         HorizontalDivider()
-                        NestedFormattingMenuItem(
-                            text = "Title…",
+                        NestedMenuItem(
+                            label = "Title & icon…",
                             leadingIcon = {
                                 Icon(
                                     imageVector = Icons.Default.EditNote,
@@ -474,79 +491,33 @@ internal fun NestedFormattingBar(
                                 showCalloutTitleDialog = true
                             }
                         )
-                    }
-                }
-            }
-
-            // Dot color also owns the connector into this row and its descendant spine.
-            Box {
-                IconButton(
-                    onClick = { guideDotColorExpanded = true },
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.InvertColors,
-                        contentDescription = "Dot and guide color",
-                        tint = item.guideDotColor?.let { nestedColor(it) } ?: subtleInactiveColor,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-                DropdownMenu(
-                    expanded = guideDotColorExpanded,
-                    onDismissRequest = { guideDotColorExpanded = false }
-                ) {
-                    ColorTokenSwatches(selected = item.guideDotColor ?: NestedColorToken.Default) { token ->
-                        guideDotColorExpanded = false
-                        onGuideDotColorChange(token.takeIf { it != NestedColorToken.Default })
-                    }
-                }
-            }
-
-            // Guide dot: an emoji replaces the row's dot (parents keep the ring).
-            Box {
-                IconButton(
-                    onClick = { guideDotExpanded = true },
-                    modifier = Modifier
-                        .size(32.dp)
-                        .semantics { contentDescription = "Guide dot" }
-                ) {
-                    val emoji = item.guideDot
-                    if (emoji != null) {
-                        Text(text = emoji, fontSize = 15.sp)
-                    } else {
-                        Icon(
-                            imageVector = Icons.Outlined.EmojiEmotions,
-                            contentDescription = "Guide dot",
-                            tint = subtleInactiveColor,
-                            modifier = Modifier.size(18.dp)
+                        NestedMenuItem(
+                            label = "Reset to callout defaults",
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.RestartAlt,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
+                            onClick = {
+                                calloutExpanded = false
+                                onCalloutReset()
+                            }
                         )
                     }
                 }
-                DropdownMenu(
-                    expanded = guideDotExpanded,
-                    onDismissRequest = { guideDotExpanded = false }
-                ) {
-                    NestedFormattingMenuItem(
-                        text = "Default dot",
-                        trailingIcon = if (item.guideDot == null) {
-                            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
-                        } else {
-                            null
-                        },
-                        onClick = {
-                            guideDotExpanded = false
-                            onGuideDotChange(null)
-                        }
-                    )
-                    NestedFormattingMenuItem(
-                        text = if (item.guideDot == null) "Choose emoji…" else "Change emoji…",
-                        onClick = {
-                            guideDotExpanded = false
-                            showEmojiPicker = true
-                        }
-                    )
-                }
             }
+
+            // Guide dot and color in one menu: dot owns the row's dot
+            // (parents keep the ring); color owns the connector and spine.
+            GuideMenu(
+                emoji = item.guideDot,
+                guideDotColor = item.guideDotColor,
+                onDotChange = { emoji -> onGuideDotChange(emoji) },
+                onColorChange = { token -> onGuideDotColorChange(token.takeIf { it != NestedColorToken.Default }) },
+                onChooseEmoji = { showEmojiPicker = true }
+            )
 
             VerticalDivider(
                 modifier = Modifier
@@ -571,8 +542,8 @@ internal fun NestedFormattingBar(
                 }
                 DropdownMenu(expanded = priorityExpanded, onDismissRequest = { priorityExpanded = false }) {
                     TaskPriority.entries.forEach { priority ->
-                        NestedFormattingMenuItem(
-                            text = priority.name,
+                        NestedMenuItem(
+                            label = priority.name,
                             leadingIcon = {
                                 Icon(
                                     imageVector = Icons.Default.Flag,
@@ -781,9 +752,11 @@ internal fun NestedFormattingBar(
         NestedCalloutTitleDialog(
             initialTitle = item.calloutTitle,
             defaultTitle = item.callout.displayName(),
+            initialIcon = item.calloutIcon,
+            defaultIconKey = item.callout.spec()?.iconKey ?: "info",
             onDismiss = { showCalloutTitleDialog = false },
-            onSave = { title ->
-                onCalloutChange(item.callout, title)
+            onSave = { title, icon ->
+                onCalloutChange(item.callout, title, icon)
                 showCalloutTitleDialog = false
             }
         )
@@ -1041,6 +1014,7 @@ internal fun EditorToolbar(
     onCopyToTask: () -> Unit,
     onCopySubtree: () -> Unit,
     onPasteSubtree: () -> Unit,
+    onDuplicate: () -> Unit,
     canPasteSubtree: Boolean,
     onEnterSelection: () -> Unit,
     onSortChildren: () -> Unit,
@@ -1121,64 +1095,43 @@ internal fun EditorToolbar(
                     expanded = showMore,
                     onDismissRequest = { showMore = false }
                 ) {
-                    ToolbarMenuItem("Details", Icons.Outlined.Info, hasSelection) {
+                    NestedMenuItem("Details", Icons.Outlined.Info, hasSelection) {
                         showMore = false; onManageDetails()
                     }
-                    ToolbarMenuItem("Add root item", Icons.Default.AddBox, true) {
+                    NestedMenuItem("Add root item", Icons.Default.AddBox, true) {
                         showMore = false; onAddRoot()
                     }
-                    ToolbarMenuItem("Select items", Icons.Default.SelectAll, true) {
+                    NestedMenuItem("Select items", Icons.Default.SelectAll, true) {
                         showMore = false; onEnterSelection()
                     }
-                    ToolbarMenuItem("Add to daily plan", Icons.Default.Today, hasSelection) {
+                    NestedMenuItem("Add to daily plan", Icons.Default.Today, hasSelection) {
                         showMore = false; onAddToDailyPlan()
                     }
-                    ToolbarMenuItem("Copy to Task", Icons.Default.ContentCopy, hasSelection) {
+                    NestedMenuItem("Copy to Task", Icons.Default.ContentCopy, hasSelection) {
                         showMore = false; onCopyToTask()
                     }
-                    ToolbarMenuItem("Copy subtree", Icons.Default.FileCopy, hasSelection) {
+                    NestedMenuItem("Copy subtree", Icons.Default.FileCopy, hasSelection) {
                         showMore = false; onCopySubtree()
                     }
-                    ToolbarMenuItem("Paste subtree", Icons.Default.ContentPaste, canPasteSubtree) {
+                    NestedMenuItem("Paste subtree", Icons.Default.ContentPaste, canPasteSubtree) {
                         showMore = false; onPasteSubtree()
                     }
-                    ToolbarMenuItem(stringResource(Res.string.nested_batch_delete), Icons.Default.Delete, hasSelection) {
+                    NestedMenuItem(stringResource(Res.string.nested_duplicate), Icons.Default.ControlPointDuplicate, hasSelection) {
+                        showMore = false; onDuplicate()
+                    }
+                    NestedMenuItem(stringResource(Res.string.nested_batch_delete), Icons.Default.Delete, hasSelection) {
                         showMore = false; onDelete()
                     }
-                    ToolbarMenuItem("Sort children", Icons.Default.SortByAlpha, canSortChildren) {
+                    NestedMenuItem("Sort children", Icons.Default.SortByAlpha, canSortChildren) {
                         showMore = false; onSortChildren()
                     }
-                    ToolbarMenuItem("Move to…", Icons.AutoMirrored.Filled.DriveFileMove, canMoveTo) {
+                    NestedMenuItem("Move to…", Icons.AutoMirrored.Filled.DriveFileMove, canMoveTo) {
                         showMore = false; onMoveTo()
                     }
                 }
             }
         }
     }
-}
-
-@Composable
-internal fun ToolbarMenuItem(
-    label: String,
-    icon: ImageVector? = null,
-    enabled: Boolean,
-    onClick: () -> Unit
-) {
-    DropdownMenuItem(
-        text = { Text(label, style = MaterialTheme.typography.bodyMedium) },
-        leadingIcon = icon?.let {
-            {
-                Icon(
-                    imageVector = it,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                    tint = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-                )
-            }
-        },
-        onClick = onClick,
-        enabled = enabled
-    )
 }
 
 @Composable

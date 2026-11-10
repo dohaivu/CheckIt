@@ -16,7 +16,7 @@ import SwiftEmojiPicker
 /// focus loss. `focused` is a plain binding (not `@FocusState`) because the
 /// editor lives in an AppKit `NSViewRepresentable` that reports focus itself;
 /// the inspector observes blur to commit. The Edit/Preview tab renders the
-/// note read-only via `renderFullMarkdown`.
+/// note read-only via `MarkdownBodyView` (shared block parser, real tables).
 struct NestedNoteEditor: View {
     @Binding var text: String
     /// True when `text` differs from the persisted note (drives the hint).
@@ -52,8 +52,7 @@ struct NestedNoteEditor: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(6)
                         } else {
-                            Text(renderFullMarkdown(text))
-                                .font(.body)
+                            MarkdownBodyView(markdown: text)
                                 .textSelection(.enabled)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
@@ -552,6 +551,10 @@ struct NestedFormattingBar: View {
     @State private var showLabel = false
     @State private var showCalloutTitle = false
     @State private var showEmojiPicker = false
+    @State private var showBorderPicker = false
+    @State private var showCalloutPicker = false
+    @State private var showGuidePicker = false
+    @State private var showColorPicker = false
     @State private var startDate = Date()
     @State private var endDate = Date()
     @State private var hasStart = false
@@ -621,141 +624,127 @@ struct NestedFormattingBar: View {
             .frame(width: 28, height: 28)
             .accessibilityLabel("Text style")
             .help("Text style")
-            // Text color
-            NestedMenuButton(rows: {
-                NestedColorToken.entries.map { t in
-                    NestedMenuRow.color(t, selected: t == item.textColor) {
-                        state.updateFormatting(id: item.id, style: item.textStyle, textColor: t, background: item.backgroundColor)
-                    }
-                }
-            }, label: {
-                NestedMenuTrigger(
-                    symbol: "paintbrush",
-                    tint: item.textColor == NestedColorToken.default_ ? .secondary : .accentColor
-                )
-            })
-            .accessibilityLabel("Text color")
-            .help("Text color")
-            // Background
-            NestedMenuButton(rows: {
-                NestedColorToken.entries.map { t in
-                    NestedMenuRow.color(t, selected: t == item.backgroundColor) {
-                        state.updateFormatting(id: item.id, style: item.textStyle, textColor: item.textColor, background: t)
-                    }
-                }
-            }, label: {
+            // Text + background color in one popover (Text | Background side
+            // by side). The popover stays open while picking so both colors
+            // can be tuned in one pass; clicking outside dismisses.
+            Button {
+                showColorPicker.toggle()
+            } label: {
                 NestedMenuTrigger(
                     symbol: "paintpalette",
-                    tint: item.backgroundColor == NestedColorToken.default_ ? .secondary : .accentColor
+                    tint: (item.textColor == NestedColorToken.default_ && item.backgroundColor == NestedColorToken.default_)
+                        ? .secondary
+                        : .accentColor
                 )
-            })
-            .accessibilityLabel("Background color")
-            .help("Background color")
-            // Border: shape + line style + color in one menu.
-            NestedMenuButton(rows: {
-                var rows: [NestedMenuRow] = [.header("Style")]
-                for s in NestedBorderStyle.entries {
-                    rows.append(.item(title: s.name, selected: s == item.borderStyle) {
-                        state.updateBorder(id: item.id, shape: item.borderShape, style: s, color: item.borderColor)
-                    })
-                }
-                rows.append(.header("Shape"))
-                for s in NestedBorderShape.entries {
-                    rows.append(.item(title: s.displayName(), selected: s == item.borderShape) {
-                        state.updateBorder(id: item.id, shape: s, style: item.borderStyle, color: item.borderColor)
-                    })
-                }
-                rows.append(.header("Color"))
-                for t in NestedColorToken.entries {
-                    rows.append(.color(t, selected: t == item.borderColor) {
-                        state.updateBorder(id: item.id, shape: item.borderShape, style: item.borderStyle, color: t)
-                    })
-                }
-                return rows
-            }, label: {
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel("Text and background color")
+            .help("Text and background color")
+            .popover(isPresented: $showColorPicker, arrowEdge: .bottom) {
+                NestedColorPickerView(
+                    item: item,
+                    onTextColor: { color in
+                        state.updateFormatting(id: item.id, style: item.textStyle, textColor: color, background: item.backgroundColor)
+                    },
+                    onBackgroundColor: { color in
+                        state.updateFormatting(id: item.id, style: item.textStyle, textColor: item.textColor, background: color)
+                    }
+                )
+            }
+            // Border: Style + Width + Shape + Color side by side so the 4
+            // groups do not stack into a 38-row menu. NSMenu is strictly
+            // vertical, so this uses a SwiftUI popover with a horizontal
+            // 4-column layout (mirrors Android's chip FlowRow sections).
+            Button {
+                showBorderPicker.toggle()
+            } label: {
                 NestedMenuTrigger(
                     symbol: "square.dashed",
                     tint: item.borderStyle == NestedBorderStyle.none ? .secondary : .accentColor
                 )
-            })
+            }
+            .buttonStyle(.borderless)
             .accessibilityLabel("Border")
             .help("Border")
+            .popover(isPresented: $showBorderPicker, arrowEdge: .bottom) {
+                NestedBorderPickerView(item: item, onChange: { shape, style, color, width in
+                    state.updateBorder(id: item.id, shape: shape, style: style, color: color, width: width)
+                })
+            }
             // Callout: a visual frame that owns the row's card and can carry
-            // a custom title (defaults to the style name).
-            NestedMenuButton(rows: {
-                var rows: [NestedMenuRow] = [.header("Callout")]
-                for s in NestedCalloutStyle.entries {
-                    rows.append(.item(
-                        title: s.displayName(),
-                        icon: nestedCalloutMenuImage(s),
-                        selected: s == item.callout
-                    ) {
-                        state.updateCallout(
-                            id: item.id,
-                            style: s,
-                            title: s == NestedCalloutStyle.none ? nil : item.calloutTitle
-                        )
-                    })
-                }
-                if item.callout != NestedCalloutStyle.none {
-                    rows.append(.header("Layout"))
-                    let activeLayout = item.calloutLayout ?? item.callout.spec()?.layout
-                    for l in NestedCalloutLayout.entries {
-                        rows.append(.item(
-                            title: l.name,
-                            selected: l == activeLayout
-                        ) {
-                            let defaultLayout = item.callout.spec()?.layout
-                            state.updateCalloutLayout(
-                                id: item.id,
-                                layout: l == defaultLayout ? nil : l
-                            )
-                        })
-                    }
-                    rows.append(.header("Title"))
-                    rows.append(.item(
-                        title: "Custom title…",
-                        selected: item.calloutTitle != nil
-                    ) {
-                        DispatchQueue.main.async { showCalloutTitle = true }
-                    })
-                    if item.calloutTitle != nil {
-                        rows.append(.item(title: "Use default title", selected: false) {
-                            state.updateCallout(id: item.id, style: item.callout, title: nil)
-                        })
-                    }
-                }
-                return rows
-            }, label: {
+            // a custom title (defaults to the style name). Side-by-side
+            // popover (Callout | Layout/Actions) instead of a 21-row menu.
+            Button {
+                showCalloutPicker.toggle()
+            } label: {
                 NestedMenuTrigger(
                     symbol: "text.bubble",
                     tint: item.callout == NestedCalloutStyle.none
                         ? .secondary
                         : nestedTokenColor(item.callout.spec()?.accent ?? NestedColorToken.default_)
                 )
-            })
+            }
+            .buttonStyle(.borderless)
             .accessibilityLabel("Callout")
             .help("Callout")
-            // Guide dot: emoji inside the row's dot (parents keep the ring).
-            NestedMenuButton(rows: {
-                [
-                    .item(title: "Default dot", selected: item.guideDot == nil) {
-                        state.updateGuideDot(id: item.id, emoji: nil)
+            .popover(isPresented: $showCalloutPicker, arrowEdge: .bottom) {
+                NestedCalloutPickerView(
+                    item: item,
+                    onCallout: { style in
+                        state.updateCallout(
+                            id: item.id,
+                            style: style,
+                            title: style == NestedCalloutStyle.none ? nil : item.calloutTitle,
+                            icon: style == NestedCalloutStyle.none ? nil : item.calloutIcon
+                        )
                     },
-                    .item(title: item.guideDot == nil ? "Choose emoji…" : "Change emoji…") {
-                        // Let the menu finish dismissing before the popover opens.
-                        DispatchQueue.main.async { showEmojiPicker = true }
+                    onLayout: { layout in
+                        state.updateCalloutLayout(id: item.id, layout: layout)
                     },
-                ]
-            }, label: {
+                    onShowTitleEditor: {
+                        showCalloutPicker = false
+                        DispatchQueue.main.async { showCalloutTitle = true }
+                    },
+                    onReset: {
+                        state.resetCalloutToDefaults(id: item.id)
+                    }
+                )
+            }
+            // Guide dot + color in one popover (Dot | Color side by side).
+            // The emoji popover is presented after the guide popover is
+            // dismissed to avoid presenting one popover from another.
+            Button {
+                showGuidePicker.toggle()
+            } label: {
                 NestedMenuTrigger(
                     symbol: "circle.dotted",
                     emoji: item.guideDot,
-                    tint: item.guideDot == nil ? .secondary : .accentColor
+                    tint: {
+                        if let color = item.guideDotColor {
+                            return nestedTokenColor(color)
+                        }
+                        return item.guideDot == nil ? .secondary : .accentColor
+                    }()
                 )
-            })
-            .accessibilityLabel("Guide dot")
-            .help("Guide dot")
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel("Guide dot and color")
+            .help("Guide dot and color")
+            .popover(isPresented: $showGuidePicker, arrowEdge: .bottom) {
+                NestedGuidePickerView(
+                    item: item,
+                    onGuideDot: { emoji in
+                        state.updateGuideDot(id: item.id, emoji: emoji)
+                    },
+                    onGuideDotColor: { color in
+                        state.updateGuideDotColor(id: item.id, color: color)
+                    },
+                    onShowEmojiPicker: {
+                        showGuidePicker = false
+                        DispatchQueue.main.async { showEmojiPicker = true }
+                    }
+                )
+            }
             .popover(isPresented: $showEmojiPicker, arrowEdge: .bottom) {
                 EmojiPickerView(
                     selectedEmoji: guideEmojiBinding,
@@ -763,21 +752,6 @@ struct NestedFormattingBar: View {
                 )
                 .frame(width: 340, height: 420)
             }
-            // Dot color owns this row's connector and its descendant spine.
-            NestedMenuButton(rows: {
-                NestedColorToken.entries.map { t in
-                    NestedMenuRow.color(t, selected: t == (item.guideDotColor ?? NestedColorToken.default_)) {
-                        state.updateGuideDotColor(id: item.id, color: t == NestedColorToken.default_ ? nil : t)
-                    }
-                }
-            }, label: {
-                NestedMenuTrigger(
-                    symbol: "circle.lefthalf.filled",
-                    tint: item.guideDotColor == nil ? .secondary : nestedTokenColor(item.guideDotColor!)
-                )
-            })
-            .accessibilityLabel("Dot and guide color")
-            .help("Dot and guide color")
             // Priority
             NestedMenuButton(rows: {
                 TaskPriority.entries.map { p in
@@ -887,18 +861,303 @@ struct NestedFormattingBar: View {
         .sheet(isPresented: $showCalloutTitle) {
             NestedCalloutTitleSheet(
                 initialTitle: item.calloutTitle,
+                initialIcon: item.calloutIcon,
                 defaultTitle: item.callout.displayName(),
-                onSave: { title in
-                    state.updateCallout(id: item.id, style: item.callout, title: title)
+                defaultIconKey: item.callout.spec()?.iconKey ?? "info",
+                onSave: { title, icon in
+                    state.updateCallout(id: item.id, style: item.callout, title: title, icon: icon)
                     showCalloutTitle = false
                 },
                 onUseDefault: {
-                    state.updateCallout(id: item.id, style: item.callout, title: nil)
+                    state.updateCallout(id: item.id, style: item.callout, title: nil, icon: nil)
                     showCalloutTitle = false
                 },
                 onCancel: { showCalloutTitle = false }
             )
         }
+    }
+}
+
+// MARK: - Picker primitives
+
+/// Shared section header for the horizontal picker popovers (Border,
+/// Callout). Keeps the columns visually consistent without duplicating
+/// the text style in each picker.
+struct NestedPickerHeader: View {
+    let title: String
+
+    var body: some View {
+        Text(title)
+            .font(.caption)
+            .fontWeight(.bold)
+            .foregroundStyle(.secondary)
+    }
+}
+
+/// One tappable option row inside a picker column: checkmark (or clear
+/// placeholder) + optional icon + title, with no focus ring so the
+/// popover never flashes a "focused" rectangle on the first row.
+struct NestedPickerRow: View {
+    let title: String
+    var icon: NSImage? = nil
+    var selected: Bool
+    var action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 4) {
+                if selected {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 10, weight: .semibold))
+                } else {
+                    Color.clear.frame(width: 12, height: 12)
+                }
+                if let icon {
+                    Image(nsImage: icon)
+                        .resizable()
+                        .frame(width: 16, height: 16)
+                }
+                Text(title)
+                    .font(.system(size: 12))
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 6)
+            .padding(.vertical, 3)
+            .background(selected ? Color.accentColor.opacity(0.12) : Color.clear, in: RoundedRectangle(cornerRadius: 6))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .focusable(false)
+        .opacity(selected ? 1 : 0.75)
+    }
+}
+
+/// One horizontal section column: header on top, options below. Pass a
+/// `width` for columns whose longest label would otherwise truncate
+/// (e.g. Shape's "Cut corner").
+struct NestedPickerColumn<Content: View>: View {
+    let title: String
+    var width: CGFloat? = nil
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            NestedPickerHeader(title: title)
+            content()
+        }
+        .frame(width: width, alignment: .leading)
+    }
+}
+
+/// Shared 2-column color dots used by the Border, Guide, and Text/Background pickers.
+/// `selected` is the concrete token (`.default_` means theme-following
+/// hollow ring); callers map to/from their nullable storage.
+struct NestedColorSwatchGrid: View {
+    let selected: NestedColorToken
+    let onSelect: (NestedColorToken) -> Void
+
+    var body: some View {
+        LazyVGrid(columns: [GridItem(.fixed(92), alignment: .leading), GridItem(.fixed(92), alignment: .leading)], spacing: 6) {
+            ForEach(NestedColorToken.entries, id: \.self) { t in
+                let isSelected = t == selected
+                Button {
+                    onSelect(t)
+                } label: {
+                    HStack(spacing: 6) {
+                        Group {
+                            if t == NestedColorToken.default_ {
+                                Circle()
+                                    .strokeBorder(Color.secondary, lineWidth: 1.5)
+                                    .background(Circle().fill(Color.clear))
+                            } else {
+                                Circle()
+                                    .fill(nestedTokenColor(t))
+                                    .strokeBorder(Color.secondary.opacity(0.4), lineWidth: 1)
+                            }
+                        }
+                        .frame(width: 16, height: 16)
+                        .contentShape(Circle())
+                        .overlay {
+                            if isSelected {
+                                Circle()
+                                    .strokeBorder(Color.accentColor, lineWidth: 2)
+                                    .frame(width: 22, height: 22)
+                            }
+                        }
+                        Text(t.name)
+                            .font(.system(size: 12))
+                            .foregroundStyle(isSelected ? Color.accentColor : Color.primary)
+                            .lineLimit(1)
+                    }
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(isSelected ? Color.accentColor.opacity(0.12) : Color.clear, in: RoundedRectangle(cornerRadius: 6))
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .focusable(false)
+                .help(t.name)
+                .accessibilityLabel(t.name)
+            }
+        }
+        .padding(.top, 2)
+    }
+}
+
+// MARK: - Border picker (horizontal sections)
+
+/// Border controls shown side by side in a popover instead of one tall
+/// `NSMenu` (Style 6 + Width 5 + Shape 9 + Color 14 = 38 rows). The
+/// columns stay open while picking so Style, Width, Shape and Color can
+/// be tuned in one pass; clicking outside dismisses.
+struct NestedBorderPickerView: View {
+    let item: NestedListItem
+    let onChange: (NestedBorderShape, NestedBorderStyle, NestedColorToken, NestedBorderWidth?) -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 16) {
+            NestedPickerColumn(title: "Style") {
+                ForEach(NestedBorderStyle.entries, id: \.self) { s in
+                    NestedPickerRow(title: s.displayName(), selected: s == item.borderStyle) {
+                        onChange(item.borderShape, s, item.borderColor, item.borderWidth)
+                    }
+                }
+            }
+            NestedPickerColumn(title: "Width") {
+                NestedPickerRow(title: "Inherit", selected: item.borderWidth == nil) {
+                    onChange(item.borderShape, item.borderStyle, item.borderColor, nil)
+                }
+                ForEach(NestedBorderWidth.entries, id: \.self) { w in
+                    NestedPickerRow(title: w.displayName(), selected: w == item.borderWidth) {
+                        onChange(item.borderShape, item.borderStyle, item.borderColor, w)
+                    }
+                }
+            }
+            NestedPickerColumn(title: "Shape", width: 100) {
+                ForEach(NestedBorderShape.entries, id: \.self) { s in
+                    NestedPickerRow(title: s.displayName(), selected: s == item.borderShape) {
+                        onChange(s, item.borderStyle, item.borderColor, item.borderWidth)
+                    }
+                }
+            }
+            NestedPickerColumn(title: "Color") {
+                NestedColorSwatchGrid(selected: item.borderColor) { t in
+                    onChange(item.borderShape, item.borderStyle, t, item.borderWidth)
+                }
+            }
+        }
+        .padding(10)
+    }
+}
+
+// MARK: - Callout picker (horizontal sections)
+
+/// Callout controls shown side by side in a popover instead of one tall
+/// `NSMenu` (Callout 11 + Layout 4 + Title & Reset = 21 rows). Layout and
+/// actions sit beside the style list; the popover stays open while picking
+/// and dismisses on click outside.
+struct NestedCalloutPickerView: View {
+    let item: NestedListItem
+    let onCallout: (NestedCalloutStyle) -> Void
+    let onLayout: (NestedCalloutLayout?) -> Void
+    let onShowTitleEditor: () -> Void
+    let onReset: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 16) {
+            NestedPickerColumn(title: "Callout", width: 120) {
+                ForEach(NestedCalloutStyle.entries, id: \.self) { s in
+                    NestedPickerRow(title: s.displayName(), icon: nestedCalloutMenuImage(s), selected: s == item.callout) {
+                        onCallout(s)
+                    }
+                }
+            }
+            if item.callout != NestedCalloutStyle.none {
+                VStack(alignment: .leading, spacing: 2) {
+                    NestedPickerHeader(title: "Layout")
+                    ForEach(NestedCalloutLayout.entries, id: \.self) { l in
+                        let activeLayout = item.calloutLayout ?? item.callout.spec()?.layout
+                        let defaultLayout = item.callout.spec()?.layout
+                        NestedPickerRow(title: l.name, selected: l == activeLayout) {
+                            onLayout(l == defaultLayout ? nil : l)
+                        }
+                    }
+                    NestedPickerHeader(title: "Title & icon")
+                        .padding(.top, 6)
+                    NestedPickerRow(title: "Custom title & icon…", selected: item.calloutTitle != nil || item.calloutIcon != nil) {
+                        onShowTitleEditor()
+                    }
+                    Divider()
+                        .padding(.vertical, 4)
+                    NestedPickerRow(title: "Reset to callout defaults", selected: false) {
+                        onReset()
+                    }
+                }
+                .frame(width: 180, alignment: .leading)
+            }
+        }
+        .padding(10)
+    }
+}
+
+// MARK: - Guide picker (horizontal sections)
+
+/// Dot + color controls shown side by side in a popover instead of two
+/// `NSMenu`s. The emoji picker is deliberately *not* nested: tapping
+/// "Choose emoji…" dismisses this popover first, then the caller presents
+/// the emoji popover from the toolbar button's anchor.
+struct NestedGuidePickerView: View {
+    let item: NestedListItem
+    let onGuideDot: (String?) -> Void
+    let onGuideDotColor: (NestedColorToken?) -> Void
+    let onShowEmojiPicker: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 16) {
+            NestedPickerColumn(title: "Dot") {
+                NestedPickerRow(title: "Default dot", selected: item.guideDot == nil) {
+                    onGuideDot(nil)
+                }
+                NestedPickerRow(title: item.guideDot == nil ? "Choose emoji…" : "Change emoji…", selected: false) {
+                    onShowEmojiPicker()
+                }
+            }
+            NestedPickerColumn(title: "Color") {
+                NestedColorSwatchGrid(selected: item.guideDotColor ?? NestedColorToken.default_) { t in
+                    onGuideDotColor(t == NestedColorToken.default_ ? nil : t)
+                }
+            }
+        }
+        .padding(10)
+    }
+}
+
+// MARK: - Color picker (horizontal sections)
+
+/// Text + background color controls shown side by side in a popover
+/// instead of two `NSMenu`s. The columns stay open while picking so both
+/// colors can be tuned in one pass; clicking outside dismisses.
+struct NestedColorPickerView: View {
+    let item: NestedListItem
+    let onTextColor: (NestedColorToken) -> Void
+    let onBackgroundColor: (NestedColorToken) -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 16) {
+            NestedPickerColumn(title: "Text") {
+                NestedColorSwatchGrid(selected: item.textColor) { t in
+                    onTextColor(t)
+                }
+            }
+            NestedPickerColumn(title: "Background") {
+                NestedColorSwatchGrid(selected: item.backgroundColor) { t in
+                    onBackgroundColor(t)
+                }
+            }
+        }
+        .padding(10)
     }
 }
 
@@ -984,24 +1243,33 @@ struct NestedLabelSheet: View {
 
 struct NestedCalloutTitleSheet: View {
     let defaultTitle: String
-    let onSave: (String?) -> Void
+    let defaultIconKey: String
+    let onSave: (String?, String?) -> Void
     let onUseDefault: () -> Void
     let onCancel: () -> Void
 
     @State private var text: String
+    @State private var selectedIcon: String?
+
+    /// Every callout-capable key in the shared AppSymbols registry.
+    private static let symbolKeys: [String] = AppSymbols.shared.calloutIconKeys
 
     init(
         initialTitle: String?,
+        initialIcon: String?,
         defaultTitle: String,
-        onSave: @escaping (String?) -> Void,
+        defaultIconKey: String,
+        onSave: @escaping (String?, String?) -> Void,
         onUseDefault: @escaping () -> Void,
         onCancel: @escaping () -> Void
     ) {
         self.defaultTitle = defaultTitle
+        self.defaultIconKey = defaultIconKey
         self.onSave = onSave
         self.onUseDefault = onUseDefault
         self.onCancel = onCancel
         _text = State(initialValue: initialTitle ?? "")
+        _selectedIcon = State(initialValue: initialIcon)
     }
 
     private var trimmed: String {
@@ -1010,7 +1278,7 @@ struct NestedCalloutTitleSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Callout title")
+            Text("Callout title & icon")
                 .font(.headline)
             TextField(defaultTitle, text: $text)
                 .textFieldStyle(.roundedBorder)
@@ -1018,8 +1286,50 @@ struct NestedCalloutTitleSheet: View {
             Text("Leave empty to show \"\(defaultTitle)\".")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+            Text("Icon")
+                .font(.caption.weight(.semibold))
+            HStack(spacing: 8) {
+                iconChip(
+                    title: "Default",
+                    symbol: appSymbol(defaultIconKey),
+                    selected: selectedIcon == nil
+                ) {
+                    selectedIcon = nil
+                }
+                iconChip(title: "No icon", symbol: nil, selected: selectedIcon == "") {
+                    selectedIcon = ""
+                }
+            }
+            ScrollView {
+                LazyVGrid(
+                    columns: [GridItem(.adaptive(minimum: 30), spacing: 6)],
+                    spacing: 6
+                ) {
+                    ForEach(Self.symbolKeys, id: \.self) { key in
+                        let selected = selectedIcon == key
+                        Button {
+                            selectedIcon = key
+                        } label: {
+                            Image(systemName: appSymbol(key))
+                                .font(.system(size: 14))
+                                .frame(width: 30, height: 30)
+                                .background(
+                                    selected
+                                        ? Color.accentColor.opacity(0.22)
+                                        : Color.secondary.opacity(0.10),
+                                    in: RoundedRectangle(cornerRadius: 7)
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        .help(key)
+                        .accessibilityLabel(key)
+                    }
+                }
+                .padding(.vertical, 2)
+            }
+            .frame(height: 168)
             HStack {
-                Button("Use default") { onUseDefault() }
+                Button("Use defaults") { onUseDefault() }
                 Spacer()
                 Button("Cancel") { onCancel() }
                     .keyboardShortcut(.cancelAction)
@@ -1028,10 +1338,37 @@ struct NestedCalloutTitleSheet: View {
             }
         }
         .padding(20)
-        .frame(width: 380)
+        .frame(width: 420)
+    }
+
+    private func iconChip(
+        title: String,
+        symbol: String?,
+        selected: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 4) {
+                if let symbol {
+                    Image(systemName: symbol)
+                        .font(.system(size: 12))
+                }
+                Text(title)
+                    .font(.caption)
+            }
+            .padding(.horizontal, 9)
+            .padding(.vertical, 5)
+            .background(
+                selected
+                    ? Color.accentColor.opacity(0.22)
+                    : Color.secondary.opacity(0.10),
+                in: Capsule()
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     private func save() {
-        onSave(trimmed.isEmpty ? nil : trimmed)
+        onSave(trimmed.isEmpty ? nil : trimmed, selectedIcon)
     }
 }

@@ -26,7 +26,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -71,6 +74,17 @@ internal fun ReflectScreen(
 ) {
     val scrollState = rememberScrollState()
     val coroutineScope = rememberCoroutineScope()
+    var selectedHabit by remember { mutableStateOf<HabitCheckin?>(null) }
+    val habit = selectedHabit
+    if (habit != null) {
+        HabitHeatmapScreen(
+            habitKey = habit.habitKey,
+            title = habit.title,
+            onNavigateBack = { selectedHabit = null },
+            modifier = modifier
+        )
+        return
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -130,7 +144,11 @@ internal fun ReflectScreen(
                             EmptyHabitsCard()
                         } else {
                             if (checkins.isNotEmpty()) {
-                                HabitHeatmapSection(checkins = checkins, monthCount = 2)
+                                HabitHeatmapSection(
+                                    checkins = checkins,
+                                    monthCount = 2,
+                                    onHabitClick = { selectedHabit = it }
+                                )
                             }
                             if (routineSeries.isNotEmpty()) {
                                 RoutineHeatmapSection(series = routineSeries, monthCount = 2)

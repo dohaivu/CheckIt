@@ -27,6 +27,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BorderStyle
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.outlined.EmojiEmotions
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.CheckBox
@@ -35,6 +36,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -61,6 +63,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.cancel
@@ -70,6 +73,7 @@ import com.checkit.domain.MetricRollupPolicy
 import com.checkit.domain.MoveDestinations
 import com.checkit.domain.NestedBorderShape
 import com.checkit.domain.NestedBorderStyle
+import com.checkit.domain.NestedBorderWidth
 import com.checkit.domain.NestedColorToken
 import com.checkit.domain.NestedItemNode
 import com.checkit.domain.NestedListItem
@@ -78,10 +82,11 @@ import com.checkit.domain.NestedSortOrder
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.CompactFlatTextField
+import com.checkit.ui.components.MarkdownBody
 import com.checkit.ui.components.MarkdownTextField
 import com.checkit.ui.components.MetricsSection
-import com.checkit.ui.components.asMarkdownAnnotatedString
 import com.checkit.ui.isValidForSave
+import com.checkit.ui.theme.AppSymbols
 import com.checkit.ui.tasks.PredefinedLabels
 import com.checkit.ui.toDateTimeLabel
 import org.jetbrains.compose.resources.stringResource
@@ -141,11 +146,11 @@ internal fun NestedNoteEditorSheet(
                         )
                     } else {
                         SelectionContainer {
-                            Text(
-                                text = note.asMarkdownAnnotatedString(),
+                            MarkdownBody(
+                                markdown = note,
+                                modifier = Modifier.fillMaxWidth(),
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier.fillMaxWidth()
                             )
                         }
                     }
@@ -232,20 +237,34 @@ internal fun MoveToDialog(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                MoveDestinationGroup(
-                    title = "Siblings",
-                    items = destinations.siblings,
-                    childCounts = childCounts,
-                    selectedId = selectedId,
-                    onSelect = { selectedId = it }
-                )
-                MoveDestinationGroup(
-                    title = "Parent's siblings",
-                    items = destinations.parentSiblings,
-                    childCounts = childCounts,
-                    selectedId = selectedId,
-                    onSelect = { selectedId = it }
-                )
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                    modifier = Modifier
+                        .heightIn(max = 320.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    MoveDestinationGroup(
+                        title = "Siblings",
+                        items = destinations.siblings,
+                        childCounts = childCounts,
+                        selectedId = selectedId,
+                        onSelect = { selectedId = it }
+                    )
+                    MoveDestinationGroup(
+                        title = "Parent's siblings",
+                        items = destinations.parentSiblings,
+                        childCounts = childCounts,
+                        selectedId = selectedId,
+                        onSelect = { selectedId = it }
+                    )
+                    MoveDestinationGroup(
+                        title = "Ancestors",
+                        items = destinations.ancestors,
+                        childCounts = childCounts,
+                        selectedId = selectedId,
+                        onSelect = { selectedId = it }
+                    )
+                }
             }
         },
         confirmButton = {
@@ -457,15 +476,18 @@ internal fun NestedLabelDialog(
 internal fun NestedCalloutTitleDialog(
     initialTitle: String?,
     defaultTitle: String,
+    initialIcon: String?,
+    defaultIconKey: String,
     onDismiss: () -> Unit,
-    onSave: (String?) -> Unit
+    onSave: (String?, String?) -> Unit
 ) {
     var value by remember(initialTitle) { mutableStateOf(initialTitle.orEmpty()) }
+    var selectedIcon by remember(initialIcon) { mutableStateOf(initialIcon) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "Callout title",
+                text = "Callout title & icon",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
@@ -473,7 +495,7 @@ internal fun NestedCalloutTitleDialog(
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 AppOutlinedTextField(
                     value = value,
@@ -486,10 +508,24 @@ internal fun NestedCalloutTitleDialog(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                Text(
+                    text = "Icon",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                CalloutIconPicker(
+                    selectedIcon = selectedIcon,
+                    defaultIconKey = defaultIconKey,
+                    onSelect = { selectedIcon = it }
+                )
             }
         },
         confirmButton = {
-            TextButton(onClick = { onSave(value.trim().takeIf { it.isNotBlank() }) }) {
+            TextButton(
+                onClick = {
+                    onSave(value.trim().takeIf { it.isNotBlank() }, selectedIcon)
+                }
+            ) {
                 Text("Save")
             }
         },
@@ -497,13 +533,88 @@ internal fun NestedCalloutTitleDialog(
             TextButton(
                 onClick = {
                     value = ""
-                    onSave(null)
+                    onSave(null, null)
                 }
             ) {
-                Text("Use default")
+                Text("Use defaults")
+            }
+        },
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    )
+}
+
+/** Callout-capable registry symbols, in registry order. */
+private val CalloutIconKeys: List<String> by lazy { AppSymbols.calloutIconKeys }
+
+@Composable
+private fun CalloutIconPicker(
+    selectedIcon: String?,
+    defaultIconKey: String,
+    onSelect: (String?) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(
+                selected = selectedIcon == null,
+                onClick = { onSelect(null) },
+                label = { Text("Default") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = nestedCalloutIcon(defaultIconKey),
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            )
+            FilterChip(
+                selected = selectedIcon == "",
+                onClick = { onSelect("") },
+                label = { Text("No icon") }
+            )
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 250.dp)
+                .verticalScroll(rememberScrollState())
+        ) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                CalloutIconKeys.forEach { key ->
+                    val selected = selectedIcon == key
+                    val shape = RoundedCornerShape(8.dp)
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(shape)
+                            .then(
+                                if (selected) {
+                                    Modifier.border(1.dp, MaterialTheme.colorScheme.primary, shape)
+                                        .background(MaterialTheme.colorScheme.primaryContainer)
+                                } else {
+                                    Modifier
+                                }
+                            )
+                            .clickable { onSelect(key) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = nestedCalloutIcon(key),
+                            contentDescription = key,
+                            tint = if (selected) {
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
             }
         }
-    )
+    }
 }
 
 @Composable
@@ -587,7 +698,8 @@ internal fun BorderMenu(
     shape: NestedBorderShape,
     style: NestedBorderStyle,
     color: NestedColorToken,
-    onSelected: (NestedBorderShape, NestedBorderStyle, NestedColorToken) -> Unit
+    width: NestedBorderWidth?,
+    onSelected: (NestedBorderShape, NestedBorderStyle, NestedColorToken, NestedBorderWidth?) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
     val active = style != NestedBorderStyle.None
@@ -621,14 +733,45 @@ internal fun BorderMenu(
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
                     NestedBorderStyle.entries.forEach { option ->
                         SelectableChip(
-                            label = option.name,
+                            label = option.displayName(),
                             selected = option == style
                         ) {
                             expanded = false
-                            onSelected(shape, option, color)
+                            onSelected(shape, option, color, width)
+                        }
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = "Width",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    SelectableChip(
+                        label = "Inherit",
+                        selected = width == null
+                    ) {
+                        expanded = false
+                        onSelected(shape, style, color, null)
+                    }
+                    NestedBorderWidth.entries.forEach { option ->
+                        SelectableChip(
+                            label = option.displayName(),
+                            selected = option == width
+                        ) {
+                            expanded = false
+                            onSelected(shape, style, color, option)
                         }
                     }
                 }
@@ -649,7 +792,7 @@ internal fun BorderMenu(
                             selected = option == shape
                         ) {
                             expanded = false
-                            onSelected(option, style, color)
+                            onSelected(option, style, color, width)
                         }
                     }
                 }
@@ -662,7 +805,80 @@ internal fun BorderMenu(
                 )
                 ColorTokenSwatches(selected = color) {
                     expanded = false
-                    onSelected(shape, style, it)
+                    onSelected(shape, style, it, width)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun GuideMenu(
+    emoji: String?,
+    guideDotColor: NestedColorToken?,
+    onDotChange: (String?) -> Unit,
+    onColorChange: (NestedColorToken) -> Unit,
+    onChooseEmoji: () -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val subtleInactiveColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f)
+    Box {
+        IconButton(
+            onClick = { expanded = true },
+            modifier = Modifier.size(32.dp)
+        ) {
+            if (emoji != null) {
+                Text(text = emoji, fontSize = 15.sp)
+            } else {
+                Icon(
+                    imageVector = Icons.Outlined.EmojiEmotions,
+                    contentDescription = "Guide dot and color",
+                    tint = guideDotColor?.let { nestedColor(it) } ?: subtleInactiveColor,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            Column(
+                modifier = Modifier
+                    .widthIn(max = 320.dp)
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Text(
+                    text = "Dot",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    SelectableChip(
+                        label = "Default dot",
+                        selected = emoji == null
+                    ) {
+                        expanded = false
+                        onDotChange(null)
+                    }
+                    SelectableChip(
+                        label = if (emoji == null) "Choose emoji…" else "Change emoji…",
+                        selected = false
+                    ) {
+                        expanded = false
+                        onChooseEmoji()
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = "Color",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                ColorTokenSwatches(selected = guideDotColor ?: NestedColorToken.Default) { token ->
+                    expanded = false
+                    onColorChange(token)
                 }
             }
         }

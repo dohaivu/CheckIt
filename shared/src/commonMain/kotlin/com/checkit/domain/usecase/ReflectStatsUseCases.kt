@@ -2,6 +2,7 @@ package com.checkit.domain.usecase
 
 import com.checkit.data.CheckItRepository
 import com.checkit.domain.DailyReflectStat
+import com.checkit.domain.HabitDailyRollup
 import kotlinx.coroutines.flow.Flow
 import kotlinx.datetime.LocalDate
 
@@ -25,4 +26,12 @@ class ObserveDailyReflectStatsUseCase(
 ) {
     operator fun invoke(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<DailyReflectStat>> =
         repository.observeDailyReflectStats(startDate, endDateInclusive)
+}
+
+/** Observes every recorded check-in for one habit key (full history). */
+class ObserveHabitDailyRollupsForHabitUseCase(
+    private val repository: CheckItRepository
+) {
+    operator fun invoke(habitKey: String): Flow<List<HabitDailyRollup>> =
+        repository.observeHabitDailyRollupsForHabit(habitKey)
 }

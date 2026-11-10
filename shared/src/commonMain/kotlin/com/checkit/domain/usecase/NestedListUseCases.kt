@@ -14,10 +14,12 @@ import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.NestedColorToken
 import com.checkit.domain.NestedBorderShape
 import com.checkit.domain.NestedBorderStyle
+import com.checkit.domain.NestedBorderWidth
 import com.checkit.domain.NestedCalloutStyle
 import com.checkit.domain.NestedCalloutLayout
 import com.checkit.domain.MetricRollupPolicy
 import com.checkit.domain.captureNestedSubtree
+import com.checkit.domain.planNestedItemDuplicate
 import com.checkit.domain.planNestedSubtreePaste
 
 import com.checkit.domain.TaskPriority
@@ -154,6 +156,28 @@ class PasteNestedSubtreeUseCase(
     }
 }
 
+/**
+ * Inserts a copy of [itemId] as its next sibling, excluding descendants.
+ * Returns the new item id, or null when the source is not in [items].
+ */
+class DuplicateNestedItemUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(
+        items: List<NestedListItem>,
+        itemId: String
+    ): String? {
+        val duplicate = planNestedItemDuplicate(
+            items = items,
+            itemId = itemId,
+            newId = Uuid.random().toString(),
+            nowMillis = Clock.System.now().toEpochMilliseconds()
+        ) ?: return null
+        repository.addNestedSubtree(duplicate.documentId, listOf(duplicate))
+        return duplicate.id
+    }
+}
+
 class UpdateNestedItemTextUseCase(
     private val repository: CheckItRepository
 ) {
@@ -196,8 +220,9 @@ class UpdateNestedItemBorderUseCase(
         itemId: String,
         borderShape: NestedBorderShape,
         borderStyle: NestedBorderStyle,
-        borderColor: NestedColorToken
-    ) = repository.updateNestedItemBorder(itemId, borderShape, borderStyle, borderColor)
+        borderColor: NestedColorToken,
+        borderWidth: NestedBorderWidth?
+    ) = repository.updateNestedItemBorder(itemId, borderShape, borderStyle, borderColor, borderWidth)
 }
 
 class UpdateNestedItemCalloutUseCase(
@@ -206,8 +231,9 @@ class UpdateNestedItemCalloutUseCase(
     suspend operator fun invoke(
         itemId: String,
         callout: NestedCalloutStyle,
-        calloutTitle: String?
-    ) = repository.updateNestedItemCallout(itemId, callout, calloutTitle)
+        calloutTitle: String?,
+        calloutIcon: String?
+    ) = repository.updateNestedItemCallout(itemId, callout, calloutTitle, calloutIcon)
 }
 
 class UpdateNestedItemCalloutLayoutUseCase(
@@ -217,6 +243,17 @@ class UpdateNestedItemCalloutLayoutUseCase(
         itemId: String,
         layout: NestedCalloutLayout?
     ) = repository.updateNestedItemCalloutLayout(itemId, layout)
+}
+
+/**
+ * Clears the item's visual overrides so the selected callout preset shows
+ * through. The callout style, text style and text color are left untouched.
+ */
+class ResetNestedItemCalloutToDefaultsUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(itemId: String) =
+        repository.resetNestedItemCalloutToDefaults(itemId)
 }
 
 class UpdateNestedItemPriorityUseCase(
