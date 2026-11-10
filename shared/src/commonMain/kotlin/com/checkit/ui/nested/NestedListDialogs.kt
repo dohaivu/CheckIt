@@ -82,9 +82,9 @@ import com.checkit.domain.NestedSortOrder
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.CompactFlatTextField
+import com.checkit.ui.components.MarkdownBody
 import com.checkit.ui.components.MarkdownTextField
 import com.checkit.ui.components.MetricsSection
-import com.checkit.ui.components.asMarkdownAnnotatedString
 import com.checkit.ui.isValidForSave
 import com.checkit.ui.theme.AppSymbols
 import com.checkit.ui.tasks.PredefinedLabels
@@ -146,11 +146,11 @@ internal fun NestedNoteEditorSheet(
                         )
                     } else {
                         SelectionContainer {
-                            Text(
-                                text = note.asMarkdownAnnotatedString(),
+                            MarkdownBody(
+                                markdown = note,
+                                modifier = Modifier.fillMaxWidth(),
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier.fillMaxWidth()
                             )
                         }
                     }

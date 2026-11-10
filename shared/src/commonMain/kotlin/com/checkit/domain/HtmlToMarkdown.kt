@@ -8,8 +8,9 @@ package com.checkit.domain
  * The dialect is deliberately small (see [parseRichText] and
  * [parseMarkdownSourceStyles]), so constructs without a representation are
  * flattened to plain text: links keep their text, images are dropped, code
- * fences/tables become plain lines and nested list levels collapse to one
- * level.
+ * fences become plain lines and nested list levels collapse to one level.
+ * Tables survive as GFM pipe tables with a `---` delimiter row so the shared
+ * renderer can lay them out.
  *
  * This lives in shared code so the macOS editor (pasting rich clipboard
  * content) uses the same conversion Android can, and so the logic is unit
@@ -260,12 +261,35 @@ private fun renderNestedLists(li: HtmlNode.Element): String {
     return sb.toString()
 }
 
+/**
+ * Emits a GFM pipe table: the first row becomes the header and a `---`
+ * delimiter row is inserted after it, so the shared table renderer can lay the
+ * table out. Cell pipes are escaped (`\|`) and short rows are padded to the
+ * widest row so the column count stays stable.
+ */
 private fun renderTable(element: HtmlNode.Element): String {
     val rows = mutableListOf<List<String>>()
     collectRows(element, rows)
     if (rows.isEmpty()) return ""
-    return rows.joinToString("\n") { it.joinToString(" | ") } + "\n\n"
+    val columnCount = rows.maxOf { it.size }
+    if (columnCount == 0) return ""
+
+    val builder = StringBuilder()
+    rows.forEachIndexed { index, row ->
+        builder.append(
+            tableRowLine(List(columnCount) { column -> escapeTableCell(row.getOrElse(column) { "" }) })
+        ).append('\n')
+        if (index == 0) {
+            builder.append(tableRowLine(List(columnCount) { "---" })).append('\n')
+        }
+    }
+    return builder.append('\n').toString()
 }
+
+private fun tableRowLine(cells: List<String>): String =
+    cells.joinToString(separator = " | ", prefix = "| ", postfix = " |")
+
+private fun escapeTableCell(cell: String): String = cell.replace("|", "\\|")
 
 private fun collectRows(element: HtmlNode.Element, out: MutableList<List<String>>) {
     for (child in element.children) {

@@ -113,12 +113,57 @@ class HtmlToMarkdownTest {
     }
 
     @Test
-    fun tableRowsBecomePlainLines() {
+    fun tableRowsBecomeGfmPipeTable() {
         assertEquals(
-            "a | b\nc | d",
+            "| a | b |\n| --- | --- |\n| c | d |",
             htmlToMarkdown(
                 "<table><tr><td>a</td><td>b</td></tr><tr><td>c</td><td>d</td></tr></table>",
             ),
+        )
+    }
+
+    @Test
+    fun tableCellsEscapePipes() {
+        assertEquals(
+            "| a\\|b | c |\n| --- | --- |\n| d | e |",
+            htmlToMarkdown(
+                "<table><tr><td>a|b</td><td>c</td></tr><tr><td>d</td><td>e</td></tr></table>",
+            ),
+        )
+    }
+
+    @Test
+    fun raggedTableRowsArePadded() {
+        assertEquals(
+            "| a |  |\n| --- | --- |\n| c | d |",
+            htmlToMarkdown(
+                "<table><tr><td>a</td></tr><tr><td>c</td><td>d</td></tr></table>",
+            ),
+        )
+    }
+
+    @Test
+    fun headerOnlyTableStillGetsDelimiterRow() {
+        assertEquals(
+            "| a |\n| --- |",
+            htmlToMarkdown("<table><tr><th>a</th></tr></table>"),
+        )
+    }
+
+    @Test
+    fun tableOutputParsesAsATable() {
+        val markdown = htmlToMarkdown(
+            "<table><tr><th>Name</th><th>Qty</th></tr><tr><td>A</td><td>2</td></tr></table>",
+        )
+
+        val table = parseMarkdownBlocks(markdown).single()
+        assertEquals(
+            MarkdownBlock.Table(
+                header = listOf("Name", "Qty"),
+                alignments = listOf(MarkdownTableAlignment.Start, MarkdownTableAlignment.Start),
+                rows = listOf(listOf("A", "2")),
+            ),
+            table,
         )
     }
 

@@ -16,7 +16,7 @@ import SwiftEmojiPicker
 /// focus loss. `focused` is a plain binding (not `@FocusState`) because the
 /// editor lives in an AppKit `NSViewRepresentable` that reports focus itself;
 /// the inspector observes blur to commit. The Edit/Preview tab renders the
-/// note read-only via `renderFullMarkdown`.
+/// note read-only via `MarkdownBodyView` (shared block parser, real tables).
 struct NestedNoteEditor: View {
     @Binding var text: String
     /// True when `text` differs from the persisted note (drives the hint).
@@ -52,8 +52,7 @@ struct NestedNoteEditor: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(6)
                         } else {
-                            Text(renderFullMarkdown(text))
-                                .font(.body)
+                            MarkdownBodyView(markdown: text)
                                 .textSelection(.enabled)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
