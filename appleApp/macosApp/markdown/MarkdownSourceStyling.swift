@@ -51,7 +51,7 @@ enum MarkdownSourceStyling {
         if kind == .italic { return [.font: italicFont] }
         if kind == .strikethrough { return [.strikethroughStyle: NSUnderlineStyle.single.rawValue] }
         if kind == .highlight {
-            return [.font: boldFont, .foregroundColor: highlightColor(hex: span.colorHex)]
+            return [.foregroundColor: highlightColor(hex: span.colorHex)]
         }
         if kind == .code { return [.font: monoFont, .backgroundColor: codeBackground] }
         if kind == .header1 { return [.font: NSFont.systemFont(ofSize: 24, weight: .bold)] }
