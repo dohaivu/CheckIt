@@ -199,7 +199,7 @@ struct MarkdownTextView: NSViewRepresentable {
             for span in MarkdownSourceStyleKt.parseMarkdownSourceStyles(text: storage.string) {
                 let range = NSRange(location: Int(span.start), length: Int(span.end - span.start))
                 guard range.location >= 0, range.length >= 0, NSMaxRange(range) <= storage.length else { continue }
-                storage.addAttributes(MarkdownSourceStyling.attributes(for: span), range: range)
+                MarkdownSourceStyling.apply(span, to: storage, range: range)
             }
             storage.endEditing()
         }

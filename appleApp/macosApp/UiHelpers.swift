@@ -249,15 +249,22 @@ private func applyingRichSpans(
         let range = lower..<upper
         switch span.kind {
         case .bold:
-            out[range].inlinePresentationIntent = .stronglyEmphasized
+            // Union, don't replace: nested markers (`**_both_**`, bold inside a
+            // quoted line) share a range, and the shared parser emits one span
+            // per kind. Assigning would drop the other trait — Compose's
+            // `addStyle` merges, so mirror that here.
+            out[range].inlinePresentationIntent =
+                (out[range].inlinePresentationIntent ?? []).union(.stronglyEmphasized)
         case .italic:
-            out[range].inlinePresentationIntent = .emphasized
+            out[range].inlinePresentationIntent =
+                (out[range].inlinePresentationIntent ?? []).union(.emphasized)
         case .strikethrough:
             out[range].strikethroughStyle = .single
         case .highlight:
             out[range].foregroundColor = highlightColor(hex: span.colorHex, default: highlight)
         case .code:
-            out[range].inlinePresentationIntent = .code
+            out[range].inlinePresentationIntent =
+                (out[range].inlinePresentationIntent ?? []).union(.code)
             out[range].backgroundColor = Color.gray.opacity(0.15)
         default:
             break

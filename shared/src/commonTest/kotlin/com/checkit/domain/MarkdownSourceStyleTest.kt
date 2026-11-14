@@ -83,4 +83,17 @@ class MarkdownSourceStyleTest {
         assertEquals(7, span.start)
         assertEquals(16, span.end)
     }
+
+    @Test
+    fun nestedBoldItalicSpansOverlap() {
+        // Raw-source styling keeps the markers, and nesting produces an inner
+        // span inside the outer one. Platforms must merge font traits instead
+        // of overwriting `.font` (see macOS `MarkdownSourceStyling.apply`).
+        val spans = parseMarkdownSourceStyles("**_both_**")
+        val bold = spans.of(MarkdownSourceStyleKind.Bold).single()
+        val italic = spans.of(MarkdownSourceStyleKind.Italic).single()
+        assertEquals(0, bold.start)
+        assertEquals(10, bold.end)
+        assertTrue(italic.start >= bold.start && italic.end <= bold.end)
+    }
 }
