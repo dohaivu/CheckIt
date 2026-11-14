@@ -120,7 +120,9 @@ import checkit.shared.generated.resources.nested_root
 import checkit.shared.generated.resources.nested_zoom_in
 import checkit.shared.generated.resources.nested_zoom_out
 import com.checkit.domain.FocusPeriod
+import com.checkit.domain.NestedDateFilter
 import com.checkit.domain.NestedDatePreset
+import com.checkit.domain.NestedRollingPreset
 import com.checkit.domain.NestedBorderShape
 import com.checkit.domain.NestedBorderStyle
 import com.checkit.domain.NestedBorderWidth
@@ -141,6 +143,7 @@ import com.checkit.ui.components.FocusPeriodHeader
 import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.orderedRangeForEnd
 import com.checkit.ui.orderedRangeForStart
+import com.checkit.ui.nestedDateRangeLabel
 import com.checkit.ui.tasks.views.ViewOptionChip
 import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
@@ -801,7 +804,7 @@ internal fun NestedFormattingBar(
 
 @Composable
 internal fun NestedListFilterBar(
-    focus: FocusPeriod?,
+    dateFilter: NestedDateFilter?,
     query: String,
     hideChecked: Boolean,
     isActive: Boolean,
@@ -809,6 +812,7 @@ internal fun NestedListFilterBar(
     selectedTagIds: Set<String>,
     onFocusChange: (FocusPeriod) -> Unit,
     onDatePresetSelected: (NestedDatePreset) -> Unit,
+    onRollingPresetSelected: (NestedRollingPreset) -> Unit,
     onClearDateFilter: () -> Unit,
     onQueryChange: (String) -> Unit,
     onHideCheckedChange: (Boolean) -> Unit,
@@ -818,6 +822,7 @@ internal fun NestedListFilterBar(
     onNextPeriod: () -> Unit,
     onCurrentPeriod: () -> Unit
 ) {
+    val calendarFocus = dateFilter?.calendarFocus
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -846,18 +851,26 @@ internal fun NestedListFilterBar(
         }
 
         NestedDatePresetRow(
-            focus = focus,
+            dateFilter = dateFilter,
             onPresetSelected = onDatePresetSelected,
+            onRollingSelected = onRollingPresetSelected,
             onClearDate = onClearDateFilter
         )
 
-        FocusPeriodHeader(
-            focus = focus,
-            onFocusSelected = onFocusChange,
-            onPreviousPeriod = onPreviousPeriod,
-            onNextPeriod = onNextPeriod,
-            onCurrentPeriod = onCurrentPeriod
-        )
+        if (calendarFocus != null) {
+            FocusPeriodHeader(
+                focus = calendarFocus,
+                onFocusSelected = onFocusChange,
+                onPreviousPeriod = onPreviousPeriod,
+                onNextPeriod = onNextPeriod,
+                onCurrentPeriod = onCurrentPeriod
+            )
+        } else if (dateFilter is NestedDateFilter.Rolling) {
+            NestedRollingWindowHeader(
+                preset = dateFilter.preset,
+                onClear = onClearDateFilter
+            )
+        }
 
         Row(
             modifier = Modifier
@@ -931,18 +944,20 @@ internal fun NestedListFilterBar(
 }
 
 /**
- * One-tap calendar windows above the manual period switcher. The selected
- * chip is derived from [focus] (see [matchesFocus]), so stepping the header
- * with the arrows automatically deselects a preset instead of leaving two
- * conflicting states.
+ * One-tap windows above the manual period switcher. Calendar chips derive
+ * their selected state from [NestedDateFilter.Focus] (see [matchesFocus]), so
+ * stepping the header with the arrows automatically deselects a preset.
+ * Rolling chips are mutually exclusive with calendar focus by construction.
  */
 @Composable
 private fun NestedDatePresetRow(
-    focus: FocusPeriod?,
+    dateFilter: NestedDateFilter?,
     onPresetSelected: (NestedDatePreset) -> Unit,
+    onRollingSelected: (NestedRollingPreset) -> Unit,
     onClearDate: () -> Unit
 ) {
     val todayDate = today()
+    val calendarFocus = dateFilter?.calendarFocus
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -954,17 +969,84 @@ private fun NestedDatePresetRow(
         NestedDatePreset.entries.forEach { preset ->
             NestedDatePresetChip(
                 label = preset.displayLabel(),
-                selected = preset.matchesFocus(focus, todayDate),
+                selected = preset.matchesFocus(calendarFocus, todayDate),
                 onClick = { onPresetSelected(preset) }
             )
         }
-        if (focus != null) {
+        Box(
+            modifier = Modifier
+                .height(18.dp)
+                .width(1.dp)
+                .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+        )
+        NestedRollingPreset.entries.forEach { preset ->
+            NestedDatePresetChip(
+                label = preset.label,
+                selected = dateFilter is NestedDateFilter.Rolling &&
+                    dateFilter.preset == preset,
+                onClick = { onRollingSelected(preset) }
+            )
+        }
+        if (dateFilter != null) {
             NestedDatePresetChip(
                 label = "Any date",
                 selected = false,
                 onClick = onClearDate
             )
         }
+    }
+}
+
+/**
+ * Compact header for rolling windows: they have no previous/next period, so
+ * the period navigator is replaced by the resolved range and a clear action.
+ */
+@Composable
+private fun NestedRollingWindowHeader(
+    preset: NestedRollingPreset,
+    onClear: () -> Unit
+) {
+    val todayDate = today()
+    val window = preset.window(todayDate)
+    val rangeLabel = nestedDateRangeLabel(window.start, window.endInclusive, todayDate)?.text
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 4.dp)
+            .background(
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
+                RoundedCornerShape(10.dp)
+            )
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = Icons.Default.DateRange,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = if (rangeLabel != null) "${preset.label} · $rangeLabel" else preset.label,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1
+            )
+        }
+        Text(
+            text = "Clear",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier
+                .clip(RoundedCornerShape(4.dp))
+                .clickable(onClick = onClear)
+                .padding(horizontal = 6.dp, vertical = 2.dp)
+        )
     }
 }
 
@@ -1148,8 +1230,8 @@ internal fun EditorToolbar(
     onAddToDailyPlan: () -> Unit,
     onCopyToTask: () -> Unit,
     onCopySubtree: () -> Unit,
-    onPasteSubtree: () -> Unit,
-    onDuplicate: () -> Unit,
+    onPasteSubtree: (dateOffsetDays: Int) -> Unit,
+    onDuplicate: (dateOffsetDays: Int, clearDates: Boolean) -> Unit,
     canPasteSubtree: Boolean,
     onEnterSelection: () -> Unit,
     onSortChildren: () -> Unit,
@@ -1249,10 +1331,27 @@ internal fun EditorToolbar(
                         showMore = false; onCopySubtree()
                     }
                     NestedMenuItem("Paste subtree", Icons.Default.ContentPaste, canPasteSubtree) {
-                        showMore = false; onPasteSubtree()
+                        showMore = false; onPasteSubtree(0)
+                    }
+                    NestedMenuItem("Paste subtree +1 week", Icons.Default.ContentPaste, canPasteSubtree) {
+                        showMore = false; onPasteSubtree(7)
                     }
                     NestedMenuItem(stringResource(Res.string.nested_duplicate), Icons.Default.ControlPointDuplicate, hasSelection) {
-                        showMore = false; onDuplicate()
+                        showMore = false; onDuplicate(0, false)
+                    }
+                    val hasDates = selectedNode?.item?.let {
+                        it.startDate != null || it.endDate != null
+                    } == true
+                    if (hasSelection && hasDates) {
+                        NestedMenuItem("Duplicate +1 day", Icons.Default.ControlPointDuplicate, true) {
+                            showMore = false; onDuplicate(1, false)
+                        }
+                        NestedMenuItem("Duplicate +1 week", Icons.Default.ControlPointDuplicate, true) {
+                            showMore = false; onDuplicate(7, false)
+                        }
+                        NestedMenuItem("Duplicate without dates", Icons.Default.ControlPointDuplicate, true) {
+                            showMore = false; onDuplicate(0, true)
+                        }
                     }
                     NestedMenuItem(stringResource(Res.string.nested_batch_delete), Icons.Default.Delete, hasSelection) {
                         showMore = false; onDelete()

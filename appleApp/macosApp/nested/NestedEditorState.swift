@@ -49,6 +49,21 @@ let nestedDatePresetOptions: [NestedDatePresetOption] = [
     NestedDatePresetOption(name: "ThisMonth", label: "This month", icon: "calendar.circle"),
 ]
 
+/// Rolling attention windows mirror `NestedRollingPreset` in Kotlin. They are
+/// not calendar periods, so they have no previous/next navigation.
+let nestedRollingPresetOptions: [NestedDatePresetOption] = [
+    NestedDatePresetOption(name: "Last7Days", label: "Last 7 days", icon: "clock.arrow.circlepath"),
+    NestedDatePresetOption(name: "Next7Days", label: "Next 7 days", icon: "clock.arrow.circlepath"),
+    NestedDatePresetOption(name: "Last30Days", label: "Last 30 days", icon: "clock.arrow.circlepath"),
+]
+
+/// Active outline date criterion. Calendar focus is navigable; rolling
+/// windows slide with the clock. One value keeps the two modes exclusive.
+enum NestedDateFilterKind: Equatable {
+    case calendar(String)
+    case rolling(String)
+}
+
 /// One visible outline row: node + indent depth.
 struct NestedRow: Identifiable, Equatable {
     let id: String
@@ -180,10 +195,9 @@ final class NestedEditorState: ObservableObject {
             recomputeVisibleRows()
         }
     }
-    /// Active calendar-window filter (a `NestedDatePreset` name) or nil for
-    /// any date. Transient view state, same lifetime as the search query;
-    /// never persisted.
-    @Published var dateFilterPreset: String? = nil {
+    /// Active calendar focus or rolling window; nil = any date. Transient
+    /// view state, same lifetime as the search query; never persisted.
+    @Published var dateFilter: NestedDateFilterKind? = nil {
         didSet { recomputeVisibleRows() }
     }
     /// Max lines of the note preview drawn under an outline row.
@@ -556,13 +570,22 @@ final class NestedEditorState: ObservableObject {
         // of reimplementing it. Runs on the debounced query (see searchQuery).
         let query = appliedQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         let todayEpochDays = Int32(nestedEpochDays(from: Date()))
-        let dateWindow = dateFilterPreset.flatMap {
-            NestedAppleBridge.shared.datePresetWindow(
-                presetName: $0,
-                todayEpochDays: todayEpochDays
-            )
-        }
-        let hasDateFilter = dateFilterPreset != nil
+        let dateWindow: NestedAppleDateWindow? = {
+            guard let filter = dateFilter else { return nil }
+            switch filter {
+            case .calendar(let name):
+                return NestedAppleBridge.shared.datePresetWindow(
+                    presetName: name,
+                    todayEpochDays: todayEpochDays
+                )
+            case .rolling(let name):
+                return NestedAppleBridge.shared.rollingWindow(
+                    presetName: name,
+                    todayEpochDays: todayEpochDays
+                )
+            }
+        }()
+        let hasDateFilter = dateFilter != nil
         let projection: NestedOutlineProjection? =
             (displayType == .working || !query.isEmpty || hasDateFilter)
             ? NestedAppleBridge.shared.filterOutlineProjection(
@@ -1345,10 +1368,14 @@ final class NestedEditorState: ObservableObject {
 
     /// Pastes the clipboard as the last child of [parentId], or at the
     /// document root when nil. The shared helper expands a collapsed target.
-    func pasteSubtree(under parentId: String? = nil) {
+    func pasteSubtree(under parentId: String? = nil, dateOffsetDays: Int = 0) {
         guard !selectedDocId.isEmpty, hasSubtreeClipboard else { return }
         let target = parentId ?? selectedId ?? ""
-        helper.pasteSubtree(documentId: selectedDocId, parentId: target) { [weak self] count in
+        helper.pasteSubtree(
+            documentId: selectedDocId,
+            parentId: target,
+            dateOffsetDays: Int32(dateOffsetDays)
+        ) { [weak self] count in
             DispatchQueue.main.async {
                 guard let self else { return }
                 let pasted = Int(truncating: count)
@@ -1363,9 +1390,14 @@ final class NestedEditorState: ObservableObject {
 
     /// Duplicates [id] as its next sibling. Descendants are not copied and
     /// execution state (checked, tracked minutes) is reset by the shared use case.
-    func duplicateItem(id: String) {
+    func duplicateItem(id: String, dateOffsetDays: Int = 0, clearDates: Bool = false) {
         guard !selectedDocId.isEmpty else { return }
-        helper.duplicateItem(documentId: selectedDocId, itemId: id) { [weak self] newId in
+        helper.duplicateItem(
+            documentId: selectedDocId,
+            itemId: id,
+            dateOffsetDays: Int32(dateOffsetDays),
+            clearDates: clearDates
+        ) { [weak self] newId in
             DispatchQueue.main.async {
                 guard let self, !newId.isEmpty else { return }
                 self.selectedId = newId

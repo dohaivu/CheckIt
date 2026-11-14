@@ -728,6 +728,12 @@ struct NestedListsWindowView: View {
                         Label("Paste Subtree", systemImage: "doc.on.clipboard")
                     }
                     .disabled(!state.hasSubtreeClipboard)
+                    Button {
+                        state.pasteSubtree(under: sel, dateOffsetDays: 7)
+                    } label: {
+                        Label("Paste Subtree +1 Week", systemImage: "calendar.badge.plus")
+                    }
+                    .disabled(!state.hasSubtreeClipboard)
                     Divider()
                     Button {
                         if let id = sel { state.duplicateItem(id: id) }
@@ -735,6 +741,23 @@ struct NestedListsWindowView: View {
                         Label("Duplicate", systemImage: "plus.square.on.square")
                     }
                     .disabled(sel == nil)
+                    if let item = node?.item, item.startDate != nil || item.endDate != nil {
+                        Button {
+                            if let id = sel { state.duplicateItem(id: id, dateOffsetDays: 1) }
+                        } label: {
+                            Label("Duplicate +1 Day", systemImage: "calendar.badge.plus")
+                        }
+                        Button {
+                            if let id = sel { state.duplicateItem(id: id, dateOffsetDays: 7) }
+                        } label: {
+                            Label("Duplicate +1 Week", systemImage: "calendar.badge.plus")
+                        }
+                        Button {
+                            if let id = sel { state.duplicateItem(id: id, clearDates: true) }
+                        } label: {
+                            Label("Duplicate Without Dates", systemImage: "calendar.badge.minus")
+                        }
+                    }
                 } label: {
                     EditorBarButtonLabel(system: "doc.on.doc", shortcut: nil, active: false)
                 }
@@ -787,29 +810,38 @@ struct NestedListsWindowView: View {
                 barSeparator
                 Menu {
                     Toggle(isOn: Binding(
-                        get: { state.dateFilterPreset == nil },
-                        set: { if $0 { state.dateFilterPreset = nil } }
+                        get: { state.dateFilter == nil },
+                        set: { if $0 { state.dateFilter = nil } }
                     )) {
                         Label("Any date", systemImage: "calendar")
                     }
                     Divider()
                     ForEach(nestedDatePresetOptions) { preset in
                         Toggle(isOn: Binding(
-                            get: { state.dateFilterPreset == preset.name },
-                            set: { if $0 { state.dateFilterPreset = preset.name } }
+                            get: { state.dateFilter == .calendar(preset.name) },
+                            set: { if $0 { state.dateFilter = .calendar(preset.name) } }
+                        )) {
+                            Label(preset.label, systemImage: preset.icon)
+                        }
+                    }
+                    Divider()
+                    ForEach(nestedRollingPresetOptions) { preset in
+                        Toggle(isOn: Binding(
+                            get: { state.dateFilter == .rolling(preset.name) },
+                            set: { if $0 { state.dateFilter = .rolling(preset.name) } }
                         )) {
                             Label(preset.label, systemImage: preset.icon)
                         }
                     }
                 } label: {
-                    Image(systemName: state.dateFilterPreset == nil ? "calendar" : "calendar.badge.clock")
+                    Image(systemName: state.dateFilter == nil ? "calendar" : "calendar.badge.clock")
                         .imageScale(.medium)
-                        .tint(state.dateFilterPreset == nil ? Color.secondary : Color.accentColor)
+                        .tint(state.dateFilter == nil ? Color.secondary : Color.accentColor)
                         .frame(width: 28, height: 28)
                 }
                 .menuStyle(.borderlessButton)
                 .accessibilityLabel("Date filter")
-                .help("Show items that live in a calendar period")
+                .help("Show items that live in a date window")
                 barSeparator
                 noteLinesMenu
                 barSeparator
@@ -916,8 +948,13 @@ struct NestedListsWindowView: View {
     }
 
     private var activeDatePresetLabel: String? {
-        guard let name = state.dateFilterPreset else { return nil }
-        return nestedDatePresetOptions.first(where: { $0.name == name })?.label
+        guard let filter = state.dateFilter else { return nil }
+        switch filter {
+        case .calendar(let name):
+            return nestedDatePresetOptions.first(where: { $0.name == name })?.label
+        case .rolling(let name):
+            return nestedRollingPresetOptions.first(where: { $0.name == name })?.label
+        }
     }
 
     private var emptyTitle: String {

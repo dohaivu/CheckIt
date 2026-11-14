@@ -15,6 +15,8 @@ import com.checkit.domain.NestedListItem
 import com.checkit.domain.NestedSortOrder
 import com.checkit.domain.MoveDestinations
 import com.checkit.domain.NestedDatePreset
+import com.checkit.domain.NestedDateWindow
+import com.checkit.domain.NestedRollingPreset
 import com.checkit.domain.moveDestinations
 import com.checkit.domain.NestedMetricSummary
 import com.checkit.domain.NestedOutlineProjection
@@ -233,10 +235,18 @@ class NestedAppleHelper(
      * Inserts a copy of [itemId] as its next sibling, excluding descendants.
      * [onDone] receives the new item id, or blank on failure.
      */
-    fun duplicateItem(documentId: String, itemId: String, onDone: (String) -> Unit) {
+    fun duplicateItem(
+        documentId: String,
+        itemId: String,
+        dateOffsetDays: Int,
+        clearDates: Boolean,
+        onDone: (String) -> Unit
+    ) {
         scope.launch {
             val items = latestTrees[documentId]?.flatItems.orEmpty()
-            val newId = runCatching { duplicateItemUseCase(items, itemId) }.getOrNull() ?: ""
+            val newId = runCatching {
+                duplicateItemUseCase(items, itemId, dateOffsetDays, clearDates)
+            }.getOrNull() ?: ""
             onDone(newId)
         }
     }
@@ -558,12 +568,17 @@ class NestedAppleHelper(
      * the document root when [parentId] is blank. Expands a collapsed target
      * so the paste is visible. [onDone] receives the inserted row count.
      */
-    fun pasteSubtree(documentId: String, parentId: String, onDone: (Int) -> Unit) {
+    fun pasteSubtree(
+        documentId: String,
+        parentId: String,
+        dateOffsetDays: Int,
+        onDone: (Int) -> Unit
+    ) {
         scope.launch {
             val tree = latestTrees[documentId]
             val parent = parentId.takeIf { it.isNotEmpty() }
             val count = runCatching {
-                pasteSubtreeUseCase(documentId, parent, tree?.flatItems.orEmpty())
+                pasteSubtreeUseCase(documentId, parent, tree?.flatItems.orEmpty(), dateOffsetDays)
             }.getOrDefault(0)
             if (count > 0 && parent != null && tree?.nodeById?.get(parent)?.item?.collapsed == true) {
                 runCatching { toggleCollapsedUseCase(parent) }
@@ -692,11 +707,22 @@ object NestedAppleBridge {
     fun datePresetWindow(presetName: String, todayEpochDays: Int): NestedAppleDateWindow? {
         val preset = NestedDatePreset.entries.firstOrNull { it.name == presetName } ?: return null
         val window = preset.window(LocalDate.fromEpochDays(todayEpochDays))
-        return NestedAppleDateWindow(
-            startEpochDays = window.start.toEpochDays().toInt(),
-            endEpochDays = window.endInclusive.toEpochDays().toInt()
-        )
+        return window.toAppleWindow()
     }
+
+    /**
+     * Resolves a [NestedRollingPreset] name ("Last7Days", "Next7Days", …) for
+     * Swift. Rolling windows are local attention views, not calendar periods.
+     */
+    fun rollingWindow(presetName: String, todayEpochDays: Int): NestedAppleDateWindow? {
+        val preset = NestedRollingPreset.entries.firstOrNull { it.name == presetName } ?: return null
+        return preset.window(LocalDate.fromEpochDays(todayEpochDays)).toAppleWindow()
+    }
+
+    private fun NestedDateWindow.toAppleWindow() = NestedAppleDateWindow(
+        startEpochDays = start.toEpochDays().toInt(),
+        endEpochDays = endInclusive.toEpochDays().toInt()
+    )
 
     fun syncBridge(): com.checkit.data.NestedSyncBridge =
         koinApp?.koin?.get() ?: KoinPlatform.getKoin().get()

@@ -145,4 +145,24 @@ class NestedAppleBridgeProjectionTest {
             )
         )
     }
+
+    @Test
+    fun rollingPresetNamesResolveToEpochDayWindows() {
+        val today = LocalDate(2026, 11, 14)
+        val window = assertNotNull(
+            NestedAppleBridge.rollingWindow(
+                presetName = "Last7Days",
+                todayEpochDays = today.toEpochDays().toInt()
+            )
+        )
+
+        assertEquals(LocalDate(2026, 11, 8).toEpochDays().toInt(), window.startEpochDays)
+        assertEquals(today.toEpochDays().toInt(), window.endEpochDays)
+        assertNull(
+            NestedAppleBridge.rollingWindow(
+                presetName = "ThisWeek",
+                todayEpochDays = today.toEpochDays().toInt()
+            )
+        )
+    }
 }

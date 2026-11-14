@@ -45,6 +45,7 @@ import com.checkit.domain.NestedItemNode
 import com.checkit.domain.NestedMetricSummary
 import com.checkit.domain.filterNestedTreeWithContext
 import com.checkit.domain.moveDestinations
+import com.checkit.ui.today
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
@@ -80,12 +81,13 @@ internal fun NestedListScreen(
         }
     }
     val effectiveFilters = state.filters.copy(query = settledQuery)
-    val outlineProjection = remember(unfilteredRoots, effectiveFilters) {
+    val dateWindow = effectiveFilters.dateFilter?.window(today())
+    val outlineProjection = remember(unfilteredRoots, effectiveFilters, dateWindow) {
         if (effectiveFilters.isVisible || effectiveFilters.displayType != NestedDisplayType.All) {
             filterNestedTreeWithContext(
                 roots = unfilteredRoots,
-                start = effectiveFilters.focus?.start,
-                end = effectiveFilters.focus?.endInclusive,
+                start = dateWindow?.start,
+                end = dateWindow?.endInclusive,
                 query = effectiveFilters.query,
                 hideChecked = effectiveFilters.hideChecked,
                 selectedTagIds = effectiveFilters.selectedTagIds,
@@ -107,7 +109,7 @@ internal fun NestedListScreen(
         Column(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface)) {
             if (state.filters.isVisible) {
                 NestedListFilterBar(
-                    focus = state.filters.focus,
+                    dateFilter = state.filters.dateFilter,
                     query = state.filters.query,
                     hideChecked = state.filters.hideChecked,
                     isActive = state.filters.isActive,
@@ -115,6 +117,7 @@ internal fun NestedListScreen(
                     selectedTagIds = state.filters.selectedTagIds,
                     onFocusChange = viewModel::updateFilterFocus,
                     onDatePresetSelected = viewModel::applyDatePreset,
+                    onRollingPresetSelected = viewModel::applyRollingFilter,
                     onClearDateFilter = viewModel::clearDateFilter,
                     onQueryChange = viewModel::updateFilterQuery,
                     onHideCheckedChange = { viewModel.toggleHideChecked() },
@@ -197,8 +200,10 @@ internal fun NestedListScreen(
                         }
                     },
                     onCopySubtree = viewModel::copySelectedSubtree,
-                    onPasteSubtree = viewModel::pasteSubtree,
-                    onDuplicate = viewModel::duplicateSelected,
+                    onPasteSubtree = { offsetDays -> viewModel.pasteSubtree(offsetDays) },
+                    onDuplicate = { offsetDays, clearDates ->
+                        viewModel.duplicateSelected(offsetDays, clearDates)
+                    },
                     canPasteSubtree = state.canPasteSubtree
                 )
             }
