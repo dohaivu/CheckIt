@@ -1024,6 +1024,14 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
     }
     override suspend fun updateNestedItemGuideDot(itemId: String, guideDot: String?) {}
     override suspend fun updateNestedItemGuideDotColor(itemId: String, guideDotColor: NestedColorToken?) {}
+    val numberedChildrenByItemId = mutableMapOf<String, Boolean>()
+    override suspend fun updateNestedItemNumberedChildren(itemId: String, numberedChildren: Boolean) {
+        numberedChildrenByItemId[itemId] = numberedChildren
+    }
+    val numberRootsByDocumentId = mutableMapOf<String, Boolean>()
+    override suspend fun updateNestedDocumentNumberRoots(documentId: String, numberRoots: Boolean) {
+        numberRootsByDocumentId[documentId] = numberRoots
+    }
     override suspend fun updateNestedItemPriority(itemId: String, priority: TaskPriority) {}
     override suspend fun updateNestedItemDateRange(itemId: String, startDate: LocalDate?, endDate: LocalDate?) {}
     override suspend fun updateNestedItemTags(itemId: String, tagIds: List<String>) {}

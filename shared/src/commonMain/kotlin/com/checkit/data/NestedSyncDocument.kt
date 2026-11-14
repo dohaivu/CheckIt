@@ -38,6 +38,7 @@ object NestedSyncDocument {
     const val FIELD_ID = "id"
     const val FIELD_TITLE = "title"
     const val FIELD_SORT_ORDER = "sortOrder"
+    const val FIELD_NUMBER_ROOTS = "numberRoots"
     const val FIELD_CREATED_AT = "createdAtMillis"
     const val FIELD_UPDATED_AT = "updatedAtMillis"
     const val FIELD_DELETED = "deleted"
@@ -64,6 +65,7 @@ object NestedSyncDocument {
     const val FIELD_CALLOUT_LAYOUT = "calloutLayout"
     const val FIELD_GUIDE_DOT = "guideDot"
     const val FIELD_GUIDE_DOT_COLOR = "guideDotColor"
+    const val FIELD_NUMBERED_CHILDREN = "numberedChildren"
     const val FIELD_START_DATE = "startDateEpochDays"
     const val FIELD_END_DATE = "endDateEpochDays"
     const val FIELD_PRIORITY = "priority"
@@ -81,10 +83,12 @@ object NestedSyncDocument {
         updatedAtMillis: Long,
         deleted: Boolean,
         sortOrder: Int = 0,
+        numberRoots: Boolean = false,
     ): Map<String, Any?> = mapOf(
         FIELD_ID to id,
         FIELD_TITLE to title,
         FIELD_SORT_ORDER to sortOrder,
+        FIELD_NUMBER_ROOTS to numberRoots,
         FIELD_CREATED_AT to createdAtMillis,
         FIELD_UPDATED_AT to updatedAtMillis,
         FIELD_DELETED to deleted,
@@ -114,6 +118,7 @@ object NestedSyncDocument {
         calloutLayout: String? = null,
         guideDotColor: String? = null,
         guideDot: String? = null,
+        numberedChildren: Boolean = false,
         startDateEpochDays: Int?,
         endDateEpochDays: Int?,
         priority: String,
@@ -150,6 +155,7 @@ object NestedSyncDocument {
         FIELD_CALLOUT_LAYOUT to calloutLayout?.takeIf { callout != "None" },
         FIELD_GUIDE_DOT_COLOR to guideDotColor,
         FIELD_GUIDE_DOT to guideDot,
+        FIELD_NUMBERED_CHILDREN to numberedChildren,
         FIELD_START_DATE to startDateEpochDays,
         FIELD_END_DATE to endDateEpochDays,
         FIELD_PRIORITY to priority,
@@ -173,6 +179,7 @@ object NestedSyncDocument {
             id = (map[FIELD_ID] as? String)?.takeIf { it.isNotBlank() } ?: documentId,
             title = map[FIELD_TITLE] as? String ?: "",
             sortOrder = (map[FIELD_SORT_ORDER] as? Number)?.toInt() ?: 0,
+            numberRoots = map[FIELD_NUMBER_ROOTS] as? Boolean ?: false,
             createdAtMillis = createdAt,
             updatedAtMillis = updatedAt,
             deleted = map[FIELD_DELETED] as? Boolean ?: false,
@@ -209,6 +216,7 @@ object NestedSyncDocument {
             calloutLayout = map[FIELD_CALLOUT_LAYOUT] as? String,
             guideDotColor = map[FIELD_GUIDE_DOT_COLOR] as? String,
             guideDot = sanitizeGuideDot(map[FIELD_GUIDE_DOT] as? String),
+            numberedChildren = map[FIELD_NUMBERED_CHILDREN] as? Boolean ?: false,
             startDateEpochDays = (map[FIELD_START_DATE] as? Number)?.toInt(),
             endDateEpochDays = (map[FIELD_END_DATE] as? Number)?.toInt(),
             priority = map[FIELD_PRIORITY] as? String ?: "None",
@@ -337,6 +345,7 @@ data class RemoteNestedDocument(
     val id: String,
     val title: String,
     val sortOrder: Int = 0,
+    val numberRoots: Boolean = false,
     val createdAtMillis: Long,
     val updatedAtMillis: Long,
     val deleted: Boolean,
@@ -367,6 +376,7 @@ data class RemoteNestedItem(
     val calloutLayout: String? = null,
     val guideDotColor: String? = null,
     val guideDot: String? = null,
+    val numberedChildren: Boolean = false,
     val startDateEpochDays: Int?,
     val endDateEpochDays: Int?,
     val priority: String,

@@ -53,6 +53,7 @@ import androidx.compose.material.icons.filled.FileCopy
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.FormatColorFill
 import androidx.compose.material.icons.filled.FormatColorText
+import androidx.compose.material.icons.filled.FormatListNumbered
 import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -292,6 +293,7 @@ internal fun NestedFormattingBar(
     onPriorityChange: (TaskPriority) -> Unit,
     onGuideDotChange: (String?) -> Unit,
     onGuideDotColorChange: (NestedColorToken?) -> Unit,
+    onNumbersChildrenChange: (Boolean) -> Unit,
     onDateRangeChange: (LocalDate?, LocalDate?) -> Unit,
     availableTags: List<TagItem>,
     onTagsChange: (List<String>) -> Unit,
@@ -514,8 +516,10 @@ internal fun NestedFormattingBar(
             GuideMenu(
                 emoji = item.guideDot,
                 guideDotColor = item.guideDotColor,
+                numbersChildren = item.numberedChildren,
                 onDotChange = { emoji -> onGuideDotChange(emoji) },
                 onColorChange = { token -> onGuideDotColorChange(token.takeIf { it != NestedColorToken.Default }) },
+                onNumbersChildrenChange = onNumbersChildrenChange,
                 onChooseEmoji = { showEmojiPicker = true }
             )
 
@@ -893,7 +897,9 @@ internal fun NestedListFilterBar(
 @Composable
 internal fun NestedDisplayTypeMenu(
     selected: NestedDisplayType,
-    onSelect: (NestedDisplayType) -> Unit
+    onSelect: (NestedDisplayType) -> Unit,
+    numberRoots: Boolean,
+    onToggleNumberRoots: () -> Unit
 ) {
     var isPopupOpen by remember { mutableStateOf(false) }
     val visibleState = remember { MutableTransitionState(false) }
@@ -972,6 +978,15 @@ internal fun NestedDisplayTypeMenu(
                                     )
                                 }
                             }
+                            HorizontalDivider(
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                            )
+                            ViewOptionChip(
+                                icon = Icons.Default.FormatListNumbered,
+                                label = "Number roots",
+                                selected = numberRoots,
+                                onClick = onToggleNumberRoots
+                            )
                         }
                     }
                 }

@@ -350,7 +350,12 @@ data class NestedDocument(
     val id: String = "",
     val title: String,
     val createdAtMillis: Long,
-    val updatedAtMillis: Long
+    val updatedAtMillis: Long,
+    /**
+     * When true the document's root level renders each item's 1-based sibling
+     * ordinal in the guide slot instead of a dot. Per-item emoji still win.
+     */
+    val numberRoots: Boolean = false
 )
 
 /**
@@ -410,6 +415,13 @@ data class NestedListItem(
      * [sanitizeGuideDot] so a row cannot be used as a free-text field.
      */
     val guideDot: String? = null,
+    /**
+     * When true this row's direct children render their 1-based sibling
+     * ordinal instead of a dot. The ordinal is derived (never stored), so
+     * inserts, moves and indents renumber automatically. An explicit
+     * [guideDot] emoji on a child still wins over its number.
+     */
+    val numberedChildren: Boolean = false,
     val startDate: LocalDate? = null,
     val endDate: LocalDate? = null,
     val priority: TaskPriority = TaskPriority.None,
@@ -575,7 +587,14 @@ data class EffectiveRowVisuals(
 /** UI/read model for one item node with its nested children. */
 data class NestedItemNode(
     val item: NestedListItem,
-    val children: List<NestedItemNode> = emptyList()
+    val children: List<NestedItemNode> = emptyList(),
+    /**
+     * 1-based position within this item's own sibling group, derived from
+     * `(position, id)` order by [buildNestedTree]. Pruning (filtering/zoom)
+     * copies nodes, so the number stays absolute rather than renumbering
+     * to the visible subset.
+     */
+    val ordinal: Int = 1
 ) {
     val hasChildren: Boolean get() = children.isNotEmpty()
 }

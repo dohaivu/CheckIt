@@ -7,6 +7,8 @@ import com.checkit.domain.NestedItemNode
 import com.checkit.domain.NestedListItem
 import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.TagItem
+import com.checkit.domain.buildNestedTree
+import com.checkit.domain.filterNestedTree
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -134,5 +136,100 @@ class NestedListToMarkdownTest {
         assertEquals("- **Heading**", export(NestedTextStyle.Heading, "Heading"))
         assertEquals("- *Subheading*", export(NestedTextStyle.Subheading, "Subheading"))
         assertEquals("- `Mono`", export(NestedTextStyle.Monostyled, "Mono"))
+    }
+
+    @Test
+    fun testNumberedRootsExport() {
+        val roots = buildNestedTree(
+            listOf(
+                item("2", "Second").copy(position = 1),
+                item("1", "First").copy(position = 0),
+            )
+        )
+        val tree = NestedDocumentTree(
+            document = NestedDocument("doc-1", "Doc", 0L, 0L, numberRoots = true),
+            rootNodes = roots
+        )
+
+        assertEquals(
+            """
+            1. First
+            2. Second
+            """.trimIndent(),
+            tree.toMarkdown()
+        )
+    }
+
+    @Test
+    fun testNumberedChildrenExportUsesAbsoluteOrdinalsAndCheckboxes() {
+        val roots = buildNestedTree(
+            listOf(
+                item("parent", "Parent").copy(position = 0, numberedChildren = true),
+                item("child-1", "Child one").copy(
+                    parentId = "parent",
+                    position = 0,
+                    checkboxEnabled = true,
+                    checked = false
+                ),
+                item("child-2", "Child two").copy(
+                    parentId = "parent",
+                    position = 1,
+                    checkboxEnabled = true,
+                    checked = true
+                ),
+                item("sibling", "Sibling").copy(position = 1),
+            )
+        )
+        val tree = NestedDocumentTree(
+            document = NestedDocument("doc-1", "Doc", 0L, 0L),
+            rootNodes = roots
+        )
+
+        assertEquals(
+            """
+            - Parent
+              1. [ ] Child one
+              2. [x] Child two
+            - Sibling
+            """.trimIndent(),
+            tree.toMarkdown()
+        )
+    }
+
+    @Test
+    fun testMixedNumberingKeepsUnnumberedLevelsAsDots() {
+        val roots = buildNestedTree(
+            listOf(
+                item("parent", "Parent").copy(position = 0),
+                item("child", "Child").copy(parentId = "parent", position = 0),
+            )
+        )
+        val tree = NestedDocumentTree(
+            document = NestedDocument("doc-1", "Doc", 0L, 0L, numberRoots = true),
+            rootNodes = roots
+        )
+
+        assertEquals(
+            """
+            1. Parent
+              - Child
+            """.trimIndent(),
+            tree.toMarkdown()
+        )
+    }
+
+    @Test
+    fun testExportedFilteredSubsetKeepsAbsoluteNumber() {
+        val roots = buildNestedTree(
+            listOf(
+                item("first", "alpha", checkbox = true).copy(position = 0),
+                item("second", "beta").copy(position = 1),
+                item("third", "gamma").copy(position = 2),
+            )
+        )
+        val filtered = filterNestedTree(roots, query = "gamma")
+
+        val exporter = ExportNestedListToMarkdownUseCase()
+        assertEquals("3. gamma", exporter.exportNodes(filtered, numbered = true))
     }
 }

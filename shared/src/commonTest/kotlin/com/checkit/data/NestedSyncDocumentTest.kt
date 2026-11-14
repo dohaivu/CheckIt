@@ -17,6 +17,7 @@ class NestedSyncDocumentTest {
             createdAtMillis = 100L,
             updatedAtMillis = 200L,
             deleted = false,
+            numberRoots = true,
         )
         val json = NestedSyncDocument.toJson(map)
         val decoded = NestedSyncDocument.mapFromJson(json)
@@ -29,6 +30,7 @@ class NestedSyncDocumentTest {
                 createdAtMillis = 100L,
                 updatedAtMillis = 200L,
                 deleted = false,
+                numberRoots = true,
             ),
             remote,
         )
@@ -84,6 +86,7 @@ class NestedSyncDocumentTest {
             calloutIcon = "lightbulb",
             calloutLayout = "Rail",
             guideDot = "🚀",
+            numberedChildren = true,
             startDateEpochDays = 20000,
             endDateEpochDays = 20001,
             priority = "High",
@@ -121,6 +124,7 @@ class NestedSyncDocumentTest {
         assertEquals("lightbulb", remote?.calloutIcon)
         assertEquals("Rail", remote?.calloutLayout)
         assertEquals("🚀", remote?.guideDot)
+        assertTrue(remote?.numberedChildren ?: false)
         assertEquals("High", remote?.priority)
         assertEquals(25, remote?.actualMinutes)
         assertEquals(150L, remote?.completedAtMillis)

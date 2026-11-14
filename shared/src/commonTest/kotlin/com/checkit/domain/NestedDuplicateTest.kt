@@ -112,6 +112,7 @@ class NestedDuplicateTest {
             calloutTitle = "Tip",
             guideDot = "⭐️",
             guideDotColor = NestedColorToken.Purple,
+            numberedChildren = true,
             startDate = LocalDate(2026, 11, 7),
             endDate = LocalDate(2026, 11, 8),
             priority = TaskPriority.High,
@@ -145,6 +146,8 @@ class NestedDuplicateTest {
         assertEquals(source.calloutTitle, duplicate.calloutTitle)
         assertEquals(source.guideDot, duplicate.guideDot)
         assertEquals(source.guideDotColor, duplicate.guideDotColor)
+        assertEquals(source.numberedChildren, duplicate.numberedChildren)
+        assertTrue(duplicate.numberedChildren)
         assertEquals(source.startDate, duplicate.startDate)
         assertEquals(source.endDate, duplicate.endDate)
         assertEquals(source.priority, duplicate.priority)

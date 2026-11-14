@@ -182,7 +182,12 @@ internal data class NestedRowSnapshot(
     val guideBaseColor: Color,
     val continuingLevels: Set<Int>,
     val branchBaseColor: Color,
-    val continuingGuideColors: Map<Int, Color>
+    val continuingGuideColors: Map<Int, Color>,
+    /**
+     * Ordinal to draw in the guide slot, or null for a dot. Resolved here so
+     * an explicit [NestedListItem.guideDot] emoji still wins.
+     */
+    val numberText: String?
 )
 
 /** Row events hoisted to the editor. One stable instance is shared by all rows. */
@@ -237,7 +242,19 @@ internal fun nestedRowSnapshot(
         guideBaseColor = item.guideDotColor?.let(::nestedPaletteColor) ?: nestedDepthColor(row.depth),
         continuingLevels = row.continuingLevels,
         branchBaseColor = branchBaseColor,
-        continuingGuideColors = continuingGuideColors
+        continuingGuideColors = continuingGuideColors,
+        numberText = if (item.guideDot == null && (
+                if (item.parentId == null) {
+                    tree.document.numberRoots
+                } else {
+                    tree.itemById[item.parentId]?.numberedChildren == true
+                }
+                )
+        ) {
+            row.node.ordinal.toString()
+        } else {
+            null
+        }
     )
 }
 
@@ -253,6 +270,22 @@ internal val nestedGuideEmojiStyle = TextStyle(
         trim = LineHeightStyle.Trim.Both
     ),
     platformStyle = guideEmojiPlatformStyle()
+)
+
+/**
+ * Number drawn in the guide badge. Tabular figures keep 1..N from shifting
+ * horizontally as siblings are inserted or removed.
+ */
+internal val nestedGuideNumberStyle = TextStyle(
+    fontSize = 10.sp,
+    lineHeight = 10.sp,
+    fontWeight = FontWeight.SemiBold,
+    textAlign = TextAlign.Center,
+    fontFeatureSettings = "tnum",
+    lineHeightStyle = LineHeightStyle(
+        alignment = LineHeightStyle.Alignment.Center,
+        trim = LineHeightStyle.Trim.Both
+    )
 )
 
 @Composable
@@ -294,10 +327,17 @@ internal fun NestedItemRow(
     val itemTextColor = baseTextColor.copy(alpha = minOf(baseTextColor.alpha, focusAlpha))
 
     val guideEmoji = item.guideDot
+    val numberText = snapshot.numberText
     val dotSize = when {
         hasChildren && guideEmoji != null -> 22.dp
-        hasChildren -> 14.dp
         guideEmoji != null -> 18.dp
+        numberText != null -> when {
+            numberText.length >= 3 -> 22.dp
+            numberText.length == 2 -> if (hasChildren) 20.dp else 18.dp
+            hasChildren -> 18.dp
+            else -> 16.dp
+        }
+        hasChildren -> 14.dp
         else -> 7.dp
     }
     val dotTop = 16.dp - dotSize / 2
@@ -475,6 +515,21 @@ internal fun NestedItemRow(
                                 .requiredSize(dotSize)
                                 .then(
                                     when {
+                                        numberText != null -> Modifier
+                                            .background(
+                                                guideBaseColor.copy(
+                                                    alpha = (if (isEmphasized || isSpineRoot) 0.30f else 0.16f) *
+                                                        focusAlpha
+                                                ),
+                                                CircleShape
+                                            )
+                                            .then(
+                                                if (hasChildren) {
+                                                    Modifier.border(ringStroke, dotColor, CircleShape)
+                                                } else {
+                                                    Modifier
+                                                }
+                                            )
                                         hasChildren -> Modifier
                                             .then(
                                                 if (guideEmoji != null && item.collapsed) {
@@ -501,6 +556,17 @@ internal fun NestedItemRow(
                                     maxLines = 1,
                                     overflow = TextOverflow.Visible,
                                     modifier = Modifier.alpha(focusAlpha)
+                                )
+                                numberText != null -> Text(
+                                    text = numberText,
+                                    style = nestedGuideNumberStyle.copy(
+                                        fontSize = if (numberText.length >= 3) 8.5.sp else 10.sp,
+                                        lineHeight = if (numberText.length >= 3) 8.5.sp else 10.sp
+                                    ),
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = focusAlpha),
+                                    softWrap = false,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Clip
                                 )
                                 item.collapsed && hasChildren -> Box(
                                     modifier = Modifier

@@ -1312,6 +1312,20 @@ interface CheckItDao {
         updatedAtMillis: Long
     )
 
+    @Query("UPDATE nested_list_items SET numberedChildren = :numberedChildren, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
+    suspend fun updateNestedItemNumberedChildren(
+        itemId: String,
+        numberedChildren: Boolean,
+        updatedAtMillis: Long
+    )
+
+    @Query("UPDATE nested_documents SET numberRoots = :numberRoots, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :documentId")
+    suspend fun updateNestedDocumentNumberRoots(
+        documentId: String,
+        numberRoots: Boolean,
+        updatedAtMillis: Long
+    )
+
     @Query("UPDATE nested_list_items SET startDateEpochDays = :startDateEpochDays, endDateEpochDays = :endDateEpochDays, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
     suspend fun updateNestedItemDateRange(
         itemId: String,

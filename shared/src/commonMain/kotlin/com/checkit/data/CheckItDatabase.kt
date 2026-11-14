@@ -582,6 +582,8 @@ data class NestedDocumentEntity(
     val sortOrder: Int = 0,
     val createdAtMillis: Long,
     val updatedAtMillis: Long,
+    /** True when the root level renders numbers instead of dots. */
+    val numberRoots: Boolean = false,
     /** True when the row changed locally since the last successful upload. */
     val dirty: Boolean = true,
     /** Tombstone: true once the document is deleted locally; purged after upload. */
@@ -644,6 +646,8 @@ data class NestedListItemEntity(
     val guideDotColor: String? = null,
     /** Emoji rendered in place of the guide dot; null keeps the default. */
     val guideDot: String? = null,
+    /** True when this row's direct children render numbers instead of dots. */
+    val numberedChildren: Boolean = false,
     val startDateEpochDays: Int? = null,
     val endDateEpochDays: Int? = null,
     val priority: String = "None",
@@ -762,7 +766,7 @@ data class RoutineLogEntity(
         RoutineLogEntity::class,
         QuickNoteEntity::class
     ],
-    version = 15,
+    version = 16,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)
@@ -908,13 +912,25 @@ private val NestedItemBorderWidthMigration14To15 = object : Migration(14, 15) {
     }
 }
 
+/** v15 -> v16: adds derived numbering; existing rows keep dots. */
+private val NestedNumberingMigration15To16 = object : Migration(15, 16) {
+    override suspend fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            "ALTER TABLE nested_documents ADD COLUMN numberRoots INTEGER NOT NULL DEFAULT 0"
+        )
+        connection.execSQL(
+            "ALTER TABLE nested_list_items ADD COLUMN numberedChildren INTEGER NOT NULL DEFAULT 0"
+        )
+    }
+}
+
 fun buildCheckItDatabase(
     builder: RoomDatabase.Builder<CheckItDatabase>
 ): CheckItDatabase {
     return builder
         .fallbackToDestructiveMigration(false)
         .fallbackToDestructiveMigrationOnDowngrade(false)
-        .addMigrations(RoutineColorMigration1To2, TaskMetricsMigration2To3, NestedCompletedAtMigration3To4, DropTaskRemindersMigration4To5, RepeatRuleMigration5To6, NestedDocumentSortOrderMigration6To7, NestedItemLabelMigration7To8, NestedItemBorderMigration8To9, NestedItemGuideDotMigration9To10, NestedItemGuideDotColorMigration10To11, NestedItemCalloutMigration11To12, NestedItemCalloutLayoutMigration12To13, NestedItemCalloutIconMigration13To14, NestedItemBorderWidthMigration14To15)
+        .addMigrations(RoutineColorMigration1To2, TaskMetricsMigration2To3, NestedCompletedAtMigration3To4, DropTaskRemindersMigration4To5, RepeatRuleMigration5To6, NestedDocumentSortOrderMigration6To7, NestedItemLabelMigration7To8, NestedItemBorderMigration8To9, NestedItemGuideDotMigration9To10, NestedItemGuideDotColorMigration10To11, NestedItemCalloutMigration11To12, NestedItemCalloutLayoutMigration12To13, NestedItemCalloutIconMigration13To14, NestedItemBorderWidthMigration14To15, NestedNumberingMigration15To16)
         .setQueryCoroutineContext(Dispatchers.IO)
         .setDriver(BundledSQLiteDriver())
         .addCallback(object : RoomDatabase.Callback() {

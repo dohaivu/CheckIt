@@ -739,6 +739,9 @@ struct NestedFormattingBar: View {
                     onGuideDotColor: { color in
                         state.updateGuideDotColor(id: item.id, color: color)
                     },
+                    onNumberedChildren: { numbered in
+                        state.setNumberedChildren(id: item.id, numbered: numbered)
+                    },
                     onShowEmojiPicker: {
                         showGuidePicker = false
                         DispatchQueue.main.async { showEmojiPicker = true }
@@ -1112,6 +1115,7 @@ struct NestedGuidePickerView: View {
     let item: NestedListItem
     let onGuideDot: (String?) -> Void
     let onGuideDotColor: (NestedColorToken?) -> Void
+    let onNumberedChildren: (Bool) -> Void
     let onShowEmojiPicker: () -> Void
 
     var body: some View {
@@ -1122,6 +1126,14 @@ struct NestedGuidePickerView: View {
                 }
                 NestedPickerRow(title: item.guideDot == nil ? "Choose emoji…" : "Change emoji…", selected: false) {
                     onShowEmojiPicker()
+                }
+            }
+            NestedPickerColumn(title: "Children") {
+                NestedPickerRow(title: "Dots", selected: !item.numberedChildren) {
+                    onNumberedChildren(false)
+                }
+                NestedPickerRow(title: "Numbers", selected: item.numberedChildren) {
+                    onNumberedChildren(true)
                 }
             }
             NestedPickerColumn(title: "Color") {

@@ -555,9 +555,19 @@ struct NestedRowView: View, Equatable {
     /// glyph size as a leaf dot without squeezing it against the stroke; plain
     /// parents keep the ring leaves never show.
     private var guideRingDiameter: CGFloat {
+        if row.numberText != nil { return numberDiameter }
         guard row.node.hasChildren else { return 12 }
         if let emoji = item.guideDot, !emoji.isEmpty { return 20 }
         return 12
+    }
+
+    /// Badge diameter for a numbered row. Grows with the digit count so 1..N
+    /// stays centred without shrinking the glyph.
+    private var numberDiameter: CGFloat {
+        let count = row.numberText?.count ?? 1
+        if count >= 3 { return 22 }
+        if count == 2 { return row.node.hasChildren ? 20 : 18 }
+        return row.node.hasChildren ? 18 : 16
     }
 
     private var guideBaseColor: Color {
@@ -588,6 +598,26 @@ struct NestedRowView: View, Equatable {
                     Text(emoji)
                         .font(.system(size: 11))
                 }
+            } else if let number = row.numberText {
+                // Numbered level: a filled badge for leaves, and the same
+                // filled badge inside the parent ring so the collapse cue
+                // (and the number) both survive collapsing.
+                ZStack {
+                    Circle()
+                        .fill(guideBaseColor.opacity(dotEmphasis ? 0.30 : 0.16))
+                    if row.node.hasChildren {
+                        Circle()
+                            .stroke(
+                                nestedDotColor(guideBaseColor, emphasized: dotEmphasis),
+                                lineWidth: dotEmphasis ? 1.25 : 1.0
+                            )
+                    }
+                    Text(number)
+                        .font(.system(size: number.count >= 3 ? 8.5 : 10, weight: .semibold))
+                        .monospacedDigit()
+                        .foregroundStyle(.primary)
+                }
+                .frame(width: numberDiameter, height: numberDiameter)
             } else if row.node.hasChildren {
                 ZStack {
                     Circle()

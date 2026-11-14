@@ -53,6 +53,9 @@ struct NestedRow: Identifiable, Equatable {
     /// Preset + explicit formatting resolved once when the row snapshot is
     /// built, so SwiftUI bodies do not re-run `resolveVisuals()` per property.
     let visuals: EffectiveRowVisuals
+    /// Ordinal to draw in the guide slot, or nil for a dot. An explicit guide
+    /// emoji still wins, so the row resolves this once instead of per draw.
+    let numberText: String?
 
     static func == (lhs: NestedRow, rhs: NestedRow) -> Bool {
         lhs.id == rhs.id
@@ -61,6 +64,7 @@ struct NestedRow: Identifiable, Equatable {
             && lhs.isInCheckedBranch == rhs.isInCheckedBranch
             && lhs.isContext == rhs.isContext
             && lhs.summaryRenderKey == rhs.summaryRenderKey
+            && lhs.numberText == rhs.numberText
             && lhs.node.item.collapsed == rhs.node.item.collapsed
             && lhs.node.item.updatedAtMillis == rhs.node.item.updatedAtMillis
     }
@@ -522,6 +526,9 @@ final class NestedEditorState: ObservableObject {
         while let (node, depth, ancestorChecked, ancestorGuideColors) = stack.popLast() {
             let inCheckedBranch = ancestorChecked || node.item.checked
             let summary = helper.summaryFor(tree: tree, itemId: node.item.id)
+            let numbered = node.item.parentId.map { nodeIndex[$0]?.item.numberedChildren == true }
+                ?? tree.document.numberRoots
+            let numberText = (node.item.guideDot == nil && numbered) ? String(node.ordinal) : nil
             out.append(
                 NestedRow(
                     id: node.item.id,
@@ -533,7 +540,8 @@ final class NestedEditorState: ObservableObject {
                     isContext: contextIds.contains(node.item.id),
                     summary: summary,
                     summaryRenderKey: "\(summary.doneTaskCount)|\(summary.totalTaskCount)|\(summary.trackedMinutes)",
-                    visuals: node.item.resolveVisuals()
+                    visuals: node.item.resolveVisuals(),
+                    numberText: numberText
                 )
             )
             if !node.item.collapsed {
@@ -1142,6 +1150,17 @@ final class NestedEditorState: ObservableObject {
         helper.updateGuideDotColorByName(itemId: id, guideDotColorName: color?.name)
     }
 
+    /// Numbers the row's direct children instead of dots.
+    func setNumberedChildren(id: String, numbered: Bool) {
+        helper.setNumberedChildren(itemId: id, numberedChildren: numbered)
+    }
+
+    /// Numbers the document's root level instead of dots.
+    func setDocumentNumberRoots(_ enabled: Bool) {
+        guard !selectedDocId.isEmpty else { return }
+        helper.setDocumentNumberRoots(documentId: selectedDocId, numberRoots: enabled)
+    }
+
     func setTag(id: String, tagId: String, enabled: Bool) {
         helper.setTagEnabled(itemId: id, tagId: tagId, enabled: enabled)
     }
@@ -1339,7 +1358,7 @@ final class NestedEditorState: ObservableObject {
 
     func copyItemAsMarkdown(id: String) {
         guard let node = indexById[id] else { return }
-        let singleNode = NestedItemNode(item: node.item, children: [])
+        let singleNode = NestedItemNode(item: node.item, children: [], ordinal: node.ordinal)
         let text = helper.exportNodeToMarkdown(node: singleNode, includeNotes: true)
         guard !text.isEmpty else { return }
         copyToClipboard(text, message: "Copied item as Markdown")

@@ -32,6 +32,7 @@ class NestedListJsonTest {
             calloutIcon = "warning",
             calloutLayout = com.checkit.domain.NestedCalloutLayout.Text,
             guideDot = "🔥",
+            numberedChildren = true,
             createdAtMillis = 1000L,
             updatedAtMillis = 2000L
         )
@@ -47,7 +48,7 @@ class NestedListJsonTest {
             updatedAtMillis = 2100L
         )
         val tree = NestedDocumentTree(
-            document = NestedDocument("doc-1", "My Document", 1000L, 2000L),
+            document = NestedDocument("doc-1", "My Document", 1000L, 2000L, numberRoots = true),
             rootNodes = listOf(
                 NestedItemNode(item = rootItem, children = listOf(NestedItemNode(item = childItem)))
             )
@@ -75,6 +76,8 @@ class NestedListJsonTest {
         assertEquals("warning", decoded.items[0].calloutIcon)
         assertEquals("Text", decoded.items[0].calloutLayout)
         assertEquals("🔥", decoded.items[0].guideDot)
+        assertEquals(true, decoded.items[0].numberedChildren)
+        assertEquals(true, decoded.document.numberRoots)
         assertEquals(1, decoded.items[0].children.size)
         assertEquals("Child Item", decoded.items[0].children[0].text)
         assertTrue(decoded.items[0].children[0].checked)
@@ -96,6 +99,8 @@ class NestedListJsonTest {
         assertEquals("Old row", decoded.items[0].text)
         assertEquals(null, decoded.items[0].guideDot)
         assertEquals(null, decoded.items[0].borderWidth)
+        assertEquals(false, decoded.items[0].numberedChildren)
+        assertEquals(false, decoded.document.numberRoots)
     }
 
     @Test

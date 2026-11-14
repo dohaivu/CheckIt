@@ -53,6 +53,8 @@ import com.checkit.domain.usecase.UpdateNestedItemCalloutLayoutUseCase
 import com.checkit.domain.usecase.ResetNestedItemCalloutToDefaultsUseCase
 import com.checkit.domain.usecase.UpdateNestedItemGuideDotUseCase
 import com.checkit.domain.usecase.UpdateNestedItemGuideDotColorUseCase
+import com.checkit.domain.usecase.UpdateNestedItemNumberedChildrenUseCase
+import com.checkit.domain.usecase.UpdateNestedDocumentNumberRootsUseCase
 import com.checkit.domain.usecase.UpdateNestedItemLabelUseCase
 import com.checkit.domain.usecase.UpdateNestedItemMetricSettingsUseCase
 import com.checkit.domain.usecase.UpdateNestedItemNoteUseCase
@@ -198,6 +200,8 @@ class NestedListsViewModel(
     private val updateItemPriorityUseCase: UpdateNestedItemPriorityUseCase,
     private val updateItemGuideDotUseCase: UpdateNestedItemGuideDotUseCase,
     private val updateItemGuideDotColorUseCase: UpdateNestedItemGuideDotColorUseCase,
+    private val updateItemNumberedChildrenUseCase: UpdateNestedItemNumberedChildrenUseCase,
+    private val updateDocumentNumberRootsUseCase: UpdateNestedDocumentNumberRootsUseCase,
     private val updateItemTagsUseCase: UpdateNestedItemTagsUseCase,
     private val updateItemMetricSettingsUseCase: UpdateNestedItemMetricSettingsUseCase,
     private val updateItemProgressUseCase: UpdateNestedItemProgressUseCase,
@@ -797,6 +801,18 @@ class NestedListsViewModel(
 
     fun updateItemGuideDotColor(itemId: String, guideDotColor: NestedColorToken?) {
         viewModelScope.launch { updateItemGuideDotColorUseCase(itemId, guideDotColor) }
+    }
+
+    fun updateItemNumberedChildren(itemId: String, numberedChildren: Boolean) {
+        viewModelScope.launch { updateItemNumberedChildrenUseCase(itemId, numberedChildren) }
+    }
+
+    /** Toggles numbering for the document's root level. */
+    fun toggleDocumentNumberRoots() {
+        val document = getActiveEditor()?.tree?.document ?: return
+        viewModelScope.launch {
+            updateDocumentNumberRootsUseCase(document.id, !document.numberRoots)
+        }
     }
 
     fun updateItemTags(itemId: String, tagIds: List<String>) {

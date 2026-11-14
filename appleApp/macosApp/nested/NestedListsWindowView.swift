@@ -768,6 +768,13 @@ struct NestedListsWindowView: View {
                     )) {
                         Label("Working", systemImage: "briefcase")
                     }
+                    Divider()
+                    Toggle(isOn: Binding(
+                        get: { state.tree?.document.numberRoots ?? false },
+                        set: { state.setDocumentNumberRoots($0) }
+                    )) {
+                        Label("Number roots", systemImage: "list.number")
+                    }
                 } label: {
                     Image(systemName: state.displayType == .all ? "list.bullet" : "briefcase")
                         .imageScale(.medium)

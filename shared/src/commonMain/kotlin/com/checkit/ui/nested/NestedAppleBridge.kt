@@ -51,6 +51,8 @@ import com.checkit.domain.usecase.UpdateNestedItemCalloutLayoutUseCase
 import com.checkit.domain.usecase.ResetNestedItemCalloutToDefaultsUseCase
 import com.checkit.domain.usecase.UpdateNestedItemGuideDotUseCase
 import com.checkit.domain.usecase.UpdateNestedItemGuideDotColorUseCase
+import com.checkit.domain.usecase.UpdateNestedItemNumberedChildrenUseCase
+import com.checkit.domain.usecase.UpdateNestedDocumentNumberRootsUseCase
 import com.checkit.domain.usecase.UpdateNestedItemLabelUseCase
 import com.checkit.domain.usecase.UpdateNestedItemMetricSettingsUseCase
 import com.checkit.domain.usecase.UpdateNestedItemNoteUseCase
@@ -125,6 +127,8 @@ class NestedAppleHelper(
     private val updateItemPriority: UpdateNestedItemPriorityUseCase,
     private val updateItemGuideDot: UpdateNestedItemGuideDotUseCase,
     private val updateItemGuideDotColor: UpdateNestedItemGuideDotColorUseCase,
+    private val updateItemNumberedChildren: UpdateNestedItemNumberedChildrenUseCase,
+    private val updateDocumentNumberRoots: UpdateNestedDocumentNumberRootsUseCase,
     private val updateItemTags: UpdateNestedItemTagsUseCase,
     private val updateItemMetricSettings: UpdateNestedItemMetricSettingsUseCase,
     private val updateItemProgress: UpdateNestedItemProgressUseCase,
@@ -360,6 +364,16 @@ class NestedAppleHelper(
                 )
             }
         }
+    }
+
+    /** Numbers the row's direct children instead of dots. */
+    fun setNumberedChildren(itemId: String, numberedChildren: Boolean) {
+        scope.launch { runCatching { updateItemNumberedChildren(itemId, numberedChildren) } }
+    }
+
+    /** Numbers the document's root level instead of dots. */
+    fun setDocumentNumberRoots(documentId: String, numberRoots: Boolean) {
+        scope.launch { runCatching { updateDocumentNumberRoots(documentId, numberRoots) } }
     }
 
     fun updateTags(itemId: String, tagIds: List<String>) {

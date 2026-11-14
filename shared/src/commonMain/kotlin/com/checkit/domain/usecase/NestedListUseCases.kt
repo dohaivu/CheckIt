@@ -277,6 +277,20 @@ class UpdateNestedItemGuideDotColorUseCase(
         repository.updateNestedItemGuideDotColor(itemId, guideDotColor)
 }
 
+class UpdateNestedItemNumberedChildrenUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(itemId: String, numberedChildren: Boolean) =
+        repository.updateNestedItemNumberedChildren(itemId, numberedChildren)
+}
+
+class UpdateNestedDocumentNumberRootsUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(documentId: String, numberRoots: Boolean) =
+        repository.updateNestedDocumentNumberRoots(documentId, numberRoots)
+}
+
 class UpdateNestedItemDateRangeUseCase(
     private val repository: CheckItRepository
 ) {

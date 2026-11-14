@@ -816,8 +816,10 @@ internal fun BorderMenu(
 internal fun GuideMenu(
     emoji: String?,
     guideDotColor: NestedColorToken?,
+    numbersChildren: Boolean,
     onDotChange: (String?) -> Unit,
     onColorChange: (NestedColorToken) -> Unit,
+    onNumbersChildrenChange: (Boolean) -> Unit,
     onChooseEmoji: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -867,6 +869,32 @@ internal fun GuideMenu(
                     ) {
                         expanded = false
                         onChooseEmoji()
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = "Children",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    SelectableChip(
+                        label = "Dots",
+                        selected = !numbersChildren
+                    ) {
+                        expanded = false
+                        onNumbersChildrenChange(false)
+                    }
+                    SelectableChip(
+                        label = "Numbers",
+                        selected = numbersChildren
+                    ) {
+                        expanded = false
+                        onNumbersChildrenChange(true)
                     }
                 }
                 Spacer(Modifier.height(8.dp))

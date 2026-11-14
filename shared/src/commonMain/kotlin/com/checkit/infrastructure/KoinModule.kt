@@ -119,6 +119,8 @@ import com.checkit.domain.usecase.UpdateNestedItemCalloutLayoutUseCase
 import com.checkit.domain.usecase.ResetNestedItemCalloutToDefaultsUseCase
 import com.checkit.domain.usecase.UpdateNestedItemGuideDotUseCase
 import com.checkit.domain.usecase.UpdateNestedItemGuideDotColorUseCase
+import com.checkit.domain.usecase.UpdateNestedItemNumberedChildrenUseCase
+import com.checkit.domain.usecase.UpdateNestedDocumentNumberRootsUseCase
 import com.checkit.domain.usecase.UpdateNestedItemLabelUseCase
 import com.checkit.domain.usecase.UpdateNestedItemMetricSettingsUseCase
 import com.checkit.domain.usecase.UpdateNestedItemNoteUseCase
@@ -284,6 +286,8 @@ val provideInteractorModule = module {
     single { UpdateNestedItemPriorityUseCase(get()) }
     single { UpdateNestedItemGuideDotUseCase(get()) }
     single { UpdateNestedItemGuideDotColorUseCase(get()) }
+    single { UpdateNestedItemNumberedChildrenUseCase(get()) }
+    single { UpdateNestedDocumentNumberRootsUseCase(get()) }
     single { UpdateNestedItemDateRangeUseCase(get()) }
     single { UpdateNestedItemTagsUseCase(get()) }
     single { UpdateNestedItemMetricSettingsUseCase(get()) }
@@ -324,6 +328,8 @@ val provideInteractorModule = module {
             updateItemPriority = get(),
             updateItemGuideDot = get(),
             updateItemGuideDotColor = get(),
+            updateItemNumberedChildren = get(),
+            updateDocumentNumberRoots = get(),
             updateItemTags = get(),
             updateItemMetricSettings = get(),
             updateItemProgress = get(),
@@ -499,6 +505,8 @@ val provideViewModelModule = module {
             updateItemPriorityUseCase = get(),
             updateItemGuideDotUseCase = get(),
             updateItemGuideDotColorUseCase = get(),
+            updateItemNumberedChildrenUseCase = get(),
+            updateDocumentNumberRootsUseCase = get(),
             updateItemTagsUseCase = get(),
             updateItemMetricSettingsUseCase = get(),
             updateItemProgressUseCase = get(),
