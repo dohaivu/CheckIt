@@ -30,6 +30,25 @@ enum NestedInspectorTab: String {
     case note
 }
 
+/// One-tap date window for the outline filter and the date editors.
+/// `name` matches the shared Kotlin `NestedDatePreset` enum case; the bridge
+/// resolves it to epoch days so both platforms agree on calendar boundaries.
+struct NestedDatePresetOption: Identifiable, Equatable {
+    let name: String
+    let label: String
+    let icon: String
+    var id: String { name }
+}
+
+let nestedDatePresetOptions: [NestedDatePresetOption] = [
+    NestedDatePresetOption(name: "Today", label: "Today", icon: "sun.max"),
+    NestedDatePresetOption(name: "Yesterday", label: "Yesterday", icon: "arrow.uturn.backward"),
+    NestedDatePresetOption(name: "Tomorrow", label: "Tomorrow", icon: "sunrise"),
+    NestedDatePresetOption(name: "ThisWeek", label: "This week", icon: "calendar"),
+    NestedDatePresetOption(name: "NextWeek", label: "Next week", icon: "calendar.badge.plus"),
+    NestedDatePresetOption(name: "ThisMonth", label: "This month", icon: "calendar.circle"),
+]
+
 /// One visible outline row: node + indent depth.
 struct NestedRow: Identifiable, Equatable {
     let id: String
@@ -161,6 +180,12 @@ final class NestedEditorState: ObservableObject {
             recomputeVisibleRows()
         }
     }
+    /// Active calendar-window filter (a `NestedDatePreset` name) or nil for
+    /// any date. Transient view state, same lifetime as the search query;
+    /// never persisted.
+    @Published var dateFilterPreset: String? = nil {
+        didSet { recomputeVisibleRows() }
+    }
     /// Max lines of the note preview drawn under an outline row.
     /// 0 means unlimited; persisted like `displayType`.
     @Published var noteLineLimit: Int = 5 {
@@ -246,6 +271,9 @@ final class NestedEditorState: ObservableObject {
     private var treeSub: NestedAppleSubscription?
     private var hostWindow: NSWindow?
     private var tabMonitor: Any?
+    /// Rebuilds preset windows after midnight so a "Today" filter does not
+    /// silently keep showing yesterday.
+    private var dayChangeObserver: NSObjectProtocol?
     /// Rebuilt once per tree emission instead of for every render and action.
     private var nodeIndex: [String: NestedItemNode] = [:]
 
@@ -292,12 +320,27 @@ final class NestedEditorState: ObservableObject {
                 DispatchQueue.main.async { self?.availableTags = tags }
             }
         }
+        if dayChangeObserver == nil {
+            dayChangeObserver = NotificationCenter.default.addObserver(
+                forName: .NSCalendarDayChanged,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.recomputeVisibleRows()
+                }
+            }
+        }
     }
 
     func stop() {
         docsSub?.cancel(); docsSub = nil
         tagsSub?.cancel(); tagsSub = nil
         treeSub?.cancel(); treeSub = nil
+        if let dayChangeObserver {
+            NotificationCenter.default.removeObserver(dayChangeObserver)
+            self.dayChangeObserver = nil
+        }
         detachWindow()
     }
 
@@ -512,11 +555,22 @@ final class NestedEditorState: ObservableObject {
         // priority / due date / countdown metric + ancestor context) instead
         // of reimplementing it. Runs on the debounced query (see searchQuery).
         let query = appliedQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-        let projection: NestedOutlineProjection? = (displayType == .working || !query.isEmpty)
+        let todayEpochDays = Int32(nestedEpochDays(from: Date()))
+        let dateWindow = dateFilterPreset.flatMap {
+            NestedAppleBridge.shared.datePresetWindow(
+                presetName: $0,
+                todayEpochDays: todayEpochDays
+            )
+        }
+        let hasDateFilter = dateFilterPreset != nil
+        let projection: NestedOutlineProjection? =
+            (displayType == .working || !query.isEmpty || hasDateFilter)
             ? NestedAppleBridge.shared.filterOutlineProjection(
                 roots: zoomRoots,
                 query: query,
-                workingOnly: displayType == .working
+                workingOnly: displayType == .working,
+                windowStartEpochDays: dateWindow?.startEpochDays ?? noDate,
+                windowEndEpochDays: dateWindow?.endEpochDays ?? noDate
             )
             : nil
         let contextIds = Set(projection?.contextIds ?? [])

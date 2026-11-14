@@ -1,0 +1,148 @@
+package com.checkit.ui.nested
+
+import com.checkit.domain.NestedItemNode
+import com.checkit.domain.NestedListItem
+import kotlinx.datetime.LocalDate
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+
+/**
+ * The macOS outline projection takes epoch-day window bounds with the shared
+ * `Int.MIN_VALUE` sentinel. These tests pin the sentinel mapping and the
+ * preset-name lookup so Swift never has to reimplement period arithmetic.
+ */
+class NestedAppleBridgeProjectionTest {
+
+    private fun item(
+        id: String,
+        parentId: String? = null,
+        start: LocalDate? = null,
+        end: LocalDate? = null,
+        text: String = id
+    ) = NestedListItem(
+        id = id,
+        documentId = "doc-1",
+        parentId = parentId,
+        position = 0,
+        text = text,
+        startDate = start,
+        endDate = end,
+        createdAtMillis = 0L,
+        updatedAtMillis = 0L
+    )
+
+    private fun node(
+        id: String,
+        parentId: String? = null,
+        start: LocalDate? = null,
+        end: LocalDate? = null,
+        text: String = id,
+        children: List<NestedItemNode> = emptyList()
+    ) = NestedItemNode(
+        item = item(id, parentId, start, end, text),
+        children = children
+    )
+
+    private fun ids(nodes: List<NestedItemNode>) = nodes.map { it.item.id }
+
+    private val windowStart = LocalDate(2026, 11, 16)
+    private val windowEnd = LocalDate(2026, 11, 22)
+
+    @Test
+    fun sentinelBoundsKeepTheProjectionDateFree() {
+        val roots = listOf(
+            node("undated"),
+            node("old", start = LocalDate(2020, 1, 1), end = LocalDate(2020, 1, 2))
+        )
+
+        val projection = NestedAppleBridge.filterOutlineProjection(
+            roots = roots,
+            query = "",
+            workingOnly = false,
+            windowStartEpochDays = Int.MIN_VALUE,
+            windowEndEpochDays = Int.MIN_VALUE
+        )
+
+        assertEquals(listOf("undated", "old"), ids(projection.roots))
+        assertTrue(projection.contextIds.isEmpty())
+    }
+
+    @Test
+    fun epochDayWindowUsesOpenEndedMatching() {
+        val roots = listOf(
+            node("inside", start = windowStart, end = windowStart),
+            node("start-only", start = LocalDate(2026, 11, 20)),
+            node("end-only", end = LocalDate(2026, 11, 17)),
+            node("before", start = LocalDate(2026, 11, 1), end = LocalDate(2026, 11, 15)),
+            node("undated")
+        )
+
+        val projection = NestedAppleBridge.filterOutlineProjection(
+            roots = roots,
+            query = "",
+            workingOnly = false,
+            windowStartEpochDays = windowStart.toEpochDays().toInt(),
+            windowEndEpochDays = windowEnd.toEpochDays().toInt()
+        )
+
+        assertEquals(listOf("inside", "start-only", "end-only"), ids(projection.roots))
+    }
+
+    @Test
+    fun matchingParentKeepsUndatedDescendantThroughTheBridge() {
+        val child = node("child", parentId = "parent")
+        val parent = node("parent", start = windowStart, children = listOf(child))
+
+        val projection = NestedAppleBridge.filterOutlineProjection(
+            roots = listOf(parent),
+            query = "",
+            workingOnly = false,
+            windowStartEpochDays = windowStart.toEpochDays().toInt(),
+            windowEndEpochDays = windowEnd.toEpochDays().toInt()
+        )
+
+        assertEquals(listOf("parent"), ids(projection.roots))
+        assertEquals(listOf("child"), ids(projection.roots.single().children))
+    }
+
+    @Test
+    fun halfOpenBridgeWindowLeavesDateFilteringOff() {
+        val roots = listOf(node("undated"))
+        val projection = NestedAppleBridge.filterOutlineProjection(
+            roots = roots,
+            query = "",
+            workingOnly = false,
+            windowStartEpochDays = windowStart.toEpochDays().toInt(),
+            windowEndEpochDays = Int.MIN_VALUE
+        )
+
+        assertEquals(listOf("undated"), ids(projection.roots))
+    }
+
+    @Test
+    fun presetNamesResolveToEpochDayWindows() {
+        val today = LocalDate(2026, 11, 14)
+        val window = assertNotNull(
+            NestedAppleBridge.datePresetWindow(
+                presetName = "NextWeek",
+                todayEpochDays = today.toEpochDays().toInt()
+            )
+        )
+
+        assertEquals(windowStart.toEpochDays().toInt(), window.startEpochDays)
+        assertEquals(windowEnd.toEpochDays().toInt(), window.endEpochDays)
+    }
+
+    @Test
+    fun unknownPresetNameReturnsNull() {
+        assertNull(
+            NestedAppleBridge.datePresetWindow(
+                presetName = "LastSevenDays",
+                todayEpochDays = 0
+            )
+        )
+    }
+}

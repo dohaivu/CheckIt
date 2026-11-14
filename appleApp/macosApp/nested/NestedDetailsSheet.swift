@@ -571,6 +571,20 @@ struct NestedFormattingBar: View {
         return .secondary
     }
 
+    /// Snaps the popover's local range to a shared calendar preset. Values
+    /// stay local until Done, matching the DatePicker bindings below.
+    private func applyDatePreset(_ preset: NestedDatePresetOption) {
+        let today = Int32(nestedEpochDays(from: Date()))
+        guard let window = NestedAppleBridge.shared.datePresetWindow(
+            presetName: preset.name,
+            todayEpochDays: today
+        ) else { return }
+        startDate = nestedDate(fromEpochDays: Int64(window.startEpochDays))
+        endDate = nestedDate(fromEpochDays: Int64(window.endEpochDays))
+        hasStart = true
+        hasEnd = true
+    }
+
     /// Writes straight through to the shared use case, so the picker's
     /// binding is the source of truth (no draft state to commit).
     private var guideEmojiBinding: Binding<String> {
@@ -796,6 +810,13 @@ struct NestedFormattingBar: View {
             }
             .popover(isPresented: $showDates, arrowEdge: .bottom) {
                 VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 6) {
+                        ForEach(Array(nestedDatePresetOptions.prefix(4))) { preset in
+                            Button(preset.label) { applyDatePreset(preset) }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                        }
+                    }
                     Toggle("Start", isOn: $hasStart)
                     DatePicker("", selection: $startDate, displayedComponents: .date)
                         .labelsHidden().disabled(!hasStart)

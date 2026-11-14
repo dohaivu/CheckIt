@@ -114,6 +114,8 @@ internal fun NestedListScreen(
                     availableTags = state.availableTags,
                     selectedTagIds = state.filters.selectedTagIds,
                     onFocusChange = viewModel::updateFilterFocus,
+                    onDatePresetSelected = viewModel::applyDatePreset,
+                    onClearDateFilter = viewModel::clearDateFilter,
                     onQueryChange = viewModel::updateFilterQuery,
                     onHideCheckedChange = { viewModel.toggleHideChecked() },
                     onTagToggle = viewModel::updateFilterTags,

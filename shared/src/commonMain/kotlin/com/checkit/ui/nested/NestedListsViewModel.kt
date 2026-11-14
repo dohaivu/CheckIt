@@ -78,6 +78,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.LocalDate
 import com.checkit.domain.FocusPeriod
+import com.checkit.domain.NestedDatePreset
 import com.checkit.domain.Period
 import com.checkit.ui.today
 
@@ -502,6 +503,16 @@ class NestedListsViewModel(
 
     fun updateFilterFocus(focus: FocusPeriod) {
         updateActiveEditor { it.copy(filters = it.filters.copy(focus = focus)) }
+    }
+
+    /** One-tap calendar window; resolves to a [FocusPeriod] for the header. */
+    fun applyDatePreset(preset: NestedDatePreset) {
+        updateFilterFocus(preset.focus(today()))
+    }
+
+    /** Clears only the date window, leaving query/tags/other filters intact. */
+    fun clearDateFilter() {
+        updateActiveEditor { it.copy(filters = it.filters.copy(focus = null)) }
     }
 
     fun updateFilterQuery(query: String) {

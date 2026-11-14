@@ -73,6 +73,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -119,6 +120,7 @@ import checkit.shared.generated.resources.nested_root
 import checkit.shared.generated.resources.nested_zoom_in
 import checkit.shared.generated.resources.nested_zoom_out
 import com.checkit.domain.FocusPeriod
+import com.checkit.domain.NestedDatePreset
 import com.checkit.domain.NestedBorderShape
 import com.checkit.domain.NestedBorderStyle
 import com.checkit.domain.NestedBorderWidth
@@ -130,6 +132,7 @@ import com.checkit.domain.NestedListItem
 import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.TagItem
 import com.checkit.domain.TaskPriority
+import com.checkit.domain.matchesFocus
 import com.checkit.domain.moveDestinations
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.DatePicker
@@ -139,6 +142,7 @@ import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.orderedRangeForEnd
 import com.checkit.ui.orderedRangeForStart
 import com.checkit.ui.tasks.views.ViewOptionChip
+import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.stringResource
 
@@ -696,6 +700,32 @@ internal fun NestedFormattingBar(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    val todayDate = today()
+                    val quickPresets = listOf(
+                        "Today" to NestedDatePreset.Today,
+                        "Tomorrow" to NestedDatePreset.Tomorrow,
+                        "This week" to NestedDatePreset.ThisWeek,
+                        "Next week" to NestedDatePreset.NextWeek
+                    )
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        quickPresets.forEach { (label, preset) ->
+                            val window = preset.window(todayDate)
+                            FilterChip(
+                                selected = startDate == window.start && endDate == window.endInclusive,
+                                onClick = {
+                                    // One-tap snap: writes immediately, so the
+                                    // pickers below stay a refinement path.
+                                    startDate = window.start
+                                    endDate = window.endInclusive
+                                    onDateRangeChange(window.start, window.endInclusive)
+                                },
+                                label = { Text(label) }
+                            )
+                        }
+                    }
                     DatePicker(
                         date = startDate,
                         onDateChange = { picked ->
@@ -778,6 +808,8 @@ internal fun NestedListFilterBar(
     availableTags: List<TagItem>,
     selectedTagIds: Set<String>,
     onFocusChange: (FocusPeriod) -> Unit,
+    onDatePresetSelected: (NestedDatePreset) -> Unit,
+    onClearDateFilter: () -> Unit,
     onQueryChange: (String) -> Unit,
     onHideCheckedChange: (Boolean) -> Unit,
     onTagToggle: (String) -> Unit,
@@ -812,6 +844,12 @@ internal fun NestedListFilterBar(
                 )
             }
         }
+
+        NestedDatePresetRow(
+            focus = focus,
+            onPresetSelected = onDatePresetSelected,
+            onClearDate = onClearDateFilter
+        )
 
         FocusPeriodHeader(
             focus = focus,
@@ -890,6 +928,88 @@ internal fun NestedListFilterBar(
             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
         )
     }
+}
+
+/**
+ * One-tap calendar windows above the manual period switcher. The selected
+ * chip is derived from [focus] (see [matchesFocus]), so stepping the header
+ * with the arrows automatically deselects a preset instead of leaving two
+ * conflicting states.
+ */
+@Composable
+private fun NestedDatePresetRow(
+    focus: FocusPeriod?,
+    onPresetSelected: (NestedDatePreset) -> Unit,
+    onClearDate: () -> Unit
+) {
+    val todayDate = today()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 12.dp, vertical = 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        NestedDatePreset.entries.forEach { preset ->
+            NestedDatePresetChip(
+                label = preset.displayLabel(),
+                selected = preset.matchesFocus(focus, todayDate),
+                onClick = { onPresetSelected(preset) }
+            )
+        }
+        if (focus != null) {
+            NestedDatePresetChip(
+                label = "Any date",
+                selected = false,
+                onClick = onClearDate
+            )
+        }
+    }
+}
+
+@Composable
+private fun NestedDatePresetChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .height(28.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(
+                if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
+                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+            )
+            .border(
+                width = 1.dp,
+                color = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                shape = RoundedCornerShape(8.dp)
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+            color = if (selected) MaterialTheme.colorScheme.primary
+            else MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1
+        )
+    }
+}
+
+private fun NestedDatePreset.displayLabel(): String = when (this) {
+    NestedDatePreset.Today -> "Today"
+    NestedDatePreset.Yesterday -> "Yesterday"
+    NestedDatePreset.Tomorrow -> "Tomorrow"
+    NestedDatePreset.ThisWeek -> "This week"
+    NestedDatePreset.NextWeek -> "Next week"
+    NestedDatePreset.ThisMonth -> "This month"
 }
 
 // ---------------- display type ----------------

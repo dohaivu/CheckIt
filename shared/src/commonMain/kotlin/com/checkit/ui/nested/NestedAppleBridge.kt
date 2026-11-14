@@ -14,6 +14,7 @@ import com.checkit.domain.NestedItemNode
 import com.checkit.domain.NestedListItem
 import com.checkit.domain.NestedSortOrder
 import com.checkit.domain.MoveDestinations
+import com.checkit.domain.NestedDatePreset
 import com.checkit.domain.moveDestinations
 import com.checkit.domain.NestedMetricSummary
 import com.checkit.domain.NestedOutlineProjection
@@ -633,6 +634,15 @@ class NestedAppleHelper(
     }
 }
 
+/**
+ * Closed date window in epoch days, exposed to Swift so the UI never has to
+ * reimplement Kotlin's calendar-period arithmetic.
+ */
+class NestedAppleDateWindow internal constructor(
+    val startEpochDays: Int,
+    val endEpochDays: Int
+)
+
 object NestedAppleBridge {
     private var koinApp: KoinApplication? = null
 
@@ -648,16 +658,45 @@ object NestedAppleBridge {
 
     /**
      * Swift-friendly outline projection for the macOS Working/search UI:
-     * title query plus the Working filter, with the same ancestor-context keep
-     * semantics as the Compose editor. The shared filter matches item titles
-     * only (notes are excluded). Avoids date/tag interop.
+     * title query, the Working filter and an optional closed date window, with
+     * the same ancestor-context keep semantics as the Compose editor. The
+     * shared filter matches item titles only (notes are excluded).
+     *
+     * Pass [Int.MIN_VALUE] for both window bounds to filter by text only. The
+     * bounds are epoch days (`LocalDate.toEpochDays()`); a start-only or
+     * end-only node participates through the shared open-ended matching rules.
      */
     fun filterOutlineProjection(
         roots: List<NestedItemNode>,
         query: String = "",
-        workingOnly: Boolean = false
-    ): NestedOutlineProjection =
-        filterNestedTreeWithContext(roots, query = query, workingOnly = workingOnly)
+        workingOnly: Boolean = false,
+        windowStartEpochDays: Int = Int.MIN_VALUE,
+        windowEndEpochDays: Int = Int.MIN_VALUE
+    ): NestedOutlineProjection {
+        val hasWindow =
+            windowStartEpochDays != Int.MIN_VALUE && windowEndEpochDays != Int.MIN_VALUE
+        return filterNestedTreeWithContext(
+            roots = roots,
+            start = if (hasWindow) LocalDate.fromEpochDays(windowStartEpochDays) else null,
+            end = if (hasWindow) LocalDate.fromEpochDays(windowEndEpochDays) else null,
+            query = query,
+            workingOnly = workingOnly
+        )
+    }
+
+    /**
+     * Resolves a [NestedDatePreset] name for Swift using the device-local
+     * [todayEpochDays]. Keeping the period math in Kotlin means macOS and
+     * Android always agree on week starts and month boundaries.
+     */
+    fun datePresetWindow(presetName: String, todayEpochDays: Int): NestedAppleDateWindow? {
+        val preset = NestedDatePreset.entries.firstOrNull { it.name == presetName } ?: return null
+        val window = preset.window(LocalDate.fromEpochDays(todayEpochDays))
+        return NestedAppleDateWindow(
+            startEpochDays = window.start.toEpochDays().toInt(),
+            endEpochDays = window.endInclusive.toEpochDays().toInt()
+        )
+    }
 
     fun syncBridge(): com.checkit.data.NestedSyncBridge =
         koinApp?.koin?.get() ?: KoinPlatform.getKoin().get()

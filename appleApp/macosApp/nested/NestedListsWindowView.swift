@@ -785,6 +785,32 @@ struct NestedListsWindowView: View {
                 .accessibilityLabel("Display")
                 .help(state.displayType == .all ? "Show all items" : "Show working items (priority, due date, open tasks, progress)")
                 barSeparator
+                Menu {
+                    Toggle(isOn: Binding(
+                        get: { state.dateFilterPreset == nil },
+                        set: { if $0 { state.dateFilterPreset = nil } }
+                    )) {
+                        Label("Any date", systemImage: "calendar")
+                    }
+                    Divider()
+                    ForEach(nestedDatePresetOptions) { preset in
+                        Toggle(isOn: Binding(
+                            get: { state.dateFilterPreset == preset.name },
+                            set: { if $0 { state.dateFilterPreset = preset.name } }
+                        )) {
+                            Label(preset.label, systemImage: preset.icon)
+                        }
+                    }
+                } label: {
+                    Image(systemName: state.dateFilterPreset == nil ? "calendar" : "calendar.badge.clock")
+                        .imageScale(.medium)
+                        .tint(state.dateFilterPreset == nil ? Color.secondary : Color.accentColor)
+                        .frame(width: 28, height: 28)
+                }
+                .menuStyle(.borderlessButton)
+                .accessibilityLabel("Date filter")
+                .help("Show items that live in a calendar period")
+                barSeparator
                 noteLinesMenu
                 barSeparator
                 Button {
@@ -889,13 +915,22 @@ struct NestedListsWindowView: View {
         !state.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
+    private var activeDatePresetLabel: String? {
+        guard let name = state.dateFilterPreset else { return nil }
+        return nestedDatePresetOptions.first(where: { $0.name == name })?.label
+    }
+
     private var emptyTitle: String {
         if hasSearchText { return "No matches" }
+        if activeDatePresetLabel != nil { return "No items in this period" }
         return state.displayType == .working ? "No working items" : "Nothing here yet"
     }
 
     private var emptySubtitle: String {
         if hasSearchText { return "No items match the current search." }
+        if let label = activeDatePresetLabel {
+            return "No dated items live in \(label). Undated items stay visible under a matching parent."
+        }
         return state.displayType == .working
             ? "Nothing needs attention — no priority, due dates, open tasks, or tracked progress."
             : "Start with a root item, then indent items to build your outline."
