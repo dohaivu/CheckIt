@@ -204,9 +204,7 @@ private fun matchesNestedFilter(
     includeNotesInQuery: Boolean
 ): Boolean {
     if (start != null && end != null) {
-        val itemStart = item.startDate
-        val itemEnd = item.endDate
-        if (itemStart == null || itemEnd == null || itemStart > end || itemEnd < start) return false
+        if (!matchesNestedDateWindow(item.startDate, item.endDate, start, end)) return false
     }
     if (query.isNotBlank()) {
         val titleMatches = item.text.contains(query, ignoreCase = true)
@@ -217,6 +215,30 @@ private fun matchesNestedFilter(
     if (selectedTagIds.isNotEmpty() && item.tags.none { it.id in selectedTagIds }) return false
     if (workingOnly && !isWorkingItem(item)) return false
     return true
+}
+
+/**
+ * True when a node's optional date range intersects the closed filter window.
+ *
+ * An item bound missing means that side is open-ended: a start-only node lives
+ * from that day onward and an end-only node lives up to that day, so both now
+ * participate in date filters instead of being excluded. A node with no dates
+ * at all never matches a date window. Boundaries are inclusive because the
+ * window is a calendar period (`FocusPeriod.endInclusive`).
+ *
+ * Descendants are not evaluated here: [filterNestedTreePass] force-keeps the
+ * whole subtree of a match, which is what keeps undated children visible.
+ */
+internal fun matchesNestedDateWindow(
+    itemStart: LocalDate?,
+    itemEnd: LocalDate?,
+    windowStart: LocalDate,
+    windowEnd: LocalDate
+): Boolean = when {
+    itemStart == null && itemEnd == null -> false
+    itemStart == null -> itemEnd!! >= windowStart
+    itemEnd == null -> itemStart <= windowEnd
+    else -> itemStart <= windowEnd && itemEnd >= windowStart
 }
 
 /** Pre-order so ids read top-down, matching the outline itself. */
