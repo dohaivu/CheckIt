@@ -194,6 +194,9 @@ private fun MarkdownCodeBlock(
     style: TextStyle,
     color: Color,
 ) {
+    // An empty fence or a language-only block has no content to show;
+    // rendering the card would leave a stray padded box.
+    if (block.code.isEmpty()) return
     Column(
         modifier = Modifier
             .fillMaxWidth()

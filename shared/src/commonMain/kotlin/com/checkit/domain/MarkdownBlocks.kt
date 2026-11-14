@@ -87,7 +87,7 @@ private fun String.hasFenceMarker(): Boolean =
 
 
 /**
- * Splits [markdown] into text and table blocks.
+ * Splits [markdown] into text, table and code blocks.
  *
  * Only the GFM subset the app needs is supported: fenced code blocks (``` or
  * `~~~`), and tables made of a header row plus delimiter row (`---`, `:---`,

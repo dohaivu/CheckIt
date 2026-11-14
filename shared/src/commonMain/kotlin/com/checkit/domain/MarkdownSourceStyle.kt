@@ -14,6 +14,7 @@ enum class MarkdownSourceStyleKind {
     Italic,
     Strikethrough,
     Highlight,
+    /** Inline `` `code` `` spans, and the verbatim content of fenced code blocks. */
     Code,
     Header1,
     Header2,
@@ -51,71 +52,124 @@ private val NumberedPattern = Regex("^\\d+\\.\\s")
 /**
  * Computes the style spans for [text] while it is being edited. Line-based
  * constructs are matched first, then inline markers; ranges always cover the
- * raw markers so the caller can style the source in place. An unknown
- * `=={cN}==` token produces no highlight span (the text stays literal).
+ * raw markers so the caller can style the source in place. Fenced code blocks
+ * are kept verbatim: their content gets one [MarkdownSourceStyleKind.Code] span
+ * and nothing inside is treated as a header, list, quote or inline marker, so
+ * the editor agrees with the renderer. An unknown `=={cN}==` token produces no
+ * highlight span (the text stays literal).
  */
 fun parseMarkdownSourceStyles(text: String): List<MarkdownSourceStyleSpan> {
     if (text.isEmpty()) return emptyList()
     val spans = mutableListOf<MarkdownSourceStyleSpan>()
+    // Half-open ranges of whole fenced blocks (markers included): matches
+    // starting inside one are ignored by the inline pass below.
+    val fencedBlocks = mutableListOf<IntRange>()
+    var fence: MarkdownFence? = null
+    var blockStart = -1
+    var contentStart = -1
 
-    // 1. Line-based constructs (headers, list markers, quotes).
+    // 1. Line-based constructs (headers, list markers, quotes), skipping fences.
     var lineStart = 0
     text.split('\n').forEach { line ->
         val lineEnd = lineStart + line.length
-        when {
-            line.startsWith("# ") ->
-                spans.add(MarkdownSourceStyleSpan(MarkdownSourceStyleKind.Header1, lineStart, lineEnd))
-            line.startsWith("## ") ->
-                spans.add(MarkdownSourceStyleSpan(MarkdownSourceStyleKind.Header2, lineStart, lineEnd))
-            line.startsWith("### ") ->
-                spans.add(MarkdownSourceStyleSpan(MarkdownSourceStyleKind.Header3, lineStart, lineEnd))
-            line.startsWith("- ") || line.startsWith("* ") ->
-                spans.add(
-                    MarkdownSourceStyleSpan(
-                        MarkdownSourceStyleKind.Bullet,
-                        lineStart,
-                        (lineStart + 2).coerceAtMost(lineEnd)
+        val openFence = fence
+        if (openFence != null) {
+            if (isClosingFenceLine(line, openFence)) {
+                // Content ends at the newline before the closing fence.
+                if (contentStart >= 0 && lineStart - 1 > contentStart) {
+                    spans.add(
+                        MarkdownSourceStyleSpan(
+                            MarkdownSourceStyleKind.Code,
+                            contentStart,
+                            lineStart - 1,
+                        )
                     )
-                )
-            NumberedPattern.find(line) != null -> {
-                val markerLength = NumberedPattern.find(line)!!.value.length
-                spans.add(
-                    MarkdownSourceStyleSpan(
-                        MarkdownSourceStyleKind.Numbered,
-                        lineStart,
-                        (lineStart + markerLength).coerceAtMost(lineEnd)
-                    )
-                )
+                }
+                fencedBlocks.add(blockStart until lineEnd)
+                fence = null
+                blockStart = -1
+                contentStart = -1
+            } else if (contentStart < 0) {
+                contentStart = lineStart
             }
-            line.startsWith("> ") || line.startsWith(">") -> {
-                val prefixLen = if (line.startsWith("> ")) 2 else 1
-                spans.add(
-                    MarkdownSourceStyleSpan(
-                        MarkdownSourceStyleKind.Quote,
-                        lineStart,
-                        (lineStart + prefixLen).coerceAtMost(lineEnd)
-                    )
-                )
-                spans.add(MarkdownSourceStyleSpan(MarkdownSourceStyleKind.Quoted, lineStart, lineEnd))
+        } else {
+            val marker = openingFenceMarker(line)
+            if (marker != null) {
+                fence = marker
+                blockStart = lineStart
+                contentStart = -1
+            } else {
+                when {
+                    line.startsWith("# ") ->
+                        spans.add(MarkdownSourceStyleSpan(MarkdownSourceStyleKind.Header1, lineStart, lineEnd))
+                    line.startsWith("## ") ->
+                        spans.add(MarkdownSourceStyleSpan(MarkdownSourceStyleKind.Header2, lineStart, lineEnd))
+                    line.startsWith("### ") ->
+                        spans.add(MarkdownSourceStyleSpan(MarkdownSourceStyleKind.Header3, lineStart, lineEnd))
+                    line.startsWith("- ") || line.startsWith("* ") ->
+                        spans.add(
+                            MarkdownSourceStyleSpan(
+                                MarkdownSourceStyleKind.Bullet,
+                                lineStart,
+                                (lineStart + 2).coerceAtMost(lineEnd)
+                            )
+                        )
+                    NumberedPattern.find(line) != null -> {
+                        val markerLength = NumberedPattern.find(line)!!.value.length
+                        spans.add(
+                            MarkdownSourceStyleSpan(
+                                MarkdownSourceStyleKind.Numbered,
+                                lineStart,
+                                (lineStart + markerLength).coerceAtMost(lineEnd)
+                            )
+                        )
+                    }
+                    line.startsWith("> ") || line.startsWith(">") -> {
+                        val prefixLen = if (line.startsWith("> ")) 2 else 1
+                        spans.add(
+                            MarkdownSourceStyleSpan(
+                                MarkdownSourceStyleKind.Quote,
+                                lineStart,
+                                (lineStart + prefixLen).coerceAtMost(lineEnd)
+                            )
+                        )
+                        spans.add(MarkdownSourceStyleSpan(MarkdownSourceStyleKind.Quoted, lineStart, lineEnd))
+                    }
+                }
             }
         }
         // Advance past the line and its '\n' separator.
         lineStart = lineEnd + 1
     }
 
-    // 2. Inline constructs, matched over the raw source (markers included).
+    // An unclosed fence runs to the end of the document.
+    if (fence != null && contentStart >= 0 && text.length > contentStart) {
+        spans.add(MarkdownSourceStyleSpan(MarkdownSourceStyleKind.Code, contentStart, text.length))
+        fencedBlocks.add(blockStart until text.length)
+    }
+
+    // 2. Inline constructs outside fenced blocks, matched over the raw source.
+    fun Int.isInFence(): Boolean = fencedBlocks.any { it.contains(this) }
+
     BoldPattern.findAll(text).forEach {
-        spans.add(MarkdownSourceStyleSpan(MarkdownSourceStyleKind.Bold, it.range.first, it.range.last + 1))
+        if (!it.range.first.isInFence()) {
+            spans.add(MarkdownSourceStyleSpan(MarkdownSourceStyleKind.Bold, it.range.first, it.range.last + 1))
+        }
     }
     ItalicPattern.findAll(text).forEach {
-        spans.add(MarkdownSourceStyleSpan(MarkdownSourceStyleKind.Italic, it.range.first, it.range.last + 1))
+        if (!it.range.first.isInFence()) {
+            spans.add(MarkdownSourceStyleSpan(MarkdownSourceStyleKind.Italic, it.range.first, it.range.last + 1))
+        }
     }
     StrikethroughPattern.findAll(text).forEach {
-        spans.add(
-            MarkdownSourceStyleSpan(MarkdownSourceStyleKind.Strikethrough, it.range.first, it.range.last + 1)
-        )
+        if (!it.range.first.isInFence()) {
+            spans.add(
+                MarkdownSourceStyleSpan(MarkdownSourceStyleKind.Strikethrough, it.range.first, it.range.last + 1)
+            )
+        }
     }
     HighlightPattern.findAll(text).forEach { match ->
+        if (match.range.first.isInFence()) return@forEach
         val token = match.groupValues[1]
         // Unknown token: leave the whole match literal (no span), like the renderer.
         val colorHex = if (token.isEmpty()) null else highlightHexForToken(token) ?: return@forEach
@@ -129,7 +183,9 @@ fun parseMarkdownSourceStyles(text: String): List<MarkdownSourceStyleSpan> {
         )
     }
     CodePattern.findAll(text).forEach {
-        spans.add(MarkdownSourceStyleSpan(MarkdownSourceStyleKind.Code, it.range.first, it.range.last + 1))
+        if (!it.range.first.isInFence()) {
+            spans.add(MarkdownSourceStyleSpan(MarkdownSourceStyleKind.Code, it.range.first, it.range.last + 1))
+        }
     }
 
     return spans

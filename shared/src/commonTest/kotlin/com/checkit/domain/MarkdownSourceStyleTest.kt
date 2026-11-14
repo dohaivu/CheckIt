@@ -96,4 +96,49 @@ class MarkdownSourceStyleTest {
         assertEquals(10, bold.end)
         assertTrue(italic.start >= bold.start && italic.end <= bold.end)
     }
+
+    @Test
+    fun fencedCodeIsNotStyledAsMarkdown() {
+        val text = "```\n# not a header\n**not bold**\n```"
+        val spans = parseMarkdownSourceStyles(text)
+
+        assertTrue(spans.of(MarkdownSourceStyleKind.Header1).isEmpty())
+        assertTrue(spans.of(MarkdownSourceStyleKind.Bold).isEmpty())
+        val code = spans.of(MarkdownSourceStyleKind.Code).single()
+        assertEquals("```\n".length, code.start)
+        assertEquals(text.length - "```".length - 1, code.end)
+    }
+
+    @Test
+    fun stylesOutsideFenceStillApply() {
+        val text = "```\nx\n```\n# header"
+        val spans = parseMarkdownSourceStyles(text)
+
+        val header = spans.of(MarkdownSourceStyleKind.Header1).single()
+        assertEquals(text.indexOf("# header"), header.start)
+        assertEquals(text.length, header.end)
+    }
+
+    @Test
+    fun unclosedFenceContentIsCode() {
+        val text = "# before\n```\n# inside"
+        val spans = parseMarkdownSourceStyles(text)
+
+        assertEquals(0, spans.of(MarkdownSourceStyleKind.Header1).single().start)
+        val code = spans.of(MarkdownSourceStyleKind.Code).single()
+        assertEquals(text.indexOf("# inside"), code.start)
+        assertEquals(text.length, code.end)
+    }
+
+    @Test
+    fun inlineCodeOutsideFenceIsStillStyled() {
+        val text = "`a`\n```\n`b`\n```"
+        val code = parseMarkdownSourceStyles(text).of(MarkdownSourceStyleKind.Code)
+
+        assertEquals(2, code.size)
+        val inline = code.first { it.start == 0 }
+        assertEquals(3, inline.end)
+        val block = code.first { it.start == text.indexOf("`b`") }
+        assertEquals(text.length - "```".length - 1, block.end)
+    }
 }

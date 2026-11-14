@@ -205,11 +205,80 @@ fun renderFullMarkdown(
  * styled AnnotatedString. Unlike [renderFullMarkdown], line-based
  * constructs (`# ` headers, `> ` quotes, list bullets) are left untouched so a
  * row starting with `#tag` never blows up into a header.
+ *
+ * Fenced code blocks are still handled: the fence lines and info string are
+ * dropped and the content is copied verbatim with a monospace span, so
+ * truncated rows never show backticks. Markers inside the fence stay literal.
  */
 fun renderInlineMarkdown(
     text: String,
     highlightColor: Color = MarkdownHighlightColor
 ): AnnotatedString {
+    if (text.isEmpty()) return AnnotatedString("")
+    // Fast path: no fence can start, so one inline parse covers the string.
+    if (!text.containsFenceMarker()) return renderInline(text, highlightColor)
+
+    return buildAnnotatedString {
+        val lines = text.split('\n')
+        var hasOutput = false
+        var fence: MarkdownFence? = null
+        var codeStartIndex = -1
+
+        // Separate lines lazily so dropped fence lines never leave blank gaps.
+        fun separate(): Int {
+            if (hasOutput) append("\n")
+            hasOutput = true
+            return length
+        }
+
+        lines.forEach { line ->
+            // 0. Fenced code blocks: verbatim content, no inline parsing.
+            val openFence = fence
+            if (openFence != null) {
+                if (isClosingFenceLine(line, openFence)) {
+                    if (codeStartIndex >= 0 && length > codeStartIndex) {
+                        addStyle(MarkdownCodeBlockSpan, codeStartIndex, length)
+                    }
+                    fence = null
+                    codeStartIndex = -1
+                } else {
+                    val start = separate()
+                    if (codeStartIndex < 0) codeStartIndex = start
+                    append(line)
+                }
+                return@forEach
+            }
+            val marker = openingFenceMarker(line)
+            if (marker != null) {
+                fence = marker
+                codeStartIndex = -1
+                return@forEach
+            }
+
+            // 1. Inline spans only; line-based markers stay literal.
+            val lineStart = separate()
+            val parsed = parseRichText(line)
+            append(parsed.text)
+            parsed.spans.forEach { span ->
+                addStyle(
+                    style = span.toSpanStyle(highlightColor),
+                    start = lineStart + span.start,
+                    end = lineStart + span.end
+                )
+            }
+        }
+
+        // An unclosed fence runs to the end of the document.
+        if (fence != null && codeStartIndex >= 0 && length > codeStartIndex) {
+            addStyle(MarkdownCodeBlockSpan, codeStartIndex, length)
+        }
+    }
+}
+
+private fun String.containsFenceMarker(): Boolean =
+    indexOf("```") >= 0 || indexOf("~~~") >= 0
+
+private fun renderInline(text: String, highlightColor: Color): AnnotatedString {
     val parsed = parseRichText(text)
     return AnnotatedString(
         text = parsed.text,

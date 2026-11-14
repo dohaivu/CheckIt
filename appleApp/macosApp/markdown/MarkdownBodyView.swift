@@ -204,20 +204,24 @@ private struct MarkdownCodeBlockView: View {
     let language: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            if !language.trimmingCharacters(in: .whitespaces).isEmpty {
-                Text(language)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+        if code.isEmpty {
+            EmptyView()
+        } else {
+            VStack(alignment: .leading, spacing: 4) {
+                if !language.trimmingCharacters(in: .whitespaces).isEmpty {
+                    Text(language)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                Text(code)
+                    .font(.system(.body, design: .monospaced))
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-            Text(code)
-                .font(.system(.body, design: .monospaced))
-                .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(Color.secondary.opacity(0.12), in: RoundedRectangle(cornerRadius: 6))
+            .padding(.vertical, 4)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background(Color.secondary.opacity(0.12), in: RoundedRectangle(cornerRadius: 6))
-        .padding(.vertical, 4)
     }
 }
 

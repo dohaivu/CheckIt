@@ -393,4 +393,39 @@ class MarkdownParsingTest {
         assertEquals(1, codeSpan.end)
         assertEquals(FontFamily.Monospace, codeSpan.item.fontFamily)
     }
+
+    @Test
+    fun renderInlineMarkdown_stripsFencesAndStylesCode() {
+        val result = renderInlineMarkdown("```\nval x = 1\n```")
+
+        assertEquals("val x = 1", result.text)
+        val codeSpan = result.spanStyles.single()
+        assertEquals(0, codeSpan.start)
+        assertEquals(9, codeSpan.end)
+        assertEquals(FontFamily.Monospace, codeSpan.item.fontFamily)
+        assertEquals(MarkdownCodeBackgroundColor, codeSpan.item.background)
+    }
+
+    @Test
+    fun renderInlineMarkdown_doesNotParseMarkersInsideFence() {
+        val result = renderInlineMarkdown("```\n**bold**\n# header\n```")
+
+        assertEquals("**bold**\n# header", result.text)
+        // One code span only: no bold span and no header sizing.
+        assertEquals(1, result.spanStyles.size)
+        assertTrue(result.spanStyles.none { it.item.fontWeight == FontWeight.Bold })
+    }
+
+    @Test
+    fun renderInlineMarkdown_keepsInlineSpansOutsideFence() {
+        val result = renderInlineMarkdown("**bold**\n```\ncode\n```\nafter")
+
+        assertEquals("bold\ncode\nafter", result.text)
+        val boldSpan = result.spanStyles.first { it.item.fontWeight == FontWeight.Bold }
+        assertEquals(0, boldSpan.start)
+        assertEquals(4, boldSpan.end)
+        val codeSpan = result.spanStyles.first { it.item.background == MarkdownCodeBackgroundColor }
+        assertEquals(5, codeSpan.start)
+        assertEquals(9, codeSpan.end)
+    }
 }
