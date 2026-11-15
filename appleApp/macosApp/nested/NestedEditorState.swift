@@ -880,6 +880,47 @@ final class NestedEditorState: ObservableObject {
         helper.moveDown(documentId: selectedDocId, itemId: id)
     }
 
+    /// Moves the selection to the first slot of its sibling group. Same-parent
+    /// reorder only: the parent and the item's subtree are untouched.
+    func moveSelectedToTop() { moveSelectedToEdge(first: true) }
+
+    /// Moves the selection to the last slot of its sibling group.
+    func moveSelectedToBottom() { moveSelectedToEdge(first: false) }
+
+    /// True when the selection is not already first among its siblings.
+    var canMoveSelectedToTop: Bool {
+        guard let pos = selectedSiblingPosition() else { return false }
+        return pos.index > 0
+    }
+
+    /// True when the selection is not already last among its siblings.
+    var canMoveSelectedToBottom: Bool {
+        guard let pos = selectedSiblingPosition() else { return false }
+        return pos.index < pos.count - 1
+    }
+
+    private func moveSelectedToEdge(first: Bool) {
+        guard let id = selectedId, let pos = selectedSiblingPosition() else { return }
+        helper.moveTo(
+            documentId: selectedDocId,
+            itemId: id,
+            // Blank drops at root, matching the bridge's moveTo contract.
+            targetParentId: pos.parentId ?? "",
+            targetIndex: Int32(first ? 0 : pos.count - 1)
+        )
+    }
+
+    /// Selection's 0-based slot plus the size of its sibling group.
+    private func selectedSiblingPosition() -> (parentId: String?, index: Int, count: Int)? {
+        guard !selectedDocId.isEmpty,
+              let id = selectedId
+        else { return nil }
+        let parentId = indexById[id]?.item.parentId
+        let group = siblings(of: parentId)
+        guard let idx = group.firstIndex(where: { $0.item.id == id }) else { return nil }
+        return (parentId, idx, group.count)
+    }
+
     func sortChildrenOfSelected(order: String) {
         guard let id = selectedId, !selectedDocId.isEmpty else { return }
         helper.sortChildren(documentId: selectedDocId, parentId: id, orderName: order)

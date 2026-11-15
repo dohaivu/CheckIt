@@ -765,18 +765,37 @@ struct NestedListsWindowView: View {
                 .fixedSize()
                 .accessibilityLabel("Copy, paste, and duplicate")
                 .help("Copy as Markdown (⌘C), copy and paste subtrees, or duplicate")
-                Button {
-                    moveDestinationId = defaultMoveDestinationId()
-                    showMoveSheet = true
+                Menu {
+                    Button {
+                        state.moveSelectedToTop()
+                    } label: {
+                        Label("Move to Top", systemImage: "arrow.up.to.line")
+                    }
+                    .disabled(!state.canMoveSelectedToTop)
+                    Button {
+                        state.moveSelectedToBottom()
+                    } label: {
+                        Label("Move to Bottom", systemImage: "arrow.down.to.line")
+                    }
+                    .disabled(!state.canMoveSelectedToBottom)
+                    Divider()
+                    Button {
+                        moveDestinationId = defaultMoveDestinationId()
+                        showMoveSheet = true
+                    } label: {
+                        Label("Move to…", systemImage: "tray.and.arrow.down")
+                    }
+                    .disabled(!hasMoveDestinations)
                 } label: {
-                    Image(systemName: "tray.and.arrow.down")
-                        .imageScale(.medium)
-                        .frame(width: 28, height: 28)
+                    EditorBarButtonLabel(system: "tray.and.arrow.down", shortcut: nil, active: false)
                 }
-                .buttonStyle(.borderless)
+                .menuStyle(.borderlessButton)
+                .fixedSize()
                 .accessibilityLabel("Move to")
-                .help("Move selected item under a sibling or uncle (M)")
-                .disabled(!hasMoveDestinations)
+                .help("Move selected item to the top or bottom, or under another item (M)")
+                .focusable(false)
+                .focusEffectDisabled()
+                .disabled(sel == nil)
                 barSeparator
                 Menu {
                     Toggle(isOn: Binding(
@@ -1295,8 +1314,10 @@ struct NestedListsWindowView: View {
                 return .handled
             }
             .onKeyPress(keys: [KeyEquivalent("m"), KeyEquivalent("M")]) { _ in
-                guard state.editingId == nil, state.draft == nil, state.selectedId != nil,
-                      hasMoveDestinations else { return .ignored }
+                // Positions (top/bottom) are always offered, so a selection is
+                // enough to open the sheet even with no move destinations.
+                guard state.editingId == nil, state.draft == nil,
+                      state.selectedId != nil else { return .ignored }
                 moveDestinationId = defaultMoveDestinationId()
                 showMoveSheet = true
                 return .handled
@@ -1460,6 +1481,28 @@ struct NestedListsWindowView: View {
             Text("Move to").font(.headline)
             Text(title.isEmpty ? "Untitled item" : title)
                 .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+            HStack(spacing: 8) {
+                Button {
+                    state.moveSelectedToTop()
+                    showMoveSheet = false
+                } label: {
+                    Label("Move to Top", systemImage: "arrow.up.to.line")
+                }
+                .disabled(!state.canMoveSelectedToTop)
+                .focusable(false)
+                .focusEffectDisabled()
+                Button {
+                    state.moveSelectedToBottom()
+                    showMoveSheet = false
+                } label: {
+                    Label("Move to Bottom", systemImage: "arrow.down.to.line")
+                }
+                .disabled(!state.canMoveSelectedToBottom)
+                .focusable(false)
+                .focusEffectDisabled()
+                Spacer()
+            }
+            Divider()
             ScrollView {
                 VStack(alignment: .leading, spacing: 2) {
                     moveDestinationGroup(title: "Siblings", items: groups?.siblings ?? [])
