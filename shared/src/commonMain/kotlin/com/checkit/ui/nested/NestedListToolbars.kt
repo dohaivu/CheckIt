@@ -119,7 +119,6 @@ import checkit.shared.generated.resources.nested_outdent
 import checkit.shared.generated.resources.nested_root
 import checkit.shared.generated.resources.nested_zoom_in
 import checkit.shared.generated.resources.nested_zoom_out
-import com.checkit.domain.FocusPeriod
 import com.checkit.domain.NestedDateFilter
 import com.checkit.domain.NestedDatePreset
 import com.checkit.domain.NestedRollingPreset
@@ -139,8 +138,8 @@ import com.checkit.domain.moveDestinations
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.DatePicker
 import com.checkit.ui.components.EmojiPicker
-import com.checkit.ui.components.FocusPeriodHeader
 import com.checkit.ui.components.TagOptionMenu
+import com.checkit.ui.components.title
 import com.checkit.ui.orderedRangeForEnd
 import com.checkit.ui.orderedRangeForStart
 import com.checkit.ui.nestedDateRangeLabel
@@ -810,19 +809,14 @@ internal fun NestedListFilterBar(
     isActive: Boolean,
     availableTags: List<TagItem>,
     selectedTagIds: Set<String>,
-    onFocusChange: (FocusPeriod) -> Unit,
     onDatePresetSelected: (NestedDatePreset) -> Unit,
     onRollingPresetSelected: (NestedRollingPreset) -> Unit,
     onClearDateFilter: () -> Unit,
     onQueryChange: (String) -> Unit,
     onHideCheckedChange: (Boolean) -> Unit,
     onTagToggle: (String) -> Unit,
-    onReset: () -> Unit,
-    onPreviousPeriod: () -> Unit,
-    onNextPeriod: () -> Unit,
-    onCurrentPeriod: () -> Unit
+    onReset: () -> Unit
 ) {
-    val calendarFocus = dateFilter?.calendarFocus
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -857,17 +851,9 @@ internal fun NestedListFilterBar(
             onClearDate = onClearDateFilter
         )
 
-        if (calendarFocus != null) {
-            FocusPeriodHeader(
-                focus = calendarFocus,
-                onFocusSelected = onFocusChange,
-                onPreviousPeriod = onPreviousPeriod,
-                onNextPeriod = onNextPeriod,
-                onCurrentPeriod = onCurrentPeriod
-            )
-        } else if (dateFilter is NestedDateFilter.Rolling) {
-            NestedRollingWindowHeader(
-                preset = dateFilter.preset,
+        if (dateFilter != null) {
+            NestedDateFilterHeader(
+                dateFilter = dateFilter,
                 onClear = onClearDateFilter
             )
         }
@@ -998,17 +984,28 @@ private fun NestedDatePresetRow(
 }
 
 /**
- * Compact header for rolling windows: they have no previous/next period, so
- * the period navigator is replaced by the resolved range and a clear action.
+ * Compact header for the active date filter. Calendar focus uses the shared
+ * period title; rolling windows append their resolved range because they are
+ * not calendar periods. Both modes offer a one-tap clear.
  */
 @Composable
-private fun NestedRollingWindowHeader(
-    preset: NestedRollingPreset,
+private fun NestedDateFilterHeader(
+    dateFilter: NestedDateFilter,
     onClear: () -> Unit
 ) {
     val todayDate = today()
-    val window = preset.window(todayDate)
-    val rangeLabel = nestedDateRangeLabel(window.start, window.endInclusive, todayDate)?.text
+    val label = when (dateFilter) {
+        is NestedDateFilter.Focus -> dateFilter.focus.title()
+        is NestedDateFilter.Rolling -> {
+            val window = dateFilter.preset.window(todayDate)
+            val rangeLabel = nestedDateRangeLabel(
+                window.start,
+                window.endInclusive,
+                todayDate
+            )?.text
+            if (rangeLabel != null) "${dateFilter.preset.label} · $rangeLabel" else dateFilter.preset.label
+        }
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1030,7 +1027,7 @@ private fun NestedRollingWindowHeader(
             )
             Spacer(Modifier.width(8.dp))
             Text(
-                text = if (rangeLabel != null) "${preset.label} · $rangeLabel" else preset.label,
+                text = label,
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface,

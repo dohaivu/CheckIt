@@ -115,17 +115,13 @@ internal fun NestedListScreen(
                     isActive = state.filters.isActive,
                     availableTags = state.availableTags,
                     selectedTagIds = state.filters.selectedTagIds,
-                    onFocusChange = viewModel::updateFilterFocus,
                     onDatePresetSelected = viewModel::applyDatePreset,
                     onRollingPresetSelected = viewModel::applyRollingFilter,
                     onClearDateFilter = viewModel::clearDateFilter,
                     onQueryChange = viewModel::updateFilterQuery,
                     onHideCheckedChange = { viewModel.toggleHideChecked() },
                     onTagToggle = viewModel::updateFilterTags,
-                    onReset = viewModel::resetFilters,
-                    onPreviousPeriod = viewModel::previousFilterPeriod,
-                    onNextPeriod = viewModel::nextFilterPeriod,
-                    onCurrentPeriod = viewModel::currentFilterPeriod
+                    onReset = viewModel::resetFilters
                 )
             }
 
