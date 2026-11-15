@@ -703,28 +703,22 @@ internal fun NestedFormattingBar(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     val todayDate = today()
-                    val quickPresets = listOf(
-                        "Today" to NestedDatePreset.Today,
-                        "Tomorrow" to NestedDatePreset.Tomorrow,
-                        "This week" to NestedDatePreset.ThisWeek,
-                        "Next week" to NestedDatePreset.NextWeek
-                    )
                     FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        quickPresets.forEach { (label, preset) ->
+                        NestedDatePreset.entries.forEach { preset ->
                             val window = preset.window(todayDate)
                             FilterChip(
                                 selected = startDate == window.start && endDate == window.endInclusive,
                                 onClick = {
-                                    // One-tap snap: writes immediately, so the
-                                    // pickers below stay a refinement path.
                                     startDate = window.start
                                     endDate = window.endInclusive
                                     onDateRangeChange(window.start, window.endInclusive)
                                 },
-                                label = { Text(label) }
+                                label = { Text(preset.displayLabel()) },
+                                contentPadding = PaddingValues(0.dp),
+                                modifier = Modifier.height(32.dp)
                             )
                         }
                     }
