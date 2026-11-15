@@ -555,10 +555,6 @@ struct NestedFormattingBar: View {
     @State private var showCalloutPicker = false
     @State private var showGuidePicker = false
     @State private var showColorPicker = false
-    @State private var startDate = Date()
-    @State private var endDate = Date()
-    @State private var hasStart = false
-    @State private var hasEnd = false
 
     /// Menu order for text styles (largest first, monostyled last).
     private let textStyles: [NestedTextStyle] = [.title, .heading, .subheading, .body, .monostyled]
@@ -569,37 +565,6 @@ struct NestedFormattingBar: View {
             return color
         }
         return .secondary
-    }
-
-    /// Snaps the popover's local range to a shared calendar preset. Values
-    /// stay local until Done, matching the DatePicker bindings below.
-    private func applyDatePreset(_ preset: NestedDatePresetOption) {
-        let today = Int32(nestedEpochDays(from: Date()))
-        guard let window = NestedAppleBridge.shared.datePresetWindow(
-            presetName: preset.name,
-            todayEpochDays: today
-        ) else { return }
-        startDate = nestedDate(fromEpochDays: Int64(window.startEpochDays))
-        endDate = nestedDate(fromEpochDays: Int64(window.endEpochDays))
-        hasStart = true
-        hasEnd = true
-    }
-
-    /// Orders the popover's draft range through the shared Kotlin helpers so
-    /// macOS matches Android: picking a start after the end clears the end,
-    /// and picking an end before the start clears the start. `Int32.min`
-    /// marks an unset side.
-    private func reorderDateRange(changedStart: Bool) {
-        let start = hasStart ? Int32(nestedEpochDays(from: startDate)) : Int32.min
-        let end = hasEnd ? Int32(nestedEpochDays(from: endDate)) : Int32.min
-        let range = changedStart
-            ? NestedAppleBridge.shared.orderedRangeForStart(startEpochDays: start, endEpochDays: end)
-            : NestedAppleBridge.shared.orderedRangeForEnd(startEpochDays: start, endEpochDays: end)
-
-        hasStart = range.startEpochDays != Int32.min
-        hasEnd = range.endEpochDays != Int32.min
-        if hasStart { startDate = nestedDate(fromEpochDays: Int64(range.startEpochDays)) }
-        if hasEnd { endDate = nestedDate(fromEpochDays: Int64(range.endEpochDays)) }
     }
 
     /// Writes straight through to the shared use case, so the picker's
@@ -819,54 +784,24 @@ struct NestedFormattingBar: View {
                 tint: (item.startDate != nil || item.endDate != nil) ? Color.accentColor : .secondary,
                 help: "Date range"
             ) {
-                hasStart = item.startDate != nil
-                hasEnd = item.endDate != nil
-                if let s = item.startDate?.toEpochDays() { startDate = nestedDate(fromEpochDays: s) }
-                if let e = item.endDate?.toEpochDays() { endDate = nestedDate(fromEpochDays: e) }
                 showDates = true
             }
             .popover(isPresented: $showDates, arrowEdge: .bottom) {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 6) {
-                        ForEach(Array(nestedDatePresetOptions.prefix(4))) { preset in
-                            Button(preset.label) { applyDatePreset(preset) }
-                                .buttonStyle(.bordered)
-                                .controlSize(.small)
-                        }
+                // A dedicated child seeded from the item's dates: popover
+                // content is built separately from the bar, so keeping the
+                // draft in the bar's @State left the first render stale.
+                NestedDateRangePopover(
+                    startEpochDays: item.startDate?.toEpochDays(),
+                    endEpochDays: item.endDate?.toEpochDays(),
+                    onSave: { start, end in
+                        state.updateDates(id: item.id, start: start, end: end)
+                        showDates = false
+                    },
+                    onClear: {
+                        state.updateDates(id: item.id, start: nil, end: nil)
+                        showDates = false
                     }
-                    Toggle("Start", isOn: $hasStart)
-                        .onChange(of: hasStart) { _, enabled in
-                            if enabled { reorderDateRange(changedStart: true) }
-                        }
-                    DatePicker("", selection: $startDate, displayedComponents: .date)
-                        .labelsHidden().disabled(!hasStart)
-                        .onChange(of: startDate) { _, _ in reorderDateRange(changedStart: true) }
-                    Toggle("End", isOn: $hasEnd)
-                        .onChange(of: hasEnd) { _, enabled in
-                            if enabled { reorderDateRange(changedStart: false) }
-                        }
-                    DatePicker("", selection: $endDate, displayedComponents: .date)
-                        .labelsHidden().disabled(!hasEnd)
-                        .onChange(of: endDate) { _, _ in reorderDateRange(changedStart: false) }
-                    HStack {
-                        Button("Clear") {
-                            state.updateDates(id: item.id, start: nil, end: nil)
-                            showDates = false
-                        }
-                        .foregroundStyle(.red)
-                        Spacer()
-                        Button("Done") {
-                            state.updateDates(
-                                id: item.id,
-                                start: hasStart ? nestedEpochDays(from: startDate) : nil,
-                                end: hasEnd ? nestedEpochDays(from: endDate) : nil
-                            )
-                            showDates = false
-                        }
-                    }
-                }
-                .padding()
-                .frame(width: 240)
+                )
             }
             // Note
             barBtn(
@@ -924,6 +859,138 @@ struct NestedFormattingBar: View {
                 onCancel: { showCalloutTitle = false }
             )
         }
+    }
+}
+
+// MARK: - Date range popover
+
+/// Draft date-range editor for the formatting bar. State is seeded from the
+/// item's stored dates at construction, so the toggles and pickers always
+/// match the item on the popover's first render.
+struct NestedDateRangePopover: View {
+    private let initialStartEpochDays: Int64?
+    private let initialEndEpochDays: Int64?
+    let onSave: (Int64?, Int64?) -> Void
+    let onClear: () -> Void
+
+    @State private var startDate: Date
+    @State private var endDate: Date
+    @State private var hasStart: Bool
+    @State private var hasEnd: Bool
+
+    init(
+        startEpochDays: Int64?,
+        endEpochDays: Int64?,
+        onSave: @escaping (Int64?, Int64?) -> Void,
+        onClear: @escaping () -> Void
+    ) {
+        initialStartEpochDays = startEpochDays
+        initialEndEpochDays = endEpochDays
+        self.onSave = onSave
+        self.onClear = onClear
+        _startDate = State(initialValue: startEpochDays.map { nestedDate(fromEpochDays: $0) } ?? Date())
+        _endDate = State(initialValue: endEpochDays.map { nestedDate(fromEpochDays: $0) } ?? Date())
+        _hasStart = State(initialValue: startEpochDays != nil)
+        _hasEnd = State(initialValue: endEpochDays != nil)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // Two columns keep the longer labels ("Yesterday", "Tomorrow")
+            // from truncating inside the 240pt popover.
+            LazyVGrid(
+                columns: [
+                    GridItem(.flexible(), spacing: 6),
+                    GridItem(.flexible(), spacing: 6)
+                ],
+                spacing: 6
+            ) {
+                ForEach(Array(nestedDatePresetOptions)) { preset in
+                    Button(preset.label) { applyDatePreset(preset) }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .frame(maxWidth: .infinity)
+                        .focusable(false)
+                        .focusEffectDisabled()
+                }
+            }
+            Toggle("Start", isOn: Binding(
+                get: { hasStart },
+                set: { enabled in
+                    // Enabling a side keeps the other side: clamp the newly
+                    // enabled value into the existing range instead of
+                    // switching the other toggle off.
+                    hasStart = enabled
+                    if enabled, hasEnd, startDate > endDate { startDate = endDate }
+                }
+            ))
+            DatePicker("", selection: $startDate, displayedComponents: .date)
+                .labelsHidden().disabled(!hasStart)
+                .onChange(of: startDate) { _, _ in reorderDateRange(changedStart: true) }
+            Toggle("End", isOn: Binding(
+                get: { hasEnd },
+                set: { enabled in
+                    hasEnd = enabled
+                    if enabled, hasStart, endDate < startDate { endDate = startDate }
+                }
+            ))
+            DatePicker("", selection: $endDate, displayedComponents: .date)
+                .labelsHidden().disabled(!hasEnd)
+                .onChange(of: endDate) { _, _ in reorderDateRange(changedStart: false) }
+            HStack {
+                Button("Clear") { onClear() }
+                    .foregroundStyle(.red)
+                Spacer()
+                Button("Done") {
+                    onSave(
+                        hasStart ? nestedEpochDays(from: startDate) : nil,
+                        hasEnd ? nestedEpochDays(from: endDate) : nil
+                    )
+                }
+            }
+        }
+        .padding()
+        .frame(width: 240)
+        .onAppear { resetDraft() }
+    }
+
+    /// Re-seeds the draft when SwiftUI reuses the popover content for a new
+    /// presentation, or when the item's dates changed while it was open.
+    private func resetDraft() {
+        startDate = initialStartEpochDays.map { nestedDate(fromEpochDays: $0) } ?? Date()
+        endDate = initialEndEpochDays.map { nestedDate(fromEpochDays: $0) } ?? Date()
+        hasStart = initialStartEpochDays != nil
+        hasEnd = initialEndEpochDays != nil
+    }
+
+    /// Snaps the draft range to a shared calendar preset. Values stay local
+    /// until Done.
+    private func applyDatePreset(_ preset: NestedDatePresetOption) {
+        let today = Int32(nestedEpochDays(from: Date()))
+        guard let window = NestedAppleBridge.shared.datePresetWindow(
+            presetName: preset.name,
+            todayEpochDays: today
+        ) else { return }
+        startDate = nestedDate(fromEpochDays: Int64(window.startEpochDays))
+        endDate = nestedDate(fromEpochDays: Int64(window.endEpochDays))
+        hasStart = true
+        hasEnd = true
+    }
+
+    /// Orders the draft through the shared Kotlin helpers so macOS matches
+    /// Android: picking a start after the end clears the end, and picking an
+    /// end before the start clears the start. `Int32.min` marks an unset side.
+    private func reorderDateRange(changedStart: Bool) {
+        let start = hasStart ? Int32(nestedEpochDays(from: startDate)) : Int32.min
+        let end = hasEnd ? Int32(nestedEpochDays(from: endDate)) : Int32.min
+        let range = changedStart
+            ? NestedAppleBridge.shared.orderedRangeForStart(startEpochDays: start, endEpochDays: end)
+            : NestedAppleBridge.shared.orderedRangeForEnd(startEpochDays: start, endEpochDays: end)
+
+        hasStart = range.startEpochDays != Int32.min
+        hasEnd = range.endEpochDays != Int32.min
+        if hasStart { startDate = nestedDate(fromEpochDays: Int64(range.startEpochDays)) }
+        if hasEnd { endDate = nestedDate(fromEpochDays: Int64(range.endEpochDays)) }
     }
 }
 
