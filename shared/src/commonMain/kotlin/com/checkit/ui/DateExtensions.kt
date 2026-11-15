@@ -66,7 +66,7 @@ internal fun nestedDateRangeLabel(
         (endDate != null && endDate.year != today.year)
     val text = when {
         startDate != null && endDate != null && startDate == endDate ->
-            startDate.compact(today)
+            startDate.compactWithDate(today)
         startDate != null && endDate != null ->
             "${startDate.metadataDate(includeYear)} → ${endDate.metadataDate(includeYear)}"
         startDate != null -> "From ${startDate.metadataDate(includeYear)}"

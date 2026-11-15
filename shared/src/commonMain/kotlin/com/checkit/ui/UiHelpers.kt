@@ -201,19 +201,35 @@ internal fun LocalDate.compact(): String = compact(today())
  */
 internal fun LocalDate.compact(reference: LocalDate): String {
     val monthDay = "${shortMonthName()} $day"
-    return when (this) {
-        reference -> "Today"
-        reference.plus(1, DateTimeUnit.DAY) -> "Tomorrow"
-        reference.plus(-1, DateTimeUnit.DAY) -> "Yesterday"
-        reference.plus(2, DateTimeUnit.DAY),
-        reference.plus(3, DateTimeUnit.DAY),
-        reference.plus(4, DateTimeUnit.DAY),
-        reference.plus(5, DateTimeUnit.DAY),
-        reference.plus(6, DateTimeUnit.DAY) -> dayOfWeek.shortName()
-        else -> {
-            if (year == reference.year) monthDay else "$monthDay, $year"
-        }
-    }
+    return relativeDayLabel(reference)
+        ?: if (year == reference.year) monthDay else "$monthDay, $year"
+}
+
+internal fun LocalDate.compactWithDate(): String = compactWithDate(today())
+
+/**
+ * Relative label plus the explicit calendar date ("Tomorrow Nov 16"), so the
+ * picker keeps both the quick read and the exact day. Absolute dates drop the
+ * empty relative prefix instead of returning a leading space.
+ */
+internal fun LocalDate.compactWithDate(reference: LocalDate): String {
+    val dateLabel =
+        if (year == reference.year) "${shortMonthName()} $day" else "${shortMonthName()} $day, $year"
+    val relative = relativeDayLabel(reference)
+    return if (relative == null) dateLabel else "$relative $dateLabel"
+}
+
+/** "Today"/"Tomorrow"/"Yesterday", a weekday within the next six days, or null. */
+private fun LocalDate.relativeDayLabel(reference: LocalDate): String? = when (this) {
+    reference -> "Today"
+    reference.plus(1, DateTimeUnit.DAY) -> "Tomorrow"
+    reference.plus(-1, DateTimeUnit.DAY) -> "Yesterday"
+    reference.plus(2, DateTimeUnit.DAY),
+    reference.plus(3, DateTimeUnit.DAY),
+    reference.plus(4, DateTimeUnit.DAY),
+    reference.plus(5, DateTimeUnit.DAY),
+    reference.plus(6, DateTimeUnit.DAY) -> dayOfWeek.shortName()
+    else -> null
 }
 
 fun TaskPriority.priorityColor(): Color = when (this) {
@@ -402,7 +418,7 @@ fun MetricItem.countdownLabel(today: LocalDate = today()): String {
 
 fun MetricItem.dueDateLabel(): String {
     val date = dueLocalDate() ?: return "No date"
-    val base = date.compact()
+    val base = date.compactWithDate()
     val time = dueTimeMinutes?.takeIf { unit == MetricUnit.DueDate }?.toClockLabel()
     return if (time != null) "$base, $time" else base
 }

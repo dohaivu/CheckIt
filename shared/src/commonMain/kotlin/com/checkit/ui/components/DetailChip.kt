@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.checkit.ui.compact
+import com.checkit.ui.compactWithDate
 import com.checkit.ui.toClockLabel
 import kotlinx.datetime.LocalDate
 
@@ -164,7 +165,7 @@ internal fun dateTimeRangeDetailLabel(
     endTimeMinutes: Int?
 ): String {
     val timeLabel = timeRangeDetailLabel(startTimeMinutes, endTimeMinutes).takeIf { it.isNotBlank() }
-    val dateLabel = date?.compact()
+    val dateLabel = date?.compactWithDate()
     return when {
         dateLabel != null && timeLabel != null -> "$dateLabel $timeLabel"
         dateLabel != null -> dateLabel

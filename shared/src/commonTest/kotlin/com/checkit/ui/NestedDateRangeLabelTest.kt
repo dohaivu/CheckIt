@@ -28,7 +28,7 @@ class NestedDateRangeLabelTest {
     @Test
     fun sameDayCollapsesToOneDate() {
         val label = assertNotNull(nestedDateRangeLabel(today, today, today))
-        assertEquals("Today", label.text)
+        assertEquals("Today Oct 26", label.text)
         assertFalse(label.isOverdue)
     }
 

@@ -44,6 +44,7 @@ import com.checkit.ui.TaskIcon
 import com.checkit.ui.tasks.TaskListDisplayType
 import com.checkit.ui.cardColor
 import com.checkit.ui.compact
+import com.checkit.ui.compactWithDate
 import com.checkit.ui.isOverdue
 import com.checkit.ui.priorityColor
 
@@ -290,7 +291,7 @@ internal fun StandardNoteRowContent(note: NoteItem, showList: Boolean) {
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            note.date?.let { CompactDetailChip(Icons.Default.Event, it.compact(), isHighlighted = note.isOverdue()) }
+            note.date?.let { CompactDetailChip(Icons.Default.Event, it.compactWithDate(), isHighlighted = note.isOverdue()) }
             SupportingPills(
                 list = if (showList) note.list else null,
                 tags = note.tags,
@@ -343,7 +344,7 @@ internal fun DetailNoteRowContent(note: NoteItem, showList: Boolean) {
             note.date?.let {
                 CompactDetailChip(
                     Icons.Default.Event,
-                    it.compact(),
+                    it.compactWithDate(),
                     isHighlighted = note.isOverdue()
                 )
             }
