@@ -1089,6 +1089,7 @@ private fun NestedDatePreset.displayLabel(): String = when (this) {
     NestedDatePreset.ThisWeek -> "This week"
     NestedDatePreset.NextWeek -> "Next week"
     NestedDatePreset.ThisMonth -> "This month"
+    NestedDatePreset.NextMonth -> "Next month"
 }
 
 // ---------------- display type ----------------

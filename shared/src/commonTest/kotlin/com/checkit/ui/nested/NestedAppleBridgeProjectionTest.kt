@@ -137,6 +137,20 @@ class NestedAppleBridgeProjectionTest {
     }
 
     @Test
+    fun nextMonthPresetResolvesThroughTheBridge() {
+        val today = LocalDate(2026, 11, 14)
+        val window = assertNotNull(
+            NestedAppleBridge.datePresetWindow(
+                presetName = "NextMonth",
+                todayEpochDays = today.toEpochDays().toInt()
+            )
+        )
+
+        assertEquals(LocalDate(2026, 12, 1).toEpochDays().toInt(), window.startEpochDays)
+        assertEquals(LocalDate(2026, 12, 31).toEpochDays().toInt(), window.endEpochDays)
+    }
+
+    @Test
     fun unknownPresetNameReturnsNull() {
         assertNull(
             NestedAppleBridge.datePresetWindow(

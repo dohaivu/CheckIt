@@ -888,8 +888,8 @@ struct NestedDateRangePopover: View {
         initialEndEpochDays = endEpochDays
         self.onSave = onSave
         self.onClear = onClear
-        _startDate = State(initialValue: startEpochDays.map { nestedDate(fromEpochDays: $0) } ?? Date())
-        _endDate = State(initialValue: endEpochDays.map { nestedDate(fromEpochDays: $0) } ?? Date())
+        _startDate = State(initialValue: Self.draftDate(startEpochDays))
+        _endDate = State(initialValue: Self.draftDate(endEpochDays))
         _hasStart = State(initialValue: startEpochDays != nil)
         _hasEnd = State(initialValue: endEpochDays != nil)
     }
@@ -905,7 +905,7 @@ struct NestedDateRangePopover: View {
                 ],
                 spacing: 6
             ) {
-                ForEach(Array(nestedDatePresetOptions)) { preset in
+                ForEach(nestedDatePresetOptions) { preset in
                     Button(preset.label) { applyDatePreset(preset) }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
@@ -914,26 +914,11 @@ struct NestedDateRangePopover: View {
                         .focusEffectDisabled()
                 }
             }
-            Toggle("Start", isOn: Binding(
-                get: { hasStart },
-                set: { enabled in
-                    // Enabling a side keeps the other side: clamp the newly
-                    // enabled value into the existing range instead of
-                    // switching the other toggle off.
-                    hasStart = enabled
-                    if enabled, hasEnd, startDate > endDate { startDate = endDate }
-                }
-            ))
+            Toggle("Start", isOn: Binding(get: { hasStart }, set: setStartEnabled))
             DatePicker("", selection: $startDate, displayedComponents: .date)
                 .labelsHidden().disabled(!hasStart)
                 .onChange(of: startDate) { _, _ in reorderDateRange(changedStart: true) }
-            Toggle("End", isOn: Binding(
-                get: { hasEnd },
-                set: { enabled in
-                    hasEnd = enabled
-                    if enabled, hasStart, endDate < startDate { endDate = startDate }
-                }
-            ))
+            Toggle("End", isOn: Binding(get: { hasEnd }, set: setEndEnabled))
             DatePicker("", selection: $endDate, displayedComponents: .date)
                 .labelsHidden().disabled(!hasEnd)
                 .onChange(of: endDate) { _, _ in reorderDateRange(changedStart: false) }
@@ -957,10 +942,22 @@ struct NestedDateRangePopover: View {
     /// Re-seeds the draft when SwiftUI reuses the popover content for a new
     /// presentation, or when the item's dates changed while it was open.
     private func resetDraft() {
-        startDate = initialStartEpochDays.map { nestedDate(fromEpochDays: $0) } ?? Date()
-        endDate = initialEndEpochDays.map { nestedDate(fromEpochDays: $0) } ?? Date()
+        startDate = Self.draftDate(initialStartEpochDays)
+        endDate = Self.draftDate(initialEndEpochDays)
         hasStart = initialStartEpochDays != nil
         hasEnd = initialEndEpochDays != nil
+    }
+
+    /// Enabling a side keeps the other side: clamp the newly enabled value
+    /// into the existing range instead of switching the other toggle off.
+    private func setStartEnabled(_ enabled: Bool) {
+        hasStart = enabled
+        if enabled, hasEnd, startDate > endDate { startDate = endDate }
+    }
+
+    private func setEndEnabled(_ enabled: Bool) {
+        hasEnd = enabled
+        if enabled, hasStart, endDate < startDate { endDate = startDate }
     }
 
     /// Snaps the draft range to a shared calendar preset. Values stay local
@@ -971,26 +968,43 @@ struct NestedDateRangePopover: View {
             presetName: preset.name,
             todayEpochDays: today
         ) else { return }
-        startDate = nestedDate(fromEpochDays: Int64(window.startEpochDays))
-        endDate = nestedDate(fromEpochDays: Int64(window.endEpochDays))
         hasStart = true
         hasEnd = true
+        startDate = Self.draftDate(Int64(window.startEpochDays))
+        endDate = Self.draftDate(Int64(window.endEpochDays))
     }
 
     /// Orders the draft through the shared Kotlin helpers so macOS matches
     /// Android: picking a start after the end clears the end, and picking an
     /// end before the start clears the start. `Int32.min` marks an unset side.
     private func reorderDateRange(changedStart: Bool) {
-        let start = hasStart ? Int32(nestedEpochDays(from: startDate)) : Int32.min
-        let end = hasEnd ? Int32(nestedEpochDays(from: endDate)) : Int32.min
         let range = changedStart
-            ? NestedAppleBridge.shared.orderedRangeForStart(startEpochDays: start, endEpochDays: end)
-            : NestedAppleBridge.shared.orderedRangeForEnd(startEpochDays: start, endEpochDays: end)
-
+            ? NestedAppleBridge.shared.orderedRangeForStart(
+                startEpochDays: startEpochDays,
+                endEpochDays: endEpochDays
+            )
+            : NestedAppleBridge.shared.orderedRangeForEnd(
+                startEpochDays: startEpochDays,
+                endEpochDays: endEpochDays
+            )
         hasStart = range.startEpochDays != Int32.min
         hasEnd = range.endEpochDays != Int32.min
-        if hasStart { startDate = nestedDate(fromEpochDays: Int64(range.startEpochDays)) }
-        if hasEnd { endDate = nestedDate(fromEpochDays: Int64(range.endEpochDays)) }
+        if hasStart { startDate = Self.draftDate(Int64(range.startEpochDays)) }
+        if hasEnd { endDate = Self.draftDate(Int64(range.endEpochDays)) }
+    }
+
+    private var startEpochDays: Int32 {
+        hasStart ? Int32(nestedEpochDays(from: startDate)) : Int32.min
+    }
+
+    private var endEpochDays: Int32 {
+        hasEnd ? Int32(nestedEpochDays(from: endDate)) : Int32.min
+    }
+
+    /// Epoch days for the draft; nil keeps today's date so an enabled picker
+    /// always has a value to show.
+    private static func draftDate(_ epochDays: Int64?) -> Date {
+        epochDays.map { nestedDate(fromEpochDays: $0) } ?? Date()
     }
 }
 

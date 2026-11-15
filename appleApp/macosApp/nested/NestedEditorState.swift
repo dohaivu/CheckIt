@@ -47,6 +47,7 @@ let nestedDatePresetOptions: [NestedDatePresetOption] = [
     NestedDatePresetOption(name: "ThisWeek", label: "This week", icon: "calendar"),
     NestedDatePresetOption(name: "NextWeek", label: "Next week", icon: "calendar.badge.plus"),
     NestedDatePresetOption(name: "ThisMonth", label: "This month", icon: "calendar.circle"),
+    NestedDatePresetOption(name: "NextMonth", label: "Next month", icon: "calendar.badge.plus"),
 ]
 
 /// Rolling attention windows mirror `NestedRollingPreset` in Kotlin. They are

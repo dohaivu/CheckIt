@@ -17,7 +17,8 @@ enum class NestedDatePreset {
     Tomorrow,
     ThisWeek,
     NextWeek,
-    ThisMonth;
+    ThisMonth,
+    NextMonth;
 
     /**
      * Equivalent focus for the device-local [today]. Keeping the preset as a
@@ -31,6 +32,7 @@ enum class NestedDatePreset {
         ThisWeek -> FocusPeriod(Period.Week, today)
         NextWeek -> FocusPeriod(Period.Week, today).shift(1)
         ThisMonth -> FocusPeriod(Period.Month, today)
+        NextMonth -> FocusPeriod(Period.Month, today).shift(1)
     }
 
     /** Closed, inclusive calendar window for [today]. */

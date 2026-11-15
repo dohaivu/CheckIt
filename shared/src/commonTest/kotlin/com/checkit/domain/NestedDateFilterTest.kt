@@ -207,6 +207,11 @@ class NestedDateFilterTest {
         assertEquals(NestedDateWindow(d(11, 9), d(11, 15)), NestedDatePreset.ThisWeek.window(today))
         assertEquals(NestedDateWindow(d(11, 16), d(11, 22)), NestedDatePreset.NextWeek.window(today))
         assertEquals(NestedDateWindow(d(11, 1), d(11, 30)), NestedDatePreset.ThisMonth.window(today))
+        assertEquals(NestedDateWindow(d(12, 1), d(12, 31)), NestedDatePreset.NextMonth.window(today))
+        assertEquals(
+            NestedDateWindow(LocalDate(2027, 1, 1), LocalDate(2027, 1, 31)),
+            NestedDatePreset.NextMonth.window(LocalDate(2026, 12, 20))
+        )
     }
 
     @Test
@@ -225,6 +230,10 @@ class NestedDateFilterTest {
         assertEquals(
             NestedDateWindow(LocalDate(2026, 2, 2), LocalDate(2026, 2, 8)),
             NestedDatePreset.NextWeek.window(jan31)
+        )
+        assertEquals(
+            NestedDateWindow(LocalDate(2026, 2, 1), LocalDate(2026, 2, 28)),
+            NestedDatePreset.NextMonth.window(jan31)
         )
 
         val leapDay = LocalDate(2024, 2, 29)
