@@ -147,6 +147,56 @@ class NestedAppleBridgeProjectionTest {
     }
 
     @Test
+    fun orderedStartAfterEndClearsTheEndThroughTheBridge() {
+        val range = NestedAppleBridge.orderedRangeForStart(
+            startEpochDays = windowEnd.toEpochDays().toInt(),
+            endEpochDays = windowStart.toEpochDays().toInt()
+        )
+
+        assertEquals(windowEnd.toEpochDays().toInt(), range.startEpochDays)
+        assertEquals(Int.MIN_VALUE, range.endEpochDays)
+    }
+
+    @Test
+    fun orderedStartEqualEndKeepsBothSides() {
+        val range = NestedAppleBridge.orderedRangeForStart(
+            startEpochDays = windowStart.toEpochDays().toInt(),
+            endEpochDays = windowStart.toEpochDays().toInt()
+        )
+
+        assertEquals(windowStart.toEpochDays().toInt(), range.startEpochDays)
+        assertEquals(windowStart.toEpochDays().toInt(), range.endEpochDays)
+    }
+
+    @Test
+    fun orderedEndBeforeStartClearsTheStartThroughTheBridge() {
+        val range = NestedAppleBridge.orderedRangeForEnd(
+            startEpochDays = windowEnd.toEpochDays().toInt(),
+            endEpochDays = windowStart.toEpochDays().toInt()
+        )
+
+        assertEquals(Int.MIN_VALUE, range.startEpochDays)
+        assertEquals(windowStart.toEpochDays().toInt(), range.endEpochDays)
+    }
+
+    @Test
+    fun orderedRangeKeepsUnsetSidesAsSentinel() {
+        val startOnly = NestedAppleBridge.orderedRangeForEnd(
+            startEpochDays = windowStart.toEpochDays().toInt(),
+            endEpochDays = Int.MIN_VALUE
+        )
+        assertEquals(windowStart.toEpochDays().toInt(), startOnly.startEpochDays)
+        assertEquals(Int.MIN_VALUE, startOnly.endEpochDays)
+
+        val endOnly = NestedAppleBridge.orderedRangeForStart(
+            startEpochDays = Int.MIN_VALUE,
+            endEpochDays = windowEnd.toEpochDays().toInt()
+        )
+        assertEquals(Int.MIN_VALUE, endOnly.startEpochDays)
+        assertEquals(windowEnd.toEpochDays().toInt(), endOnly.endEpochDays)
+    }
+
+    @Test
     fun rollingPresetNamesResolveToEpochDayWindows() {
         val today = LocalDate(2026, 11, 14)
         val window = assertNotNull(

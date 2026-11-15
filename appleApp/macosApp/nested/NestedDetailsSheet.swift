@@ -585,6 +585,23 @@ struct NestedFormattingBar: View {
         hasEnd = true
     }
 
+    /// Orders the popover's draft range through the shared Kotlin helpers so
+    /// macOS matches Android: picking a start after the end clears the end,
+    /// and picking an end before the start clears the start. `Int32.min`
+    /// marks an unset side.
+    private func reorderDateRange(changedStart: Bool) {
+        let start = hasStart ? Int32(nestedEpochDays(from: startDate)) : Int32.min
+        let end = hasEnd ? Int32(nestedEpochDays(from: endDate)) : Int32.min
+        let range = changedStart
+            ? NestedAppleBridge.shared.orderedRangeForStart(startEpochDays: start, endEpochDays: end)
+            : NestedAppleBridge.shared.orderedRangeForEnd(startEpochDays: start, endEpochDays: end)
+
+        hasStart = range.startEpochDays != Int32.min
+        hasEnd = range.endEpochDays != Int32.min
+        if hasStart { startDate = nestedDate(fromEpochDays: Int64(range.startEpochDays)) }
+        if hasEnd { endDate = nestedDate(fromEpochDays: Int64(range.endEpochDays)) }
+    }
+
     /// Writes straight through to the shared use case, so the picker's
     /// binding is the source of truth (no draft state to commit).
     private var guideEmojiBinding: Binding<String> {
@@ -818,11 +835,19 @@ struct NestedFormattingBar: View {
                         }
                     }
                     Toggle("Start", isOn: $hasStart)
+                        .onChange(of: hasStart) { _, enabled in
+                            if enabled { reorderDateRange(changedStart: true) }
+                        }
                     DatePicker("", selection: $startDate, displayedComponents: .date)
                         .labelsHidden().disabled(!hasStart)
+                        .onChange(of: startDate) { _, _ in reorderDateRange(changedStart: true) }
                     Toggle("End", isOn: $hasEnd)
+                        .onChange(of: hasEnd) { _, enabled in
+                            if enabled { reorderDateRange(changedStart: false) }
+                        }
                     DatePicker("", selection: $endDate, displayedComponents: .date)
                         .labelsHidden().disabled(!hasEnd)
+                        .onChange(of: endDate) { _, _ in reorderDateRange(changedStart: false) }
                     HStack {
                         Button("Clear") {
                             state.updateDates(id: item.id, start: nil, end: nil)

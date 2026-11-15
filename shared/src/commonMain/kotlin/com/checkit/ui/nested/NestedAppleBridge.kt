@@ -658,6 +658,16 @@ class NestedAppleDateWindow internal constructor(
     val endEpochDays: Int
 )
 
+/**
+ * Epoch-day pair produced by the shared range-ordering helpers. Swift reads
+ * [Int.MIN_VALUE] from either side as "unset", matching
+ * `updateDateRangeDays`.
+ */
+class NestedAppleDateRange internal constructor(
+    val startEpochDays: Int,
+    val endEpochDays: Int
+)
+
 object NestedAppleBridge {
     private var koinApp: KoinApplication? = null
 
@@ -718,6 +728,37 @@ object NestedAppleBridge {
         val preset = NestedRollingPreset.entries.firstOrNull { it.name == presetName } ?: return null
         return preset.window(LocalDate.fromEpochDays(todayEpochDays)).toAppleWindow()
     }
+
+    /**
+     * Orders a newly picked start against the current end for the macOS range
+     * picker through `com.checkit.ui.orderedRangeForStart`, using the same
+     * rule as the Compose picker: a start after the end clears the end, while
+     * equal days stay valid because the end is inclusive. Pass
+     * [Int.MIN_VALUE] for an unset side.
+     */
+    fun orderedRangeForStart(startEpochDays: Int, endEpochDays: Int): NestedAppleDateRange =
+        com.checkit.ui.orderedRangeForStart(
+            startEpochDays.toLocalDateOrNull(),
+            endEpochDays.toLocalDateOrNull()
+        ).toAppleDateRange()
+
+    /**
+     * Mirror of `orderedRangeForStart` for a newly picked end: an end before
+     * the start clears the start, so the latest pick always survives.
+     */
+    fun orderedRangeForEnd(startEpochDays: Int, endEpochDays: Int): NestedAppleDateRange =
+        com.checkit.ui.orderedRangeForEnd(
+            startEpochDays.toLocalDateOrNull(),
+            endEpochDays.toLocalDateOrNull()
+        ).toAppleDateRange()
+
+    private fun Int.toLocalDateOrNull(): LocalDate? =
+        takeIf { it != Int.MIN_VALUE }?.let(LocalDate::fromEpochDays)
+
+    private fun Pair<LocalDate?, LocalDate?>.toAppleDateRange() = NestedAppleDateRange(
+        startEpochDays = first?.toEpochDays()?.toInt() ?: Int.MIN_VALUE,
+        endEpochDays = second?.toEpochDays()?.toInt() ?: Int.MIN_VALUE
+    )
 
     private fun NestedDateWindow.toAppleWindow() = NestedAppleDateWindow(
         startEpochDays = start.toEpochDays().toInt(),
