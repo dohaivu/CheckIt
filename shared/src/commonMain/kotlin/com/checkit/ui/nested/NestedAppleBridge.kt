@@ -691,7 +691,9 @@ object NestedAppleBridge {
      * bounds are epoch days (`LocalDate.toEpochDays()`); a start-only or
      * end-only node participates through the shared open-ended matching rules.
      * [overdueBeforeEpochDays] carries the [NestedRollingPreset.Overdue]
-     * predicate, which has no closed window of its own.
+     * predicate, which has no closed window of its own. [todayEpochDays] lets
+     * the Working filter drop overdue items; pass [Int.MIN_VALUE] to skip that
+     * check.
      */
     fun filterOutlineProjection(
         roots: List<NestedItemNode>,
@@ -699,7 +701,8 @@ object NestedAppleBridge {
         workingOnly: Boolean = false,
         windowStartEpochDays: Int = Int.MIN_VALUE,
         windowEndEpochDays: Int = Int.MIN_VALUE,
-        overdueBeforeEpochDays: Int = Int.MIN_VALUE
+        overdueBeforeEpochDays: Int = Int.MIN_VALUE,
+        todayEpochDays: Int = Int.MIN_VALUE
     ): NestedOutlineProjection {
         val hasWindow =
             windowStartEpochDays != Int.MIN_VALUE && windowEndEpochDays != Int.MIN_VALUE
@@ -710,6 +713,9 @@ object NestedAppleBridge {
             query = query,
             workingOnly = workingOnly,
             overdueBefore = overdueBeforeEpochDays
+                .takeIf { it != Int.MIN_VALUE }
+                ?.let(LocalDate::fromEpochDays),
+            today = todayEpochDays
                 .takeIf { it != Int.MIN_VALUE }
                 ?.let(LocalDate::fromEpochDays)
         )

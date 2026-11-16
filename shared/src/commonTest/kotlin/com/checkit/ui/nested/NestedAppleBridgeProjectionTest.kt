@@ -237,6 +237,40 @@ class NestedAppleBridgeProjectionTest {
     }
 
     @Test
+    fun workingProjectionExcludesOverdueItemsWhenTodayIsGiven() {
+        val today = LocalDate(2026, 11, 16)
+        val roots = listOf(
+            node("overdue", end = LocalDate(2026, 11, 15)),
+            node("dueToday", end = today),
+            node("future", end = LocalDate(2026, 11, 17)),
+            node("startOnly", start = LocalDate(2026, 11, 1)),
+            node("undated")
+        )
+        val filtered = NestedAppleBridge.filterOutlineProjection(
+            roots = roots,
+            workingOnly = true,
+            todayEpochDays = today.toEpochDays().toInt()
+        )
+
+        assertEquals(listOf("dueToday", "future", "startOnly"), ids(filtered.roots))
+    }
+
+    @Test
+    fun workingProjectionWithoutTodayKeepsOverdueItems() {
+        val today = LocalDate(2026, 11, 16)
+        val roots = listOf(
+            node("overdue", end = LocalDate(2026, 11, 15)),
+            node("dueToday", end = today)
+        )
+        val filtered = NestedAppleBridge.filterOutlineProjection(
+            roots = roots,
+            workingOnly = true
+        )
+
+        assertEquals(listOf("overdue", "dueToday"), ids(filtered.roots))
+    }
+
+    @Test
     fun rollingPresetNamesResolveToEpochDayWindows() {
         val today = LocalDate(2026, 11, 14)
         val window = assertNotNull(

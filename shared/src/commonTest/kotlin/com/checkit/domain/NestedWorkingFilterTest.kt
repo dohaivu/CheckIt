@@ -1,6 +1,9 @@
 package com.checkit.domain
 
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
+import kotlinx.datetime.plus
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -99,6 +102,46 @@ class NestedWorkingFilterTest {
     @Test
     fun trackedTimeMarksWorking() {
         assertTrue(isWorkingItem(item("a", null, actualMinutes = 25)))
+    }
+
+    @Test
+    fun overdueItemIsNotWorkingAsOfToday() {
+        val today = LocalDate(2026, 11, 16)
+        assertFalse(isWorkingItem(item("a", null, endDate = today.minus(1, DateTimeUnit.DAY)), today))
+        assertTrue(isWorkingItem(item("b", null, endDate = today), today))
+        assertTrue(isWorkingItem(item("c", null, startDate = today.minus(5, DateTimeUnit.DAY)), today))
+    }
+
+    @Test
+    fun workingOnlyExcludesOverdueItems() {
+        val today = LocalDate(2026, 11, 16)
+        val roots = buildNestedTree(
+            listOf(
+                item("overdue", null, 0, priority = TaskPriority.High, endDate = today.minus(1, DateTimeUnit.DAY)),
+                item("dueToday", null, 1, priority = TaskPriority.Low, endDate = today),
+                item("future", null, 2, priority = TaskPriority.Low, endDate = today.plus(1, DateTimeUnit.DAY)),
+                item("startOnly", null, 3, startDate = today.minus(10, DateTimeUnit.DAY)),
+                item("undated", null, 4, priority = TaskPriority.Medium),
+            )
+        )
+        val filtered = filterNestedTree(roots, workingOnly = true, today = today)
+        assertEquals(
+            listOf("dueToday", "future", "startOnly", "undated"),
+            filtered.map { it.item.id }
+        )
+    }
+
+    @Test
+    fun workingKeepsNonOverdueChildUnderOverdueAncestor() {
+        val today = LocalDate(2026, 11, 16)
+        val roots = buildNestedTree(
+            listOf(
+                item("overdueProject", null, 0, priority = TaskPriority.High, endDate = today.minus(3, DateTimeUnit.DAY)),
+                item("activeTask", "overdueProject", 0, priority = TaskPriority.Low),
+            )
+        )
+        val filtered = filterNestedTree(roots, workingOnly = true, today = today)
+        assertEquals(listOf("overdueProject", "activeTask"), flatIds(filtered))
     }
 
     @Test

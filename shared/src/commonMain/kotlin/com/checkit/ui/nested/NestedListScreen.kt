@@ -85,7 +85,7 @@ internal fun NestedListScreen(
     val todayDate = today()
     val dateWindow = effectiveFilters.dateFilter?.window(todayDate)
     val overdueBefore = effectiveFilters.dateFilter?.overdueBefore(todayDate)
-    val outlineProjection = remember(unfilteredRoots, effectiveFilters, dateWindow, overdueBefore) {
+    val outlineProjection = remember(unfilteredRoots, effectiveFilters, dateWindow, overdueBefore, todayDate) {
         if (effectiveFilters.isVisible || effectiveFilters.displayType != NestedDisplayType.All) {
             filterNestedTreeWithContext(
                 roots = unfilteredRoots,
@@ -95,7 +95,8 @@ internal fun NestedListScreen(
                 hideChecked = effectiveFilters.hideChecked,
                 selectedTagIds = effectiveFilters.selectedTagIds,
                 workingOnly = effectiveFilters.displayType == NestedDisplayType.Working,
-                overdueBefore = overdueBefore
+                overdueBefore = overdueBefore,
+                today = todayDate
             )
         } else {
             null

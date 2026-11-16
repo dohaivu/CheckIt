@@ -28,6 +28,9 @@ class NestedOutlineProjection(
  * AND pass) so a query-matching parent with working children, or vice
  * versa, isn't pruned to nothing. Working implies hide-checked: done work
  * is noise in a needs-attention view (All stays for review).
+ *
+ * @param today when set, [workingOnly] also drops overdue items (an end date
+ *   before [today]); overdue work belongs to the Overdue criterion instead.
  */
 fun filterNestedTree(
     roots: List<NestedItemNode>,
@@ -37,7 +40,8 @@ fun filterNestedTree(
     hideChecked: Boolean = false,
     selectedTagIds: Set<String> = emptySet(),
     workingOnly: Boolean = false,
-    overdueBefore: LocalDate? = null
+    overdueBefore: LocalDate? = null,
+    today: LocalDate? = null
 ): List<NestedItemNode> =
     filterNestedTreeWithContext(
         roots = roots,
@@ -47,7 +51,8 @@ fun filterNestedTree(
         hideChecked = hideChecked,
         selectedTagIds = selectedTagIds,
         workingOnly = workingOnly,
-        overdueBefore = overdueBefore
+        overdueBefore = overdueBefore,
+        today = today
     ).roots
 
 /**
@@ -59,6 +64,8 @@ fun filterNestedTree(
  * @param overdueBefore when set, keeps items whose inclusive end date is
  *   strictly before it. Used by [NestedRollingPreset.Overdue], which cannot be
  *   expressed as an overlapping date window.
+ * @param today when set, [workingOnly] also excludes overdue items, so the
+ *   Working view only shows work that is still current.
  *
  * Iterative on purpose: nested lists have no depth limit, and this walk runs
  * on the UI filtering path. It also avoids copying the tree at all when no
@@ -73,7 +80,8 @@ fun filterNestedTreeWithContext(
     selectedTagIds: Set<String> = emptySet(),
     workingOnly: Boolean = false,
     includeNotesInQuery: Boolean = false,
-    overdueBefore: LocalDate? = null
+    overdueBefore: LocalDate? = null,
+    today: LocalDate? = null
 ): NestedOutlineProjection {
     val hasPositiveCriteria = (start != null && end != null) ||
         query.isNotBlank() ||
@@ -87,7 +95,8 @@ fun filterNestedTreeWithContext(
                 roots, start = null, end = null, query = "", hideChecked = true,
                 selectedTagIds = emptySet(), workingOnly = true,
                 includeNotesInQuery = includeNotesInQuery,
-                overdueBefore = null
+                overdueBefore = null,
+                today = today
             )
         // Nothing narrows the tree: preserve identity so an idle filter bar
         // doesn't deep-copy the outline or invalidate the caller's cache.
@@ -97,7 +106,8 @@ fun filterNestedTreeWithContext(
             val firstPass = filterNestedTreePass(
                 roots, start, end, query, hideChecked, selectedTagIds, workingOnly = false,
                 includeNotesInQuery = includeNotesInQuery,
-                overdueBefore = overdueBefore
+                overdueBefore = overdueBefore,
+                today = null
             )
             if (workingOnly) {
                 filterNestedTreePass(
@@ -109,7 +119,8 @@ fun filterNestedTreeWithContext(
                     selectedTagIds = emptySet(),
                     workingOnly = true,
                     includeNotesInQuery = includeNotesInQuery,
-                    overdueBefore = null
+                    overdueBefore = null,
+                    today = today
                 )
             } else {
                 firstPass
@@ -123,14 +134,18 @@ fun filterNestedTreeWithContext(
 }
 
 /** A "working" item carries actionable state: priority, due date, an enabled
- * date-based metric, an open checkbox, visible progress, or tracked time. */
-fun isWorkingItem(item: NestedListItem): Boolean =
-    item.priority != TaskPriority.None ||
+ * date-based metric, an open checkbox, visible progress, or tracked time.
+ * When [today] is given, overdue items (end date before [today]) are not
+ * working: they belong to the Overdue criterion instead. */
+fun isWorkingItem(item: NestedListItem, today: LocalDate? = null): Boolean {
+    if (today != null && item.endDate != null && item.endDate < today) return false
+    return item.priority != TaskPriority.None ||
             item.startDate != null || item.endDate != null ||
             item.manualMetrics.any { it.enabled && (it.unit == MetricUnit.Countdown || it.unit == MetricUnit.DueDate) } ||
             (item.checkboxEnabled && !item.checked) ||
             item.progressPercent != null ||
             item.actualMinutes > 0
+}
 
 /** One kept node with the match bookkeeping the context metadata is built from. */
 private class FilteredNestedNode(
@@ -165,7 +180,8 @@ private fun filterNestedTreePass(
     selectedTagIds: Set<String>,
     workingOnly: Boolean,
     includeNotesInQuery: Boolean,
-    overdueBefore: LocalDate?
+    overdueBefore: LocalDate?,
+    today: LocalDate?
 ): List<FilteredNestedNode> {
     if (roots.isEmpty()) return emptyList()
     val results = HashMap<String, FilteredNestedNode>(roots.size * 2)
@@ -176,7 +192,7 @@ private fun filterNestedTreePass(
         if (hideChecked && node.item.checked) return
         val matchesSelf = matchesNestedFilter(
             node.item, start, end, query, selectedTagIds, workingOnly, includeNotesInQuery,
-            overdueBefore
+            overdueBefore, today
         )
         stack.addLast(
             FilterFrame(
@@ -222,7 +238,8 @@ private fun matchesNestedFilter(
     selectedTagIds: Set<String>,
     workingOnly: Boolean,
     includeNotesInQuery: Boolean,
-    overdueBefore: LocalDate?
+    overdueBefore: LocalDate?,
+    today: LocalDate?
 ): Boolean {
     if (start != null && end != null) {
         if (!matchesNestedDateWindow(item.startDate, item.endDate, start, end)) return false
@@ -240,7 +257,7 @@ private fun matchesNestedFilter(
         if (!titleMatches && !noteMatches) return false
     }
     if (selectedTagIds.isNotEmpty() && item.tags.none { it.id in selectedTagIds }) return false
-    if (workingOnly && !isWorkingItem(item)) return false
+    if (workingOnly && !isWorkingItem(item, today)) return false
     return true
 }
 

@@ -601,7 +601,8 @@ final class NestedEditorState: ObservableObject {
                 workingOnly: displayType == .working,
                 windowStartEpochDays: dateWindow?.startEpochDays ?? noDate,
                 windowEndEpochDays: dateWindow?.endEpochDays ?? noDate,
-                overdueBeforeEpochDays: overdueBeforeEpochDays
+                overdueBeforeEpochDays: overdueBeforeEpochDays,
+                todayEpochDays: todayEpochDays
             )
             : nil
         let contextIds = Set(projection?.contextIds ?? [])
