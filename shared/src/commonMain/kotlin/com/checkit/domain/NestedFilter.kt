@@ -147,6 +147,24 @@ fun isWorkingItem(item: NestedListItem, today: LocalDate? = null): Boolean {
             item.actualMinutes > 0
 }
 
+/**
+ * True when this row is still an open deadline: an unchecked checklist task or
+ * an unfinished date-based metric. Finished work and plain dated notes are not
+ * deadlines, so a past range on them must not be painted as a miss.
+ */
+fun NestedListItem.isOpenDeadlineItem(): Boolean =
+    !checked && (
+        checkboxEnabled ||
+            manualMetrics.any {
+                it.enabled && !it.isCompleted &&
+                    (it.unit == MetricUnit.Countdown || it.unit == MetricUnit.DueDate)
+            }
+        )
+
+/** True when an open deadline's inclusive end date has passed. */
+fun NestedListItem.hasMissedDeadline(today: LocalDate): Boolean =
+    isOpenDeadlineItem() && endDate != null && endDate < today
+
 /** One kept node with the match bookkeeping the context metadata is built from. */
 private class FilteredNestedNode(
     val node: NestedItemNode,

@@ -50,34 +50,27 @@ internal fun LocalDate.shortMonthName(): String =
  * the two ends are independent, so a lone start reads as "From Oct 20" and a
  * lone end as "Until Nov 3". Ranges spell out both dates; weekday-relative
  * wording ("Wed") is reserved for a single day, where it is unambiguous.
+ *
+ * Whether the range should be highlighted is a separate decision: a red label
+ * means a missed deadline, see [com.checkit.domain.hasMissedDeadline].
  */
-internal class NestedDateRangeLabel(
-    val text: String,
-    val isOverdue: Boolean
-)
-
 internal fun nestedDateRangeLabel(
     startDate: LocalDate?,
     endDate: LocalDate?,
     today: LocalDate = today()
-): NestedDateRangeLabel? {
+): String? {
     if (startDate == null && endDate == null) return null
     val includeYear = (startDate != null && startDate.year != today.year) ||
         (endDate != null && endDate.year != today.year)
-    val text = when {
+    return when {
         startDate != null && endDate != null && startDate == endDate ->
             startDate.compactWithDate(today)
         startDate != null && endDate != null ->
             "${startDate.metadataDate(includeYear)} → ${endDate.metadataDate(includeYear)}"
         startDate != null -> "From ${startDate.metadataDate(includeYear)}"
         endDate != null -> "Until ${endDate.metadataDate(includeYear)}"
-        else -> return null
+        else -> null
     }
-    // The end date is inclusive: only a date before today is overdue.
-    return NestedDateRangeLabel(
-        text = text,
-        isOverdue = endDate != null && endDate < today
-    )
 }
 
 /** Calendar date without relative wording, so range endpoints stay explicit. */

@@ -243,15 +243,18 @@ private fun PeriodChip(
 internal fun DateRangePill(
     startDate: LocalDate?,
     endDate: LocalDate?,
+    hasMissedDeadline: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val range = nestedDateRangeLabel(startDate, endDate) ?: return
+    val label = nestedDateRangeLabel(startDate, endDate) ?: return
 
     CompactDetailChip(
         icon = Icons.Default.DateRange,
-        label = range.text,
+        label = label,
         modifier = modifier,
-        isHighlighted = range.isOverdue
+        // Red means a missed deadline, not merely a past range: finished work
+        // and dated notes keep the neutral chip.
+        isHighlighted = hasMissedDeadline
     )
 }
 

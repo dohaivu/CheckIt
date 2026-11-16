@@ -47,12 +47,14 @@ import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.FocusPeriod
 import com.checkit.domain.MetricItem
 import com.checkit.domain.MetricUnit
+import com.checkit.domain.NestedListItem
 import com.checkit.domain.NoteItem
 import com.checkit.domain.Period
 import com.checkit.domain.PeriodGoal
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
+import com.checkit.domain.hasMissedDeadline
 import com.checkit.ui.tasks.TaskWorkspaceView
 import com.checkit.ui.tasks.views.currentTimeMinutes
 import com.checkit.ui.theme.AppIconColorDefaults
@@ -457,6 +459,12 @@ fun MetricItem.isValidForSave(): Boolean =
 fun MetricItem.dateBasedDisplayToday(): String = dateBasedDisplay()
 fun MetricItem.countdownLabelToday(): String = countdownLabel()
 fun MetricItem.isMetricOverdueToday(): Boolean = isMetricOverdue()
+
+/**
+ * Swift-friendly variant: a red date label means this returns true — the item
+ * is still open and its inclusive end date has passed.
+ */
+fun NestedListItem.hasMissedDeadlineToday(): Boolean = hasMissedDeadline(today())
 
 
 fun MetricItem.toAnnotatedString(valueColor: Color): androidx.compose.ui.text.AnnotatedString =

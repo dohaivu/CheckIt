@@ -218,7 +218,7 @@ struct NestedDateLabel {
 func nestedDateLabel(
     startDays: Int64?,
     endDays: Int64?,
-    todayDays: Int64 = DateExtensionsKt.today().toEpochDays()
+    hasMissedDeadline: Bool
 ) -> NestedDateLabel? {
     guard startDays != nil || endDays != nil else { return nil }
     func s(_ d: Int64) -> String { nestedDateFormatter.string(from: nestedDate(fromEpochDays: d)) }
@@ -229,8 +229,9 @@ func nestedDateLabel(
     case let (nil, .some(b)): text = "until \(s(b))"
     default: return nil
     }
-    // The end date is inclusive: only a date before today is overdue.
-    return NestedDateLabel(text: text, isOverdue: endDays.map { $0 < todayDays } ?? false)
+    // Red means a missed deadline, not merely a past range: only open
+    // deadlines (unchecked tasks or unfinished date metrics) highlight.
+    return NestedDateLabel(text: text, isOverdue: hasMissedDeadline)
 }
 
 // MARK: - Row
@@ -794,7 +795,8 @@ struct NestedRowView: View, Equatable {
         let note = item.note
         let dateLabel = nestedDateLabel(
             startDays: item.startDate?.toEpochDays(),
-            endDays: item.endDate?.toEpochDays()
+            endDays: item.endDate?.toEpochDays(),
+            hasMissedDeadline: item.hasMissedDeadlineToday()
         )
         // Android parity (NestedItemMetadataPreview): leaf items always show
         // their own tracked minutes; parents only when showTrackedMinutes.

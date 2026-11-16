@@ -86,6 +86,8 @@ import com.checkit.domain.EffectiveRowVisuals
 import com.checkit.domain.NestedMetricSummary
 import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.TaskPriority
+import com.checkit.domain.hasMissedDeadline
+import com.checkit.ui.today
 import com.checkit.ui.components.DateRangePill
 import com.checkit.ui.components.MetricChip
 import com.checkit.ui.components.TagPill
@@ -898,7 +900,8 @@ internal fun NestedItemMetadataPreview(
                 if (hasDateRange) {
                     DateRangePill(
                         startDate = item.startDate,
-                        endDate = item.endDate
+                        endDate = item.endDate,
+                        hasMissedDeadline = item.hasMissedDeadline(today())
                     )
                 }
                 item.tags.forEach { tag -> TagPill(tag, isCompact = true) }
