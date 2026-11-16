@@ -1,14 +1,19 @@
 package com.checkit.domain
 
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
+import kotlinx.datetime.plus
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
 /**
- * Rolling windows are local attention views: they include today and slide
- * with the clock. They are not calendar periods, so they never expose a
- * navigable [FocusPeriod].
+ * Rolling presets are local attention views. Calendar windows include today
+ * and slide with the clock, while [NestedRollingPreset.Overdue] is a deadline
+ * predicate. They are not calendar periods, so they never expose a navigable
+ * [FocusPeriod].
  */
 class NestedRollingWindowTest {
 
@@ -32,7 +37,7 @@ class NestedRollingWindowTest {
 
     @Test
     fun last30DaysSpansThirtyInclusiveDays() {
-        val window = NestedRollingPreset.Last30Days.window(today)
+        val window = assertNotNull(NestedRollingPreset.Last30Days.window(today))
         assertEquals(today, window.endInclusive)
         assertEquals(LocalDate(2026, 10, 16), window.start)
     }
@@ -95,10 +100,50 @@ class NestedRollingWindowTest {
                 )
             )
         )
-        val window = NestedRollingPreset.Last7Days.window(today)
+        val window = assertNotNull(NestedRollingPreset.Last7Days.window(today))
 
         val filtered = filterNestedTree(roots, start = window.start, end = window.endInclusive)
 
         assertEquals(listOf("ongoing"), filtered.map { it.item.id })
+    }
+
+    @Test
+    fun overdueHasNoWindowAndUsesExclusiveCutoff() {
+        assertNull(NestedRollingPreset.Overdue.window(today))
+
+        val overdue = NestedDateFilter.Rolling(NestedRollingPreset.Overdue)
+        assertEquals(today, overdue.overdueBefore(today))
+        assertNull(NestedDateFilter.Rolling(NestedRollingPreset.Last7Days).overdueBefore(today))
+        assertNull(NestedDateFilter.Focus(FocusPeriod(Period.Week, today)).overdueBefore(today))
+    }
+
+    @Test
+    fun overdueFilterKeepsOnlyDeadlinesBeforeToday() {
+        fun node(id: String, start: LocalDate? = null, end: LocalDate? = null) = NestedItemNode(
+            item = NestedListItem(
+                id = id,
+                documentId = "doc",
+                parentId = null,
+                position = 0,
+                text = id,
+                startDate = start,
+                endDate = end,
+                createdAtMillis = 0L,
+                updatedAtMillis = 0L
+            )
+        )
+
+        val roots = listOf(
+            node("past", end = today.minus(1, DateTimeUnit.DAY)),
+            node("today", end = today),
+            node("future", end = today.plus(1, DateTimeUnit.DAY)),
+            node("ongoing", start = today.minus(2, DateTimeUnit.DAY), end = today.plus(2, DateTimeUnit.DAY)),
+            node("startOnly", start = today.minus(2, DateTimeUnit.DAY)),
+            node("undated")
+        )
+
+        val filtered = filterNestedTree(roots, overdueBefore = today)
+
+        assertEquals(listOf("past"), filtered.map { it.item.id })
     }
 }

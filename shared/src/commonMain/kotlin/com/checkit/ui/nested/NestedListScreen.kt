@@ -45,6 +45,7 @@ import com.checkit.domain.NestedItemNode
 import com.checkit.domain.NestedMetricSummary
 import com.checkit.domain.filterNestedTreeWithContext
 import com.checkit.domain.moveDestinations
+import com.checkit.domain.overdueBefore
 import com.checkit.ui.today
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
@@ -81,8 +82,10 @@ internal fun NestedListScreen(
         }
     }
     val effectiveFilters = state.filters.copy(query = settledQuery)
-    val dateWindow = effectiveFilters.dateFilter?.window(today())
-    val outlineProjection = remember(unfilteredRoots, effectiveFilters, dateWindow) {
+    val todayDate = today()
+    val dateWindow = effectiveFilters.dateFilter?.window(todayDate)
+    val overdueBefore = effectiveFilters.dateFilter?.overdueBefore(todayDate)
+    val outlineProjection = remember(unfilteredRoots, effectiveFilters, dateWindow, overdueBefore) {
         if (effectiveFilters.isVisible || effectiveFilters.displayType != NestedDisplayType.All) {
             filterNestedTreeWithContext(
                 roots = unfilteredRoots,
@@ -91,7 +94,8 @@ internal fun NestedListScreen(
                 query = effectiveFilters.query,
                 hideChecked = effectiveFilters.hideChecked,
                 selectedTagIds = effectiveFilters.selectedTagIds,
-                workingOnly = effectiveFilters.displayType == NestedDisplayType.Working
+                workingOnly = effectiveFilters.displayType == NestedDisplayType.Working,
+                overdueBefore = overdueBefore
             )
         } else {
             null

@@ -211,6 +211,32 @@ class NestedAppleBridgeProjectionTest {
     }
 
     @Test
+    fun overdueRollingPresetHasNoWindowAndFiltersByDeadline() {
+        val today = LocalDate(2026, 11, 16)
+        assertNull(
+            NestedAppleBridge.rollingWindow(
+                presetName = "Overdue",
+                todayEpochDays = today.toEpochDays().toInt()
+            )
+        )
+
+        val roots = listOf(
+            node("past", end = LocalDate(2026, 11, 15)),
+            node("today", end = today),
+            node("future", end = LocalDate(2026, 11, 17)),
+            node("ongoing", start = LocalDate(2026, 11, 1), end = LocalDate(2026, 12, 1)),
+            node("startOnly", start = LocalDate(2026, 11, 1)),
+            node("undated")
+        )
+        val projection = NestedAppleBridge.filterOutlineProjection(
+            roots = roots,
+            overdueBeforeEpochDays = today.toEpochDays().toInt()
+        )
+
+        assertEquals(listOf("past"), ids(projection.roots))
+    }
+
+    @Test
     fun rollingPresetNamesResolveToEpochDayWindows() {
         val today = LocalDate(2026, 11, 14)
         val window = assertNotNull(

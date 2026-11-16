@@ -36,9 +36,19 @@ fun filterNestedTree(
     query: String = "",
     hideChecked: Boolean = false,
     selectedTagIds: Set<String> = emptySet(),
-    workingOnly: Boolean = false
+    workingOnly: Boolean = false,
+    overdueBefore: LocalDate? = null
 ): List<NestedItemNode> =
-    filterNestedTreeWithContext(roots, start, end, query, hideChecked, selectedTagIds, workingOnly).roots
+    filterNestedTreeWithContext(
+        roots = roots,
+        start = start,
+        end = end,
+        query = query,
+        hideChecked = hideChecked,
+        selectedTagIds = selectedTagIds,
+        workingOnly = workingOnly,
+        overdueBefore = overdueBefore
+    ).roots
 
 /**
  * [filterNestedTree] plus the ancestor-context metadata described on
@@ -46,6 +56,9 @@ fun filterNestedTree(
  *
  * @param includeNotesInQuery when true, [query] also matches notes; defaults
  *   to false so search narrows by item titles only.
+ * @param overdueBefore when set, keeps items whose inclusive end date is
+ *   strictly before it. Used by [NestedRollingPreset.Overdue], which cannot be
+ *   expressed as an overlapping date window.
  *
  * Iterative on purpose: nested lists have no depth limit, and this walk runs
  * on the UI filtering path. It also avoids copying the tree at all when no
@@ -59,11 +72,13 @@ fun filterNestedTreeWithContext(
     hideChecked: Boolean = false,
     selectedTagIds: Set<String> = emptySet(),
     workingOnly: Boolean = false,
-    includeNotesInQuery: Boolean = false
+    includeNotesInQuery: Boolean = false,
+    overdueBefore: LocalDate? = null
 ): NestedOutlineProjection {
     val hasPositiveCriteria = (start != null && end != null) ||
         query.isNotBlank() ||
-        selectedTagIds.isNotEmpty()
+        selectedTagIds.isNotEmpty() ||
+        overdueBefore != null
     val filtered: List<FilteredNestedNode> = when {
         // Working alone: the first pass would copy the whole tree unchanged,
         // and Working already implies hide-checked.
@@ -71,7 +86,8 @@ fun filterNestedTreeWithContext(
             filterNestedTreePass(
                 roots, start = null, end = null, query = "", hideChecked = true,
                 selectedTagIds = emptySet(), workingOnly = true,
-                includeNotesInQuery = includeNotesInQuery
+                includeNotesInQuery = includeNotesInQuery,
+                overdueBefore = null
             )
         // Nothing narrows the tree: preserve identity so an idle filter bar
         // doesn't deep-copy the outline or invalidate the caller's cache.
@@ -80,7 +96,8 @@ fun filterNestedTreeWithContext(
         else -> {
             val firstPass = filterNestedTreePass(
                 roots, start, end, query, hideChecked, selectedTagIds, workingOnly = false,
-                includeNotesInQuery = includeNotesInQuery
+                includeNotesInQuery = includeNotesInQuery,
+                overdueBefore = overdueBefore
             )
             if (workingOnly) {
                 filterNestedTreePass(
@@ -91,7 +108,8 @@ fun filterNestedTreeWithContext(
                     hideChecked = true,
                     selectedTagIds = emptySet(),
                     workingOnly = true,
-                    includeNotesInQuery = includeNotesInQuery
+                    includeNotesInQuery = includeNotesInQuery,
+                    overdueBefore = null
                 )
             } else {
                 firstPass
@@ -146,7 +164,8 @@ private fun filterNestedTreePass(
     hideChecked: Boolean,
     selectedTagIds: Set<String>,
     workingOnly: Boolean,
-    includeNotesInQuery: Boolean
+    includeNotesInQuery: Boolean,
+    overdueBefore: LocalDate?
 ): List<FilteredNestedNode> {
     if (roots.isEmpty()) return emptyList()
     val results = HashMap<String, FilteredNestedNode>(roots.size * 2)
@@ -156,7 +175,8 @@ private fun filterNestedTreePass(
         // Hide Checked prunes the item and its whole subtree.
         if (hideChecked && node.item.checked) return
         val matchesSelf = matchesNestedFilter(
-            node.item, start, end, query, selectedTagIds, workingOnly, includeNotesInQuery
+            node.item, start, end, query, selectedTagIds, workingOnly, includeNotesInQuery,
+            overdueBefore
         )
         stack.addLast(
             FilterFrame(
@@ -201,10 +221,17 @@ private fun matchesNestedFilter(
     query: String,
     selectedTagIds: Set<String>,
     workingOnly: Boolean,
-    includeNotesInQuery: Boolean
+    includeNotesInQuery: Boolean,
+    overdueBefore: LocalDate?
 ): Boolean {
     if (start != null && end != null) {
         if (!matchesNestedDateWindow(item.startDate, item.endDate, start, end)) return false
+    }
+    // Overdue looks at the deadline only: an inclusive end date before
+    // [overdueBefore]. Ongoing and future work must not match.
+    if (overdueBefore != null) {
+        val endDate = item.endDate ?: return false
+        if (endDate >= overdueBefore) return false
     }
     if (query.isNotBlank()) {
         val titleMatches = item.text.contains(query, ignoreCase = true)

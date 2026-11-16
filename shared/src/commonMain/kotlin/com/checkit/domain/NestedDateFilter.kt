@@ -6,20 +6,24 @@ import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 
 /**
- * Rolling attention windows. Unlike [NestedDatePreset] these are not calendar
+ * Rolling attention presets. Unlike [NestedDatePreset] these are not calendar
  * periods, so they cannot be represented as a [FocusPeriod] and have no
- * previous/next navigation. "Last 7 days" includes today.
+ * previous/next navigation. "Last n days" windows include today. [Overdue] is
+ * a predicate rather than a window: its end date is stored as a deadline, so
+ * overlap with a closed window would also match ongoing work.
  */
-enum class NestedRollingPreset(val days: Int, val label: String) {
-    Last7Days(days = 7, label = "Last 7 days"),
-    Next7Days(days = 7, label = "Next 7 days"),
-    Last30Days(days = 30, label = "Last 30 days");
+enum class NestedRollingPreset(val label: String) {
+    Last7Days(label = "Last 7 days"),
+    Next7Days(label = "Next 7 days"),
+    Last30Days(label = "Last 30 days"),
+    Overdue(label = "Overdue");
 
-    fun window(today: LocalDate): NestedDateWindow = when (this) {
-        Last7Days, Last30Days ->
-            NestedDateWindow(today.minus(days - 1, DateTimeUnit.DAY), today)
-        Next7Days ->
-            NestedDateWindow(today, today.plus(days - 1, DateTimeUnit.DAY))
+    /** Closed window, or null for predicate presets like [Overdue]. */
+    fun window(today: LocalDate): NestedDateWindow? = when (this) {
+        Last7Days -> NestedDateWindow(today.minus(6, DateTimeUnit.DAY), today)
+        Next7Days -> NestedDateWindow(today, today.plus(6, DateTimeUnit.DAY))
+        Last30Days -> NestedDateWindow(today.minus(29, DateTimeUnit.DAY), today)
+        Overdue -> null
     }
 }
 
@@ -34,7 +38,8 @@ sealed interface NestedDateFilter {
     data class Focus(val focus: FocusPeriod) : NestedDateFilter
     data class Rolling(val preset: NestedRollingPreset) : NestedDateFilter
 
-    fun window(today: LocalDate): NestedDateWindow = when (this) {
+    /** Closed date window, or null when the criterion is a predicate. */
+    fun window(today: LocalDate): NestedDateWindow? = when (this) {
         is Focus -> focus.asDateWindow()
         is Rolling -> preset.window(today)
     }
@@ -42,3 +47,11 @@ sealed interface NestedDateFilter {
     /** The navigable calendar focus, or null for a rolling window. */
     val calendarFocus: FocusPeriod? get() = (this as? Focus)?.focus
 }
+
+/**
+ * Exclusive cutoff for [NestedRollingPreset.Overdue]: an item is overdue when
+ * its inclusive end date is before [today]. Other criteria return null
+ * because their [NestedDateFilter.window] fully describes them.
+ */
+fun NestedDateFilter.overdueBefore(today: LocalDate): LocalDate? =
+    if (this is NestedDateFilter.Rolling && preset == NestedRollingPreset.Overdue) today else null

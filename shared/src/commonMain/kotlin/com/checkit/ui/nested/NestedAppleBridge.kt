@@ -690,13 +690,16 @@ object NestedAppleBridge {
      * Pass [Int.MIN_VALUE] for both window bounds to filter by text only. The
      * bounds are epoch days (`LocalDate.toEpochDays()`); a start-only or
      * end-only node participates through the shared open-ended matching rules.
+     * [overdueBeforeEpochDays] carries the [NestedRollingPreset.Overdue]
+     * predicate, which has no closed window of its own.
      */
     fun filterOutlineProjection(
         roots: List<NestedItemNode>,
         query: String = "",
         workingOnly: Boolean = false,
         windowStartEpochDays: Int = Int.MIN_VALUE,
-        windowEndEpochDays: Int = Int.MIN_VALUE
+        windowEndEpochDays: Int = Int.MIN_VALUE,
+        overdueBeforeEpochDays: Int = Int.MIN_VALUE
     ): NestedOutlineProjection {
         val hasWindow =
             windowStartEpochDays != Int.MIN_VALUE && windowEndEpochDays != Int.MIN_VALUE
@@ -705,7 +708,10 @@ object NestedAppleBridge {
             start = if (hasWindow) LocalDate.fromEpochDays(windowStartEpochDays) else null,
             end = if (hasWindow) LocalDate.fromEpochDays(windowEndEpochDays) else null,
             query = query,
-            workingOnly = workingOnly
+            workingOnly = workingOnly,
+            overdueBefore = overdueBeforeEpochDays
+                .takeIf { it != Int.MIN_VALUE }
+                ?.let(LocalDate::fromEpochDays)
         )
     }
 
@@ -726,7 +732,7 @@ object NestedAppleBridge {
      */
     fun rollingWindow(presetName: String, todayEpochDays: Int): NestedAppleDateWindow? {
         val preset = NestedRollingPreset.entries.firstOrNull { it.name == presetName } ?: return null
-        return preset.window(LocalDate.fromEpochDays(todayEpochDays)).toAppleWindow()
+        return preset.window(LocalDate.fromEpochDays(todayEpochDays))?.toAppleWindow()
     }
 
     /**

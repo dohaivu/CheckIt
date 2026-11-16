@@ -56,6 +56,7 @@ let nestedRollingPresetOptions: [NestedDatePresetOption] = [
     NestedDatePresetOption(name: "Last7Days", label: "Last 7 days", icon: "clock.arrow.circlepath"),
     NestedDatePresetOption(name: "Next7Days", label: "Next 7 days", icon: "clock.arrow.circlepath"),
     NestedDatePresetOption(name: "Last30Days", label: "Last 30 days", icon: "clock.arrow.circlepath"),
+    NestedDatePresetOption(name: "Overdue", label: "Overdue", icon: "exclamationmark.circle"),
 ]
 
 /// Active outline date criterion. Calendar focus is navigable; rolling
@@ -586,6 +587,11 @@ final class NestedEditorState: ObservableObject {
                 )
             }
         }()
+        // Overdue has no closed window; it is an exclusive deadline cutoff.
+        let overdueBeforeEpochDays: Int32 = {
+            guard case .rolling(let name)? = dateFilter, name == "Overdue" else { return noDate }
+            return todayEpochDays
+        }()
         let hasDateFilter = dateFilter != nil
         let projection: NestedOutlineProjection? =
             (displayType == .working || !query.isEmpty || hasDateFilter)
@@ -594,7 +600,8 @@ final class NestedEditorState: ObservableObject {
                 query: query,
                 workingOnly: displayType == .working,
                 windowStartEpochDays: dateWindow?.startEpochDays ?? noDate,
-                windowEndEpochDays: dateWindow?.endEpochDays ?? noDate
+                windowEndEpochDays: dateWindow?.endEpochDays ?? noDate,
+                overdueBeforeEpochDays: overdueBeforeEpochDays
             )
             : nil
         let contextIds = Set(projection?.contextIds ?? [])

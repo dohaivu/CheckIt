@@ -991,12 +991,9 @@ private fun NestedDateFilterHeader(
     val label = when (dateFilter) {
         is NestedDateFilter.Focus -> dateFilter.focus.title()
         is NestedDateFilter.Rolling -> {
-            val window = dateFilter.preset.window(todayDate)
-            val rangeLabel = nestedDateRangeLabel(
-                window.start,
-                window.endInclusive,
-                todayDate
-            )?.text
+            val rangeLabel = dateFilter.preset.window(todayDate)?.let { window ->
+                nestedDateRangeLabel(window.start, window.endInclusive, todayDate)?.text
+            }
             if (rangeLabel != null) "${dateFilter.preset.label} · $rangeLabel" else dateFilter.preset.label
         }
     }
