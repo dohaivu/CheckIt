@@ -559,7 +559,7 @@ struct NestedRowView: View, Equatable {
         if row.numberText != nil { return numberDiameter }
         guard row.node.hasChildren else { return 12 }
         let hasGlyph = GuideDot.shared.emoji(raw: item.guideDot) != nil || GuideDot.shared.symbolKey(raw: item.guideDot) != nil
-        if hasGlyph { return 20 }
+        if hasGlyph { return 18 }
         return 12
     }
 

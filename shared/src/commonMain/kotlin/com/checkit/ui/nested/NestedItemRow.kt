@@ -341,7 +341,7 @@ internal fun NestedItemRow(
     val hasGuideGlyph = guideEmoji != null || guideSymbolKey != null
     val numberText = snapshot.numberText
     val dotSize = when {
-        hasChildren && hasGuideGlyph -> 22.dp
+        hasChildren && hasGuideGlyph -> 20.dp
         hasGuideGlyph -> 18.dp
         numberText != null -> 18.dp
         hasChildren -> 14.dp
