@@ -32,6 +32,7 @@ import com.checkit.domain.normalizedIcon
 import com.checkit.domain.normalizedTitle
 import com.checkit.domain.NestedItemMove
 import com.checkit.domain.NestedListItem
+import com.checkit.domain.NestedNumberingStyle
 import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.NestedColorToken
 import com.checkit.domain.sanitizeGuideDot
@@ -204,8 +205,8 @@ interface CheckItRepository {
     suspend fun updateNestedItemPriority(itemId: String, priority: TaskPriority)
     suspend fun updateNestedItemGuideDot(itemId: String, guideDot: String?)
     suspend fun updateNestedItemGuideDotColor(itemId: String, guideDotColor: NestedColorToken?)
-    suspend fun updateNestedItemNumberedChildren(itemId: String, numberedChildren: Boolean)
-    suspend fun updateNestedDocumentNumberRoots(documentId: String, numberRoots: Boolean)
+    suspend fun updateNestedItemNumberingStyle(itemId: String, numberingStyle: NestedNumberingStyle)
+    suspend fun updateNestedDocumentNumberingStyle(documentId: String, numberingStyle: NestedNumberingStyle)
     suspend fun updateNestedItemDateRange(itemId: String, startDate: LocalDate?, endDate: LocalDate?)
     suspend fun updateNestedItemTags(itemId: String, tagIds: List<String>)
     suspend fun updateNestedItemMetricSettings(itemId: String, actualMinutes: Int, metricRollupPolicy: MetricRollupPolicy, showTrackedMinutes: Boolean)
@@ -1494,7 +1495,7 @@ class RoomCheckItRepository(
                     title = entity.title,
                     createdAtMillis = entity.createdAtMillis,
                     updatedAtMillis = entity.updatedAtMillis,
-                    numberRoots = entity.numberRoots
+                    numberingStyle = NestedNumberingStyle.fromKey(entity.numberingStyle)
                 )
             }
         }
@@ -1514,7 +1515,7 @@ class RoomCheckItRepository(
             val tagsByItemId = links.groupBy(NestedItemTagEntity::itemId)
             NestedDocumentTree(
                 document = documents.firstOrNull { it.id == documentId }
-                    ?.let { NestedDocument(it.id, it.title, it.createdAtMillis, it.updatedAtMillis, it.numberRoots) }
+                    ?.let { NestedDocument(it.id, it.title, it.createdAtMillis, it.updatedAtMillis, NestedNumberingStyle.fromKey(it.numberingStyle)) }
                     ?: NestedDocument(id = documentId, title = "", createdAtMillis = 0L, updatedAtMillis = 0L),
                 rootNodes = buildNestedTree(items.map { item ->
                     item.toNestedListItem(
@@ -1672,18 +1673,18 @@ class RoomCheckItRepository(
         dao.updateNestedItemGuideDotColor(itemId, guideDotColor?.name, Clock.System.now().toEpochMilliseconds())
     }
 
-    override suspend fun updateNestedItemNumberedChildren(itemId: String, numberedChildren: Boolean) {
-        dao.updateNestedItemNumberedChildren(
+    override suspend fun updateNestedItemNumberingStyle(itemId: String, numberingStyle: NestedNumberingStyle) {
+        dao.updateNestedItemNumberingStyle(
             itemId,
-            numberedChildren,
+            numberingStyle.key,
             Clock.System.now().toEpochMilliseconds()
         )
     }
 
-    override suspend fun updateNestedDocumentNumberRoots(documentId: String, numberRoots: Boolean) {
-        dao.updateNestedDocumentNumberRoots(
+    override suspend fun updateNestedDocumentNumberingStyle(documentId: String, numberingStyle: NestedNumberingStyle) {
+        dao.updateNestedDocumentNumberingStyle(
             documentId,
-            numberRoots,
+            numberingStyle.key,
             Clock.System.now().toEpochMilliseconds()
         )
     }
@@ -1804,7 +1805,7 @@ class RoomCheckItRepository(
             sortOrder = dao.nextNestedDocumentSortOrder(),
             createdAtMillis = if (export.document.createdAtMillis > 0) export.document.createdAtMillis else now,
             updatedAtMillis = now,
-            numberRoots = export.document.numberRoots,
+            numberingStyle = export.document.numberingStyle,
             dirty = true,
             deleted = false
         )
@@ -1873,7 +1874,7 @@ class RoomCheckItRepository(
                         runCatching { NestedColorToken.valueOf(color) }.getOrNull()?.takeIf { it != NestedColorToken.Default }?.name
                     },
                     guideDot = sanitizeGuideDot(item.guideDot),
-                    numberedChildren = item.numberedChildren,
+                    numberingStyle = item.numberingStyle,
                     startDateEpochDays = item.startDate?.let { runCatching { LocalDate.parse(it).toEpochDays().toInt() }.getOrNull() },
                     endDateEpochDays = item.endDate?.let { runCatching { LocalDate.parse(it).toEpochDays().toInt() }.getOrNull() },
                     priority = runCatching { TaskPriority.valueOf(item.priority) }.getOrDefault(TaskPriority.None).name,
@@ -2273,7 +2274,7 @@ private fun NestedListItem.toNestedListItemEntity(documentId: String) = NestedLi
     calloutLayout = calloutLayout?.name,
     guideDotColor = guideDotColor?.takeIf { it != NestedColorToken.Default }?.name,
     guideDot = sanitizeGuideDot(guideDot),
-    numberedChildren = numberedChildren,
+    numberingStyle = numberingStyle.key,
     startDateEpochDays = startDate?.toEpochDays()?.toInt(),
     endDateEpochDays = endDate?.toEpochDays()?.toInt(),
     priority = priority.name,
@@ -2326,7 +2327,7 @@ private fun NestedListItemEntity.toNestedListItem(
                 ?.takeIf { it != com.checkit.domain.NestedColorToken.Default }
         },
         guideDot = sanitizeGuideDot(guideDot),
-        numberedChildren = numberedChildren,
+        numberingStyle = NestedNumberingStyle.fromKey(numberingStyle),
         startDate = startDateEpochDays?.let { LocalDate.fromEpochDays(it) },
         endDate = endDateEpochDays?.let { LocalDate.fromEpochDays(it) },
         priority = runCatching { TaskPriority.valueOf(priority) }.getOrDefault(TaskPriority.None),

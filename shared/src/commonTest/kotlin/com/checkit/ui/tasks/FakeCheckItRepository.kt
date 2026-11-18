@@ -1024,13 +1024,13 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
     }
     override suspend fun updateNestedItemGuideDot(itemId: String, guideDot: String?) {}
     override suspend fun updateNestedItemGuideDotColor(itemId: String, guideDotColor: NestedColorToken?) {}
-    val numberedChildrenByItemId = mutableMapOf<String, Boolean>()
-    override suspend fun updateNestedItemNumberedChildren(itemId: String, numberedChildren: Boolean) {
-        numberedChildrenByItemId[itemId] = numberedChildren
+    val numberingStyleByItemId = mutableMapOf<String, com.checkit.domain.NestedNumberingStyle>()
+    override suspend fun updateNestedItemNumberingStyle(itemId: String, numberingStyle: com.checkit.domain.NestedNumberingStyle) {
+        numberingStyleByItemId[itemId] = numberingStyle
     }
-    val numberRootsByDocumentId = mutableMapOf<String, Boolean>()
-    override suspend fun updateNestedDocumentNumberRoots(documentId: String, numberRoots: Boolean) {
-        numberRootsByDocumentId[documentId] = numberRoots
+    val numberingStyleByDocumentId = mutableMapOf<String, com.checkit.domain.NestedNumberingStyle>()
+    override suspend fun updateNestedDocumentNumberingStyle(documentId: String, numberingStyle: com.checkit.domain.NestedNumberingStyle) {
+        numberingStyleByDocumentId[documentId] = numberingStyle
     }
     override suspend fun updateNestedItemPriority(itemId: String, priority: TaskPriority) {}
     override suspend fun updateNestedItemDateRange(itemId: String, startDate: LocalDate?, endDate: LocalDate?) {}

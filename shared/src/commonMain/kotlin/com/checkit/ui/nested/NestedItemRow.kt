@@ -245,15 +245,21 @@ internal fun nestedRowSnapshot(
         continuingLevels = row.continuingLevels,
         branchBaseColor = branchBaseColor,
         continuingGuideColors = continuingGuideColors,
-        numberText = if (item.guideDot == null && (
-                if (item.parentId == null) {
-                    tree.document.numberRoots
-                } else {
-                    tree.itemById[item.parentId]?.numberedChildren == true
-                }
+        numberText = if (item.guideDot == null) {
+            val style = if (item.parentId == null) {
+                tree.document.numberingStyle
+            } else {
+                tree.itemById[item.parentId]?.numberingStyle ?: com.checkit.domain.NestedNumberingStyle.None
+            }
+            if (style != com.checkit.domain.NestedNumberingStyle.None) {
+                com.checkit.domain.formatNestedNumber(
+                    style = style,
+                    ordinal = row.node.ordinal,
+                    ancestorOrdinals = tree.ancestorOrdinals(item.id)
                 )
-        ) {
-            row.node.ordinal.toString()
+            } else {
+                null
+            }
         } else {
             null
         }
@@ -333,12 +339,7 @@ internal fun NestedItemRow(
     val dotSize = when {
         hasChildren && guideEmoji != null -> 22.dp
         guideEmoji != null -> 18.dp
-        numberText != null -> when {
-            numberText.length >= 3 -> 22.dp
-            numberText.length == 2 -> if (hasChildren) 20.dp else 18.dp
-            hasChildren -> 18.dp
-            else -> 16.dp
-        }
+        numberText != null -> 18.dp
         hasChildren -> 14.dp
         else -> 7.dp
     }
@@ -505,6 +506,14 @@ internal fun NestedItemRow(
                         isEmphasized || isSpineRoot -> 2.dp
                         else -> 1.5.dp
                     }
+                    val numberBadgeWidth = when {
+                        numberText == null -> dotSize
+                        numberText.length >= 5 -> 30.dp
+                        numberText.length == 4 -> 26.dp
+                        else -> dotSize
+                    }
+                    val badgeShape = if (numberText != null && numberText.length >= 4) RoundedCornerShape(5.dp) else CircleShape
+
                     Box(
                         modifier = Modifier
                             .width(16.dp)
@@ -514,7 +523,7 @@ internal fun NestedItemRow(
                         Box(
                             modifier = Modifier
                                 .padding(top = dotTop)
-                                .requiredSize(dotSize)
+                                .requiredSize(width = numberBadgeWidth, height = dotSize)
                                 .then(
                                     when {
                                         numberText != null -> Modifier
@@ -523,11 +532,11 @@ internal fun NestedItemRow(
                                                     alpha = (if (isEmphasized || isSpineRoot) 0.30f else 0.16f) *
                                                         focusAlpha
                                                 ),
-                                                CircleShape
+                                                badgeShape
                                             )
                                             .then(
                                                 if (hasChildren) {
-                                                    Modifier.border(ringStroke, dotColor, CircleShape)
+                                                    Modifier.border(ringStroke, dotColor, badgeShape)
                                                 } else {
                                                     Modifier
                                                 }
@@ -562,8 +571,20 @@ internal fun NestedItemRow(
                                 numberText != null -> Text(
                                     text = numberText,
                                     style = nestedGuideNumberStyle.copy(
-                                        fontSize = if (numberText.length >= 3) 8.5.sp else 10.sp,
-                                        lineHeight = if (numberText.length >= 3) 8.5.sp else 10.sp
+                                        fontSize = when {
+                                            numberText.length >= 5 -> 7.sp
+                                            numberText.length == 4 -> 7.5.sp
+                                            numberText.length == 3 -> 8.sp
+                                            numberText.length == 2 -> 9.sp
+                                            else -> 10.sp
+                                        },
+                                        lineHeight = when {
+                                            numberText.length >= 5 -> 7.sp
+                                            numberText.length == 4 -> 7.5.sp
+                                            numberText.length == 3 -> 8.sp
+                                            numberText.length == 2 -> 9.sp
+                                            else -> 10.sp
+                                        }
                                     ),
                                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = focusAlpha),
                                     softWrap = false,

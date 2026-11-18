@@ -1312,17 +1312,17 @@ interface CheckItDao {
         updatedAtMillis: Long
     )
 
-    @Query("UPDATE nested_list_items SET numberedChildren = :numberedChildren, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
-    suspend fun updateNestedItemNumberedChildren(
+    @Query("UPDATE nested_list_items SET numberingStyle = :numberingStyle, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
+    suspend fun updateNestedItemNumberingStyle(
         itemId: String,
-        numberedChildren: Boolean,
+        numberingStyle: String,
         updatedAtMillis: Long
     )
 
-    @Query("UPDATE nested_documents SET numberRoots = :numberRoots, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :documentId")
-    suspend fun updateNestedDocumentNumberRoots(
+    @Query("UPDATE nested_documents SET numberingStyle = :numberingStyle, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :documentId")
+    suspend fun updateNestedDocumentNumberingStyle(
         documentId: String,
-        numberRoots: Boolean,
+        numberingStyle: String,
         updatedAtMillis: Long
     )
 

@@ -40,7 +40,7 @@ class NestedSubtreeTest {
         calloutTitle = "Custom title",
         guideDotColor = NestedColorToken.Pink,
         guideDot = "🔥",
-        numberedChildren = true,
+        numberingStyle = NestedNumberingStyle.Decimal,
         startDate = LocalDate(2026, 1, 1),
         endDate = LocalDate(2026, 1, 2),
         priority = TaskPriority.High,
@@ -160,7 +160,7 @@ class NestedSubtreeTest {
         assertEquals("Custom title", root.calloutTitle)
         assertEquals(NestedColorToken.Pink, root.guideDotColor)
         assertEquals("🔥", root.guideDot)
-        assertTrue(root.numberedChildren)
+        assertEquals(NestedNumberingStyle.Decimal, root.numberingStyle)
         assertEquals(LocalDate(2026, 1, 1), root.startDate)
         assertEquals(LocalDate(2026, 1, 2), root.endDate)
         assertEquals(TaskPriority.High, root.priority)

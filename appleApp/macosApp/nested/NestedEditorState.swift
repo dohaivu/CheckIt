@@ -612,9 +612,11 @@ final class NestedEditorState: ObservableObject {
         while let (node, depth, ancestorChecked, ancestorGuideColors) = stack.popLast() {
             let inCheckedBranch = ancestorChecked || node.item.checked
             let summary = helper.summaryFor(tree: tree, itemId: node.item.id)
-            let numbered = node.item.parentId.map { nodeIndex[$0]?.item.numberedChildren == true }
-                ?? tree.document.numberRoots
-            let numberText = (node.item.guideDot == nil && numbered) ? String(node.ordinal) : nil
+            let numberingStyle = node.item.parentId.flatMap { nodeIndex[$0]?.item.numberingStyle }
+                ?? tree.document.numberingStyle
+            let numberText: String? = (node.item.guideDot == nil && numberingStyle != NestedNumberingStyle.none)
+                ? NestedModelsKt.formatNestedNumber(style: numberingStyle, ordinal: node.ordinal, ancestorOrdinals: tree.ancestorOrdinals(itemId: node.item.id))
+                : nil
             out.append(
                 NestedRow(
                     id: node.item.id,
@@ -1277,15 +1279,15 @@ final class NestedEditorState: ObservableObject {
         helper.updateGuideDotColorByName(itemId: id, guideDotColorName: color?.name)
     }
 
-    /// Numbers the row's direct children instead of dots.
-    func setNumberedChildren(id: String, numbered: Bool) {
-        helper.setNumberedChildren(itemId: id, numberedChildren: numbered)
+    /// Sets numbering style for direct children.
+    func setNumberingStyle(id: String, styleKey: String) {
+        helper.setNumberingStyle(itemId: id, styleKey: styleKey)
     }
 
-    /// Numbers the document's root level instead of dots.
-    func setDocumentNumberRoots(_ enabled: Bool) {
+    /// Sets numbering style for the document's root level.
+    func setDocumentNumberingStyle(_ styleKey: String) {
         guard !selectedDocId.isEmpty else { return }
-        helper.setDocumentNumberRoots(documentId: selectedDocId, numberRoots: enabled)
+        helper.setDocumentNumberingStyle(documentId: selectedDocId, styleKey: styleKey)
     }
 
     func setTag(id: String, tagId: String, enabled: Bool) {

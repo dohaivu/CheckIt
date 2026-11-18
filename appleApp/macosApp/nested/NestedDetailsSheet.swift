@@ -735,8 +735,8 @@ struct NestedFormattingBar: View {
                     onGuideDotColor: { color in
                         state.updateGuideDotColor(id: item.id, color: color)
                     },
-                    onNumberedChildren: { numbered in
-                        state.setNumberedChildren(id: item.id, numbered: numbered)
+                    onNumberingStyle: { styleKey in
+                        state.setNumberingStyle(id: item.id, styleKey: styleKey)
                     },
                     onShowEmojiPicker: {
                         showGuidePicker = false
@@ -1242,7 +1242,7 @@ struct NestedGuidePickerView: View {
     let item: NestedListItem
     let onGuideDot: (String?) -> Void
     let onGuideDotColor: (NestedColorToken?) -> Void
-    let onNumberedChildren: (Bool) -> Void
+    let onNumberingStyle: (String) -> Void
     let onShowEmojiPicker: () -> Void
 
     var body: some View {
@@ -1256,11 +1256,10 @@ struct NestedGuidePickerView: View {
                 }
             }
             NestedPickerColumn(title: "Children") {
-                NestedPickerRow(title: "Dots", selected: !item.numberedChildren) {
-                    onNumberedChildren(false)
-                }
-                NestedPickerRow(title: "Numbers", selected: item.numberedChildren) {
-                    onNumberedChildren(true)
+                ForEach(NestedNumberingStyle.entries, id: \.self) { style in
+                    NestedPickerRow(title: style.label, selected: item.numberingStyle == style) {
+                        onNumberingStyle(style.key)
+                    }
                 }
             }
             NestedPickerColumn(title: "Color") {

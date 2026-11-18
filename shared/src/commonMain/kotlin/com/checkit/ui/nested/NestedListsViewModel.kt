@@ -53,8 +53,9 @@ import com.checkit.domain.usecase.UpdateNestedItemCalloutLayoutUseCase
 import com.checkit.domain.usecase.ResetNestedItemCalloutToDefaultsUseCase
 import com.checkit.domain.usecase.UpdateNestedItemGuideDotUseCase
 import com.checkit.domain.usecase.UpdateNestedItemGuideDotColorUseCase
-import com.checkit.domain.usecase.UpdateNestedItemNumberedChildrenUseCase
-import com.checkit.domain.usecase.UpdateNestedDocumentNumberRootsUseCase
+import com.checkit.domain.usecase.UpdateNestedItemNumberingStyleUseCase
+import com.checkit.domain.usecase.UpdateNestedDocumentNumberingStyleUseCase
+import com.checkit.domain.NestedNumberingStyle
 import com.checkit.domain.usecase.UpdateNestedItemLabelUseCase
 import com.checkit.domain.usecase.UpdateNestedItemMetricSettingsUseCase
 import com.checkit.domain.usecase.UpdateNestedItemNoteUseCase
@@ -206,8 +207,8 @@ class NestedListsViewModel(
     private val updateItemPriorityUseCase: UpdateNestedItemPriorityUseCase,
     private val updateItemGuideDotUseCase: UpdateNestedItemGuideDotUseCase,
     private val updateItemGuideDotColorUseCase: UpdateNestedItemGuideDotColorUseCase,
-    private val updateItemNumberedChildrenUseCase: UpdateNestedItemNumberedChildrenUseCase,
-    private val updateDocumentNumberRootsUseCase: UpdateNestedDocumentNumberRootsUseCase,
+    private val updateItemNumberingStyleUseCase: UpdateNestedItemNumberingStyleUseCase,
+    private val updateDocumentNumberingStyleUseCase: UpdateNestedDocumentNumberingStyleUseCase,
     private val updateItemTagsUseCase: UpdateNestedItemTagsUseCase,
     private val updateItemMetricSettingsUseCase: UpdateNestedItemMetricSettingsUseCase,
     private val updateItemProgressUseCase: UpdateNestedItemProgressUseCase,
@@ -851,16 +852,12 @@ class NestedListsViewModel(
         viewModelScope.launch { updateItemGuideDotColorUseCase(itemId, guideDotColor) }
     }
 
-    fun updateItemNumberedChildren(itemId: String, numberedChildren: Boolean) {
-        viewModelScope.launch { updateItemNumberedChildrenUseCase(itemId, numberedChildren) }
+    fun updateItemNumberingStyle(itemId: String, style: NestedNumberingStyle) {
+        viewModelScope.launch { updateItemNumberingStyleUseCase(itemId, style) }
     }
 
-    /** Toggles numbering for the document's root level. */
-    fun toggleDocumentNumberRoots() {
-        val document = getActiveEditor()?.tree?.document ?: return
-        viewModelScope.launch {
-            updateDocumentNumberRootsUseCase(document.id, !document.numberRoots)
-        }
+    fun updateDocumentNumberingStyle(documentId: String, style: NestedNumberingStyle) {
+        viewModelScope.launch { updateDocumentNumberingStyleUseCase(documentId, style) }
     }
 
     fun updateItemTags(itemId: String, tagIds: List<String>) {

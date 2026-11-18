@@ -23,7 +23,7 @@ object NestedForceSync {
             createdAtMillis = document.createdAtMillis,
             updatedAtMillis = nowMillis,
             deleted = document.deleted,
-            numberRoots = document.numberRoots,
+            numberingStyle = document.numberingStyle,
         )
 
     /** Local item as it is staged for a force push, clock bumped to [nowMillis]. */
@@ -56,7 +56,7 @@ object NestedForceSync {
             calloutLayout = item.calloutLayout,
             guideDotColor = item.guideDotColor,
             guideDot = item.guideDot,
-            numberedChildren = item.numberedChildren,
+            numberingStyle = item.numberingStyle,
             startDateEpochDays = item.startDateEpochDays,
             endDateEpochDays = item.endDateEpochDays,
             priority = item.priority,
@@ -97,7 +97,7 @@ object NestedForceSync {
             sortOrder = remote.sortOrder,
             createdAtMillis = remote.createdAtMillis,
             updatedAtMillis = remote.updatedAtMillis,
-            numberRoots = remote.numberRoots,
+            numberingStyle = remote.numberingStyle,
             dirty = false,
             deleted = false,
         )
@@ -147,7 +147,7 @@ object NestedForceSync {
                     calloutLayout = remote.calloutLayout,
                     guideDotColor = remote.guideDotColor,
                     guideDot = sanitizeGuideDot(remote.guideDot),
-                    numberedChildren = remote.numberedChildren,
+                    numberingStyle = remote.numberingStyle,
                     startDateEpochDays = remote.startDateEpochDays,
                     endDateEpochDays = remote.endDateEpochDays,
                     priority = remote.priority,

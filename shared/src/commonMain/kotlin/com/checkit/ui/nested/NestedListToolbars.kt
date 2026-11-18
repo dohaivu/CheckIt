@@ -1,5 +1,7 @@
 package com.checkit.ui.nested
 
+import com.checkit.domain.NestedNumberingStyle
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.tween
@@ -299,7 +301,7 @@ internal fun NestedFormattingBar(
     onPriorityChange: (TaskPriority) -> Unit,
     onGuideDotChange: (String?) -> Unit,
     onGuideDotColorChange: (NestedColorToken?) -> Unit,
-    onNumbersChildrenChange: (Boolean) -> Unit,
+    onNumberingStyleChange: (NestedNumberingStyle) -> Unit,
     onDateRangeChange: (LocalDate?, LocalDate?) -> Unit,
     availableTags: List<TagItem>,
     onTagsChange: (List<String>) -> Unit,
@@ -522,10 +524,10 @@ internal fun NestedFormattingBar(
             GuideMenu(
                 emoji = item.guideDot,
                 guideDotColor = item.guideDotColor,
-                numbersChildren = item.numberedChildren,
+                numberingStyle = item.numberingStyle,
                 onDotChange = { emoji -> onGuideDotChange(emoji) },
                 onColorChange = { token -> onGuideDotColorChange(token.takeIf { it != NestedColorToken.Default }) },
-                onNumbersChildrenChange = onNumbersChildrenChange,
+                onNumberingStyleChange = onNumberingStyleChange,
                 onChooseEmoji = { showEmojiPicker = true }
             )
 
@@ -1089,8 +1091,8 @@ private fun NestedDatePreset.displayLabel(): String = when (this) {
 internal fun NestedDisplayTypeMenu(
     selected: NestedDisplayType,
     onSelect: (NestedDisplayType) -> Unit,
-    numberRoots: Boolean,
-    onToggleNumberRoots: () -> Unit
+    rootNumberingStyle: NestedNumberingStyle,
+    onSelectRootNumberingStyle: (NestedNumberingStyle) -> Unit
 ) {
     var isPopupOpen by remember { mutableStateOf(false) }
     val visibleState = remember { MutableTransitionState(false) }
@@ -1172,12 +1174,25 @@ internal fun NestedDisplayTypeMenu(
                             HorizontalDivider(
                                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
                             )
-                            ViewOptionChip(
-                                icon = Icons.Default.FormatListNumbered,
-                                label = "Number roots",
-                                selected = numberRoots,
-                                onClick = onToggleNumberRoots
+                            Text(
+                                text = "Root Numbering",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold
                             )
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                NestedNumberingStyle.entries.forEach { style ->
+                                    ViewOptionChip(
+                                        icon = Icons.Default.FormatListNumbered,
+                                        label = style.label,
+                                        selected = rootNumberingStyle == style,
+                                        onClick = { onSelectRootNumberingStyle(style) }
+                                    )
+                                }
+                            }
                         }
                     }
                 }

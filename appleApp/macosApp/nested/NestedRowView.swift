@@ -565,10 +565,7 @@ struct NestedRowView: View, Equatable {
     /// Badge diameter for a numbered row. Grows with the digit count so 1..N
     /// stays centred without shrinking the glyph.
     private var numberDiameter: CGFloat {
-        let count = row.numberText?.count ?? 1
-        if count >= 3 { return 22 }
-        if count == 2 { return row.node.hasChildren ? 20 : 18 }
-        return row.node.hasChildren ? 18 : 16
+        18
     }
 
     private var guideBaseColor: Color {
@@ -603,22 +600,43 @@ struct NestedRowView: View, Equatable {
                 // Numbered level: a filled badge for leaves, and the same
                 // filled badge inside the parent ring so the collapse cue
                 // (and the number) both survive collapsing.
+                let isCapsule = number.count >= 4
+                let width: CGFloat = {
+                    if number.count >= 5 { return 30 }
+                    if number.count == 4 { return 26 }
+                    return numberDiameter
+                }()
+                let fontScale: CGFloat = number.count >= 5 ? 7.0 : (number.count == 4 ? 7.5 : (number.count == 3 ? 8.0 : (number.count == 2 ? 9.0 : 10.0)))
+
                 ZStack {
-                    Circle()
-                        .fill(guideBaseColor.opacity(dotEmphasis ? 0.30 : 0.16))
-                    if row.node.hasChildren {
+                    if isCapsule {
+                        RoundedRectangle(cornerRadius: 5)
+                            .fill(guideBaseColor.opacity(dotEmphasis ? 0.30 : 0.16))
+                        if row.node.hasChildren {
+                            RoundedRectangle(cornerRadius: 5)
+                                .stroke(
+                                    nestedDotColor(guideBaseColor, emphasized: dotEmphasis),
+                                    lineWidth: dotEmphasis ? 1.25 : 1.0
+                                )
+                        }
+                    } else {
                         Circle()
-                            .stroke(
-                                nestedDotColor(guideBaseColor, emphasized: dotEmphasis),
-                                lineWidth: dotEmphasis ? 1.25 : 1.0
-                            )
+                            .fill(guideBaseColor.opacity(dotEmphasis ? 0.30 : 0.16))
+                        if row.node.hasChildren {
+                            Circle()
+                                .stroke(
+                                    nestedDotColor(guideBaseColor, emphasized: dotEmphasis),
+                                    lineWidth: dotEmphasis ? 1.25 : 1.0
+                                )
+                        }
                     }
                     Text(number)
-                        .font(.system(size: number.count >= 3 ? 8.5 : 10, weight: .semibold))
+                        .font(.system(size: fontScale, weight: .semibold))
                         .monospacedDigit()
                         .foregroundStyle(.primary)
+                        .lineLimit(1)
                 }
-                .frame(width: numberDiameter, height: numberDiameter)
+                .frame(width: width, height: numberDiameter)
             } else if row.node.hasChildren {
                 ZStack {
                     Circle()

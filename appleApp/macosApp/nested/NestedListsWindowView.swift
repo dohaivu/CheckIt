@@ -811,11 +811,13 @@ struct NestedListsWindowView: View {
                         Label("Working", systemImage: "briefcase")
                     }
                     Divider()
-                    Toggle(isOn: Binding(
-                        get: { state.tree?.document.numberRoots ?? false },
-                        set: { state.setDocumentNumberRoots($0) }
+                    Picker("Root Numbering", selection: Binding(
+                        get: { state.tree?.document.numberingStyle ?? NestedNumberingStyle.none },
+                        set: { state.setDocumentNumberingStyle($0.key) }
                     )) {
-                        Label("Number roots", systemImage: "list.number")
+                        ForEach(NestedNumberingStyle.entries, id: \.self) { style in
+                            Text(style.label).tag(style)
+                        }
                     }
                 } label: {
                     Image(systemName: state.displayType == .all ? "list.bullet" : "briefcase")

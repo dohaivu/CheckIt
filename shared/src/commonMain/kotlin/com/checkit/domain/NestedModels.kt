@@ -344,6 +344,72 @@ data class NestedMetricSummary(
 )
 
 /**
+ * Supported numbering styles for nested tree children or root level nodes.
+ */
+enum class NestedNumberingStyle(val key: String, val label: String) {
+    None("none", "Dots"),
+    Decimal("decimal", "1 2 3"),
+    AlphaLower("alpha_lower", "a b c"),
+    AlphaUpper("alpha_upper", "A B C"),
+    RomanLower("roman_lower", "i ii iii"),
+    RomanUpper("roman_upper", "I II III"),
+    Legal("legal", "1.1 1.2");
+
+    companion object {
+        fun fromKey(key: String?): NestedNumberingStyle =
+            entries.firstOrNull { it.key.equals(key, ignoreCase = true) } ?: None
+    }
+}
+
+/** Formats a 1-based node ordinal according to the chosen [NestedNumberingStyle]. */
+fun formatNestedNumber(
+    style: NestedNumberingStyle,
+    ordinal: Int,
+    ancestorOrdinals: List<Int> = emptyList()
+): String? = when (style) {
+    NestedNumberingStyle.None -> null
+    NestedNumberingStyle.Decimal -> ordinal.toString()
+    NestedNumberingStyle.AlphaLower -> formatAlpha(ordinal, uppercase = false)
+    NestedNumberingStyle.AlphaUpper -> formatAlpha(ordinal, uppercase = true)
+    NestedNumberingStyle.RomanLower -> formatRoman(ordinal, uppercase = false)
+    NestedNumberingStyle.RomanUpper -> formatRoman(ordinal, uppercase = true)
+    NestedNumberingStyle.Legal -> {
+        (ancestorOrdinals + ordinal).joinToString(".")
+    }
+}
+
+private fun formatAlpha(ordinal: Int, uppercase: Boolean): String {
+    var n = ordinal
+    val sb = StringBuilder()
+    while (n > 0) {
+        val rem = (n - 1) % 26
+        val char = (if (uppercase) 'A' else 'a') + rem
+        sb.insert(0, char)
+        n = (n - 1) / 26
+    }
+    return sb.toString()
+}
+
+private val ROMAN_PAIRS = listOf(
+    1000 to "M", 900 to "CM", 500 to "D", 400 to "CD",
+    100 to "C", 90 to "XC", 50 to "L", 40 to "XL",
+    10 to "X", 9 to "IX", 5 to "V", 4 to "IV", 1 to "I"
+)
+
+private fun formatRoman(ordinal: Int, uppercase: Boolean): String {
+    var num = ordinal
+    val sb = StringBuilder()
+    for ((value, symbol) in ROMAN_PAIRS) {
+        while (num >= value) {
+            sb.append(symbol)
+            num -= value
+        }
+    }
+    val res = sb.toString()
+    return if (uppercase) res else res.lowercase()
+}
+
+/**
  * A single nested-lists document. Holds one unlimited-depth item tree.
  */
 data class NestedDocument(
@@ -352,10 +418,9 @@ data class NestedDocument(
     val createdAtMillis: Long,
     val updatedAtMillis: Long,
     /**
-     * When true the document's root level renders each item's 1-based sibling
-     * ordinal in the guide slot instead of a dot. Per-item emoji still win.
+     * Numbering style for the document's root level items.
      */
-    val numberRoots: Boolean = false
+    val numberingStyle: NestedNumberingStyle = NestedNumberingStyle.None
 )
 
 /**
@@ -416,12 +481,10 @@ data class NestedListItem(
      */
     val guideDot: String? = null,
     /**
-     * When true this row's direct children render their 1-based sibling
-     * ordinal instead of a dot. The ordinal is derived (never stored), so
-     * inserts, moves and indents renumber automatically. An explicit
-     * [guideDot] emoji on a child still wins over its number.
+     * Numbering style applied to this row's direct children.
+     * An explicit [guideDot] emoji on a child still wins over its number.
      */
-    val numberedChildren: Boolean = false,
+    val numberingStyle: NestedNumberingStyle = NestedNumberingStyle.None,
     val startDate: LocalDate? = null,
     val endDate: LocalDate? = null,
     val priority: TaskPriority = TaskPriority.None,
@@ -619,6 +682,17 @@ class NestedDocumentTree(
 
     val flatItems: List<NestedListItem> by lazy { flattenNestedNodes(rootNodes) }
     val metricSummaryById: Map<String, NestedMetricSummary> by lazy { calculateNestedMetricSummaries(rootNodes) }
+
+    fun ancestorOrdinals(itemId: String): List<Int> {
+        val ordinals = mutableListOf<Int>()
+        var currId: String? = nodeById[itemId]?.item?.parentId
+        while (currId != null) {
+            val node = nodeById[currId] ?: break
+            ordinals.add(0, node.ordinal)
+            currId = node.item.parentId
+        }
+        return ordinals
+    }
 }
 
 /** Longest guide emoji accepted, in UTF-16 units. */

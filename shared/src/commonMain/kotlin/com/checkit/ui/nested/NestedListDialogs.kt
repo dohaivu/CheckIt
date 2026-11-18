@@ -1,5 +1,7 @@
 package com.checkit.ui.nested
 
+import com.checkit.domain.NestedNumberingStyle
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -816,10 +818,10 @@ internal fun BorderMenu(
 internal fun GuideMenu(
     emoji: String?,
     guideDotColor: NestedColorToken?,
-    numbersChildren: Boolean,
+    numberingStyle: NestedNumberingStyle,
     onDotChange: (String?) -> Unit,
     onColorChange: (NestedColorToken) -> Unit,
-    onNumbersChildrenChange: (Boolean) -> Unit,
+    onNumberingStyleChange: (NestedNumberingStyle) -> Unit,
     onChooseEmoji: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -873,7 +875,7 @@ internal fun GuideMenu(
                 }
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    text = "Children",
+                    text = "Children Numbering",
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -882,19 +884,14 @@ internal fun GuideMenu(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    SelectableChip(
-                        label = "Dots",
-                        selected = !numbersChildren
-                    ) {
-                        expanded = false
-                        onNumbersChildrenChange(false)
-                    }
-                    SelectableChip(
-                        label = "Numbers",
-                        selected = numbersChildren
-                    ) {
-                        expanded = false
-                        onNumbersChildrenChange(true)
+                    NestedNumberingStyle.entries.forEach { style ->
+                        SelectableChip(
+                            label = style.label,
+                            selected = numberingStyle == style
+                        ) {
+                            expanded = false
+                            onNumberingStyleChange(style)
+                        }
                     }
                 }
                 Spacer(Modifier.height(8.dp))

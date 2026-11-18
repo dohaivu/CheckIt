@@ -7,6 +7,7 @@ import com.checkit.domain.NestedDocumentTree
 import com.checkit.domain.NestedItemMove
 import com.checkit.domain.NestedListItem
 import com.checkit.domain.NestedItemNode
+import com.checkit.domain.NestedNumberingStyle
 import com.checkit.domain.NestedSortOrder
 import com.checkit.domain.NestedSubtreeClip
 import com.checkit.domain.TagItem
@@ -283,18 +284,18 @@ class UpdateNestedItemGuideDotColorUseCase(
         repository.updateNestedItemGuideDotColor(itemId, guideDotColor)
 }
 
-class UpdateNestedItemNumberedChildrenUseCase(
+class UpdateNestedItemNumberingStyleUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(itemId: String, numberedChildren: Boolean) =
-        repository.updateNestedItemNumberedChildren(itemId, numberedChildren)
+    suspend operator fun invoke(itemId: String, numberingStyle: NestedNumberingStyle) =
+        repository.updateNestedItemNumberingStyle(itemId, numberingStyle)
 }
 
-class UpdateNestedDocumentNumberRootsUseCase(
+class UpdateNestedDocumentNumberingStyleUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(documentId: String, numberRoots: Boolean) =
-        repository.updateNestedDocumentNumberRoots(documentId, numberRoots)
+    suspend operator fun invoke(documentId: String, numberingStyle: NestedNumberingStyle) =
+        repository.updateNestedDocumentNumberingStyle(documentId, numberingStyle)
 }
 
 class UpdateNestedItemDateRangeUseCase(

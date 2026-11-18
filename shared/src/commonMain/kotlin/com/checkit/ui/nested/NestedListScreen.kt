@@ -147,8 +147,8 @@ internal fun NestedListScreen(
                 NestedDisplayTypeMenu(
                     selected = state.filters.displayType,
                     onSelect = viewModel::updateDisplayType,
-                    numberRoots = tree.document.numberRoots,
-                    onToggleNumberRoots = viewModel::toggleDocumentNumberRoots
+                    rootNumberingStyle = tree.document.numberingStyle,
+                    onSelectRootNumberingStyle = { style -> viewModel.updateDocumentNumberingStyle(tree.document.id, style) }
                 )
             }
 
@@ -524,8 +524,8 @@ internal fun NestedListScreen(
                             onGuideDotColorChange = { color ->
                                 viewModel.updateItemGuideDotColor(selectedItem.id, color)
                             },
-                            onNumbersChildrenChange = { numbers ->
-                                viewModel.updateItemNumberedChildren(selectedItem.id, numbers)
+                            onNumberingStyleChange = { style ->
+                                viewModel.updateItemNumberingStyle(selectedItem.id, style)
                             },
                             onDateRangeChange = { startDate, endDate ->
                                 viewModel.updateItemDateRange(selectedItem.id, startDate, endDate)
