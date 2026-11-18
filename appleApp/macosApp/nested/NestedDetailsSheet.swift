@@ -714,7 +714,7 @@ struct NestedFormattingBar: View {
                 showGuidePicker.toggle()
             } label: {
                 NestedMenuTrigger(
-                    symbol: GuideDot.shared.symbolKey(raw: item.guideDot).map { appSymbol($0) } ?? "circle.dotted",
+                    symbol: GuideDot.shared.symbolKey(raw: item.guideDot).map { appSymbol($0) } ?? "smallcircle.filled.circle",
                     emoji: GuideDot.shared.emoji(raw: item.guideDot),
                     tint: {
                         if let color = item.guideDotColor {
