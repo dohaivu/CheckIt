@@ -78,6 +78,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.checkit.domain.GuideDot
 import com.checkit.domain.NestedColorToken
 import com.checkit.domain.NestedCalloutLayout
 import com.checkit.domain.NestedDocumentTree
@@ -94,6 +95,7 @@ import com.checkit.ui.components.TagPill
 import com.checkit.ui.components.renderInlineMarkdown
 import com.checkit.ui.isValidForSave
 import com.checkit.ui.noRippleClickable
+import com.checkit.ui.theme.AppSymbols
 import com.checkit.ui.theme.parseHexColorOrNull
 
 // Palette shared with macOS NestedRowView (nestedDepthSolids).
@@ -124,12 +126,12 @@ internal fun nestedDotColor(
     color: Color,
     emphasized: Boolean = false,
     focusAlpha: Float = 1f,
-    hasGuideEmoji: Boolean = false
+    hasGuideGlyph: Boolean = false
 ): Color =
     color.copy(
         alpha = when {
             emphasized -> 1f
-            hasGuideEmoji -> nestedDotGuideEmojiSubtleAlpha
+            hasGuideGlyph -> nestedDotGuideEmojiSubtleAlpha
             else -> nestedDotSubtleAlpha
         } * focusAlpha
     )
@@ -334,11 +336,13 @@ internal fun NestedItemRow(
     }
     val itemTextColor = baseTextColor.copy(alpha = minOf(baseTextColor.alpha, focusAlpha))
 
-    val guideEmoji = item.guideDot
+    val guideEmoji = GuideDot.emoji(item.guideDot)
+    val guideSymbolKey = GuideDot.symbolKey(item.guideDot)
+    val hasGuideGlyph = guideEmoji != null || guideSymbolKey != null
     val numberText = snapshot.numberText
     val dotSize = when {
-        hasChildren && guideEmoji != null -> 22.dp
-        guideEmoji != null -> 18.dp
+        hasChildren && hasGuideGlyph -> 22.dp
+        hasGuideGlyph -> 18.dp
         numberText != null -> 18.dp
         hasChildren -> 14.dp
         else -> 7.dp
@@ -498,11 +502,11 @@ internal fun NestedItemRow(
                         guideBaseColor,
                         emphasized = isEmphasized || isSpineRoot,
                         focusAlpha = focusAlpha,
-                        hasGuideEmoji = guideEmoji != null
+                        hasGuideGlyph = hasGuideGlyph
                     )
                     val ringStroke = when {
-                        guideEmoji != null && (isEmphasized || isSpineRoot) -> 1.25.dp
-                        guideEmoji != null -> 1.dp
+                        hasGuideGlyph && (isEmphasized || isSpineRoot) -> 1.25.dp
+                        hasGuideGlyph -> 1.dp
                         isEmphasized || isSpineRoot -> 2.dp
                         else -> 1.5.dp
                     }
@@ -543,7 +547,7 @@ internal fun NestedItemRow(
                                             )
                                         hasChildren -> Modifier
                                             .then(
-                                                if (guideEmoji != null && item.collapsed) {
+                                                if (hasGuideGlyph && item.collapsed) {
                                                     Modifier.background(
                                                         dotColor.copy(alpha = 0.22f),
                                                         CircleShape
@@ -553,13 +557,19 @@ internal fun NestedItemRow(
                                                 }
                                             )
                                             .border(ringStroke, dotColor, CircleShape)
-                                        guideEmoji != null -> Modifier
+                                        hasGuideGlyph -> Modifier
                                         else -> Modifier.background(dotColor, CircleShape)
                                     }
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
                             when {
+                                guideSymbolKey != null -> Icon(
+                                    imageVector = AppSymbols.materialIcon(guideSymbolKey),
+                                    contentDescription = null,
+                                    tint = guideBaseColor.copy(alpha = focusAlpha),
+                                    modifier = Modifier.size(12.dp)
+                                )
                                 guideEmoji != null -> Text(
                                     text = guideEmoji,
                                     style = nestedGuideEmojiStyle,

@@ -1,5 +1,6 @@
 package com.checkit.data
 
+import com.checkit.domain.GuideDot
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -85,7 +86,7 @@ class NestedSyncDocumentTest {
             calloutTitle = "Watch out",
             calloutIcon = "lightbulb",
             calloutLayout = "Rail",
-            guideDot = "🚀",
+            guideDot = GuideDot.fromSymbolKey("star"),
             numberingStyle = "decimal",
             startDateEpochDays = 20000,
             endDateEpochDays = 20001,
@@ -123,7 +124,7 @@ class NestedSyncDocumentTest {
         assertEquals("Watch out", remote?.calloutTitle)
         assertEquals("lightbulb", remote?.calloutIcon)
         assertEquals("Rail", remote?.calloutLayout)
-        assertEquals("🚀", remote?.guideDot)
+        assertEquals("sym:star", remote?.guideDot)
         assertEquals("decimal", remote?.numberingStyle)
         assertEquals("High", remote?.priority)
         assertEquals(25, remote?.actualMinutes)

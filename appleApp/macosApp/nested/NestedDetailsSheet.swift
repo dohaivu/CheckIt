@@ -554,6 +554,7 @@ struct NestedFormattingBar: View {
     @State private var showBorderPicker = false
     @State private var showCalloutPicker = false
     @State private var showGuidePicker = false
+    @State private var showSymbolPicker = false
     @State private var showColorPicker = false
 
     /// Menu order for text styles (largest first, monostyled last).
@@ -571,7 +572,7 @@ struct NestedFormattingBar: View {
     /// binding is the source of truth (no draft state to commit).
     private var guideEmojiBinding: Binding<String> {
         Binding(
-            get: { item.guideDot ?? "" },
+            get: { GuideDot.shared.emoji(raw: item.guideDot) ?? "" },
             set: { state.updateGuideDot(id: item.id, emoji: $0) }
         )
     }
@@ -713,8 +714,8 @@ struct NestedFormattingBar: View {
                 showGuidePicker.toggle()
             } label: {
                 NestedMenuTrigger(
-                    symbol: "circle.dotted",
-                    emoji: item.guideDot,
+                    symbol: GuideDot.shared.symbolKey(raw: item.guideDot).map { appSymbol($0) } ?? "circle.dotted",
+                    emoji: GuideDot.shared.emoji(raw: item.guideDot),
                     tint: {
                         if let color = item.guideDotColor {
                             return nestedTokenColor(color)
@@ -741,6 +742,10 @@ struct NestedFormattingBar: View {
                     onShowEmojiPicker: {
                         showGuidePicker = false
                         DispatchQueue.main.async { showEmojiPicker = true }
+                    },
+                    onShowSymbolPicker: {
+                        showGuidePicker = false
+                        DispatchQueue.main.async { showSymbolPicker = true }
                     }
                 )
             }
@@ -750,6 +755,13 @@ struct NestedFormattingBar: View {
                     selectedEmojiCategoryTintColor: .accentColor
                 )
                 .frame(width: 340, height: 420)
+            }
+            .popover(isPresented: $showSymbolPicker, arrowEdge: .bottom) {
+                NestedGuideSymbolPicker(selectedKey: GuideDot.shared.symbolKey(raw: item.guideDot)) { key in
+                    state.updateGuideDot(id: item.id, emoji: GuideDot.shared.fromSymbolKey(key: key))
+                    showSymbolPicker = false
+                }
+                .frame(width: 300, height: 420)
             }
             // Priority
             NestedMenuButton(rows: {
@@ -1235,15 +1247,16 @@ struct NestedCalloutPickerView: View {
 // MARK: - Guide picker (horizontal sections)
 
 /// Dot + color controls shown side by side in a popover instead of two
-/// `NSMenu`s. The emoji picker is deliberately *not* nested: tapping
-/// "Choose emoji…" dismisses this popover first, then the caller presents
-/// the emoji popover from the toolbar button's anchor.
+/// `NSMenu`s. The emoji and symbol pickers are deliberately *not* nested:
+/// tapping either row dismisses this popover first, then the caller presents
+/// the second popover from the toolbar button's anchor.
 struct NestedGuidePickerView: View {
     let item: NestedListItem
     let onGuideDot: (String?) -> Void
     let onGuideDotColor: (NestedColorToken?) -> Void
     let onNumberingStyle: (String) -> Void
     let onShowEmojiPicker: () -> Void
+    let onShowSymbolPicker: () -> Void
 
     var body: some View {
         HStack(alignment: .top, spacing: 16) {
@@ -1251,8 +1264,11 @@ struct NestedGuidePickerView: View {
                 NestedPickerRow(title: "Default dot", selected: item.guideDot == nil) {
                     onGuideDot(nil)
                 }
-                NestedPickerRow(title: item.guideDot == nil ? "Choose emoji…" : "Change emoji…", selected: false) {
+                NestedPickerRow(title: GuideDot.shared.emoji(raw: item.guideDot) == nil ? "Choose emoji…" : "Change emoji…", selected: GuideDot.shared.emoji(raw: item.guideDot) != nil) {
                     onShowEmojiPicker()
+                }
+                NestedPickerRow(title: GuideDot.shared.symbolKey(raw: item.guideDot) == nil ? "Choose symbol…" : "Change symbol…", selected: GuideDot.shared.symbolKey(raw: item.guideDot) != nil) {
+                    onShowSymbolPicker()
                 }
             }
             NestedPickerColumn(title: "Children") {
@@ -1266,6 +1282,50 @@ struct NestedGuidePickerView: View {
                 NestedColorSwatchGrid(selected: item.guideDotColor ?? NestedColorToken.default_) { t in
                     onGuideDotColor(t == NestedColorToken.default_ ? nil : t)
                 }
+            }
+        }
+        .padding(10)
+    }
+}
+
+/// Grid of every registered AppSymbols key, used to pick the guide-dot glyph.
+struct NestedGuideSymbolPicker: View {
+    let selectedKey: String?
+    let onSelect: (String) -> Void
+
+    private static let symbolKeys: [String] = AppSymbols.shared.allSymbolKeys
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Choose symbol")
+                .font(.headline)
+            ScrollView {
+                LazyVGrid(
+                    columns: [GridItem(.adaptive(minimum: 30), spacing: 6)],
+                    spacing: 6
+                ) {
+                    ForEach(Self.symbolKeys, id: \.self) { key in
+                        let selected = key == selectedKey
+                        Button {
+                            onSelect(key)
+                        } label: {
+                            Image(systemName: appSymbol(key))
+                                .font(.system(size: 14))
+                                .frame(width: 30, height: 30)
+                                .background(
+                                    selected
+                                        ? Color.accentColor.opacity(0.22)
+                                        : Color.secondary.opacity(0.10),
+                                    in: RoundedRectangle(cornerRadius: 7)
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        .focusable(false)
+                        .help(key)
+                        .accessibilityLabel(key)
+                    }
+                }
+                .padding(.vertical, 2)
             }
         }
         .padding(10)

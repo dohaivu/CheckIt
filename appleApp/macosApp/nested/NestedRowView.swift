@@ -552,13 +552,14 @@ struct NestedRowView: View, Equatable {
         }
     }
 
-    /// Guide dot diameter. A parent ring grows to hold its emoji at the same
-    /// glyph size as a leaf dot without squeezing it against the stroke; plain
-    /// parents keep the ring leaves never show.
+    /// Guide dot diameter. A parent ring grows to hold its emoji or symbol at
+    /// the same glyph size as a leaf dot without squeezing it against the
+    /// stroke; plain parents keep the ring leaves never show.
     private var guideRingDiameter: CGFloat {
         if row.numberText != nil { return numberDiameter }
         guard row.node.hasChildren else { return 12 }
-        if let emoji = item.guideDot, !emoji.isEmpty { return 20 }
+        let hasGlyph = GuideDot.shared.emoji(raw: item.guideDot) != nil || GuideDot.shared.symbolKey(raw: item.guideDot) != nil
+        if hasGlyph { return 20 }
         return 12
     }
 
@@ -572,11 +573,30 @@ struct NestedRowView: View, Equatable {
         nestedGuideBaseColor(row.depth, override: item.guideDotColor)
     }
 
-    /// The guide dot / collapse glyph: a ring with a chevron or emoji inside for
-    /// parents, the bare emoji or a small filled dot for leaves.
+    /// The guide dot / collapse glyph: a ring with a chevron, emoji, or symbol
+    /// inside for parents, and the bare glyph or a small filled dot for leaves.
     private var guideDotGlyph: some View {
         Group {
-            if let emoji = item.guideDot, !emoji.isEmpty {
+            if let symbolKey = GuideDot.shared.symbolKey(raw: item.guideDot) {
+                let glyph = Image(systemName: appSymbol(symbolKey))
+                    .font(.system(size: 11))
+                    .foregroundStyle(guideBaseColor)
+                if row.node.hasChildren {
+                    ZStack {
+                        Circle()
+                            .fill(item.collapsed
+                                  ? nestedDotColor(guideBaseColor, emphasized: dotEmphasis).opacity(0.22)
+                                  : Color.clear)
+                        Circle()
+                            .stroke(nestedDotColor(guideBaseColor, emphasized: dotEmphasis),
+                                    lineWidth: dotEmphasis ? 1.0 : 0.5)
+                        glyph
+                    }
+                    .frame(width: guideRingDiameter, height: guideRingDiameter)
+                } else {
+                    glyph
+                }
+            } else if let emoji = GuideDot.shared.emoji(raw: item.guideDot), !emoji.isEmpty {
                 if row.node.hasChildren {
                     // Parents keep the ring (it is the collapse cue) and read
                     // as filled while collapsed.

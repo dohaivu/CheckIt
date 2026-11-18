@@ -70,6 +70,7 @@ import androidx.compose.ui.window.DialogProperties
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.cancel
 import checkit.shared.generated.resources.nested_edit_note
+import com.checkit.domain.GuideDot
 import com.checkit.domain.MetricItem
 import com.checkit.domain.MetricRollupPolicy
 import com.checkit.domain.MoveDestinations
@@ -816,28 +817,37 @@ internal fun BorderMenu(
 
 @Composable
 internal fun GuideMenu(
-    emoji: String?,
+    guideDot: String?,
     guideDotColor: NestedColorToken?,
     numberingStyle: NestedNumberingStyle,
     onDotChange: (String?) -> Unit,
     onColorChange: (NestedColorToken) -> Unit,
     onNumberingStyleChange: (NestedNumberingStyle) -> Unit,
-    onChooseEmoji: () -> Unit
+    onChooseEmoji: () -> Unit,
+    onChooseSymbol: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
     val subtleInactiveColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f)
+    val guideTint = guideDotColor?.let { nestedColor(it) } ?: subtleInactiveColor
+    val emoji = GuideDot.emoji(guideDot)
+    val symbolKey = GuideDot.symbolKey(guideDot)
     Box {
         IconButton(
             onClick = { expanded = true },
             modifier = Modifier.size(32.dp)
         ) {
-            if (emoji != null) {
-                Text(text = emoji, fontSize = 15.sp)
-            } else {
-                Icon(
+            when {
+                symbolKey != null -> Icon(
+                    imageVector = AppSymbols.materialIcon(symbolKey),
+                    contentDescription = "Guide dot and color",
+                    tint = guideTint,
+                    modifier = Modifier.size(18.dp)
+                )
+                emoji != null -> Text(text = emoji, fontSize = 15.sp)
+                else -> Icon(
                     imageVector = Icons.Outlined.EmojiEmotions,
                     contentDescription = "Guide dot and color",
-                    tint = guideDotColor?.let { nestedColor(it) } ?: subtleInactiveColor,
+                    tint = guideTint,
                     modifier = Modifier.size(18.dp)
                 )
             }
@@ -860,17 +870,24 @@ internal fun GuideMenu(
                 ) {
                     SelectableChip(
                         label = "Default dot",
-                        selected = emoji == null
+                        selected = guideDot == null
                     ) {
                         expanded = false
                         onDotChange(null)
                     }
                     SelectableChip(
                         label = if (emoji == null) "Choose emoji…" else "Change emoji…",
-                        selected = false
+                        selected = emoji != null
                     ) {
                         expanded = false
                         onChooseEmoji()
+                    }
+                    SelectableChip(
+                        label = if (symbolKey == null) "Choose symbol…" else "Change symbol…",
+                        selected = symbolKey != null
+                    ) {
+                        expanded = false
+                        onChooseSymbol()
                     }
                 }
                 Spacer(Modifier.height(8.dp))
@@ -904,6 +921,74 @@ internal fun GuideMenu(
                 ColorTokenSwatches(selected = guideDotColor ?: NestedColorToken.Default) { token ->
                     expanded = false
                     onColorChange(token)
+                }
+            }
+        }
+    }
+}
+
+/** Bottom sheet with every AppSymbols key, used as the guide-dot symbol picker. */
+@Composable
+internal fun GuideSymbolPicker(
+    onDismiss: () -> Unit,
+    onSymbolSelect: (String) -> Unit,
+    selectedKey: String? = null,
+    modifier: Modifier = Modifier
+) {
+    AppEditorBottomSheet(
+        onDismiss = onDismiss,
+        modifier = modifier,
+        sheetGesturesEnabled = true
+    ) {
+        Text(
+            text = "Choose symbol",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 320.dp)
+                .verticalScroll(rememberScrollState())
+        ) {
+            FlowRow(
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                AppSymbols.allSymbolKeys.forEach { key ->
+                    val isSelected = key == selectedKey
+                    val shape = RoundedCornerShape(8.dp)
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(shape)
+                            .then(
+                                if (isSelected) {
+                                    Modifier
+                                        .border(1.5.dp, MaterialTheme.colorScheme.primary, shape)
+                                        .background(MaterialTheme.colorScheme.primaryContainer)
+                                } else {
+                                    Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                                }
+                            )
+                            .clickable {
+                                onSymbolSelect(key)
+                                onDismiss()
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = AppSymbols.materialIcon(key),
+                            contentDescription = key,
+                            tint = if (isSelected) {
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            },
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
                 }
             }
         }

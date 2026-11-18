@@ -313,6 +313,9 @@ object AppSymbols {
     /** Every registered symbol, in picker order. */
     val allSymbols: List<AppSymbolSpec> = specsList
 
+    /** Every registered key, in picker order; shared by Kotlin and Swift pickers. */
+    val allSymbolKeys: List<String> = specsList.map { it.key }
+
     /** Keys offered by the callout icon picker. */
     val calloutIconKeys: List<String> = specsList
         .filter { AppSymbolUsage.Callout in it.usages }

@@ -121,6 +121,7 @@ import checkit.shared.generated.resources.nested_outdent
 import checkit.shared.generated.resources.nested_root
 import checkit.shared.generated.resources.nested_zoom_in
 import checkit.shared.generated.resources.nested_zoom_out
+import com.checkit.domain.GuideDot
 import com.checkit.domain.NestedDateFilter
 import com.checkit.domain.NestedDatePreset
 import com.checkit.domain.NestedRollingPreset
@@ -314,6 +315,7 @@ internal fun NestedFormattingBar(
     var priorityExpanded by remember { mutableStateOf(false) }
     var styleExpanded by remember { mutableStateOf(false) }
     var showEmojiPicker by remember { mutableStateOf(false) }
+    var showSymbolPicker by remember { mutableStateOf(false) }
     var showDateDialog by remember { mutableStateOf(false) }
     var showLabelDialog by remember { mutableStateOf(false) }
     var calloutExpanded by remember { mutableStateOf(false) }
@@ -522,13 +524,14 @@ internal fun NestedFormattingBar(
             // Guide dot and color in one menu: dot owns the row's dot
             // (parents keep the ring); color owns the connector and spine.
             GuideMenu(
-                emoji = item.guideDot,
+                guideDot = item.guideDot,
                 guideDotColor = item.guideDotColor,
                 numberingStyle = item.numberingStyle,
                 onDotChange = { emoji -> onGuideDotChange(emoji) },
                 onColorChange = { token -> onGuideDotColorChange(token.takeIf { it != NestedColorToken.Default }) },
                 onNumberingStyleChange = onNumberingStyleChange,
-                onChooseEmoji = { showEmojiPicker = true }
+                onChooseEmoji = { showEmojiPicker = true },
+                onChooseSymbol = { showSymbolPicker = true }
             )
 
             VerticalDivider(
@@ -683,6 +686,14 @@ internal fun NestedFormattingBar(
         EmojiPicker(
             onDismiss = { showEmojiPicker = false },
             onEmojiSelect = { emoji -> onGuideDotChange(emoji.details.string) }
+        )
+    }
+
+    if (showSymbolPicker) {
+        GuideSymbolPicker(
+            onDismiss = { showSymbolPicker = false },
+            onSymbolSelect = { key -> onGuideDotChange(GuideDot.fromSymbolKey(key)) },
+            selectedKey = GuideDot.symbolKey(item.guideDot)
         )
     }
 

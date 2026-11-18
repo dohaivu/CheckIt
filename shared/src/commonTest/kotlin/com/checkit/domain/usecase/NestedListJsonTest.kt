@@ -1,5 +1,6 @@
 package com.checkit.domain.usecase
 
+import com.checkit.domain.GuideDot
 import com.checkit.domain.NestedDocument
 import com.checkit.domain.NestedDocumentTree
 import com.checkit.domain.NestedItemNode
@@ -31,7 +32,7 @@ class NestedListJsonTest {
             calloutTitle = "Read this first",
             calloutIcon = "warning",
             calloutLayout = com.checkit.domain.NestedCalloutLayout.Text,
-            guideDot = "🔥",
+            guideDot = GuideDot.fromSymbolKey("lightbulb"),
             numberingStyle = com.checkit.domain.NestedNumberingStyle.Decimal,
             createdAtMillis = 1000L,
             updatedAtMillis = 2000L
@@ -44,6 +45,7 @@ class NestedListJsonTest {
             text = "Child Item",
             checkboxEnabled = true,
             checked = true,
+            guideDot = "🔥",
             createdAtMillis = 1100L,
             updatedAtMillis = 2100L
         )
@@ -75,7 +77,8 @@ class NestedListJsonTest {
         assertEquals("Read this first", decoded.items[0].calloutTitle)
         assertEquals("warning", decoded.items[0].calloutIcon)
         assertEquals("Text", decoded.items[0].calloutLayout)
-        assertEquals("🔥", decoded.items[0].guideDot)
+        assertEquals("sym:lightbulb", decoded.items[0].guideDot)
+        assertEquals("🔥", decoded.items[0].children[0].guideDot)
         assertEquals("decimal", decoded.items[0].numberingStyle)
         assertEquals("decimal", decoded.document.numberingStyle)
         assertEquals(1, decoded.items[0].children.size)

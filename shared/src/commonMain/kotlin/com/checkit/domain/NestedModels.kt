@@ -475,14 +475,16 @@ data class NestedListItem(
     /** Optional palette override for this row's dot and owned guide segments. */
     val guideDotColor: NestedColorToken? = null,
     /**
-     * Emoji drawn in the row's guide dot instead of the default ring/dot.
-     * Null keeps the standard guide. Normalize writes with
-     * [sanitizeGuideDot] so a row cannot be used as a free-text field.
+     * Emoji or `AppSymbols` key drawn in the row's guide dot instead of the
+     * default ring/dot. Null keeps the standard guide. Symbol keys are stored
+     * as `sym:<key>` (see [GuideDot]) so both kinds share this single field.
+     * Normalize writes with [sanitizeGuideDot] so a row cannot be used as a
+     * free-text field.
      */
     val guideDot: String? = null,
     /**
      * Numbering style applied to this row's direct children.
-     * An explicit [guideDot] emoji on a child still wins over its number.
+     * An explicit [guideDot] glyph on a child still wins over its number.
      */
     val numberingStyle: NestedNumberingStyle = NestedNumberingStyle.None,
     val startDate: LocalDate? = null,
@@ -695,20 +697,54 @@ class NestedDocumentTree(
     }
 }
 
-/** Longest guide emoji accepted, in UTF-16 units. */
+/** Longest guide emoji or symbol key accepted, in UTF-16 units. */
 const val NESTED_GUIDE_DOT_MAX_LENGTH = 16
 
+private val NESTED_GUIDE_DOT_SYMBOL_KEY_REGEX = Regex("[a-zA-Z0-9_]+")
+
 /**
- * Normalizes a picked guide emoji: trims surrounding whitespace, maps blank to
+ * Codec for the single [NestedListItem.guideDot] field. A picked symbol is
+ * stored as `sym:<key>` while emojis keep their plain text, so the two kinds
+ * can share one persisted column without a schema change.
+ */
+object GuideDot {
+    /** Reserved prefix; emoji strings never contain it. */
+    const val SymbolPrefix = "sym:"
+
+    /** Decodes a symbol key, or null when [raw] holds emoji/default or is malformed. */
+    fun symbolKey(raw: String?): String? {
+        val sanitized = sanitizeGuideDot(raw) ?: return null
+        return sanitized.takeIf { it.startsWith(SymbolPrefix) }
+            ?.removePrefix(SymbolPrefix)
+    }
+
+    /** Decodes an emoji, or null when [raw] holds a symbol/default. */
+    fun emoji(raw: String?): String? {
+        val trimmed = raw?.trim().orEmpty()
+        return sanitizeGuideDot(trimmed)?.takeIf { !it.startsWith(SymbolPrefix) }
+    }
+
+    /** Storage value for a picked symbol key. */
+    fun fromSymbolKey(key: String): String =
+        SymbolPrefix + key.trim().removePrefix(SymbolPrefix).lowercase()
+}
+
+/**
+ * Normalizes a picked guide glyph: trims surrounding whitespace, maps blank to
  * null (so the row falls back to the default dot), and rejects values that are
- * clearly not a single emoji rather than storing arbitrary text.
+ * clearly not an emoji or a well-formed symbol key.
  *
- * Emojis with skin tones or zero-width joiners need several code points, hence
- * the generous cap; anything longer is treated as invalid input.
+ * The cap applies to the decoded value, not the `sym:` tag. Emojis with skin
+ * tones or zero-width joiners need several code points, hence the generous
+ * cap; anything longer is treated as invalid input.
  */
 fun sanitizeGuideDot(raw: String?): String? {
     val trimmed = raw?.trim().orEmpty()
     if (trimmed.isEmpty()) return null
-    return trimmed.takeIf { it.length <= NESTED_GUIDE_DOT_MAX_LENGTH }
+    val isSymbol = trimmed.startsWith(GuideDot.SymbolPrefix)
+    val decoded = if (isSymbol) trimmed.removePrefix(GuideDot.SymbolPrefix) else trimmed
+    if (isSymbol && !decoded.matches(NESTED_GUIDE_DOT_SYMBOL_KEY_REGEX)) return null
+    if (decoded.length > NESTED_GUIDE_DOT_MAX_LENGTH) return null
+    return if (isSymbol) GuideDot.SymbolPrefix + decoded.lowercase() else trimmed
 }
 
