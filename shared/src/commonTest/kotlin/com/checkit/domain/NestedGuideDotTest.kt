@@ -44,4 +44,47 @@ class NestedGuideDotTest {
         // single grapheme.
         assertEquals("🚀🚀", sanitizeGuideDot("🚀🚀"))
     }
+
+    @Test
+    fun symbolKeysAreEncodedAndDecoded() {
+        val value = GuideDot.fromSymbolKey("Lightbulb")
+        assertEquals("sym:lightbulb", value)
+        assertEquals(value, sanitizeGuideDot(value))
+        assertEquals("lightbulb", GuideDot.symbolKey(value))
+        assertNull(GuideDot.emoji(value))
+    }
+
+    @Test
+    fun emojiValuesAreNotMistakenForSymbols() {
+        assertEquals("🔥", GuideDot.emoji("🔥"))
+        assertNull(GuideDot.symbolKey("🔥"))
+        assertNull(GuideDot.emoji(null))
+        assertNull(GuideDot.symbolKey(null))
+        assertNull(GuideDot.emoji("sym:"))
+    }
+
+    @Test
+    fun malformedOrOverlongSymbolKeysAreRejected() {
+        assertNull(sanitizeGuideDot("sym:"))
+        assertNull(sanitizeGuideDot("sym:Bad Key"))
+        assertNull(sanitizeGuideDot("sym:🚀"))
+        assertNull(sanitizeGuideDot("sym:" + "a".repeat(NESTED_GUIDE_DOT_MAX_LENGTH + 1)))
+        assertEquals("sym:abc_123", sanitizeGuideDot("sym:abc_123"))
+    }
+
+    @Test
+    fun malformedSymbolKeysDecodeToNullInSymbolKey() {
+        assertNull(GuideDot.symbolKey("sym:Bad Key"))
+        assertNull(GuideDot.symbolKey("sym:🚀"))
+        assertNull(GuideDot.symbolKey("sym:"))
+        assertNull(GuideDot.symbolKey("sym:" + "a".repeat(NESTED_GUIDE_DOT_MAX_LENGTH + 1)))
+    }
+
+    @Test
+    fun fromSymbolKeySafelyHandlesAlreadyPrefixedOrCasedKeys() {
+        assertEquals("sym:star", GuideDot.fromSymbolKey("sym:STAR"))
+        assertEquals("sym:star", GuideDot.fromSymbolKey("STAR"))
+        assertEquals("sym:star", sanitizeGuideDot("sym:STAR"))
+        assertEquals("star", GuideDot.symbolKey("sym:STAR"))
+    }
 }

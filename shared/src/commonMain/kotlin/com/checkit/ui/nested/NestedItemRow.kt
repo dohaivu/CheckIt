@@ -78,6 +78,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.checkit.domain.GuideDot
 import com.checkit.domain.NestedColorToken
 import com.checkit.domain.NestedCalloutLayout
 import com.checkit.domain.NestedDocumentTree
@@ -86,12 +87,15 @@ import com.checkit.domain.EffectiveRowVisuals
 import com.checkit.domain.NestedMetricSummary
 import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.TaskPriority
+import com.checkit.domain.hasMissedDeadline
+import com.checkit.ui.today
 import com.checkit.ui.components.DateRangePill
 import com.checkit.ui.components.MetricChip
 import com.checkit.ui.components.TagPill
 import com.checkit.ui.components.renderInlineMarkdown
 import com.checkit.ui.isValidForSave
 import com.checkit.ui.noRippleClickable
+import com.checkit.ui.theme.AppSymbols
 import com.checkit.ui.theme.parseHexColorOrNull
 
 // Palette shared with macOS NestedRowView (nestedDepthSolids).
@@ -122,12 +126,12 @@ internal fun nestedDotColor(
     color: Color,
     emphasized: Boolean = false,
     focusAlpha: Float = 1f,
-    hasGuideEmoji: Boolean = false
+    hasGuideGlyph: Boolean = false
 ): Color =
     color.copy(
         alpha = when {
             emphasized -> 1f
-            hasGuideEmoji -> nestedDotGuideEmojiSubtleAlpha
+            hasGuideGlyph -> nestedDotGuideEmojiSubtleAlpha
             else -> nestedDotSubtleAlpha
         } * focusAlpha
     )
@@ -182,7 +186,12 @@ internal data class NestedRowSnapshot(
     val guideBaseColor: Color,
     val continuingLevels: Set<Int>,
     val branchBaseColor: Color,
-    val continuingGuideColors: Map<Int, Color>
+    val continuingGuideColors: Map<Int, Color>,
+    /**
+     * Ordinal to draw in the guide slot, or null for a dot. Resolved here so
+     * an explicit [NestedListItem.guideDot] emoji still wins.
+     */
+    val numberText: String?
 )
 
 /** Row events hoisted to the editor. One stable instance is shared by all rows. */
@@ -237,7 +246,25 @@ internal fun nestedRowSnapshot(
         guideBaseColor = item.guideDotColor?.let(::nestedPaletteColor) ?: nestedDepthColor(row.depth),
         continuingLevels = row.continuingLevels,
         branchBaseColor = branchBaseColor,
-        continuingGuideColors = continuingGuideColors
+        continuingGuideColors = continuingGuideColors,
+        numberText = if (item.guideDot == null) {
+            val style = if (item.parentId == null) {
+                tree.document.numberingStyle
+            } else {
+                tree.itemById[item.parentId]?.numberingStyle ?: com.checkit.domain.NestedNumberingStyle.None
+            }
+            if (style != com.checkit.domain.NestedNumberingStyle.None) {
+                com.checkit.domain.formatNestedNumber(
+                    style = style,
+                    ordinal = row.node.ordinal,
+                    ancestorOrdinals = tree.ancestorOrdinals(item.id)
+                )
+            } else {
+                null
+            }
+        } else {
+            null
+        }
     )
 }
 
@@ -253,6 +280,22 @@ internal val nestedGuideEmojiStyle = TextStyle(
         trim = LineHeightStyle.Trim.Both
     ),
     platformStyle = guideEmojiPlatformStyle()
+)
+
+/**
+ * Number drawn in the guide badge. Tabular figures keep 1..N from shifting
+ * horizontally as siblings are inserted or removed.
+ */
+internal val nestedGuideNumberStyle = TextStyle(
+    fontSize = 10.sp,
+    lineHeight = 10.sp,
+    fontWeight = FontWeight.SemiBold,
+    textAlign = TextAlign.Center,
+    fontFeatureSettings = "tnum",
+    lineHeightStyle = LineHeightStyle(
+        alignment = LineHeightStyle.Alignment.Center,
+        trim = LineHeightStyle.Trim.Both
+    )
 )
 
 @Composable
@@ -293,11 +336,15 @@ internal fun NestedItemRow(
     }
     val itemTextColor = baseTextColor.copy(alpha = minOf(baseTextColor.alpha, focusAlpha))
 
-    val guideEmoji = item.guideDot
+    val guideEmoji = GuideDot.emoji(item.guideDot)
+    val guideSymbolKey = GuideDot.symbolKey(item.guideDot)
+    val hasGuideGlyph = guideEmoji != null || guideSymbolKey != null
+    val numberText = snapshot.numberText
     val dotSize = when {
-        hasChildren && guideEmoji != null -> 22.dp
+        hasChildren && hasGuideGlyph -> 20.dp
+        hasGuideGlyph -> 18.dp
+        numberText != null -> 18.dp
         hasChildren -> 14.dp
-        guideEmoji != null -> 18.dp
         else -> 7.dp
     }
     val dotTop = 16.dp - dotSize / 2
@@ -455,14 +502,22 @@ internal fun NestedItemRow(
                         guideBaseColor,
                         emphasized = isEmphasized || isSpineRoot,
                         focusAlpha = focusAlpha,
-                        hasGuideEmoji = guideEmoji != null
+                        hasGuideGlyph = hasGuideGlyph
                     )
                     val ringStroke = when {
-                        guideEmoji != null && (isEmphasized || isSpineRoot) -> 1.25.dp
-                        guideEmoji != null -> 1.dp
+                        hasGuideGlyph && (isEmphasized || isSpineRoot) -> 1.25.dp
+                        hasGuideGlyph -> 1.dp
                         isEmphasized || isSpineRoot -> 2.dp
                         else -> 1.5.dp
                     }
+                    val numberBadgeWidth = when {
+                        numberText == null -> dotSize
+                        numberText.length >= 5 -> 30.dp
+                        numberText.length == 4 -> 26.dp
+                        else -> dotSize
+                    }
+                    val badgeShape = if (numberText != null && numberText.length >= 4) RoundedCornerShape(5.dp) else CircleShape
+
                     Box(
                         modifier = Modifier
                             .width(16.dp)
@@ -472,12 +527,27 @@ internal fun NestedItemRow(
                         Box(
                             modifier = Modifier
                                 .padding(top = dotTop)
-                                .requiredSize(dotSize)
+                                .requiredSize(width = numberBadgeWidth, height = dotSize)
                                 .then(
                                     when {
+                                        numberText != null -> Modifier
+                                            .background(
+                                                guideBaseColor.copy(
+                                                    alpha = (if (isEmphasized || isSpineRoot) 0.30f else 0.16f) *
+                                                        focusAlpha
+                                                ),
+                                                badgeShape
+                                            )
+                                            .then(
+                                                if (hasChildren) {
+                                                    Modifier.border(ringStroke, dotColor, badgeShape)
+                                                } else {
+                                                    Modifier
+                                                }
+                                            )
                                         hasChildren -> Modifier
                                             .then(
-                                                if (guideEmoji != null && item.collapsed) {
+                                                if (hasGuideGlyph && item.collapsed) {
                                                     Modifier.background(
                                                         dotColor.copy(alpha = 0.22f),
                                                         CircleShape
@@ -487,13 +557,19 @@ internal fun NestedItemRow(
                                                 }
                                             )
                                             .border(ringStroke, dotColor, CircleShape)
-                                        guideEmoji != null -> Modifier
+                                        hasGuideGlyph -> Modifier
                                         else -> Modifier.background(dotColor, CircleShape)
                                     }
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
                             when {
+                                guideSymbolKey != null -> Icon(
+                                    imageVector = AppSymbols.materialIcon(guideSymbolKey),
+                                    contentDescription = null,
+                                    tint = guideBaseColor.copy(alpha = focusAlpha),
+                                    modifier = Modifier.size(12.dp)
+                                )
                                 guideEmoji != null -> Text(
                                     text = guideEmoji,
                                     style = nestedGuideEmojiStyle,
@@ -501,6 +577,29 @@ internal fun NestedItemRow(
                                     maxLines = 1,
                                     overflow = TextOverflow.Visible,
                                     modifier = Modifier.alpha(focusAlpha)
+                                )
+                                numberText != null -> Text(
+                                    text = numberText,
+                                    style = nestedGuideNumberStyle.copy(
+                                        fontSize = when {
+                                            numberText.length >= 5 -> 7.sp
+                                            numberText.length == 4 -> 7.5.sp
+                                            numberText.length == 3 -> 8.sp
+                                            numberText.length == 2 -> 9.sp
+                                            else -> 10.sp
+                                        },
+                                        lineHeight = when {
+                                            numberText.length >= 5 -> 7.sp
+                                            numberText.length == 4 -> 7.5.sp
+                                            numberText.length == 3 -> 8.sp
+                                            numberText.length == 2 -> 9.sp
+                                            else -> 10.sp
+                                        }
+                                    ),
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = focusAlpha),
+                                    softWrap = false,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Clip
                                 )
                                 item.collapsed && hasChildren -> Box(
                                     modifier = Modifier
@@ -832,7 +931,8 @@ internal fun NestedItemMetadataPreview(
                 if (hasDateRange) {
                     DateRangePill(
                         startDate = item.startDate,
-                        endDate = item.endDate
+                        endDate = item.endDate,
+                        hasMissedDeadline = item.hasMissedDeadline(today())
                     )
                 }
                 item.tags.forEach { tag -> TagPill(tag, isCompact = true) }

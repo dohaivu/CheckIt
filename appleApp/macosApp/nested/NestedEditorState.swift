@@ -30,6 +30,42 @@ enum NestedInspectorTab: String {
     case note
 }
 
+/// One-tap date window for the outline filter and the date editors.
+/// `name` matches the shared Kotlin `NestedDatePreset` enum case; the bridge
+/// resolves it to epoch days so both platforms agree on calendar boundaries.
+struct NestedDatePresetOption: Identifiable, Equatable {
+    let name: String
+    let label: String
+    let icon: String
+    var id: String { name }
+}
+
+let nestedDatePresetOptions: [NestedDatePresetOption] = [
+    NestedDatePresetOption(name: "Today", label: "Today", icon: "sun.max"),
+    NestedDatePresetOption(name: "Yesterday", label: "Yesterday", icon: "arrow.uturn.backward"),
+    NestedDatePresetOption(name: "Tomorrow", label: "Tomorrow", icon: "sunrise"),
+    NestedDatePresetOption(name: "ThisWeek", label: "This week", icon: "calendar"),
+    NestedDatePresetOption(name: "NextWeek", label: "Next week", icon: "calendar.badge.plus"),
+    NestedDatePresetOption(name: "ThisMonth", label: "This month", icon: "calendar.circle"),
+    NestedDatePresetOption(name: "NextMonth", label: "Next month", icon: "calendar.badge.plus"),
+]
+
+/// Rolling attention windows mirror `NestedRollingPreset` in Kotlin. They are
+/// not calendar periods, so they have no previous/next navigation.
+let nestedRollingPresetOptions: [NestedDatePresetOption] = [
+    NestedDatePresetOption(name: "Last7Days", label: "Last 7 days", icon: "clock.arrow.circlepath"),
+    NestedDatePresetOption(name: "Next7Days", label: "Next 7 days", icon: "clock.arrow.circlepath"),
+    NestedDatePresetOption(name: "Last30Days", label: "Last 30 days", icon: "clock.arrow.circlepath"),
+    NestedDatePresetOption(name: "Overdue", label: "Overdue", icon: "exclamationmark.circle"),
+]
+
+/// Active outline date criterion. Calendar focus is navigable; rolling
+/// windows slide with the clock. One value keeps the two modes exclusive.
+enum NestedDateFilterKind: Equatable {
+    case calendar(String)
+    case rolling(String)
+}
+
 /// One visible outline row: node + indent depth.
 struct NestedRow: Identifiable, Equatable {
     let id: String
@@ -53,6 +89,9 @@ struct NestedRow: Identifiable, Equatable {
     /// Preset + explicit formatting resolved once when the row snapshot is
     /// built, so SwiftUI bodies do not re-run `resolveVisuals()` per property.
     let visuals: EffectiveRowVisuals
+    /// Ordinal to draw in the guide slot, or nil for a dot. An explicit guide
+    /// emoji still wins, so the row resolves this once instead of per draw.
+    let numberText: String?
 
     static func == (lhs: NestedRow, rhs: NestedRow) -> Bool {
         lhs.id == rhs.id
@@ -61,6 +100,7 @@ struct NestedRow: Identifiable, Equatable {
             && lhs.isInCheckedBranch == rhs.isInCheckedBranch
             && lhs.isContext == rhs.isContext
             && lhs.summaryRenderKey == rhs.summaryRenderKey
+            && lhs.numberText == rhs.numberText
             && lhs.node.item.collapsed == rhs.node.item.collapsed
             && lhs.node.item.updatedAtMillis == rhs.node.item.updatedAtMillis
     }
@@ -157,6 +197,11 @@ final class NestedEditorState: ObservableObject {
             recomputeVisibleRows()
         }
     }
+    /// Active calendar focus or rolling window; nil = any date. Transient
+    /// view state, same lifetime as the search query; never persisted.
+    @Published var dateFilter: NestedDateFilterKind? = nil {
+        didSet { recomputeVisibleRows() }
+    }
     /// Max lines of the note preview drawn under an outline row.
     /// 0 means unlimited; persisted like `displayType`.
     @Published var noteLineLimit: Int = 5 {
@@ -242,6 +287,9 @@ final class NestedEditorState: ObservableObject {
     private var treeSub: NestedAppleSubscription?
     private var hostWindow: NSWindow?
     private var tabMonitor: Any?
+    /// Rebuilds preset windows after midnight so a "Today" filter does not
+    /// silently keep showing yesterday.
+    private var dayChangeObserver: NSObjectProtocol?
     /// Rebuilt once per tree emission instead of for every render and action.
     private var nodeIndex: [String: NestedItemNode] = [:]
 
@@ -288,12 +336,27 @@ final class NestedEditorState: ObservableObject {
                 DispatchQueue.main.async { self?.availableTags = tags }
             }
         }
+        if dayChangeObserver == nil {
+            dayChangeObserver = NotificationCenter.default.addObserver(
+                forName: .NSCalendarDayChanged,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.recomputeVisibleRows()
+                }
+            }
+        }
     }
 
     func stop() {
         docsSub?.cancel(); docsSub = nil
         tagsSub?.cancel(); tagsSub = nil
         treeSub?.cancel(); treeSub = nil
+        if let dayChangeObserver {
+            NotificationCenter.default.removeObserver(dayChangeObserver)
+            self.dayChangeObserver = nil
+        }
         detachWindow()
     }
 
@@ -508,11 +571,38 @@ final class NestedEditorState: ObservableObject {
         // priority / due date / countdown metric + ancestor context) instead
         // of reimplementing it. Runs on the debounced query (see searchQuery).
         let query = appliedQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-        let projection: NestedOutlineProjection? = (displayType == .working || !query.isEmpty)
+        let todayEpochDays = Int32(nestedEpochDays(from: Date()))
+        let dateWindow: NestedAppleDateWindow? = {
+            guard let filter = dateFilter else { return nil }
+            switch filter {
+            case .calendar(let name):
+                return NestedAppleBridge.shared.datePresetWindow(
+                    presetName: name,
+                    todayEpochDays: todayEpochDays
+                )
+            case .rolling(let name):
+                return NestedAppleBridge.shared.rollingWindow(
+                    presetName: name,
+                    todayEpochDays: todayEpochDays
+                )
+            }
+        }()
+        // Overdue has no closed window; it is an exclusive deadline cutoff.
+        let overdueBeforeEpochDays: Int32 = {
+            guard case .rolling(let name)? = dateFilter, name == "Overdue" else { return noDate }
+            return todayEpochDays
+        }()
+        let hasDateFilter = dateFilter != nil
+        let projection: NestedOutlineProjection? =
+            (displayType == .working || !query.isEmpty || hasDateFilter)
             ? NestedAppleBridge.shared.filterOutlineProjection(
                 roots: zoomRoots,
                 query: query,
-                workingOnly: displayType == .working
+                workingOnly: displayType == .working,
+                windowStartEpochDays: dateWindow?.startEpochDays ?? noDate,
+                windowEndEpochDays: dateWindow?.endEpochDays ?? noDate,
+                overdueBeforeEpochDays: overdueBeforeEpochDays,
+                todayEpochDays: todayEpochDays
             )
             : nil
         let contextIds = Set(projection?.contextIds ?? [])
@@ -522,6 +612,11 @@ final class NestedEditorState: ObservableObject {
         while let (node, depth, ancestorChecked, ancestorGuideColors) = stack.popLast() {
             let inCheckedBranch = ancestorChecked || node.item.checked
             let summary = helper.summaryFor(tree: tree, itemId: node.item.id)
+            let numberingStyle = node.item.parentId.flatMap { nodeIndex[$0]?.item.numberingStyle }
+                ?? tree.document.numberingStyle
+            let numberText: String? = (node.item.guideDot == nil && numberingStyle != NestedNumberingStyle.none)
+                ? NestedModelsKt.formatNestedNumber(style: numberingStyle, ordinal: node.ordinal, ancestorOrdinals: tree.ancestorOrdinals(itemId: node.item.id))
+                : nil
             out.append(
                 NestedRow(
                     id: node.item.id,
@@ -533,7 +628,8 @@ final class NestedEditorState: ObservableObject {
                     isContext: contextIds.contains(node.item.id),
                     summary: summary,
                     summaryRenderKey: "\(summary.doneTaskCount)|\(summary.totalTaskCount)|\(summary.trackedMinutes)",
-                    visuals: node.item.resolveVisuals()
+                    visuals: node.item.resolveVisuals(),
+                    numberText: numberText
                 )
             )
             if !node.item.collapsed {
@@ -792,6 +888,47 @@ final class NestedEditorState: ObservableObject {
     func moveSelectedDown() {
         guard let id = selectedId, !selectedDocId.isEmpty else { return }
         helper.moveDown(documentId: selectedDocId, itemId: id)
+    }
+
+    /// Moves the selection to the first slot of its sibling group. Same-parent
+    /// reorder only: the parent and the item's subtree are untouched.
+    func moveSelectedToTop() { moveSelectedToEdge(first: true) }
+
+    /// Moves the selection to the last slot of its sibling group.
+    func moveSelectedToBottom() { moveSelectedToEdge(first: false) }
+
+    /// True when the selection is not already first among its siblings.
+    var canMoveSelectedToTop: Bool {
+        guard let pos = selectedSiblingPosition() else { return false }
+        return pos.index > 0
+    }
+
+    /// True when the selection is not already last among its siblings.
+    var canMoveSelectedToBottom: Bool {
+        guard let pos = selectedSiblingPosition() else { return false }
+        return pos.index < pos.count - 1
+    }
+
+    private func moveSelectedToEdge(first: Bool) {
+        guard let id = selectedId, let pos = selectedSiblingPosition() else { return }
+        helper.moveTo(
+            documentId: selectedDocId,
+            itemId: id,
+            // Blank drops at root, matching the bridge's moveTo contract.
+            targetParentId: pos.parentId ?? "",
+            targetIndex: Int32(first ? 0 : pos.count - 1)
+        )
+    }
+
+    /// Selection's 0-based slot plus the size of its sibling group.
+    private func selectedSiblingPosition() -> (parentId: String?, index: Int, count: Int)? {
+        guard !selectedDocId.isEmpty,
+              let id = selectedId
+        else { return nil }
+        let parentId = indexById[id]?.item.parentId
+        let group = siblings(of: parentId)
+        guard let idx = group.firstIndex(where: { $0.item.id == id }) else { return nil }
+        return (parentId, idx, group.count)
     }
 
     func sortChildrenOfSelected(order: String) {
@@ -1132,14 +1269,26 @@ final class NestedEditorState: ObservableObject {
         helper.updatePriorityByName(itemId: id, priorityName: priority.name)
     }
 
-    /// Emoji for the row's guide dot; nil restores the default dot. Blank input
-    /// is normalized to nil by the shared sanitizer behind the bridge.
+    /// Guide-dot value: an emoji or a `sym:<key>` symbol tag (see `GuideDot`).
+    /// Nil restores the default dot; blank input is normalized to nil by the
+    /// shared sanitizer behind the bridge.
     func updateGuideDot(id: String, emoji: String?) {
         helper.updateGuideDot(itemId: id, guideDot: emoji)
     }
 
     func updateGuideDotColor(id: String, color: NestedColorToken?) {
         helper.updateGuideDotColorByName(itemId: id, guideDotColorName: color?.name)
+    }
+
+    /// Sets numbering style for direct children.
+    func setNumberingStyle(id: String, styleKey: String) {
+        helper.setNumberingStyle(itemId: id, styleKey: styleKey)
+    }
+
+    /// Sets numbering style for the document's root level.
+    func setDocumentNumberingStyle(_ styleKey: String) {
+        guard !selectedDocId.isEmpty else { return }
+        helper.setDocumentNumberingStyle(documentId: selectedDocId, styleKey: styleKey)
     }
 
     func setTag(id: String, tagId: String, enabled: Bool) {
@@ -1272,10 +1421,14 @@ final class NestedEditorState: ObservableObject {
 
     /// Pastes the clipboard as the last child of [parentId], or at the
     /// document root when nil. The shared helper expands a collapsed target.
-    func pasteSubtree(under parentId: String? = nil) {
+    func pasteSubtree(under parentId: String? = nil, dateOffsetDays: Int = 0) {
         guard !selectedDocId.isEmpty, hasSubtreeClipboard else { return }
         let target = parentId ?? selectedId ?? ""
-        helper.pasteSubtree(documentId: selectedDocId, parentId: target) { [weak self] count in
+        helper.pasteSubtree(
+            documentId: selectedDocId,
+            parentId: target,
+            dateOffsetDays: Int32(dateOffsetDays)
+        ) { [weak self] count in
             DispatchQueue.main.async {
                 guard let self else { return }
                 let pasted = Int(truncating: count)
@@ -1290,9 +1443,14 @@ final class NestedEditorState: ObservableObject {
 
     /// Duplicates [id] as its next sibling. Descendants are not copied and
     /// execution state (checked, tracked minutes) is reset by the shared use case.
-    func duplicateItem(id: String) {
+    func duplicateItem(id: String, dateOffsetDays: Int = 0, clearDates: Bool = false) {
         guard !selectedDocId.isEmpty else { return }
-        helper.duplicateItem(documentId: selectedDocId, itemId: id) { [weak self] newId in
+        helper.duplicateItem(
+            documentId: selectedDocId,
+            itemId: id,
+            dateOffsetDays: Int32(dateOffsetDays),
+            clearDates: clearDates
+        ) { [weak self] newId in
             DispatchQueue.main.async {
                 guard let self, !newId.isEmpty else { return }
                 self.selectedId = newId
@@ -1339,7 +1497,7 @@ final class NestedEditorState: ObservableObject {
 
     func copyItemAsMarkdown(id: String) {
         guard let node = indexById[id] else { return }
-        let singleNode = NestedItemNode(item: node.item, children: [])
+        let singleNode = NestedItemNode(item: node.item, children: [], ordinal: node.ordinal)
         let text = helper.exportNodeToMarkdown(node: singleNode, includeNotes: true)
         guard !text.isEmpty else { return }
         copyToClipboard(text, message: "Copied item as Markdown")

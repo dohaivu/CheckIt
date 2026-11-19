@@ -582,6 +582,8 @@ data class NestedDocumentEntity(
     val sortOrder: Int = 0,
     val createdAtMillis: Long,
     val updatedAtMillis: Long,
+    /** Numbering style for root items ("none", "decimal", etc.). */
+    val numberingStyle: String = "none",
     /** True when the row changed locally since the last successful upload. */
     val dirty: Boolean = true,
     /** Tombstone: true once the document is deleted locally; purged after upload. */
@@ -644,6 +646,8 @@ data class NestedListItemEntity(
     val guideDotColor: String? = null,
     /** Emoji rendered in place of the guide dot; null keeps the default. */
     val guideDot: String? = null,
+    /** Numbering style for direct children ("none", "decimal", etc.). */
+    val numberingStyle: String = "none",
     val startDateEpochDays: Int? = null,
     val endDateEpochDays: Int? = null,
     val priority: String = "None",
@@ -762,7 +766,7 @@ data class RoutineLogEntity(
         RoutineLogEntity::class,
         QuickNoteEntity::class
     ],
-    version = 15,
+    version = 17,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)
@@ -908,13 +912,49 @@ private val NestedItemBorderWidthMigration14To15 = object : Migration(14, 15) {
     }
 }
 
+/** v15 -> v16: adds derived numbering; existing rows keep dots. */
+private val NestedNumberingMigration15To16 = object : Migration(15, 16) {
+    override suspend fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            "ALTER TABLE nested_documents ADD COLUMN numberRoots INTEGER NOT NULL DEFAULT 0"
+        )
+        connection.execSQL(
+            "ALTER TABLE nested_list_items ADD COLUMN numberedChildren INTEGER NOT NULL DEFAULT 0"
+        )
+    }
+}
+
+/** v16 -> v17: replaces boolean numbering flags with numberingStyle strings. */
+private val NestedNumberingStyleMigration16To17 = object : Migration(16, 17) {
+    override suspend fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            "ALTER TABLE nested_documents ADD COLUMN numberingStyle TEXT NOT NULL DEFAULT 'none'"
+        )
+        connection.execSQL(
+            "UPDATE nested_documents SET numberingStyle = 'decimal' WHERE numberRoots = 1"
+        )
+        connection.execSQL(
+            "ALTER TABLE nested_documents DROP COLUMN numberRoots"
+        )
+        connection.execSQL(
+            "ALTER TABLE nested_list_items ADD COLUMN numberingStyle TEXT NOT NULL DEFAULT 'none'"
+        )
+        connection.execSQL(
+            "UPDATE nested_list_items SET numberingStyle = 'decimal' WHERE numberedChildren = 1"
+        )
+        connection.execSQL(
+            "ALTER TABLE nested_list_items DROP COLUMN numberedChildren"
+        )
+    }
+}
+
 fun buildCheckItDatabase(
     builder: RoomDatabase.Builder<CheckItDatabase>
 ): CheckItDatabase {
     return builder
         .fallbackToDestructiveMigration(false)
         .fallbackToDestructiveMigrationOnDowngrade(false)
-        .addMigrations(RoutineColorMigration1To2, TaskMetricsMigration2To3, NestedCompletedAtMigration3To4, DropTaskRemindersMigration4To5, RepeatRuleMigration5To6, NestedDocumentSortOrderMigration6To7, NestedItemLabelMigration7To8, NestedItemBorderMigration8To9, NestedItemGuideDotMigration9To10, NestedItemGuideDotColorMigration10To11, NestedItemCalloutMigration11To12, NestedItemCalloutLayoutMigration12To13, NestedItemCalloutIconMigration13To14, NestedItemBorderWidthMigration14To15)
+        .addMigrations(RoutineColorMigration1To2, TaskMetricsMigration2To3, NestedCompletedAtMigration3To4, DropTaskRemindersMigration4To5, RepeatRuleMigration5To6, NestedDocumentSortOrderMigration6To7, NestedItemLabelMigration7To8, NestedItemBorderMigration8To9, NestedItemGuideDotMigration9To10, NestedItemGuideDotColorMigration10To11, NestedItemCalloutMigration11To12, NestedItemCalloutLayoutMigration12To13, NestedItemCalloutIconMigration13To14, NestedItemBorderWidthMigration14To15, NestedNumberingMigration15To16, NestedNumberingStyleMigration16To17)
         .setQueryCoroutineContext(Dispatchers.IO)
         .setDriver(BundledSQLiteDriver())
         .addCallback(object : RoomDatabase.Callback() {

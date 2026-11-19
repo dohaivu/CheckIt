@@ -7,6 +7,7 @@ import com.checkit.domain.NestedDocumentTree
 import com.checkit.domain.NestedItemMove
 import com.checkit.domain.NestedListItem
 import com.checkit.domain.NestedItemNode
+import com.checkit.domain.NestedNumberingStyle
 import com.checkit.domain.NestedSortOrder
 import com.checkit.domain.NestedSubtreeClip
 import com.checkit.domain.TagItem
@@ -134,7 +135,8 @@ class PasteNestedSubtreeUseCase(
     suspend operator fun invoke(
         documentId: String,
         parentId: String?,
-        currentItems: List<NestedListItem>
+        currentItems: List<NestedListItem>,
+        dateOffsetDays: Int = 0
     ): Int {
         val clip = clipboard.clip.value ?: return 0
         val startPosition = currentItems
@@ -148,7 +150,8 @@ class PasteNestedSubtreeUseCase(
             parentId = parentId,
             startPosition = startPosition,
             nowMillis = Clock.System.now().toEpochMilliseconds(),
-            newId = { Uuid.random().toString() }
+            newId = { Uuid.random().toString() },
+            dateOffsetDays = dateOffsetDays
         )
         if (items.isEmpty()) return 0
         repository.addNestedSubtree(documentId, items)
@@ -165,13 +168,17 @@ class DuplicateNestedItemUseCase(
 ) {
     suspend operator fun invoke(
         items: List<NestedListItem>,
-        itemId: String
+        itemId: String,
+        dateOffsetDays: Int = 0,
+        clearDates: Boolean = false
     ): String? {
         val duplicate = planNestedItemDuplicate(
             items = items,
             itemId = itemId,
             newId = Uuid.random().toString(),
-            nowMillis = Clock.System.now().toEpochMilliseconds()
+            nowMillis = Clock.System.now().toEpochMilliseconds(),
+            dateOffsetDays = dateOffsetDays,
+            clearDates = clearDates
         ) ?: return null
         repository.addNestedSubtree(duplicate.documentId, listOf(duplicate))
         return duplicate.id
@@ -275,6 +282,20 @@ class UpdateNestedItemGuideDotColorUseCase(
 ) {
     suspend operator fun invoke(itemId: String, guideDotColor: NestedColorToken?) =
         repository.updateNestedItemGuideDotColor(itemId, guideDotColor)
+}
+
+class UpdateNestedItemNumberingStyleUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(itemId: String, numberingStyle: NestedNumberingStyle) =
+        repository.updateNestedItemNumberingStyle(itemId, numberingStyle)
+}
+
+class UpdateNestedDocumentNumberingStyleUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(documentId: String, numberingStyle: NestedNumberingStyle) =
+        repository.updateNestedDocumentNumberingStyle(documentId, numberingStyle)
 }
 
 class UpdateNestedItemDateRangeUseCase(

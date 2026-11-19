@@ -554,11 +554,8 @@ struct NestedFormattingBar: View {
     @State private var showBorderPicker = false
     @State private var showCalloutPicker = false
     @State private var showGuidePicker = false
+    @State private var showSymbolPicker = false
     @State private var showColorPicker = false
-    @State private var startDate = Date()
-    @State private var endDate = Date()
-    @State private var hasStart = false
-    @State private var hasEnd = false
 
     /// Menu order for text styles (largest first, monostyled last).
     private let textStyles: [NestedTextStyle] = [.title, .heading, .subheading, .body, .monostyled]
@@ -575,7 +572,7 @@ struct NestedFormattingBar: View {
     /// binding is the source of truth (no draft state to commit).
     private var guideEmojiBinding: Binding<String> {
         Binding(
-            get: { item.guideDot ?? "" },
+            get: { GuideDot.shared.emoji(raw: item.guideDot) ?? "" },
             set: { state.updateGuideDot(id: item.id, emoji: $0) }
         )
     }
@@ -717,8 +714,8 @@ struct NestedFormattingBar: View {
                 showGuidePicker.toggle()
             } label: {
                 NestedMenuTrigger(
-                    symbol: "circle.dotted",
-                    emoji: item.guideDot,
+                    symbol: GuideDot.shared.symbolKey(raw: item.guideDot).map { appSymbol($0) } ?? "smallcircle.filled.circle",
+                    emoji: GuideDot.shared.emoji(raw: item.guideDot),
                     tint: {
                         if let color = item.guideDotColor {
                             return nestedTokenColor(color)
@@ -739,9 +736,16 @@ struct NestedFormattingBar: View {
                     onGuideDotColor: { color in
                         state.updateGuideDotColor(id: item.id, color: color)
                     },
+                    onNumberingStyle: { styleKey in
+                        state.setNumberingStyle(id: item.id, styleKey: styleKey)
+                    },
                     onShowEmojiPicker: {
                         showGuidePicker = false
                         DispatchQueue.main.async { showEmojiPicker = true }
+                    },
+                    onShowSymbolPicker: {
+                        showGuidePicker = false
+                        DispatchQueue.main.async { showSymbolPicker = true }
                     }
                 )
             }
@@ -751,6 +755,13 @@ struct NestedFormattingBar: View {
                     selectedEmojiCategoryTintColor: .accentColor
                 )
                 .frame(width: 340, height: 420)
+            }
+            .popover(isPresented: $showSymbolPicker, arrowEdge: .bottom) {
+                NestedGuideSymbolPicker(selectedKey: GuideDot.shared.symbolKey(raw: item.guideDot)) { key in
+                    state.updateGuideDot(id: item.id, emoji: GuideDot.shared.fromSymbolKey(key: key))
+                    showSymbolPicker = false
+                }
+                .frame(width: 300, height: 420)
             }
             // Priority
             NestedMenuButton(rows: {
@@ -785,39 +796,24 @@ struct NestedFormattingBar: View {
                 tint: (item.startDate != nil || item.endDate != nil) ? Color.accentColor : .secondary,
                 help: "Date range"
             ) {
-                hasStart = item.startDate != nil
-                hasEnd = item.endDate != nil
-                if let s = item.startDate?.toEpochDays() { startDate = nestedDate(fromEpochDays: s) }
-                if let e = item.endDate?.toEpochDays() { endDate = nestedDate(fromEpochDays: e) }
                 showDates = true
             }
             .popover(isPresented: $showDates, arrowEdge: .bottom) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Toggle("Start", isOn: $hasStart)
-                    DatePicker("", selection: $startDate, displayedComponents: .date)
-                        .labelsHidden().disabled(!hasStart)
-                    Toggle("End", isOn: $hasEnd)
-                    DatePicker("", selection: $endDate, displayedComponents: .date)
-                        .labelsHidden().disabled(!hasEnd)
-                    HStack {
-                        Button("Clear") {
-                            state.updateDates(id: item.id, start: nil, end: nil)
-                            showDates = false
-                        }
-                        .foregroundStyle(.red)
-                        Spacer()
-                        Button("Done") {
-                            state.updateDates(
-                                id: item.id,
-                                start: hasStart ? nestedEpochDays(from: startDate) : nil,
-                                end: hasEnd ? nestedEpochDays(from: endDate) : nil
-                            )
-                            showDates = false
-                        }
+                // A dedicated child seeded from the item's dates: popover
+                // content is built separately from the bar, so keeping the
+                // draft in the bar's @State left the first render stale.
+                NestedDateRangePopover(
+                    startEpochDays: item.startDate?.toEpochDays(),
+                    endEpochDays: item.endDate?.toEpochDays(),
+                    onSave: { start, end in
+                        state.updateDates(id: item.id, start: start, end: end)
+                        showDates = false
+                    },
+                    onClear: {
+                        state.updateDates(id: item.id, start: nil, end: nil)
+                        showDates = false
                     }
-                }
-                .padding()
-                .frame(width: 240)
+                )
             }
             // Note
             barBtn(
@@ -875,6 +871,152 @@ struct NestedFormattingBar: View {
                 onCancel: { showCalloutTitle = false }
             )
         }
+    }
+}
+
+// MARK: - Date range popover
+
+/// Draft date-range editor for the formatting bar. State is seeded from the
+/// item's stored dates at construction, so the toggles and pickers always
+/// match the item on the popover's first render.
+struct NestedDateRangePopover: View {
+    private let initialStartEpochDays: Int64?
+    private let initialEndEpochDays: Int64?
+    let onSave: (Int64?, Int64?) -> Void
+    let onClear: () -> Void
+
+    @State private var startDate: Date
+    @State private var endDate: Date
+    @State private var hasStart: Bool
+    @State private var hasEnd: Bool
+
+    init(
+        startEpochDays: Int64?,
+        endEpochDays: Int64?,
+        onSave: @escaping (Int64?, Int64?) -> Void,
+        onClear: @escaping () -> Void
+    ) {
+        initialStartEpochDays = startEpochDays
+        initialEndEpochDays = endEpochDays
+        self.onSave = onSave
+        self.onClear = onClear
+        _startDate = State(initialValue: Self.draftDate(startEpochDays))
+        _endDate = State(initialValue: Self.draftDate(endEpochDays))
+        _hasStart = State(initialValue: startEpochDays != nil)
+        _hasEnd = State(initialValue: endEpochDays != nil)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // Two columns keep the longer labels ("Yesterday", "Tomorrow")
+            // from truncating inside the 240pt popover.
+            LazyVGrid(
+                columns: [
+                    GridItem(.flexible(), spacing: 6),
+                    GridItem(.flexible(), spacing: 6)
+                ],
+                spacing: 6
+            ) {
+                ForEach(nestedDatePresetOptions) { preset in
+                    Button(preset.label) { applyDatePreset(preset) }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .frame(maxWidth: .infinity)
+                        .focusable(false)
+                        .focusEffectDisabled()
+                }
+            }
+            Toggle("Start", isOn: Binding(get: { hasStart }, set: setStartEnabled))
+            DatePicker("", selection: $startDate, displayedComponents: .date)
+                .labelsHidden().disabled(!hasStart)
+                .onChange(of: startDate) { _, _ in reorderDateRange(changedStart: true) }
+            Toggle("End", isOn: Binding(get: { hasEnd }, set: setEndEnabled))
+            DatePicker("", selection: $endDate, displayedComponents: .date)
+                .labelsHidden().disabled(!hasEnd)
+                .onChange(of: endDate) { _, _ in reorderDateRange(changedStart: false) }
+            HStack {
+                Button("Clear") { onClear() }
+                    .foregroundStyle(.red)
+                Spacer()
+                Button("Done") {
+                    onSave(
+                        hasStart ? nestedEpochDays(from: startDate) : nil,
+                        hasEnd ? nestedEpochDays(from: endDate) : nil
+                    )
+                }
+            }
+        }
+        .padding()
+        .frame(width: 240)
+        .onAppear { resetDraft() }
+    }
+
+    /// Re-seeds the draft when SwiftUI reuses the popover content for a new
+    /// presentation, or when the item's dates changed while it was open.
+    private func resetDraft() {
+        startDate = Self.draftDate(initialStartEpochDays)
+        endDate = Self.draftDate(initialEndEpochDays)
+        hasStart = initialStartEpochDays != nil
+        hasEnd = initialEndEpochDays != nil
+    }
+
+    /// Enabling a side keeps the other side: clamp the newly enabled value
+    /// into the existing range instead of switching the other toggle off.
+    private func setStartEnabled(_ enabled: Bool) {
+        hasStart = enabled
+        if enabled, hasEnd, startDate > endDate { startDate = endDate }
+    }
+
+    private func setEndEnabled(_ enabled: Bool) {
+        hasEnd = enabled
+        if enabled, hasStart, endDate < startDate { endDate = startDate }
+    }
+
+    /// Snaps the draft range to a shared calendar preset. Values stay local
+    /// until Done.
+    private func applyDatePreset(_ preset: NestedDatePresetOption) {
+        let today = Int32(nestedEpochDays(from: Date()))
+        guard let window = NestedAppleBridge.shared.datePresetWindow(
+            presetName: preset.name,
+            todayEpochDays: today
+        ) else { return }
+        hasStart = true
+        hasEnd = true
+        startDate = Self.draftDate(Int64(window.startEpochDays))
+        endDate = Self.draftDate(Int64(window.endEpochDays))
+    }
+
+    /// Orders the draft through the shared Kotlin helpers so macOS matches
+    /// Android: picking a start after the end clears the end, and picking an
+    /// end before the start clears the start. `Int32.min` marks an unset side.
+    private func reorderDateRange(changedStart: Bool) {
+        let range = changedStart
+            ? NestedAppleBridge.shared.orderedRangeForStart(
+                startEpochDays: startEpochDays,
+                endEpochDays: endEpochDays
+            )
+            : NestedAppleBridge.shared.orderedRangeForEnd(
+                startEpochDays: startEpochDays,
+                endEpochDays: endEpochDays
+            )
+        hasStart = range.startEpochDays != Int32.min
+        hasEnd = range.endEpochDays != Int32.min
+        if hasStart { startDate = Self.draftDate(Int64(range.startEpochDays)) }
+        if hasEnd { endDate = Self.draftDate(Int64(range.endEpochDays)) }
+    }
+
+    private var startEpochDays: Int32 {
+        hasStart ? Int32(nestedEpochDays(from: startDate)) : Int32.min
+    }
+
+    private var endEpochDays: Int32 {
+        hasEnd ? Int32(nestedEpochDays(from: endDate)) : Int32.min
+    }
+
+    /// Epoch days for the draft; nil keeps today's date so an enabled picker
+    /// always has a value to show.
+    private static func draftDate(_ epochDays: Int64?) -> Date {
+        epochDays.map { nestedDate(fromEpochDays: $0) } ?? Date()
     }
 }
 
@@ -1105,14 +1247,16 @@ struct NestedCalloutPickerView: View {
 // MARK: - Guide picker (horizontal sections)
 
 /// Dot + color controls shown side by side in a popover instead of two
-/// `NSMenu`s. The emoji picker is deliberately *not* nested: tapping
-/// "Choose emoji…" dismisses this popover first, then the caller presents
-/// the emoji popover from the toolbar button's anchor.
+/// `NSMenu`s. The emoji and symbol pickers are deliberately *not* nested:
+/// tapping either row dismisses this popover first, then the caller presents
+/// the second popover from the toolbar button's anchor.
 struct NestedGuidePickerView: View {
     let item: NestedListItem
     let onGuideDot: (String?) -> Void
     let onGuideDotColor: (NestedColorToken?) -> Void
+    let onNumberingStyle: (String) -> Void
     let onShowEmojiPicker: () -> Void
+    let onShowSymbolPicker: () -> Void
 
     var body: some View {
         HStack(alignment: .top, spacing: 16) {
@@ -1120,14 +1264,68 @@ struct NestedGuidePickerView: View {
                 NestedPickerRow(title: "Default dot", selected: item.guideDot == nil) {
                     onGuideDot(nil)
                 }
-                NestedPickerRow(title: item.guideDot == nil ? "Choose emoji…" : "Change emoji…", selected: false) {
+                NestedPickerRow(title: GuideDot.shared.emoji(raw: item.guideDot) == nil ? "Choose emoji…" : "Change emoji…", selected: GuideDot.shared.emoji(raw: item.guideDot) != nil) {
                     onShowEmojiPicker()
+                }
+                NestedPickerRow(title: GuideDot.shared.symbolKey(raw: item.guideDot) == nil ? "Choose symbol…" : "Change symbol…", selected: GuideDot.shared.symbolKey(raw: item.guideDot) != nil) {
+                    onShowSymbolPicker()
+                }
+            }
+            NestedPickerColumn(title: "Children") {
+                ForEach(NestedNumberingStyle.entries, id: \.self) { style in
+                    NestedPickerRow(title: style.label, selected: item.numberingStyle == style) {
+                        onNumberingStyle(style.key)
+                    }
                 }
             }
             NestedPickerColumn(title: "Color") {
                 NestedColorSwatchGrid(selected: item.guideDotColor ?? NestedColorToken.default_) { t in
                     onGuideDotColor(t == NestedColorToken.default_ ? nil : t)
                 }
+            }
+        }
+        .padding(10)
+    }
+}
+
+/// Grid of every registered AppSymbols key, used to pick the guide-dot glyph.
+struct NestedGuideSymbolPicker: View {
+    let selectedKey: String?
+    let onSelect: (String) -> Void
+
+    private static let symbolKeys: [String] = AppSymbols.shared.allSymbolKeys
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Choose symbol")
+                .font(.headline)
+            ScrollView {
+                LazyVGrid(
+                    columns: [GridItem(.adaptive(minimum: 30), spacing: 6)],
+                    spacing: 6
+                ) {
+                    ForEach(Self.symbolKeys, id: \.self) { key in
+                        let selected = key == selectedKey
+                        Button {
+                            onSelect(key)
+                        } label: {
+                            Image(systemName: appSymbol(key))
+                                .font(.system(size: 14))
+                                .frame(width: 30, height: 30)
+                                .background(
+                                    selected
+                                        ? Color.accentColor.opacity(0.22)
+                                        : Color.secondary.opacity(0.10),
+                                    in: RoundedRectangle(cornerRadius: 7)
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        .focusable(false)
+                        .help(key)
+                        .accessibilityLabel(key)
+                    }
+                }
+                .padding(.vertical, 2)
             }
         }
         .padding(10)

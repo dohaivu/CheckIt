@@ -101,12 +101,55 @@ func renderInlineMarkdown(_ raw: String, highlight: Color = Color.orange) -> Att
     if highlight == Color.orange, let cached = InlineMarkdownCache.shared.get(raw) {
         return cached
     }
-    let parsed = RichTextKt.parseRichText(input: raw)
-    let rendered = applyingRichSpans(parsed, to: AttributedString(parsed.text), highlight: highlight)
+    let rendered = renderInlineMarkdownUncached(raw, highlight: highlight)
     if highlight == Color.orange {
         InlineMarkdownCache.shared.set(raw, value: rendered)
     }
     return rendered
+}
+
+/// Inline-only body of [renderInlineMarkdown]. Fenced code blocks are copied
+/// verbatim (fence lines and info string dropped) so truncated rows never show
+/// backticks; inline parsing is skipped inside the fence.
+private func renderInlineMarkdownUncached(_ raw: String, highlight: Color) -> AttributedString {
+    // Fast path: no fence can start, so one inline parse covers the string.
+    guard raw.contains("```") || raw.contains("~~~") else {
+        let parsed = RichTextKt.parseRichText(input: raw)
+        return applyingRichSpans(parsed, to: AttributedString(parsed.text), highlight: highlight)
+    }
+
+    var result = AttributedString()
+    var hasOutput = false
+    var fence: CodeFenceMarker?
+
+    // Separate lines lazily so dropped fence lines never leave blank gaps.
+    func separate() {
+        if hasOutput { result.append(AttributedString("\n")) }
+        hasOutput = true
+    }
+
+    for line in raw.components(separatedBy: "\n") {
+        // 0. Fenced code blocks: verbatim content, no inline parsing.
+        if let openFence = fence {
+            if isClosingFence(line, marker: openFence) {
+                fence = nil
+            } else {
+                separate()
+                result.append(codeLine(line))
+            }
+            continue
+        }
+        if let marker = openingFence(line) {
+            fence = marker
+            continue
+        }
+
+        // 1. Inline spans only; line-based markers stay literal.
+        separate()
+        let parsed = RichTextKt.parseRichText(input: line)
+        result.append(applyingRichSpans(parsed, to: AttributedString(parsed.text), highlight: highlight))
+    }
+    return result
 }
 
 /// Multi-line counterpart of [renderInlineMarkdown], mirroring the shared
@@ -135,10 +178,7 @@ func renderFullMarkdown(_ raw: String?, highlight: Color = Color.orange) -> Attr
                 fence = nil
             } else {
                 separate()
-                var codeText = AttributedString(line)
-                codeText.font = .system(.body, design: .monospaced)
-                codeText.backgroundColor = Color.secondary.opacity(0.15)
-                result.append(codeText)
+                result.append(codeLine(line))
             }
             continue
         }
@@ -192,6 +232,16 @@ func renderFullMarkdown(_ raw: String?, highlight: Color = Color.orange) -> Attr
     return result
 }
 
+/// One verbatim code line in the flat-text renderers: monospace and a soft
+/// background. Spans cannot paint a full-width card, so the highlight hugs the
+/// glyphs; prose surfaces use `MarkdownBodyView` for the card layout.
+private func codeLine(_ line: String) -> AttributedString {
+    var text = AttributedString(line)
+    text.font = .system(.body, design: .monospaced)
+    text.backgroundColor = Color.secondary.opacity(0.15)
+    return text
+}
+
 /// An opening code fence: its character, run length and info string.
 private struct CodeFenceMarker {
     let char: Character
@@ -206,7 +256,7 @@ private func openingFence(_ line: String) -> CodeFenceMarker? {
     guard let char = trimmed.first, char == "`" || char == "~" else { return nil }
     let runLength = trimmed.prefix(while: { $0 == char }).count
     guard runLength >= 3 else { return nil }
-    let info = String(trimmed.dropFirst(runLength)).trimmingCharacters(in: .whitespaces)
+    let info = String(trimmed.dropFirst(runLength)).trimmingCharacters(in: .whitespacesAndNewlines)
     // A backtick info string would be an inline `code` span, not a fence.
     if char == "`" && info.contains("`") { return nil }
     return CodeFenceMarker(char: char, length: runLength, info: info)
@@ -219,7 +269,7 @@ private func isClosingFence(_ line: String, marker: CodeFenceMarker) -> Bool {
     guard trimmed.first == marker.char else { return false }
     let runLength = trimmed.prefix(while: { $0 == marker.char }).count
     guard runLength >= marker.length else { return false }
-    return String(trimmed.dropFirst(runLength)).trimmingCharacters(in: .whitespaces).isEmpty
+    return String(trimmed.dropFirst(runLength)).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
 }
 
 /// Bold monospace `│  ` marker for blockquote lines.
@@ -249,15 +299,22 @@ private func applyingRichSpans(
         let range = lower..<upper
         switch span.kind {
         case .bold:
-            out[range].inlinePresentationIntent = .stronglyEmphasized
+            // Union, don't replace: nested markers (`**_both_**`, bold inside a
+            // quoted line) share a range, and the shared parser emits one span
+            // per kind. Assigning would drop the other trait — Compose's
+            // `addStyle` merges, so mirror that here.
+            out[range].inlinePresentationIntent =
+                (out[range].inlinePresentationIntent ?? []).union(.stronglyEmphasized)
         case .italic:
-            out[range].inlinePresentationIntent = .emphasized
+            out[range].inlinePresentationIntent =
+                (out[range].inlinePresentationIntent ?? []).union(.emphasized)
         case .strikethrough:
             out[range].strikethroughStyle = .single
         case .highlight:
             out[range].foregroundColor = highlightColor(hex: span.colorHex, default: highlight)
         case .code:
-            out[range].inlinePresentationIntent = .code
+            out[range].inlinePresentationIntent =
+                (out[range].inlinePresentationIntent ?? []).union(.code)
             out[range].backgroundColor = Color.gray.opacity(0.15)
         default:
             break

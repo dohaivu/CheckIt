@@ -38,6 +38,8 @@ object NestedSyncDocument {
     const val FIELD_ID = "id"
     const val FIELD_TITLE = "title"
     const val FIELD_SORT_ORDER = "sortOrder"
+    const val FIELD_NUMBERING_STYLE = "numberingStyle"
+    const val FIELD_NUMBER_ROOTS = "numberRoots"
     const val FIELD_CREATED_AT = "createdAtMillis"
     const val FIELD_UPDATED_AT = "updatedAtMillis"
     const val FIELD_DELETED = "deleted"
@@ -64,6 +66,7 @@ object NestedSyncDocument {
     const val FIELD_CALLOUT_LAYOUT = "calloutLayout"
     const val FIELD_GUIDE_DOT = "guideDot"
     const val FIELD_GUIDE_DOT_COLOR = "guideDotColor"
+    const val FIELD_NUMBERED_CHILDREN = "numberedChildren"
     const val FIELD_START_DATE = "startDateEpochDays"
     const val FIELD_END_DATE = "endDateEpochDays"
     const val FIELD_PRIORITY = "priority"
@@ -81,10 +84,12 @@ object NestedSyncDocument {
         updatedAtMillis: Long,
         deleted: Boolean,
         sortOrder: Int = 0,
+        numberingStyle: String = "none",
     ): Map<String, Any?> = mapOf(
         FIELD_ID to id,
         FIELD_TITLE to title,
         FIELD_SORT_ORDER to sortOrder,
+        FIELD_NUMBERING_STYLE to numberingStyle,
         FIELD_CREATED_AT to createdAtMillis,
         FIELD_UPDATED_AT to updatedAtMillis,
         FIELD_DELETED to deleted,
@@ -114,6 +119,7 @@ object NestedSyncDocument {
         calloutLayout: String? = null,
         guideDotColor: String? = null,
         guideDot: String? = null,
+        numberingStyle: String = "none",
         startDateEpochDays: Int?,
         endDateEpochDays: Int?,
         priority: String,
@@ -150,6 +156,7 @@ object NestedSyncDocument {
         FIELD_CALLOUT_LAYOUT to calloutLayout?.takeIf { callout != "None" },
         FIELD_GUIDE_DOT_COLOR to guideDotColor,
         FIELD_GUIDE_DOT to guideDot,
+        FIELD_NUMBERING_STYLE to numberingStyle,
         FIELD_START_DATE to startDateEpochDays,
         FIELD_END_DATE to endDateEpochDays,
         FIELD_PRIORITY to priority,
@@ -169,10 +176,13 @@ object NestedSyncDocument {
         if (map == null) return null
         val createdAt = (map[FIELD_CREATED_AT] as? Number)?.toLong() ?: return null
         val updatedAt = (map[FIELD_UPDATED_AT] as? Number)?.toLong() ?: return null
+        val numberingStyle = map[FIELD_NUMBERING_STYLE] as? String
+            ?: if (map[FIELD_NUMBER_ROOTS] == true) "decimal" else "none"
         return RemoteNestedDocument(
             id = (map[FIELD_ID] as? String)?.takeIf { it.isNotBlank() } ?: documentId,
             title = map[FIELD_TITLE] as? String ?: "",
             sortOrder = (map[FIELD_SORT_ORDER] as? Number)?.toInt() ?: 0,
+            numberingStyle = numberingStyle,
             createdAtMillis = createdAt,
             updatedAtMillis = updatedAt,
             deleted = map[FIELD_DELETED] as? Boolean ?: false,
@@ -185,6 +195,8 @@ object NestedSyncDocument {
         val createdAt = (map[FIELD_CREATED_AT] as? Number)?.toLong() ?: return null
         val updatedAt = (map[FIELD_UPDATED_AT] as? Number)?.toLong() ?: return null
         val text = map[FIELD_TEXT] as? String ?: return null
+        val numberingStyle = map[FIELD_NUMBERING_STYLE] as? String
+            ?: if (map[FIELD_NUMBERED_CHILDREN] == true) "decimal" else "none"
         return RemoteNestedItem(
             id = (map[FIELD_ID] as? String)?.takeIf { it.isNotBlank() } ?: return null,
             documentId = (map[FIELD_DOCUMENT_ID] as? String)?.takeIf { it.isNotBlank() } ?: documentId,
@@ -209,6 +221,7 @@ object NestedSyncDocument {
             calloutLayout = map[FIELD_CALLOUT_LAYOUT] as? String,
             guideDotColor = map[FIELD_GUIDE_DOT_COLOR] as? String,
             guideDot = sanitizeGuideDot(map[FIELD_GUIDE_DOT] as? String),
+            numberingStyle = numberingStyle,
             startDateEpochDays = (map[FIELD_START_DATE] as? Number)?.toInt(),
             endDateEpochDays = (map[FIELD_END_DATE] as? Number)?.toInt(),
             priority = map[FIELD_PRIORITY] as? String ?: "None",
@@ -337,6 +350,7 @@ data class RemoteNestedDocument(
     val id: String,
     val title: String,
     val sortOrder: Int = 0,
+    val numberingStyle: String = "none",
     val createdAtMillis: Long,
     val updatedAtMillis: Long,
     val deleted: Boolean,
@@ -367,6 +381,7 @@ data class RemoteNestedItem(
     val calloutLayout: String? = null,
     val guideDotColor: String? = null,
     val guideDot: String? = null,
+    val numberingStyle: String = "none",
     val startDateEpochDays: Int?,
     val endDateEpochDays: Int?,
     val priority: String,

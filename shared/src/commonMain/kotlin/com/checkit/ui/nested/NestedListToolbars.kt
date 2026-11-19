@@ -1,5 +1,7 @@
 package com.checkit.ui.nested
 
+import com.checkit.domain.NestedNumberingStyle
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.tween
@@ -53,6 +55,7 @@ import androidx.compose.material.icons.filled.FileCopy
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.FormatColorFill
 import androidx.compose.material.icons.filled.FormatColorText
+import androidx.compose.material.icons.filled.FormatListNumbered
 import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -72,6 +75,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -117,7 +121,10 @@ import checkit.shared.generated.resources.nested_outdent
 import checkit.shared.generated.resources.nested_root
 import checkit.shared.generated.resources.nested_zoom_in
 import checkit.shared.generated.resources.nested_zoom_out
-import com.checkit.domain.FocusPeriod
+import com.checkit.domain.GuideDot
+import com.checkit.domain.NestedDateFilter
+import com.checkit.domain.NestedDatePreset
+import com.checkit.domain.NestedRollingPreset
 import com.checkit.domain.NestedBorderShape
 import com.checkit.domain.NestedBorderStyle
 import com.checkit.domain.NestedBorderWidth
@@ -129,15 +136,18 @@ import com.checkit.domain.NestedListItem
 import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.TagItem
 import com.checkit.domain.TaskPriority
+import com.checkit.domain.matchesFocus
 import com.checkit.domain.moveDestinations
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.DatePicker
 import com.checkit.ui.components.EmojiPicker
-import com.checkit.ui.components.FocusPeriodHeader
 import com.checkit.ui.components.TagOptionMenu
+import com.checkit.ui.components.title
 import com.checkit.ui.orderedRangeForEnd
 import com.checkit.ui.orderedRangeForStart
+import com.checkit.ui.nestedDateRangeLabel
 import com.checkit.ui.tasks.views.ViewOptionChip
+import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.stringResource
 
@@ -292,6 +302,7 @@ internal fun NestedFormattingBar(
     onPriorityChange: (TaskPriority) -> Unit,
     onGuideDotChange: (String?) -> Unit,
     onGuideDotColorChange: (NestedColorToken?) -> Unit,
+    onNumberingStyleChange: (NestedNumberingStyle) -> Unit,
     onDateRangeChange: (LocalDate?, LocalDate?) -> Unit,
     availableTags: List<TagItem>,
     onTagsChange: (List<String>) -> Unit,
@@ -304,6 +315,7 @@ internal fun NestedFormattingBar(
     var priorityExpanded by remember { mutableStateOf(false) }
     var styleExpanded by remember { mutableStateOf(false) }
     var showEmojiPicker by remember { mutableStateOf(false) }
+    var showSymbolPicker by remember { mutableStateOf(false) }
     var showDateDialog by remember { mutableStateOf(false) }
     var showLabelDialog by remember { mutableStateOf(false) }
     var calloutExpanded by remember { mutableStateOf(false) }
@@ -512,11 +524,14 @@ internal fun NestedFormattingBar(
             // Guide dot and color in one menu: dot owns the row's dot
             // (parents keep the ring); color owns the connector and spine.
             GuideMenu(
-                emoji = item.guideDot,
+                guideDot = item.guideDot,
                 guideDotColor = item.guideDotColor,
+                numberingStyle = item.numberingStyle,
                 onDotChange = { emoji -> onGuideDotChange(emoji) },
                 onColorChange = { token -> onGuideDotColorChange(token.takeIf { it != NestedColorToken.Default }) },
-                onChooseEmoji = { showEmojiPicker = true }
+                onNumberingStyleChange = onNumberingStyleChange,
+                onChooseEmoji = { showEmojiPicker = true },
+                onChooseSymbol = { showSymbolPicker = true }
             )
 
             VerticalDivider(
@@ -674,6 +689,14 @@ internal fun NestedFormattingBar(
         )
     }
 
+    if (showSymbolPicker) {
+        GuideSymbolPicker(
+            onDismiss = { showSymbolPicker = false },
+            onSymbolSelect = { key -> onGuideDotChange(GuideDot.fromSymbolKey(key)) },
+            selectedKey = GuideDot.symbolKey(item.guideDot)
+        )
+    }
+
     if (showDateDialog) {
         var startDate by remember { mutableStateOf(item.startDate) }
         var endDate by remember { mutableStateOf(item.endDate) }
@@ -692,6 +715,26 @@ internal fun NestedFormattingBar(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    val todayDate = today()
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        NestedDatePreset.entries.forEach { preset ->
+                            val window = preset.window(todayDate)
+                            FilterChip(
+                                selected = startDate == window.start && endDate == window.endInclusive,
+                                onClick = {
+                                    startDate = window.start
+                                    endDate = window.endInclusive
+                                    onDateRangeChange(window.start, window.endInclusive)
+                                },
+                                label = { Text(preset.displayLabel()) },
+                                contentPadding = PaddingValues(0.dp),
+                                modifier = Modifier.height(32.dp)
+                            )
+                        }
+                    }
                     DatePicker(
                         date = startDate,
                         onDateChange = { picked ->
@@ -767,20 +810,19 @@ internal fun NestedFormattingBar(
 
 @Composable
 internal fun NestedListFilterBar(
-    focus: FocusPeriod?,
+    dateFilter: NestedDateFilter?,
     query: String,
     hideChecked: Boolean,
     isActive: Boolean,
     availableTags: List<TagItem>,
     selectedTagIds: Set<String>,
-    onFocusChange: (FocusPeriod) -> Unit,
+    onDatePresetSelected: (NestedDatePreset) -> Unit,
+    onRollingPresetSelected: (NestedRollingPreset) -> Unit,
+    onClearDateFilter: () -> Unit,
     onQueryChange: (String) -> Unit,
     onHideCheckedChange: (Boolean) -> Unit,
     onTagToggle: (String) -> Unit,
-    onReset: () -> Unit,
-    onPreviousPeriod: () -> Unit,
-    onNextPeriod: () -> Unit,
-    onCurrentPeriod: () -> Unit
+    onReset: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -809,13 +851,19 @@ internal fun NestedListFilterBar(
             }
         }
 
-        FocusPeriodHeader(
-            focus = focus,
-            onFocusSelected = onFocusChange,
-            onPreviousPeriod = onPreviousPeriod,
-            onNextPeriod = onNextPeriod,
-            onCurrentPeriod = onCurrentPeriod
+        NestedDatePresetRow(
+            dateFilter = dateFilter,
+            onPresetSelected = onDatePresetSelected,
+            onRollingSelected = onRollingPresetSelected,
+            onClearDate = onClearDateFilter
         )
+
+        if (dateFilter != null) {
+            NestedDateFilterHeader(
+                dateFilter = dateFilter,
+                onClear = onClearDateFilter
+            )
+        }
 
         Row(
             modifier = Modifier
@@ -888,12 +936,174 @@ internal fun NestedListFilterBar(
     }
 }
 
+/**
+ * One-tap windows above the manual period switcher. Calendar chips derive
+ * their selected state from [NestedDateFilter.Focus] (see [matchesFocus]), so
+ * stepping the header with the arrows automatically deselects a preset.
+ * Rolling chips are mutually exclusive with calendar focus by construction.
+ */
+@Composable
+private fun NestedDatePresetRow(
+    dateFilter: NestedDateFilter?,
+    onPresetSelected: (NestedDatePreset) -> Unit,
+    onRollingSelected: (NestedRollingPreset) -> Unit,
+    onClearDate: () -> Unit
+) {
+    val todayDate = today()
+    val calendarFocus = dateFilter?.calendarFocus
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 12.dp, vertical = 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        NestedDatePreset.entries.forEach { preset ->
+            NestedDatePresetChip(
+                label = preset.displayLabel(),
+                selected = preset.matchesFocus(calendarFocus, todayDate),
+                onClick = { onPresetSelected(preset) }
+            )
+        }
+        Box(
+            modifier = Modifier
+                .height(18.dp)
+                .width(1.dp)
+                .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+        )
+        NestedRollingPreset.entries.forEach { preset ->
+            NestedDatePresetChip(
+                label = preset.label,
+                selected = dateFilter is NestedDateFilter.Rolling &&
+                    dateFilter.preset == preset,
+                onClick = { onRollingSelected(preset) }
+            )
+        }
+        if (dateFilter != null) {
+            NestedDatePresetChip(
+                label = "Any date",
+                selected = false,
+                onClick = onClearDate
+            )
+        }
+    }
+}
+
+/**
+ * Compact header for the active date filter. Calendar focus uses the shared
+ * period title; rolling windows append their resolved range because they are
+ * not calendar periods. Both modes offer a one-tap clear.
+ */
+@Composable
+private fun NestedDateFilterHeader(
+    dateFilter: NestedDateFilter,
+    onClear: () -> Unit
+) {
+    val todayDate = today()
+    val label = when (dateFilter) {
+        is NestedDateFilter.Focus -> dateFilter.focus.title()
+        is NestedDateFilter.Rolling -> {
+            val rangeLabel = dateFilter.preset.window(todayDate)?.let { window ->
+                nestedDateRangeLabel(window.start, window.endInclusive, todayDate)
+            }
+            if (rangeLabel != null) "${dateFilter.preset.label} · $rangeLabel" else dateFilter.preset.label
+        }
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 4.dp)
+            .background(
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
+                RoundedCornerShape(10.dp)
+            )
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = Icons.Default.DateRange,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1
+            )
+        }
+        Text(
+            text = "Clear",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier
+                .clip(RoundedCornerShape(4.dp))
+                .clickable(onClick = onClear)
+                .padding(horizontal = 6.dp, vertical = 2.dp)
+        )
+    }
+}
+
+@Composable
+private fun NestedDatePresetChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .height(28.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(
+                if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
+                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+            )
+            .border(
+                width = 1.dp,
+                color = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                shape = RoundedCornerShape(8.dp)
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+            color = if (selected) MaterialTheme.colorScheme.primary
+            else MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1
+        )
+    }
+}
+
+private fun NestedDatePreset.displayLabel(): String = when (this) {
+    NestedDatePreset.Today -> "Today"
+    NestedDatePreset.Yesterday -> "Yesterday"
+    NestedDatePreset.Tomorrow -> "Tomorrow"
+    NestedDatePreset.ThisWeek -> "This week"
+    NestedDatePreset.NextWeek -> "Next week"
+    NestedDatePreset.ThisMonth -> "This month"
+    NestedDatePreset.NextMonth -> "Next month"
+}
+
 // ---------------- display type ----------------
 
 @Composable
 internal fun NestedDisplayTypeMenu(
     selected: NestedDisplayType,
-    onSelect: (NestedDisplayType) -> Unit
+    onSelect: (NestedDisplayType) -> Unit,
+    rootNumberingStyle: NestedNumberingStyle,
+    onSelectRootNumberingStyle: (NestedNumberingStyle) -> Unit
 ) {
     var isPopupOpen by remember { mutableStateOf(false) }
     val visibleState = remember { MutableTransitionState(false) }
@@ -972,6 +1182,28 @@ internal fun NestedDisplayTypeMenu(
                                     )
                                 }
                             }
+                            HorizontalDivider(
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                            )
+                            Text(
+                                text = "Root Numbering",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold
+                            )
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                NestedNumberingStyle.entries.forEach { style ->
+                                    ViewOptionChip(
+                                        icon = Icons.Default.FormatListNumbered,
+                                        label = style.label,
+                                        selected = rootNumberingStyle == style,
+                                        onClick = { onSelectRootNumberingStyle(style) }
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -1013,8 +1245,8 @@ internal fun EditorToolbar(
     onAddToDailyPlan: () -> Unit,
     onCopyToTask: () -> Unit,
     onCopySubtree: () -> Unit,
-    onPasteSubtree: () -> Unit,
-    onDuplicate: () -> Unit,
+    onPasteSubtree: (dateOffsetDays: Int) -> Unit,
+    onDuplicate: (dateOffsetDays: Int, clearDates: Boolean) -> Unit,
     canPasteSubtree: Boolean,
     onEnterSelection: () -> Unit,
     onSortChildren: () -> Unit,
@@ -1114,10 +1346,27 @@ internal fun EditorToolbar(
                         showMore = false; onCopySubtree()
                     }
                     NestedMenuItem("Paste subtree", Icons.Default.ContentPaste, canPasteSubtree) {
-                        showMore = false; onPasteSubtree()
+                        showMore = false; onPasteSubtree(0)
+                    }
+                    NestedMenuItem("Paste subtree +1 week", Icons.Default.ContentPaste, canPasteSubtree) {
+                        showMore = false; onPasteSubtree(7)
                     }
                     NestedMenuItem(stringResource(Res.string.nested_duplicate), Icons.Default.ControlPointDuplicate, hasSelection) {
-                        showMore = false; onDuplicate()
+                        showMore = false; onDuplicate(0, false)
+                    }
+                    val hasDates = selectedNode?.item?.let {
+                        it.startDate != null || it.endDate != null
+                    } == true
+                    if (hasSelection && hasDates) {
+                        NestedMenuItem("Duplicate +1 day", Icons.Default.ControlPointDuplicate, true) {
+                            showMore = false; onDuplicate(1, false)
+                        }
+                        NestedMenuItem("Duplicate +1 week", Icons.Default.ControlPointDuplicate, true) {
+                            showMore = false; onDuplicate(7, false)
+                        }
+                        NestedMenuItem("Duplicate without dates", Icons.Default.ControlPointDuplicate, true) {
+                            showMore = false; onDuplicate(0, true)
+                        }
                     }
                     NestedMenuItem(stringResource(Res.string.nested_batch_delete), Icons.Default.Delete, hasSelection) {
                         showMore = false; onDelete()

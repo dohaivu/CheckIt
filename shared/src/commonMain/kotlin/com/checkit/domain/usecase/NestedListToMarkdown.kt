@@ -4,6 +4,8 @@ import com.checkit.domain.NestedDocumentTree
 import com.checkit.domain.NestedItemNode
 import com.checkit.domain.NestedListItem
 import com.checkit.domain.NestedTextStyle
+import com.checkit.domain.NestedNumberingStyle
+import com.checkit.domain.formatNestedNumber
 
 data class NestedMarkdownExportOptions(
     val indent: String = "  ",
@@ -21,14 +23,16 @@ class ExportNestedListToMarkdownUseCase {
     fun exportNodes(
         nodes: List<NestedItemNode>,
         options: NestedMarkdownExportOptions = NestedMarkdownExportOptions(),
-        baseDepth: Int = 0
-    ): String = nodes.toMarkdown(options, baseDepth)
+        baseDepth: Int = 0,
+        numberingStyle: NestedNumberingStyle = NestedNumberingStyle.None
+    ): String = nodes.toMarkdown(options, baseDepth, numberingStyle)
 
     fun exportSubtree(
         node: NestedItemNode,
         options: NestedMarkdownExportOptions = NestedMarkdownExportOptions(),
-        baseDepth: Int = 0
-    ): String = node.toMarkdown(options, baseDepth)
+        baseDepth: Int = 0,
+        numberingStyle: NestedNumberingStyle = NestedNumberingStyle.None
+    ): String = node.toMarkdown(options, baseDepth, numberingStyle)
 }
 
 fun NestedDocumentTree.toMarkdown(
@@ -39,30 +43,41 @@ fun NestedDocumentTree.toMarkdown(
         builder.appendLine("# ${document.title.trim()}")
         builder.appendLine()
     }
-    builder.append(rootNodes.toMarkdown(options))
+    builder.append(rootNodes.toMarkdown(options, numberingStyle = document.numberingStyle))
     return builder.toString().trimEnd()
 }
 
 fun List<NestedItemNode>.toMarkdown(
     options: NestedMarkdownExportOptions = NestedMarkdownExportOptions(),
-    baseDepth: Int = 0
+    baseDepth: Int = 0,
+    numberingStyle: NestedNumberingStyle = NestedNumberingStyle.None
 ): String {
     val builder = StringBuilder()
     forEachIndexed { index, node ->
         if (index > 0) builder.appendLine()
-        builder.append(node.toMarkdown(options, baseDepth))
+        builder.append(node.toMarkdown(options, baseDepth, numberingStyle))
     }
     return builder.toString().trimEnd()
 }
 
+/**
+ * Renders one node and its subtree.
+ */
 fun NestedItemNode.toMarkdown(
     options: NestedMarkdownExportOptions = NestedMarkdownExportOptions(),
-    depth: Int = 0
+    depth: Int = 0,
+    numberingStyle: NestedNumberingStyle = NestedNumberingStyle.None,
+    ancestorOrdinals: List<Int> = emptyList()
 ): String {
     val builder = StringBuilder()
     val prefix = options.indent.repeat(depth)
+    val numberStr = formatNestedNumber(numberingStyle, ordinal, ancestorOrdinals)
     val bullet = when {
-        item.checkboxEnabled -> if (item.checked) "- [x] " else "- [ ] "
+        item.checkboxEnabled -> {
+            val box = if (item.checked) "[x]" else "[ ]"
+            if (numberStr != null) "${numberStr}. $box " else "- $box "
+        }
+        numberStr != null -> "${numberStr}. "
         else -> "- "
     }
 
@@ -99,9 +114,10 @@ fun NestedItemNode.toMarkdown(
         }
     }
 
+    val currentPath = ancestorOrdinals + ordinal
     children.forEach { child ->
         builder.appendLine()
-        builder.append(child.toMarkdown(options, depth + 1))
+        builder.append(child.toMarkdown(options, depth + 1, item.numberingStyle, currentPath))
     }
 
     return builder.toString()

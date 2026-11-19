@@ -14,6 +14,9 @@ import com.checkit.domain.NestedItemNode
 import com.checkit.domain.NestedListItem
 import com.checkit.domain.NestedSortOrder
 import com.checkit.domain.MoveDestinations
+import com.checkit.domain.NestedDatePreset
+import com.checkit.domain.NestedDateWindow
+import com.checkit.domain.NestedRollingPreset
 import com.checkit.domain.moveDestinations
 import com.checkit.domain.NestedMetricSummary
 import com.checkit.domain.NestedOutlineProjection
@@ -51,6 +54,9 @@ import com.checkit.domain.usecase.UpdateNestedItemCalloutLayoutUseCase
 import com.checkit.domain.usecase.ResetNestedItemCalloutToDefaultsUseCase
 import com.checkit.domain.usecase.UpdateNestedItemGuideDotUseCase
 import com.checkit.domain.usecase.UpdateNestedItemGuideDotColorUseCase
+import com.checkit.domain.usecase.UpdateNestedItemNumberingStyleUseCase
+import com.checkit.domain.usecase.UpdateNestedDocumentNumberingStyleUseCase
+import com.checkit.domain.NestedNumberingStyle
 import com.checkit.domain.usecase.UpdateNestedItemLabelUseCase
 import com.checkit.domain.usecase.UpdateNestedItemMetricSettingsUseCase
 import com.checkit.domain.usecase.UpdateNestedItemNoteUseCase
@@ -125,6 +131,8 @@ class NestedAppleHelper(
     private val updateItemPriority: UpdateNestedItemPriorityUseCase,
     private val updateItemGuideDot: UpdateNestedItemGuideDotUseCase,
     private val updateItemGuideDotColor: UpdateNestedItemGuideDotColorUseCase,
+    private val updateItemNumberingStyle: UpdateNestedItemNumberingStyleUseCase,
+    private val updateDocumentNumberingStyle: UpdateNestedDocumentNumberingStyleUseCase,
     private val updateItemTags: UpdateNestedItemTagsUseCase,
     private val updateItemMetricSettings: UpdateNestedItemMetricSettingsUseCase,
     private val updateItemProgress: UpdateNestedItemProgressUseCase,
@@ -228,10 +236,18 @@ class NestedAppleHelper(
      * Inserts a copy of [itemId] as its next sibling, excluding descendants.
      * [onDone] receives the new item id, or blank on failure.
      */
-    fun duplicateItem(documentId: String, itemId: String, onDone: (String) -> Unit) {
+    fun duplicateItem(
+        documentId: String,
+        itemId: String,
+        dateOffsetDays: Int,
+        clearDates: Boolean,
+        onDone: (String) -> Unit
+    ) {
         scope.launch {
             val items = latestTrees[documentId]?.flatItems.orEmpty()
-            val newId = runCatching { duplicateItemUseCase(items, itemId) }.getOrNull() ?: ""
+            val newId = runCatching {
+                duplicateItemUseCase(items, itemId, dateOffsetDays, clearDates)
+            }.getOrNull() ?: ""
             onDone(newId)
         }
     }
@@ -360,6 +376,18 @@ class NestedAppleHelper(
                 )
             }
         }
+    }
+
+    /** Sets numbering style for the row's direct children. */
+    fun setNumberingStyle(itemId: String, styleKey: String) {
+        val style = NestedNumberingStyle.fromKey(styleKey)
+        scope.launch { runCatching { updateItemNumberingStyle(itemId, style) } }
+    }
+
+    /** Sets numbering style for the document's root level. */
+    fun setDocumentNumberingStyle(documentId: String, styleKey: String) {
+        val style = NestedNumberingStyle.fromKey(styleKey)
+        scope.launch { runCatching { updateDocumentNumberingStyle(documentId, style) } }
     }
 
     fun updateTags(itemId: String, tagIds: List<String>) {
@@ -543,12 +571,17 @@ class NestedAppleHelper(
      * the document root when [parentId] is blank. Expands a collapsed target
      * so the paste is visible. [onDone] receives the inserted row count.
      */
-    fun pasteSubtree(documentId: String, parentId: String, onDone: (Int) -> Unit) {
+    fun pasteSubtree(
+        documentId: String,
+        parentId: String,
+        dateOffsetDays: Int,
+        onDone: (Int) -> Unit
+    ) {
         scope.launch {
             val tree = latestTrees[documentId]
             val parent = parentId.takeIf { it.isNotEmpty() }
             val count = runCatching {
-                pasteSubtreeUseCase(documentId, parent, tree?.flatItems.orEmpty())
+                pasteSubtreeUseCase(documentId, parent, tree?.flatItems.orEmpty(), dateOffsetDays)
             }.getOrDefault(0)
             if (count > 0 && parent != null && tree?.nodeById?.get(parent)?.item?.collapsed == true) {
                 runCatching { toggleCollapsedUseCase(parent) }
@@ -619,6 +652,25 @@ class NestedAppleHelper(
     }
 }
 
+/**
+ * Closed date window in epoch days, exposed to Swift so the UI never has to
+ * reimplement Kotlin's calendar-period arithmetic.
+ */
+class NestedAppleDateWindow internal constructor(
+    val startEpochDays: Int,
+    val endEpochDays: Int
+)
+
+/**
+ * Epoch-day pair produced by the shared range-ordering helpers. Swift reads
+ * [Int.MIN_VALUE] from either side as "unset", matching
+ * `updateDateRangeDays`.
+ */
+class NestedAppleDateRange internal constructor(
+    val startEpochDays: Int,
+    val endEpochDays: Int
+)
+
 object NestedAppleBridge {
     private var koinApp: KoinApplication? = null
 
@@ -634,16 +686,99 @@ object NestedAppleBridge {
 
     /**
      * Swift-friendly outline projection for the macOS Working/search UI:
-     * title query plus the Working filter, with the same ancestor-context keep
-     * semantics as the Compose editor. The shared filter matches item titles
-     * only (notes are excluded). Avoids date/tag interop.
+     * title query, the Working filter and an optional closed date window, with
+     * the same ancestor-context keep semantics as the Compose editor. The
+     * shared filter matches item titles only (notes are excluded).
+     *
+     * Pass [Int.MIN_VALUE] for both window bounds to filter by text only. The
+     * bounds are epoch days (`LocalDate.toEpochDays()`); a start-only or
+     * end-only node participates through the shared open-ended matching rules.
+     * [overdueBeforeEpochDays] carries the [NestedRollingPreset.Overdue]
+     * predicate, which has no closed window of its own. [todayEpochDays] lets
+     * the Working filter drop overdue items; pass [Int.MIN_VALUE] to skip that
+     * check.
      */
     fun filterOutlineProjection(
         roots: List<NestedItemNode>,
         query: String = "",
-        workingOnly: Boolean = false
-    ): NestedOutlineProjection =
-        filterNestedTreeWithContext(roots, query = query, workingOnly = workingOnly)
+        workingOnly: Boolean = false,
+        windowStartEpochDays: Int = Int.MIN_VALUE,
+        windowEndEpochDays: Int = Int.MIN_VALUE,
+        overdueBeforeEpochDays: Int = Int.MIN_VALUE,
+        todayEpochDays: Int = Int.MIN_VALUE
+    ): NestedOutlineProjection {
+        val hasWindow =
+            windowStartEpochDays != Int.MIN_VALUE && windowEndEpochDays != Int.MIN_VALUE
+        return filterNestedTreeWithContext(
+            roots = roots,
+            start = if (hasWindow) LocalDate.fromEpochDays(windowStartEpochDays) else null,
+            end = if (hasWindow) LocalDate.fromEpochDays(windowEndEpochDays) else null,
+            query = query,
+            workingOnly = workingOnly,
+            overdueBefore = overdueBeforeEpochDays
+                .takeIf { it != Int.MIN_VALUE }
+                ?.let(LocalDate::fromEpochDays),
+            today = todayEpochDays
+                .takeIf { it != Int.MIN_VALUE }
+                ?.let(LocalDate::fromEpochDays)
+        )
+    }
+
+    /**
+     * Resolves a [NestedDatePreset] name for Swift using the device-local
+     * [todayEpochDays]. Keeping the period math in Kotlin means macOS and
+     * Android always agree on week starts and month boundaries.
+     */
+    fun datePresetWindow(presetName: String, todayEpochDays: Int): NestedAppleDateWindow? {
+        val preset = NestedDatePreset.entries.firstOrNull { it.name == presetName } ?: return null
+        val window = preset.window(LocalDate.fromEpochDays(todayEpochDays))
+        return window.toAppleWindow()
+    }
+
+    /**
+     * Resolves a [NestedRollingPreset] name ("Last7Days", "Next7Days", …) for
+     * Swift. Rolling windows are local attention views, not calendar periods.
+     */
+    fun rollingWindow(presetName: String, todayEpochDays: Int): NestedAppleDateWindow? {
+        val preset = NestedRollingPreset.entries.firstOrNull { it.name == presetName } ?: return null
+        return preset.window(LocalDate.fromEpochDays(todayEpochDays))?.toAppleWindow()
+    }
+
+    /**
+     * Orders a newly picked start against the current end for the macOS range
+     * picker through `com.checkit.ui.orderedRangeForStart`, using the same
+     * rule as the Compose picker: a start after the end clears the end, while
+     * equal days stay valid because the end is inclusive. Pass
+     * [Int.MIN_VALUE] for an unset side.
+     */
+    fun orderedRangeForStart(startEpochDays: Int, endEpochDays: Int): NestedAppleDateRange =
+        com.checkit.ui.orderedRangeForStart(
+            startEpochDays.toLocalDateOrNull(),
+            endEpochDays.toLocalDateOrNull()
+        ).toAppleDateRange()
+
+    /**
+     * Mirror of `orderedRangeForStart` for a newly picked end: an end before
+     * the start clears the start, so the latest pick always survives.
+     */
+    fun orderedRangeForEnd(startEpochDays: Int, endEpochDays: Int): NestedAppleDateRange =
+        com.checkit.ui.orderedRangeForEnd(
+            startEpochDays.toLocalDateOrNull(),
+            endEpochDays.toLocalDateOrNull()
+        ).toAppleDateRange()
+
+    private fun Int.toLocalDateOrNull(): LocalDate? =
+        takeIf { it != Int.MIN_VALUE }?.let(LocalDate::fromEpochDays)
+
+    private fun Pair<LocalDate?, LocalDate?>.toAppleDateRange() = NestedAppleDateRange(
+        startEpochDays = first?.toEpochDays()?.toInt() ?: Int.MIN_VALUE,
+        endEpochDays = second?.toEpochDays()?.toInt() ?: Int.MIN_VALUE
+    )
+
+    private fun NestedDateWindow.toAppleWindow() = NestedAppleDateWindow(
+        startEpochDays = start.toEpochDays().toInt(),
+        endEpochDays = endInclusive.toEpochDays().toInt()
+    )
 
     fun syncBridge(): com.checkit.data.NestedSyncBridge =
         koinApp?.koin?.get() ?: KoinPlatform.getKoin().get()

@@ -68,6 +68,13 @@ fun buildNestedTree(items: List<NestedListItem>): List<NestedItemNode> {
     val sortedChildren = childrenByParent.mapValues { (_, children) ->
         children.sortedWith(compareBy<NestedListItem> { it.position }.thenBy { it.id })
     }
+    // Display ordinal per sibling group, computed from the real parent group
+    // even when a node is surfaced as an extra root (orphan/cycle), so a
+    // number never depends on where a divergent row happens to be shown.
+    val ordinalById = HashMap<String, Int>(items.size)
+    sortedChildren.values.forEach { group ->
+        group.forEachIndexed { index, item -> ordinalById[item.id] = index + 1 }
+    }
     val nodesById = HashMap<String, NestedItemNode>(items.size)
     val expanded = HashSet<String>(items.size)
     val roots = sortedChildren[null].orEmpty()
@@ -88,7 +95,8 @@ fun buildNestedTree(items: List<NestedListItem>): List<NestedItemNode> {
             } else {
                 nodesById[item.id] = NestedItemNode(
                     item = item,
-                    children = sortedChildren[item.id].orEmpty().mapNotNull { child -> nodesById[child.id] }
+                    children = sortedChildren[item.id].orEmpty().mapNotNull { child -> nodesById[child.id] },
+                    ordinal = ordinalById[item.id] ?: 1
                 )
             }
         }

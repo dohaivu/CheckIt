@@ -1,5 +1,7 @@
 package com.checkit.ui.theme
 
+import com.checkit.domain.GuideDot
+import com.checkit.domain.sanitizeGuideDot
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -24,6 +26,16 @@ class AppSymbolsTest {
     fun testKeysAreUnique() {
         val keys = AppSymbols.allSymbols.map { it.key }
         assertEquals(keys.size, keys.distinct().size, "Symbol keys must be unique")
+        assertEquals(keys, AppSymbols.allSymbolKeys, "Picker keys must follow registry order")
+    }
+
+    @Test
+    fun testAllSymbolKeysAreValidGuideDotKeys() {
+        AppSymbols.allSymbolKeys.forEach { key ->
+            val encoded = GuideDot.fromSymbolKey(key)
+            assertEquals(encoded, sanitizeGuideDot(encoded), "Key '$key' must pass sanitizeGuideDot")
+            assertEquals(key, GuideDot.symbolKey(encoded), "Key '$key' must round-trip via GuideDot.symbolKey")
+        }
     }
 
     @Test

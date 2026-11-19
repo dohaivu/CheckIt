@@ -344,13 +344,83 @@ data class NestedMetricSummary(
 )
 
 /**
+ * Supported numbering styles for nested tree children or root level nodes.
+ */
+enum class NestedNumberingStyle(val key: String, val label: String) {
+    None("none", "Dots"),
+    Decimal("decimal", "1 2 3"),
+    AlphaLower("alpha_lower", "a b c"),
+    AlphaUpper("alpha_upper", "A B C"),
+    RomanLower("roman_lower", "i ii iii"),
+    RomanUpper("roman_upper", "I II III"),
+    Legal("legal", "1.1 1.2");
+
+    companion object {
+        fun fromKey(key: String?): NestedNumberingStyle =
+            entries.firstOrNull { it.key.equals(key, ignoreCase = true) } ?: None
+    }
+}
+
+/** Formats a 1-based node ordinal according to the chosen [NestedNumberingStyle]. */
+fun formatNestedNumber(
+    style: NestedNumberingStyle,
+    ordinal: Int,
+    ancestorOrdinals: List<Int> = emptyList()
+): String? = when (style) {
+    NestedNumberingStyle.None -> null
+    NestedNumberingStyle.Decimal -> ordinal.toString()
+    NestedNumberingStyle.AlphaLower -> formatAlpha(ordinal, uppercase = false)
+    NestedNumberingStyle.AlphaUpper -> formatAlpha(ordinal, uppercase = true)
+    NestedNumberingStyle.RomanLower -> formatRoman(ordinal, uppercase = false)
+    NestedNumberingStyle.RomanUpper -> formatRoman(ordinal, uppercase = true)
+    NestedNumberingStyle.Legal -> {
+        (ancestorOrdinals + ordinal).joinToString(".")
+    }
+}
+
+private fun formatAlpha(ordinal: Int, uppercase: Boolean): String {
+    var n = ordinal
+    val sb = StringBuilder()
+    while (n > 0) {
+        val rem = (n - 1) % 26
+        val char = (if (uppercase) 'A' else 'a') + rem
+        sb.insert(0, char)
+        n = (n - 1) / 26
+    }
+    return sb.toString()
+}
+
+private val ROMAN_PAIRS = listOf(
+    1000 to "M", 900 to "CM", 500 to "D", 400 to "CD",
+    100 to "C", 90 to "XC", 50 to "L", 40 to "XL",
+    10 to "X", 9 to "IX", 5 to "V", 4 to "IV", 1 to "I"
+)
+
+private fun formatRoman(ordinal: Int, uppercase: Boolean): String {
+    var num = ordinal
+    val sb = StringBuilder()
+    for ((value, symbol) in ROMAN_PAIRS) {
+        while (num >= value) {
+            sb.append(symbol)
+            num -= value
+        }
+    }
+    val res = sb.toString()
+    return if (uppercase) res else res.lowercase()
+}
+
+/**
  * A single nested-lists document. Holds one unlimited-depth item tree.
  */
 data class NestedDocument(
     val id: String = "",
     val title: String,
     val createdAtMillis: Long,
-    val updatedAtMillis: Long
+    val updatedAtMillis: Long,
+    /**
+     * Numbering style for the document's root level items.
+     */
+    val numberingStyle: NestedNumberingStyle = NestedNumberingStyle.None
 )
 
 /**
@@ -405,11 +475,18 @@ data class NestedListItem(
     /** Optional palette override for this row's dot and owned guide segments. */
     val guideDotColor: NestedColorToken? = null,
     /**
-     * Emoji drawn in the row's guide dot instead of the default ring/dot.
-     * Null keeps the standard guide. Normalize writes with
-     * [sanitizeGuideDot] so a row cannot be used as a free-text field.
+     * Emoji or `AppSymbols` key drawn in the row's guide dot instead of the
+     * default ring/dot. Null keeps the standard guide. Symbol keys are stored
+     * as `sym:<key>` (see [GuideDot]) so both kinds share this single field.
+     * Normalize writes with [sanitizeGuideDot] so a row cannot be used as a
+     * free-text field.
      */
     val guideDot: String? = null,
+    /**
+     * Numbering style applied to this row's direct children.
+     * An explicit [guideDot] glyph on a child still wins over its number.
+     */
+    val numberingStyle: NestedNumberingStyle = NestedNumberingStyle.None,
     val startDate: LocalDate? = null,
     val endDate: LocalDate? = null,
     val priority: TaskPriority = TaskPriority.None,
@@ -575,7 +652,14 @@ data class EffectiveRowVisuals(
 /** UI/read model for one item node with its nested children. */
 data class NestedItemNode(
     val item: NestedListItem,
-    val children: List<NestedItemNode> = emptyList()
+    val children: List<NestedItemNode> = emptyList(),
+    /**
+     * 1-based position within this item's own sibling group, derived from
+     * `(position, id)` order by [buildNestedTree]. Pruning (filtering/zoom)
+     * copies nodes, so the number stays absolute rather than renumbering
+     * to the visible subset.
+     */
+    val ordinal: Int = 1
 ) {
     val hasChildren: Boolean get() = children.isNotEmpty()
 }
@@ -600,22 +684,67 @@ class NestedDocumentTree(
 
     val flatItems: List<NestedListItem> by lazy { flattenNestedNodes(rootNodes) }
     val metricSummaryById: Map<String, NestedMetricSummary> by lazy { calculateNestedMetricSummaries(rootNodes) }
+
+    fun ancestorOrdinals(itemId: String): List<Int> {
+        val ordinals = mutableListOf<Int>()
+        var currId: String? = nodeById[itemId]?.item?.parentId
+        while (currId != null) {
+            val node = nodeById[currId] ?: break
+            ordinals.add(0, node.ordinal)
+            currId = node.item.parentId
+        }
+        return ordinals
+    }
 }
 
-/** Longest guide emoji accepted, in UTF-16 units. */
+/** Longest guide emoji or symbol key accepted, in UTF-16 units. */
 const val NESTED_GUIDE_DOT_MAX_LENGTH = 16
 
+private val NESTED_GUIDE_DOT_SYMBOL_KEY_REGEX = Regex("[a-zA-Z0-9_]+")
+
 /**
- * Normalizes a picked guide emoji: trims surrounding whitespace, maps blank to
+ * Codec for the single [NestedListItem.guideDot] field. A picked symbol is
+ * stored as `sym:<key>` while emojis keep their plain text, so the two kinds
+ * can share one persisted column without a schema change.
+ */
+object GuideDot {
+    /** Reserved prefix; emoji strings never contain it. */
+    const val SymbolPrefix = "sym:"
+
+    /** Decodes a symbol key, or null when [raw] holds emoji/default or is malformed. */
+    fun symbolKey(raw: String?): String? {
+        val sanitized = sanitizeGuideDot(raw) ?: return null
+        return sanitized.takeIf { it.startsWith(SymbolPrefix) }
+            ?.removePrefix(SymbolPrefix)
+    }
+
+    /** Decodes an emoji, or null when [raw] holds a symbol/default. */
+    fun emoji(raw: String?): String? {
+        val trimmed = raw?.trim().orEmpty()
+        return sanitizeGuideDot(trimmed)?.takeIf { !it.startsWith(SymbolPrefix) }
+    }
+
+    /** Storage value for a picked symbol key. */
+    fun fromSymbolKey(key: String): String =
+        SymbolPrefix + key.trim().removePrefix(SymbolPrefix).lowercase()
+}
+
+/**
+ * Normalizes a picked guide glyph: trims surrounding whitespace, maps blank to
  * null (so the row falls back to the default dot), and rejects values that are
- * clearly not a single emoji rather than storing arbitrary text.
+ * clearly not an emoji or a well-formed symbol key.
  *
- * Emojis with skin tones or zero-width joiners need several code points, hence
- * the generous cap; anything longer is treated as invalid input.
+ * The cap applies to the decoded value, not the `sym:` tag. Emojis with skin
+ * tones or zero-width joiners need several code points, hence the generous
+ * cap; anything longer is treated as invalid input.
  */
 fun sanitizeGuideDot(raw: String?): String? {
     val trimmed = raw?.trim().orEmpty()
     if (trimmed.isEmpty()) return null
-    return trimmed.takeIf { it.length <= NESTED_GUIDE_DOT_MAX_LENGTH }
+    val isSymbol = trimmed.startsWith(GuideDot.SymbolPrefix)
+    val decoded = if (isSymbol) trimmed.removePrefix(GuideDot.SymbolPrefix) else trimmed
+    if (isSymbol && !decoded.matches(NESTED_GUIDE_DOT_SYMBOL_KEY_REGEX)) return null
+    if (decoded.length > NESTED_GUIDE_DOT_MAX_LENGTH) return null
+    return if (isSymbol) GuideDot.SymbolPrefix + decoded.lowercase() else trimmed
 }
 

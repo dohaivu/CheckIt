@@ -53,6 +53,9 @@ import com.checkit.domain.usecase.UpdateNestedItemCalloutLayoutUseCase
 import com.checkit.domain.usecase.ResetNestedItemCalloutToDefaultsUseCase
 import com.checkit.domain.usecase.UpdateNestedItemGuideDotUseCase
 import com.checkit.domain.usecase.UpdateNestedItemGuideDotColorUseCase
+import com.checkit.domain.usecase.UpdateNestedItemNumberingStyleUseCase
+import com.checkit.domain.usecase.UpdateNestedDocumentNumberingStyleUseCase
+import com.checkit.domain.NestedNumberingStyle
 import com.checkit.domain.usecase.UpdateNestedItemLabelUseCase
 import com.checkit.domain.usecase.UpdateNestedItemMetricSettingsUseCase
 import com.checkit.domain.usecase.UpdateNestedItemNoteUseCase
@@ -76,6 +79,9 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.LocalDate
 import com.checkit.domain.FocusPeriod
+import com.checkit.domain.NestedDateFilter
+import com.checkit.domain.NestedDatePreset
+import com.checkit.domain.NestedRollingPreset
 import com.checkit.domain.Period
 import com.checkit.ui.today
 
@@ -98,13 +104,16 @@ data class SelectionState(
 
 data class NestedFilterState(
     val isVisible: Boolean = false,
-    val focus: FocusPeriod? = null,
+    val dateFilter: NestedDateFilter? = null,
     val query: String = "",
     val hideChecked: Boolean = false,
     val selectedTagIds: Set<String> = emptySet(),
     val displayType: NestedDisplayType = NestedDisplayType.All
 ) {
-    val isActive: Boolean get() = focus != null || query.isNotBlank() || hideChecked || selectedTagIds.isNotEmpty() || displayType != NestedDisplayType.All
+    val isActive: Boolean get() = dateFilter != null || query.isNotBlank() || hideChecked || selectedTagIds.isNotEmpty() || displayType != NestedDisplayType.All
+
+    /** Navigable focus for the period header; null for rolling windows. */
+    val calendarFocus: FocusPeriod? get() = dateFilter?.calendarFocus
 }
 
 enum class NestedDisplayType {
@@ -198,6 +207,8 @@ class NestedListsViewModel(
     private val updateItemPriorityUseCase: UpdateNestedItemPriorityUseCase,
     private val updateItemGuideDotUseCase: UpdateNestedItemGuideDotUseCase,
     private val updateItemGuideDotColorUseCase: UpdateNestedItemGuideDotColorUseCase,
+    private val updateItemNumberingStyleUseCase: UpdateNestedItemNumberingStyleUseCase,
+    private val updateDocumentNumberingStyleUseCase: UpdateNestedDocumentNumberingStyleUseCase,
     private val updateItemTagsUseCase: UpdateNestedItemTagsUseCase,
     private val updateItemMetricSettingsUseCase: UpdateNestedItemMetricSettingsUseCase,
     private val updateItemProgressUseCase: UpdateNestedItemProgressUseCase,
@@ -497,7 +508,24 @@ class NestedListsViewModel(
     }
 
     fun updateFilterFocus(focus: FocusPeriod) {
-        updateActiveEditor { it.copy(filters = it.filters.copy(focus = focus)) }
+        updateActiveEditor { it.copy(filters = it.filters.copy(dateFilter = NestedDateFilter.Focus(focus))) }
+    }
+
+    /** One-tap calendar window; resolves to a [FocusPeriod] for the header. */
+    fun applyDatePreset(preset: NestedDatePreset) {
+        updateFilterFocus(preset.focus(today()))
+    }
+
+    /** One-tap rolling attention window; replaces any calendar focus. */
+    fun applyRollingFilter(preset: NestedRollingPreset) {
+        updateActiveEditor {
+            it.copy(filters = it.filters.copy(dateFilter = NestedDateFilter.Rolling(preset)))
+        }
+    }
+
+    /** Clears only the date window, leaving query/tags/other filters intact. */
+    fun clearDateFilter() {
+        updateActiveEditor { it.copy(filters = it.filters.copy(dateFilter = null)) }
     }
 
     fun updateFilterQuery(query: String) {
@@ -517,7 +545,7 @@ class NestedListsViewModel(
     }
 
     fun resetFilters() {
-        updateActiveEditor { it.copy(filters = it.filters.copy(focus = null, query = "", hideChecked = false, selectedTagIds = emptySet(), displayType = NestedDisplayType.All)) }
+        updateActiveEditor { it.copy(filters = it.filters.copy(dateFilter = null, query = "", hideChecked = false, selectedTagIds = emptySet(), displayType = NestedDisplayType.All)) }
     }
 
     fun updateDisplayType(displayType: NestedDisplayType) {
@@ -538,22 +566,34 @@ class NestedListsViewModel(
 
     fun nextFilterPeriod() {
         updateActiveEditor { current ->
-            val focus = current.filters.focus ?: return@updateActiveEditor current
-            current.copy(filters = current.filters.copy(focus = focus.shift(1)))
+            val focus = current.filters.calendarFocus ?: return@updateActiveEditor current
+            current.copy(
+                filters = current.filters.copy(
+                    dateFilter = NestedDateFilter.Focus(focus.shift(1))
+                )
+            )
         }
     }
 
     fun previousFilterPeriod() {
         updateActiveEditor { current ->
-            val focus = current.filters.focus ?: return@updateActiveEditor current
-            current.copy(filters = current.filters.copy(focus = focus.shift(-1)))
+            val focus = current.filters.calendarFocus ?: return@updateActiveEditor current
+            current.copy(
+                filters = current.filters.copy(
+                    dateFilter = NestedDateFilter.Focus(focus.shift(-1))
+                )
+            )
         }
     }
 
     fun currentFilterPeriod() {
         updateActiveEditor { current ->
-            val period = current.filters.focus?.period ?: Period.Week
-            current.copy(filters = current.filters.copy(focus = FocusPeriod(period, today())))
+            val period = current.filters.calendarFocus?.period ?: Period.Week
+            current.copy(
+                filters = current.filters.copy(
+                    dateFilter = NestedDateFilter.Focus(FocusPeriod(period, today()))
+                )
+            )
         }
     }
 
@@ -714,11 +754,13 @@ class NestedListsViewModel(
     }
 
     /** Pastes the clipboard under the selected item, or at the document root. */
-    fun pasteSubtree() {
+    fun pasteSubtree(dateOffsetDays: Int = 0) {
         val active = getActiveEditor() ?: return
         val parentId = active.selectedItemId
         viewModelScope.launch {
-            runCatching { pasteSubtreeUseCase(active.documentId, parentId, active.tree.flatItems) }
+            runCatching {
+                pasteSubtreeUseCase(active.documentId, parentId, active.tree.flatItems, dateOffsetDays)
+            }
                 .onSuccess { count ->
                     if (count == 0) return@onSuccess
                     if (parentId != null && active.tree.nodeById[parentId]?.item?.collapsed == true) {
@@ -736,12 +778,23 @@ class NestedListsViewModel(
         }
     }
 
-    /** Inserts a copy of the selected item as its next sibling, without children. */
-    fun duplicateSelected() {
+    /**
+     * Inserts a copy of the selected item as its next sibling, without
+     * children. [dateOffsetDays] shifts the copy's dates; [clearDates] wins
+     * over the offset.
+     */
+    fun duplicateSelected(dateOffsetDays: Int = 0, clearDates: Boolean = false) {
         val active = getActiveEditor() ?: return
         val itemId = active.selectedItemId ?: return
         viewModelScope.launch {
-            runCatching { duplicateItemUseCase(active.tree.flatItems, itemId) }
+            runCatching {
+                duplicateItemUseCase(
+                    items = active.tree.flatItems,
+                    itemId = itemId,
+                    dateOffsetDays = dateOffsetDays,
+                    clearDates = clearDates
+                )
+            }
                 .onSuccess { newId ->
                     if (newId == null) return@onSuccess
                     updateActiveEditor {
@@ -797,6 +850,14 @@ class NestedListsViewModel(
 
     fun updateItemGuideDotColor(itemId: String, guideDotColor: NestedColorToken?) {
         viewModelScope.launch { updateItemGuideDotColorUseCase(itemId, guideDotColor) }
+    }
+
+    fun updateItemNumberingStyle(itemId: String, style: NestedNumberingStyle) {
+        viewModelScope.launch { updateItemNumberingStyleUseCase(itemId, style) }
+    }
+
+    fun updateDocumentNumberingStyle(documentId: String, style: NestedNumberingStyle) {
+        viewModelScope.launch { updateDocumentNumberingStyleUseCase(documentId, style) }
     }
 
     fun updateItemTags(itemId: String, tagIds: List<String>) {

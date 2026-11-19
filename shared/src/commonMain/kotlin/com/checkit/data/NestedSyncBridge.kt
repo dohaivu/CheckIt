@@ -34,6 +34,7 @@ class NestedSyncBridge(
                 createdAtMillis = entity.createdAtMillis,
                 updatedAtMillis = entity.updatedAtMillis,
                 deleted = entity.deleted,
+                numberingStyle = entity.numberingStyle,
             )
         )
     }
@@ -49,6 +50,7 @@ class NestedSyncBridge(
                     createdAtMillis = entity.createdAtMillis,
                     updatedAtMillis = entity.updatedAtMillis,
                     deleted = entity.deleted,
+                    numberingStyle = entity.numberingStyle,
                 )
             )
         }
@@ -172,6 +174,7 @@ class NestedSyncBridge(
                     calloutLayout = entity.calloutLayout,
                     guideDotColor = entity.guideDotColor,
                     guideDot = entity.guideDot,
+                    numberingStyle = entity.numberingStyle,
                     startDateEpochDays = entity.startDateEpochDays,
                     endDateEpochDays = entity.endDateEpochDays,
                     priority = entity.priority,
@@ -243,6 +246,7 @@ class NestedSyncBridge(
                         createdAtMillis = existing.createdAtMillis,
                         updatedAtMillis = existing.updatedAtMillis,
                         deleted = existing.deleted,
+                        numberingStyle = existing.numberingStyle,
                     ),
                     remote = NestedSyncDocument.docToMap(
                         id = remote.id,
@@ -251,6 +255,7 @@ class NestedSyncBridge(
                         createdAtMillis = remote.createdAtMillis,
                         updatedAtMillis = remote.updatedAtMillis,
                         deleted = remote.deleted,
+                        numberingStyle = remote.numberingStyle,
                     ),
                 ) -> {
                 println("NestedSync: healing tie on document ${remote.id}")
@@ -265,6 +270,7 @@ class NestedSyncBridge(
                 sortOrder = remote.sortOrder,
                 createdAtMillis = existing?.createdAtMillis ?: remote.createdAtMillis,
                 updatedAtMillis = updatedAt,
+                numberingStyle = remote.numberingStyle,
                 dirty = dirty,
                 deleted = remote.deleted,
             )
@@ -439,6 +445,7 @@ class NestedSyncBridge(
                 calloutLayout = remote.calloutLayout,
                 guideDotColor = remote.guideDotColor,
                 guideDot = sanitizeGuideDot(remote.guideDot),
+                numberingStyle = remote.numberingStyle,
                 startDateEpochDays = remote.startDateEpochDays,
                 endDateEpochDays = remote.endDateEpochDays,
                 priority = remote.priority,
@@ -486,6 +493,7 @@ class NestedSyncBridge(
             calloutLayout = entity.calloutLayout,
             guideDotColor = entity.guideDotColor,
             guideDot = entity.guideDot,
+            numberingStyle = entity.numberingStyle,
             startDateEpochDays = entity.startDateEpochDays,
             endDateEpochDays = entity.endDateEpochDays,
             priority = entity.priority,
@@ -525,6 +533,7 @@ class NestedSyncBridge(
             calloutLayout = remote.calloutLayout,
             guideDotColor = remote.guideDotColor,
             guideDot = sanitizeGuideDot(remote.guideDot),
+            numberingStyle = remote.numberingStyle,
             startDateEpochDays = remote.startDateEpochDays,
             endDateEpochDays = remote.endDateEpochDays,
             priority = remote.priority,

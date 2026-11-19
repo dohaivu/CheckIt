@@ -56,6 +56,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.checkit.ui.MinutesPerDay
 import com.checkit.ui.TimeRangeShortcutDurations
 import com.checkit.ui.compact
+import com.checkit.ui.compactWithDate
 import com.checkit.ui.duration
 import com.checkit.ui.tasks.views.ContentContainerAlpha
 import com.checkit.ui.tasks.views.currentTimeMinutes
@@ -191,7 +192,7 @@ internal fun DatePicker(
     ) {
         DetailChip(
             icon = Icons.Default.Event,
-            label = date?.compact() ?: emptyLabel,
+            label = date?.compactWithDate() ?: emptyLabel,
             iconTint = if (date != null) MaterialTheme.colorScheme.primary else Color.Unspecified,
             isHighlighted = isOverdue,
             onClick = { if (enabled) showPicker = true },

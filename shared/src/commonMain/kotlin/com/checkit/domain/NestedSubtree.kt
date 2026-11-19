@@ -56,6 +56,10 @@ fun captureNestedSubtree(tree: NestedDocumentTree, itemId: String): NestedSubtre
  * and children at consecutive positions within their new parent. The returned
  * list is pre-order (parents before children) so it can be inserted directly
  * with Room foreign keys enabled.
+ *
+ * [dateOffsetDays] shifts every copied row's bounds, which is how "paste last
+ * week's checklist into this week" stays a concrete, stable copy. Open-ended
+ * ranges keep their missing side.
  */
 fun planNestedSubtreePaste(
     clip: NestedSubtreeClip,
@@ -63,7 +67,8 @@ fun planNestedSubtreePaste(
     parentId: String?,
     startPosition: Int,
     nowMillis: Long,
-    newId: () -> String
+    newId: () -> String,
+    dateOffsetDays: Int = 0
 ): List<NestedListItem> {
     if (clip.isEmpty) return emptyList()
 
@@ -92,7 +97,7 @@ fun planNestedSubtreePaste(
         val source = pending.node.item
         val newItemId = newId()
         result.add(
-            source.copy(
+            source.shiftedDatesBy(dateOffsetDays).copy(
                 id = newItemId,
                 documentId = documentId,
                 parentId = pending.newParentId,

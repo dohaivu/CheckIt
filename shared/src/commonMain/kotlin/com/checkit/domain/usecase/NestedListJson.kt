@@ -44,7 +44,8 @@ data class NestedDocumentExportData(
     val id: String = "",
     val title: String,
     val createdAtMillis: Long = 0L,
-    val updatedAtMillis: Long = 0L
+    val updatedAtMillis: Long = 0L,
+    val numberingStyle: String = "none"
 )
 
 @Serializable
@@ -72,6 +73,7 @@ data class NestedItemExportData(
     val calloutLayout: String? = null,
     val guideDotColor: String? = null,
     val guideDot: String? = null,
+    val numberingStyle: String = "none",
     val startDate: String? = null,
     val endDate: String? = null,
     val priority: String = "None",
@@ -94,7 +96,8 @@ fun NestedDocumentTree.toExport(): NestedDocumentExport =
             id = document.id,
             title = document.title,
             createdAtMillis = document.createdAtMillis,
-            updatedAtMillis = document.updatedAtMillis
+            updatedAtMillis = document.updatedAtMillis,
+            numberingStyle = document.numberingStyle.key
         ),
         items = rootNodes.map { it.toExportData() }
     )
@@ -126,6 +129,7 @@ fun NestedItemNode.toExportData(): NestedItemExportData =
             ?.name,
         guideDotColor = item.guideDotColor?.name,
         guideDot = item.guideDot,
+        numberingStyle = item.numberingStyle.key,
         startDate = item.startDate?.toString(),
         endDate = item.endDate?.toString(),
         priority = item.priority.name,

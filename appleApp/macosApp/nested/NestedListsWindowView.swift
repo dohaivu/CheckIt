@@ -728,6 +728,12 @@ struct NestedListsWindowView: View {
                         Label("Paste Subtree", systemImage: "doc.on.clipboard")
                     }
                     .disabled(!state.hasSubtreeClipboard)
+                    Button {
+                        state.pasteSubtree(under: sel, dateOffsetDays: 7)
+                    } label: {
+                        Label("Paste Subtree +1 Week", systemImage: "calendar.badge.plus")
+                    }
+                    .disabled(!state.hasSubtreeClipboard)
                     Divider()
                     Button {
                         if let id = sel { state.duplicateItem(id: id) }
@@ -735,6 +741,23 @@ struct NestedListsWindowView: View {
                         Label("Duplicate", systemImage: "plus.square.on.square")
                     }
                     .disabled(sel == nil)
+                    if let item = node?.item, item.startDate != nil || item.endDate != nil {
+                        Button {
+                            if let id = sel { state.duplicateItem(id: id, dateOffsetDays: 1) }
+                        } label: {
+                            Label("Duplicate +1 Day", systemImage: "calendar.badge.plus")
+                        }
+                        Button {
+                            if let id = sel { state.duplicateItem(id: id, dateOffsetDays: 7) }
+                        } label: {
+                            Label("Duplicate +1 Week", systemImage: "calendar.badge.plus")
+                        }
+                        Button {
+                            if let id = sel { state.duplicateItem(id: id, clearDates: true) }
+                        } label: {
+                            Label("Duplicate Without Dates", systemImage: "calendar.badge.minus")
+                        }
+                    }
                 } label: {
                     EditorBarButtonLabel(system: "doc.on.doc", shortcut: nil, active: false)
                 }
@@ -742,18 +765,37 @@ struct NestedListsWindowView: View {
                 .fixedSize()
                 .accessibilityLabel("Copy, paste, and duplicate")
                 .help("Copy as Markdown (⌘C), copy and paste subtrees, or duplicate")
-                Button {
-                    moveDestinationId = defaultMoveDestinationId()
-                    showMoveSheet = true
+                Menu {
+                    Button {
+                        state.moveSelectedToTop()
+                    } label: {
+                        Label("Move to Top", systemImage: "arrow.up.to.line")
+                    }
+                    .disabled(!state.canMoveSelectedToTop)
+                    Button {
+                        state.moveSelectedToBottom()
+                    } label: {
+                        Label("Move to Bottom", systemImage: "arrow.down.to.line")
+                    }
+                    .disabled(!state.canMoveSelectedToBottom)
+                    Divider()
+                    Button {
+                        moveDestinationId = defaultMoveDestinationId()
+                        showMoveSheet = true
+                    } label: {
+                        Label("Move to…", systemImage: "tray.and.arrow.down")
+                    }
+                    .disabled(!hasMoveDestinations)
                 } label: {
-                    Image(systemName: "tray.and.arrow.down")
-                        .imageScale(.medium)
-                        .frame(width: 28, height: 28)
+                    EditorBarButtonLabel(system: "tray.and.arrow.down", shortcut: nil, active: false)
                 }
-                .buttonStyle(.borderless)
+                .menuStyle(.borderlessButton)
+                .fixedSize()
                 .accessibilityLabel("Move to")
-                .help("Move selected item under a sibling or uncle (M)")
-                .disabled(!hasMoveDestinations)
+                .help("Move selected item to the top or bottom, or under another item (M)")
+                .focusable(false)
+                .focusEffectDisabled()
+                .disabled(sel == nil)
                 barSeparator
                 Menu {
                     Toggle(isOn: Binding(
@@ -768,6 +810,15 @@ struct NestedListsWindowView: View {
                     )) {
                         Label("Working", systemImage: "briefcase")
                     }
+                    Divider()
+                    Picker("Root Numbering", selection: Binding(
+                        get: { state.tree?.document.numberingStyle ?? NestedNumberingStyle.none },
+                        set: { state.setDocumentNumberingStyle($0.key) }
+                    )) {
+                        ForEach(NestedNumberingStyle.entries, id: \.self) { style in
+                            Text(style.label).tag(style)
+                        }
+                    }
                 } label: {
                     Image(systemName: state.displayType == .all ? "list.bullet" : "briefcase")
                         .imageScale(.medium)
@@ -777,6 +828,41 @@ struct NestedListsWindowView: View {
                 .menuStyle(.borderlessButton)
                 .accessibilityLabel("Display")
                 .help(state.displayType == .all ? "Show all items" : "Show working items (priority, due date, open tasks, progress)")
+                barSeparator
+                Menu {
+                    Toggle(isOn: Binding(
+                        get: { state.dateFilter == nil },
+                        set: { if $0 { state.dateFilter = nil } }
+                    )) {
+                        Label("Any date", systemImage: "calendar")
+                    }
+                    Divider()
+                    ForEach(nestedDatePresetOptions) { preset in
+                        Toggle(isOn: Binding(
+                            get: { state.dateFilter == .calendar(preset.name) },
+                            set: { if $0 { state.dateFilter = .calendar(preset.name) } }
+                        )) {
+                            Label(preset.label, systemImage: preset.icon)
+                        }
+                    }
+                    Divider()
+                    ForEach(nestedRollingPresetOptions) { preset in
+                        Toggle(isOn: Binding(
+                            get: { state.dateFilter == .rolling(preset.name) },
+                            set: { if $0 { state.dateFilter = .rolling(preset.name) } }
+                        )) {
+                            Label(preset.label, systemImage: preset.icon)
+                        }
+                    }
+                } label: {
+                    Image(systemName: state.dateFilter == nil ? "calendar" : "calendar.badge.clock")
+                        .imageScale(.medium)
+                        .tint(state.dateFilter == nil ? Color.secondary : Color.accentColor)
+                        .frame(width: 28, height: 28)
+                }
+                .menuStyle(.borderlessButton)
+                .accessibilityLabel("Date filter")
+                .help("Show items that live in a date window")
                 barSeparator
                 noteLinesMenu
                 barSeparator
@@ -882,13 +968,27 @@ struct NestedListsWindowView: View {
         !state.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
+    private var activeDatePresetLabel: String? {
+        guard let filter = state.dateFilter else { return nil }
+        switch filter {
+        case .calendar(let name):
+            return nestedDatePresetOptions.first(where: { $0.name == name })?.label
+        case .rolling(let name):
+            return nestedRollingPresetOptions.first(where: { $0.name == name })?.label
+        }
+    }
+
     private var emptyTitle: String {
         if hasSearchText { return "No matches" }
+        if activeDatePresetLabel != nil { return "No items in this period" }
         return state.displayType == .working ? "No working items" : "Nothing here yet"
     }
 
     private var emptySubtitle: String {
         if hasSearchText { return "No items match the current search." }
+        if let label = activeDatePresetLabel {
+            return "No dated items live in \(label). Undated items stay visible under a matching parent."
+        }
         return state.displayType == .working
             ? "Nothing needs attention — no priority, due dates, open tasks, or tracked progress."
             : "Start with a root item, then indent items to build your outline."
@@ -1216,8 +1316,10 @@ struct NestedListsWindowView: View {
                 return .handled
             }
             .onKeyPress(keys: [KeyEquivalent("m"), KeyEquivalent("M")]) { _ in
-                guard state.editingId == nil, state.draft == nil, state.selectedId != nil,
-                      hasMoveDestinations else { return .ignored }
+                // Positions (top/bottom) are always offered, so a selection is
+                // enough to open the sheet even with no move destinations.
+                guard state.editingId == nil, state.draft == nil,
+                      state.selectedId != nil else { return .ignored }
                 moveDestinationId = defaultMoveDestinationId()
                 showMoveSheet = true
                 return .handled
@@ -1381,6 +1483,28 @@ struct NestedListsWindowView: View {
             Text("Move to").font(.headline)
             Text(title.isEmpty ? "Untitled item" : title)
                 .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+            HStack(spacing: 8) {
+                Button {
+                    state.moveSelectedToTop()
+                    showMoveSheet = false
+                } label: {
+                    Label("Move to Top", systemImage: "arrow.up.to.line")
+                }
+                .disabled(!state.canMoveSelectedToTop)
+                .focusable(false)
+                .focusEffectDisabled()
+                Button {
+                    state.moveSelectedToBottom()
+                    showMoveSheet = false
+                } label: {
+                    Label("Move to Bottom", systemImage: "arrow.down.to.line")
+                }
+                .disabled(!state.canMoveSelectedToBottom)
+                .focusable(false)
+                .focusEffectDisabled()
+                Spacer()
+            }
+            Divider()
             ScrollView {
                 VStack(alignment: .leading, spacing: 2) {
                     moveDestinationGroup(title: "Siblings", items: groups?.siblings ?? [])

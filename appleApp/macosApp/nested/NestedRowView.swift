@@ -218,7 +218,7 @@ struct NestedDateLabel {
 func nestedDateLabel(
     startDays: Int64?,
     endDays: Int64?,
-    todayDays: Int64 = DateExtensionsKt.today().toEpochDays()
+    hasMissedDeadline: Bool
 ) -> NestedDateLabel? {
     guard startDays != nil || endDays != nil else { return nil }
     func s(_ d: Int64) -> String { nestedDateFormatter.string(from: nestedDate(fromEpochDays: d)) }
@@ -229,8 +229,9 @@ func nestedDateLabel(
     case let (nil, .some(b)): text = "until \(s(b))"
     default: return nil
     }
-    // The end date is inclusive: only a date before today is overdue.
-    return NestedDateLabel(text: text, isOverdue: endDays.map { $0 < todayDays } ?? false)
+    // Red means a missed deadline, not merely a past range: only open
+    // deadlines (unchecked tasks or unfinished date metrics) highlight.
+    return NestedDateLabel(text: text, isOverdue: hasMissedDeadline)
 }
 
 // MARK: - Row
@@ -551,24 +552,51 @@ struct NestedRowView: View, Equatable {
         }
     }
 
-    /// Guide dot diameter. A parent ring grows to hold its emoji at the same
-    /// glyph size as a leaf dot without squeezing it against the stroke; plain
-    /// parents keep the ring leaves never show.
+    /// Guide dot diameter. A parent ring grows to hold its emoji or symbol at
+    /// the same glyph size as a leaf dot without squeezing it against the
+    /// stroke; plain parents keep the ring leaves never show.
     private var guideRingDiameter: CGFloat {
+        if row.numberText != nil { return numberDiameter }
         guard row.node.hasChildren else { return 12 }
-        if let emoji = item.guideDot, !emoji.isEmpty { return 20 }
+        let hasGlyph = GuideDot.shared.emoji(raw: item.guideDot) != nil || GuideDot.shared.symbolKey(raw: item.guideDot) != nil
+        if hasGlyph { return 18 }
         return 12
+    }
+
+    /// Badge diameter for a numbered row. Grows with the digit count so 1..N
+    /// stays centred without shrinking the glyph.
+    private var numberDiameter: CGFloat {
+        18
     }
 
     private var guideBaseColor: Color {
         nestedGuideBaseColor(row.depth, override: item.guideDotColor)
     }
 
-    /// The guide dot / collapse glyph: a ring with a chevron or emoji inside for
-    /// parents, the bare emoji or a small filled dot for leaves.
+    /// The guide dot / collapse glyph: a ring with a chevron, emoji, or symbol
+    /// inside for parents, and the bare glyph or a small filled dot for leaves.
     private var guideDotGlyph: some View {
         Group {
-            if let emoji = item.guideDot, !emoji.isEmpty {
+            if let symbolKey = GuideDot.shared.symbolKey(raw: item.guideDot) {
+                let glyph = Image(systemName: appSymbol(symbolKey))
+                    .font(.system(size: 11))
+                    .foregroundStyle(guideBaseColor)
+                if row.node.hasChildren {
+                    ZStack {
+                        Circle()
+                            .fill(item.collapsed
+                                  ? nestedDotColor(guideBaseColor, emphasized: dotEmphasis).opacity(0.22)
+                                  : Color.clear)
+                        Circle()
+                            .stroke(nestedDotColor(guideBaseColor, emphasized: dotEmphasis),
+                                    lineWidth: dotEmphasis ? 1.0 : 0.5)
+                        glyph
+                    }
+                    .frame(width: guideRingDiameter, height: guideRingDiameter)
+                } else {
+                    glyph
+                }
+            } else if let emoji = GuideDot.shared.emoji(raw: item.guideDot), !emoji.isEmpty {
                 if row.node.hasChildren {
                     // Parents keep the ring (it is the collapse cue) and read
                     // as filled while collapsed.
@@ -588,6 +616,47 @@ struct NestedRowView: View, Equatable {
                     Text(emoji)
                         .font(.system(size: 11))
                 }
+            } else if let number = row.numberText {
+                // Numbered level: a filled badge for leaves, and the same
+                // filled badge inside the parent ring so the collapse cue
+                // (and the number) both survive collapsing.
+                let isCapsule = number.count >= 4
+                let width: CGFloat = {
+                    if number.count >= 5 { return 30 }
+                    if number.count == 4 { return 26 }
+                    return numberDiameter
+                }()
+                let fontScale: CGFloat = number.count >= 5 ? 7.0 : (number.count == 4 ? 7.5 : (number.count == 3 ? 8.0 : (number.count == 2 ? 9.0 : 10.0)))
+
+                ZStack {
+                    if isCapsule {
+                        RoundedRectangle(cornerRadius: 5)
+                            .fill(guideBaseColor.opacity(dotEmphasis ? 0.30 : 0.16))
+                        if row.node.hasChildren {
+                            RoundedRectangle(cornerRadius: 5)
+                                .stroke(
+                                    nestedDotColor(guideBaseColor, emphasized: dotEmphasis),
+                                    lineWidth: dotEmphasis ? 1.25 : 1.0
+                                )
+                        }
+                    } else {
+                        Circle()
+                            .fill(guideBaseColor.opacity(dotEmphasis ? 0.30 : 0.16))
+                        if row.node.hasChildren {
+                            Circle()
+                                .stroke(
+                                    nestedDotColor(guideBaseColor, emphasized: dotEmphasis),
+                                    lineWidth: dotEmphasis ? 1.25 : 1.0
+                                )
+                        }
+                    }
+                    Text(number)
+                        .font(.system(size: fontScale, weight: .semibold))
+                        .monospacedDigit()
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                }
+                .frame(width: width, height: numberDiameter)
             } else if row.node.hasChildren {
                 ZStack {
                     Circle()
@@ -764,7 +833,8 @@ struct NestedRowView: View, Equatable {
         let note = item.note
         let dateLabel = nestedDateLabel(
             startDays: item.startDate?.toEpochDays(),
-            endDays: item.endDate?.toEpochDays()
+            endDays: item.endDate?.toEpochDays(),
+            hasMissedDeadline: item.hasMissedDeadlineToday()
         )
         // Android parity (NestedItemMetadataPreview): leaf items always show
         // their own tracked minutes; parents only when showTrackedMinutes.
