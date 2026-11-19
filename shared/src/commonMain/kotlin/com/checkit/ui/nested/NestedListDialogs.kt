@@ -948,7 +948,6 @@ internal fun GuideSymbolPicker(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(max = 320.dp)
                 .verticalScroll(rememberScrollState())
         ) {
             FlowRow(
